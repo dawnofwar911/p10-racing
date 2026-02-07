@@ -26,8 +26,15 @@ export default function AppNavbar() {
   return (
     <Navbar variant="dark" className="px-3">
       <Link href="/" passHref legacyBehavior>
-        <Navbar.Brand className="fw-bold cursor-pointer">
-          P10 <span style={{ color: '#e10600' }}>RACING</span> {isAdmin && <span className="ms-1 small opacity-50">(ADMIN)</span>}
+        <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center">
+          <img 
+            src="/logo.svg" 
+            alt="Logo" 
+            width="30" 
+            height="30" 
+            className="d-inline-block align-top me-2"
+          />
+          <span>P10 <span style={{ color: '#e10600' }}>RACING</span> {isAdmin && <span className="ms-1 small opacity-50">(ADMIN)</span>}</span>
         </Navbar.Brand>
       </Link>
       <div className="ms-3 d-flex align-items-center">
