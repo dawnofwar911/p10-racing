@@ -9,6 +9,8 @@ body {
   background-color: var(--f1-black);
   color: var(--f1-white);
   min-height: 100vh;
+  /* Add padding for mobile status bars/notches */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Improve Card Contrast */
