@@ -39,6 +39,7 @@ export default function AppNavbar() {
       </Link>
       <div className="ms-3 d-flex align-items-center">
         <Link href="/predict" className={`text-light text-decoration-none small me-3 ${pathname === '/predict' ? 'fw-bold border-bottom border-danger' : 'opacity-75'}`}>Predict</Link>
+        <Link href="/standings" className={`text-light text-decoration-none small me-3 ${pathname === '/standings' ? 'fw-bold border-bottom border-danger' : 'opacity-75'}`}>Standings</Link>
         <Link href="/history" className={`text-light text-decoration-none small me-3 ${pathname === '/history' ? 'fw-bold border-bottom border-danger' : 'opacity-75'}`}>History</Link>
         <Link href="/leaderboard" className={`text-light text-decoration-none small ${pathname === '/leaderboard' ? 'fw-bold border-bottom border-danger' : 'opacity-75'}`}>Leaderboard</Link>
       </div>

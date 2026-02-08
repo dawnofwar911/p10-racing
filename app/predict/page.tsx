@@ -192,16 +192,39 @@ export default function PredictPage() {
     );
   }
 
+  const handleShare = () => {
+    const p10Name = drivers.find(d => d.id === p10Driver)?.name || p10Driver;
+    const dnfName = drivers.find(d => d.id === dnfDriver)?.name || dnfDriver;
+    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'P10 Racing Predictions',
+        text: text,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(text);
+      alert('Prediction copied to clipboard! Send it to your friends.');
+    }
+  };
+
   if (submitted) {
     return (
       <main>
         <AppNavbar />
         <Container className="mt-5 text-center">
+          <div className="mb-4 display-1">🏁</div>
           <h2 className="display-6 mb-4">Prediction Received!</h2>
-          <p className="lead mb-5">Good luck for the {nextRace.name}.</p>
-          <Link href="/" passHref legacyBehavior>
-            <Button variant="outline-light">Back to Home</Button>
-          </Link>
+          <p className="lead mb-5 text-muted">Good luck for the {nextRace.name}, <span className="text-white fw-bold">{username}</span>.</p>
+          
+          <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
+            <Button variant="success" size="lg" onClick={handleShare} className="px-4">
+              Share Picks ↗
+            </Button>
+            <Link href="/" passHref legacyBehavior>
+              <Button variant="outline-light" size="lg" className="px-4">Back to Home</Button>
+            </Link>
+          </div>
         </Container>
       </main>
     );
