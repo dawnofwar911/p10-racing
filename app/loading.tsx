@@ -5,10 +5,10 @@ export default function Loading() {
   return (
     <main>
       <AppNavbar />
-      <Container className="mt-5 text-center p-5">
+      <div className="text-center py-5">
         <Spinner animation="border" variant="danger" />
         <p className="mt-3 text-muted">Loading...</p>
-      </Container>
+      </div>
     </main>
   );
 }
