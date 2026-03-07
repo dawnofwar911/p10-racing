@@ -27,36 +27,30 @@ export default function StandingsPage() {
         <h1 className="h2 mb-4">World Championship Standings</h1>
         
         <div className="table-responsive rounded border border-secondary">
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" variant="danger" />
-            </div>
-          ) : (
-            <Table variant="dark" hover className="mb-0">
-              <thead>
-                <tr>
-                  <th className="ps-4">Pos</th>
-                  <th>Driver</th>
-                  <th>Team</th>
-                  <th className="text-end pe-4">No.</th>
+          <Table variant="dark" hover className="mb-0">
+            <thead>
+              <tr>
+                <th className="ps-4">Pos</th>
+                <th>Driver</th>
+                <th>Team</th>
+                <th className="text-end pe-4">No.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {standings.map((d, i) => (
+                <tr key={d.id} style={{ height: '50px', verticalAlign: 'middle' }}>
+                  <td className="ps-4 fw-bold text-muted">{i + 1}</td>
+                  <td className="fw-bold text-white">{d.name}</td>
+                  <td>
+                    <span className="team-pill" style={{ backgroundColor: d.color, fontSize: '0.7rem' }}>
+                      {d.team}
+                    </span>
+                  </td>
+                  <td className="text-end pe-4 driver-number opacity-50" style={{ fontSize: '1rem' }}>{d.number}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {standings.map((d, i) => (
-                  <tr key={d.id} style={{ height: '50px', verticalAlign: 'middle' }}>
-                    <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                    <td className="fw-bold text-white">{d.name}</td>
-                    <td>
-                      <span className="team-pill" style={{ backgroundColor: d.color, fontSize: '0.7rem' }}>
-                        {d.team}
-                      </span>
-                    </td>
-                    <td className="text-end pe-4 driver-number opacity-50" style={{ fontSize: '1rem' }}>{d.number}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+              ))}
+            </tbody>
+          </Table>
         </div>
       </Container>
     </main>

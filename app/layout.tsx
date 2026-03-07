@@ -31,7 +31,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <div style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
           <Suspense fallback={<Loading />}>
-            {children}
+            <div className="page-transition">
+              {children}
+            </div>
           </Suspense>
         </div>
       </body>
