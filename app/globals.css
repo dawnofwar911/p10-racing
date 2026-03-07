@@ -5,12 +5,17 @@
   --f1-gray: #38383f;
 }
 
-body {
-  background-color: var(--f1-black);
+html, body {
+  background-color: var(--f1-black) !important;
   color: var(--f1-white);
   min-height: 100vh;
   /* Add padding for mobile status bars/notches */
   padding-top: env(safe-area-inset-top, 0px);
+  margin: 0;
+}
+
+body {
+  opacity: 1 !important;
 }
 
 /* Improve Card Contrast */
