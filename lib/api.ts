@@ -9,6 +9,7 @@ export interface ApiDriver {
 export interface ApiResult {
   number: string;
   position: string;
+  grid: string;
   points: string;
   Driver: ApiDriver;
   Constructor: {
