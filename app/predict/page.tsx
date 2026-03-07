@@ -63,8 +63,80 @@ export default function PredictPage() {
         };
         setNextRace(currentRace);
 
-        const grid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
-        setStartingGrid(grid);
+        let finalGrid: any[] = [];
+
+        // 1a. Try OpenF1 for the starting grid (Robust 22-driver grid with penalties)
+        try {
+          // Find the latest qualifying or race session for this meeting
+          const sessionsRes = await fetch(`https://api.openf1.org/v1/sessions?year=${CURRENT_SEASON}&meeting_key=latest`);
+          const sessions = await sessionsRes.json();
+          // Prefer 'Race' then 'Qualifying'
+          const targetSession = sessions.find((s: any) => s.session_name === 'Race') || 
+                               sessions.find((s: any) => s.session_name === 'Qualifying');
+          
+          if (targetSession) {
+            const gridRes = await fetch(`https://api.openf1.org/v1/starting_grid?session_key=${targetSession.session_key}`);
+            const openF1Grid = await gridRes.json();
+            
+            if (openF1Grid && openF1Grid.length > 0) {
+              const apiDrivers = await fetchDrivers(CURRENT_SEASON);
+              const sourceDrivers = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
+              
+              finalGrid = openF1Grid.map((g: any) => {
+                const driver = sourceDrivers.find(d => d.number === g.driver_number);
+                return {
+                  position: g.position.toString(),
+                  number: g.driver_number.toString(),
+                  Driver: {
+                    driverId: driver?.id || `driver_${g.driver_number}`,
+                    code: driver?.code || '???',
+                    permanentNumber: g.driver_number.toString(),
+                    givenName: driver?.name.split(' ')[0] || '',
+                    familyName: driver?.name.split(' ').slice(1).join(' ') || ''
+                  }
+                };
+              });
+            }
+          }
+        } catch (error) {
+          console.error('OpenF1 fetch failed, falling back to Jolpica:', error);
+        }
+
+        // 1b. Fallback to Jolpica if OpenF1 failed
+        if (finalGrid.length === 0) {
+          const gridData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
+          if (gridData && gridData.Results && gridData.Results.length > 0) {
+            finalGrid = gridData.Results.map(r => ({
+              position: r.grid || r.position,
+              number: r.number,
+              Driver: r.Driver
+            }));
+          } else {
+            const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
+            const apiDrivers = await fetchDrivers(CURRENT_SEASON);
+            const sourceDrivers = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
+            
+            const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
+            const missing = sourceDrivers.filter(d => !presentIds.has(d.id));
+            
+            finalGrid = [...qualiGrid];
+            missing.forEach((d, i) => {
+              finalGrid.push({
+                position: (qualiGrid.length + i + 1).toString(),
+                number: d.number.toString(),
+                Driver: {
+                  driverId: d.id,
+                  code: d.code,
+                  permanentNumber: d.number.toString(),
+                  givenName: d.name.split(' ')[0],
+                  familyName: d.name.split(' ').slice(1).join(' ')
+                }
+              });
+            });
+          }
+        }
+        
+        setStartingGrid(finalGrid);
 
         const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
         const lockTime = new Date(raceStartTime.getTime() + 120000); // 2 minutes after start
