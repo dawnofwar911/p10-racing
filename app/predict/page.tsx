@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Navbar, Spinner } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults } from '@/lib/api';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -19,6 +19,7 @@ export default function PredictPage() {
   const [isLocked, setIsLocked] = useState(false);
   const [startingGrid, setStartingGrid] = useState<any[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
+  const [communityPredictions, setCommunityPredictions] = useState<any[]>([]);
 
   // Load race and user from localStorage on mount
   useEffect(() => {
@@ -27,13 +28,28 @@ export default function PredictPage() {
       const races = await fetchCalendar(CURRENT_SEASON);
       let currentRace = RACES[0];
       if (races.length > 0) {
-        // ... (rest of race init logic)
         const now = new Date();
-        const upcoming = races.find(r => {
+        
+        // Find the first race that is either in the future 
+        // OR has happened but DOES NOT HAVE RESULTS YET
+        let activeIndex = races.findIndex(r => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
           return raceTime > now;
-        }) || races[0];
+        });
 
+        if (activeIndex === -1) activeIndex = races.length - 1;
+
+        // Check if the race that just happened (activeIndex - 1) has results
+        if (activeIndex > 0) {
+          const prevRace = races[activeIndex - 1];
+          const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
+          if (!results) {
+            // No results yet! Keep this race as the "active" one for predictions/viewing
+            activeIndex--;
+          }
+        }
+
+        const upcoming = races[activeIndex];
         currentRace = {
           id: upcoming.round,
           name: upcoming.raceName,
@@ -48,9 +64,20 @@ export default function PredictPage() {
         setStartingGrid(grid);
 
         const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
-        if (now > raceStartTime) {
+        const lockTime = new Date(raceStartTime.getTime() + 120000); // 2 minutes after start
+        if (now > lockTime) {
           setIsLocked(true);
         }
+
+        // 1b. Fetch community predictions for this race (excluding current user)
+        const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
+        const allPreds = players
+          .filter(p => p !== savedUser) // Exclude current user
+          .map(p => {
+            const pred = localStorage.getItem(`final_pred_${p}_${currentRace.id}`);
+            return pred ? JSON.parse(pred) : null;
+          }).filter(p => p !== null);
+        setCommunityPredictions(allPreds);
       }
       setLoadingRace(false);
 
@@ -64,16 +91,24 @@ export default function PredictPage() {
       const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
       setExistingPlayers(players);
 
-      // 4. Get user
+      // 4. Get user and load predictions
       const savedUser = localStorage.getItem('p10_current_user');
       if (savedUser) {
         setUsername(savedUser);
         setIsLoggedIn(true);
         
-        const savedP10 = localStorage.getItem(`p10_${savedUser}_${currentRace.id}_prediction`);
-        const savedDNF = localStorage.getItem(`dnf_${savedUser}_${currentRace.id}_prediction`);
-        if (savedP10) setP10Driver(savedP10);
-        if (savedDNF) setDnfDriver(savedDNF);
+        // Load predictions for this specific race
+        const finalized = localStorage.getItem(`final_pred_${savedUser}_${currentRace.id}`);
+        if (finalized) {
+          const parsed = JSON.parse(finalized);
+          setP10Driver(parsed.p10);
+          setDnfDriver(parsed.dnf);
+        } else {
+          const savedP10 = localStorage.getItem(`p10_${savedUser}_${currentRace.id}_prediction`);
+          const savedDNF = localStorage.getItem(`dnf_${savedUser}_${currentRace.id}_prediction`);
+          if (savedP10) setP10Driver(savedP10);
+          if (savedDNF) setDnfDriver(savedDNF);
+        }
       }
     }
     init();
@@ -241,29 +276,33 @@ export default function PredictPage() {
             <p className="text-muted mb-0">Playing as: <strong className="text-white">{username}</strong> • {nextRace.name}</p>
           </Col>
           <Col xs="auto" className="d-flex gap-2">
-            <Button 
-              variant="outline-warning" 
-              size="sm"
-              onClick={handleSwitchUser}
-            >
-              Switch User
-            </Button>
-            <Button 
-              variant="outline-secondary" 
-              size="sm"
-              onClick={() => {
-                setP10Driver('');
-                setDnfDriver('');
-                localStorage.removeItem(`p10_${username}_prediction`);
-                localStorage.removeItem(`dnf_${username}_prediction`);
-              }}
-            >
-              Clear
-            </Button>
+            {!isLocked && (
+              <>
+                <Button 
+                  variant="outline-warning" 
+                  size="sm"
+                  onClick={handleSwitchUser}
+                >
+                  Switch User
+                </Button>
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm"
+                  onClick={() => {
+                    setP10Driver('');
+                    setDnfDriver('');
+                    localStorage.removeItem(`p10_${username}_prediction`);
+                    localStorage.removeItem(`dnf_${username}_prediction`);
+                  }}
+                >
+                  Clear
+                </Button>
+              </>
+            )}
           </Col>
         </Row>
 
-        {startingGrid.length > 0 && (
+        {startingGrid.length > 0 && !isLocked && (
           <Row className="mb-4">
             <Col>
               <Card className="border-secondary bg-dark bg-opacity-50">
@@ -272,12 +311,11 @@ export default function PredictPage() {
                 </Card.Header>
                 <Card.Body className="py-2">
                   <div className="d-flex flex-wrap gap-2">
-                    {startingGrid.slice(0, 15).map((result) => (
+                    {startingGrid.map((result) => (
                       <div key={result.number} className="small border-end border-secondary pe-2">
                         <span className="text-muted">{result.position}.</span> <span className="text-white fw-bold">{result.Driver.code}</span>
                       </div>
                     ))}
-                    <div className="small text-muted">...</div>
                   </div>
                 </Card.Body>
               </Card>
@@ -285,99 +323,169 @@ export default function PredictPage() {
           </Row>
         )}
 
-        <Form onSubmit={handleSubmit}>
-          <Row>
-            <Col md={6} className="mb-4">
-              <Card className="h-100 shadow-sm">
-                <Card.Body className="p-4">
-                  <h3 className="h5 mb-4 border-start border-4 border-danger ps-3">P10 FINISHER</h3>
-                  <p className="small text-muted mb-4">Who will cross the line in 10th place?</p>
-                  
-                  <Form.Group>
-                    {drivers.map((driver) => (
-                      <div 
-                        key={`p10-${driver.id}`}
-                        className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
-                          p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25' : 'border-secondary opacity-75'
-                        }`}
-                        onClick={() => setP10Driver(driver.id)}
-                        style={{ borderLeft: `6px solid ${driver.color} !important` }}
-                      >
-                        <div className="driver-number me-3 text-white" style={{ width: '40px', opacity: p10Driver === driver.id ? 1 : 0.6 }}>
-                          {driver.number}
-                        </div>
-                        <div className="flex-grow-1">
-                          <div className={`fw-bold ${p10Driver === driver.id ? 'text-white' : 'text-light'}`} style={{ fontSize: '1.1rem' }}>{driver.name}</div>
-                          <div className="d-flex align-items-center mt-1">
-                            <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color) }}>
-                              {driver.team}
-                            </span>
-                          </div>
-                        </div>
-                        {p10Driver === driver.id && (
-                          <div className="bg-danger rounded-circle p-1 ms-2" style={{ width: '12px', height: '12px' }}></div>
-                        )}
+        {isLocked ? (
+          <div className="text-center">
+            <Card className="p-5 border-danger bg-dark mb-4">
+              <div className="display-4 mb-3">🔒</div>
+              <h2 className="mb-4">Predictions Closed</h2>
+              <p className="lead mb-4 text-muted">The {nextRace.name} started more than 2 minutes ago. Predictions are no longer accepted.</p>
+              
+              <Row className="text-start">
+                <Col lg={6} className="mb-4">
+                  <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
+                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-2">Your Prediction</h3>
+                    {p10Driver && dnfDriver ? (
+                      <>
+                        <Row className="g-3">
+                          <Col sm={6}>
+                            <div className="p-3 border border-secondary rounded">
+                              <div className="text-muted small text-uppercase mb-1">P10 Finisher</div>
+                              <div className="h4 mb-0 text-danger">{drivers.find(d => d.id === p10Driver)?.name || p10Driver}</div>
+                            </div>
+                          </Col>
+                          <Col sm={6}>
+                            <div className="p-3 border border-secondary rounded">
+                              <div className="text-muted small text-uppercase mb-1">First DNF</div>
+                              <div className="h4 mb-0 text-danger">{drivers.find(d => d.id === dnfDriver)?.name || dnfDriver}</div>
+                            </div>
+                          </Col>
+                        </Row>
+                        <Button variant="success" className="mt-4 w-100" onClick={handleShare}>
+                          Share Your Picks ↗
+                        </Button>
+                      </>
+                    ) : (
+                      <p className="text-warning">No prediction was submitted for this race.</p>
+                    )}
+                  </div>
+                </Col>
+                
+                <Col lg={6} className="mb-4">
+                  <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
+                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-2">Community Picks</h3>
+                    {communityPredictions.length > 0 ? (
+                      <div className="table-responsive">
+                        <table className="table table-dark table-hover mb-0 small">
+                          <thead>
+                            <tr>
+                              <th>Player</th>
+                              <th>P10 Pick</th>
+                              <th>DNF Pick</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {communityPredictions.map((pred, idx) => (
+                              <tr key={idx}>
+                                <td className="text-white fw-bold">{pred.username}</td>
+                                <td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td>
+                                <td>{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    ))}
-                  </Form.Group>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={6} className="mb-4">
-              <Card className="h-100 shadow-sm">
-                <Card.Body className="p-4">
-                  <h3 className="h5 mb-4 border-start border-4 border-danger ps-3">FIRST DNF</h3>
-                  <p className="small text-muted mb-4">Which driver will be the first to retire?</p>
-                  
-                  <Form.Group>
-                    {drivers.map((driver) => (
-                      <div 
-                        key={`dnf-${driver.id}`}
-                        className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
-                          dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25' : 'border-secondary opacity-75'
-                        }`}
-                        onClick={() => setDnfDriver(driver.id)}
-                        style={{ borderLeft: `6px solid ${driver.color} !important` }}
-                      >
-                        <div className="driver-number me-3 text-white" style={{ width: '40px', opacity: dnfDriver === driver.id ? 1 : 0.6 }}>
-                          {driver.number}
-                        </div>
-                        <div className="flex-grow-1">
-                          <div className={`fw-bold ${dnfDriver === driver.id ? 'text-white' : 'text-light'}`} style={{ fontSize: '1.1rem' }}>{driver.name}</div>
-                          <div className="d-flex align-items-center mt-1">
-                            <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color) }}>
-                              {driver.team}
-                            </span>
-                          </div>
-                        </div>
-                        {dnfDriver === driver.id && (
-                          <div className="bg-danger rounded-circle p-1 ms-2" style={{ width: '12px', height: '12px' }}></div>
-                        )}
-                      </div>
-                    ))}
-                  </Form.Group>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-
-          <div className="d-grid gap-2 mt-4">
-            <Button 
-              type="submit" 
-              size="lg" 
-              className="btn-f1 py-3" 
-              disabled={!p10Driver || !dnfDriver || isLocked}
-            >
-              {isLocked ? 'Predictions Locked (Race Started)' : 'Submit Prediction'}
-            </Button>
-            {isLocked && (
-              <p className="text-center text-danger small mt-2">
-                Predictions for the {nextRace.name} are now closed.
-              </p>
-            )}
+                    ) : (
+                      <p className="text-muted small">No other predictions yet.</p>
+                    )}
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+            
+            <Link href="/" passHref legacyBehavior>
+              <Button variant="outline-light" size="lg">Back to Home</Button>
+            </Link>
           </div>
-        </Form>
+        ) : (
+          <Form onSubmit={handleSubmit}>
+            <Row>
+              <Col md={6} className="mb-4">
+                <Card className="h-100 shadow-sm">
+                  <Card.Body className="p-4">
+                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3">P10 FINISHER</h3>
+                    <p className="small text-muted mb-4">Who will cross the line in 10th place?</p>
+                    
+                    <Form.Group>
+                      {drivers.map((driver) => (
+                        <div 
+                          key={`p10-${driver.id}`}
+                          className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
+                            p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25' : 'border-secondary opacity-75'
+                          }`}
+                          onClick={() => setP10Driver(driver.id)}
+                          style={{ borderLeft: `6px solid ${driver.color} !important` }}
+                        >
+                          <div className="driver-number me-3 text-white" style={{ width: '40px', opacity: p10Driver === driver.id ? 1 : 0.6 }}>
+                            {driver.number}
+                          </div>
+                          <div className="flex-grow-1">
+                            <div className={`fw-bold ${p10Driver === driver.id ? 'text-white' : 'text-light'}`} style={{ fontSize: '1.1rem' }}>{driver.name}</div>
+                            <div className="d-flex align-items-center mt-1">
+                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color) }}>
+                                {driver.team}
+                              </span>
+                            </div>
+                          </div>
+                          {p10Driver === driver.id && (
+                            <div className="bg-danger rounded-circle p-1 ms-2" style={{ width: '12px', height: '12px' }}></div>
+                          )}
+                        </div>
+                      ))}
+                    </Form.Group>
+                  </Card.Body>
+                </Card>
+              </Col>
+
+              <Col md={6} className="mb-4">
+                <Card className="h-100 shadow-sm">
+                  <Card.Body className="p-4">
+                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3">FIRST DNF</h3>
+                    <p className="small text-muted mb-4">Which driver will be the first to retire?</p>
+                    
+                    <Form.Group>
+                      {drivers.map((driver) => (
+                        <div 
+                          key={`dnf-${driver.id}`}
+                          className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
+                            dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25' : 'border-secondary opacity-75'
+                          }`}
+                          onClick={() => setDnfDriver(driver.id)}
+                          style={{ borderLeft: `6px solid ${driver.color} !important` }}
+                        >
+                          <div className="driver-number me-3 text-white" style={{ width: '40px', opacity: dnfDriver === driver.id ? 1 : 0.6 }}>
+                            {driver.number}
+                          </div>
+                          <div className="flex-grow-1">
+                            <div className={`fw-bold ${dnfDriver === driver.id ? 'text-white' : 'text-light'}`} style={{ fontSize: '1.1rem' }}>{driver.name}</div>
+                            <div className="d-flex align-items-center mt-1">
+                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color) }}>
+                                {driver.team}
+                              </span>
+                            </div>
+                          </div>
+                          {dnfDriver === driver.id && (
+                            <div className="bg-danger rounded-circle p-1 ms-2" style={{ width: '12px', height: '12px' }}></div>
+                          )}
+                        </div>
+                      ))}
+                    </Form.Group>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <div className="d-grid gap-2 mt-4">
+              <Button 
+                type="submit" 
+                size="lg" 
+                className="btn-f1 py-3" 
+                disabled={!p10Driver || !dnfDriver}
+              >
+                Submit Prediction
+              </Button>
+            </div>
+          </Form>
+        )}
       </Container>
     </main>
   );
