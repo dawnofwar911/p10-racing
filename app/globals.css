@@ -23,8 +23,9 @@ html, body {
   /* Background hits top, content starts below safe area */
   padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem) !important;
   padding-bottom: 0.5rem !important;
-  padding-left: env(safe-area-inset-left, 0px) !important;
-  padding-right: env(safe-area-inset-right, 0px) !important;
+  /* Add consistent side padding, respecting safe areas */
+  padding-left: calc(env(safe-area-inset-left, 0px) + 1.5rem) !important;
+  padding-right: calc(env(safe-area-inset-right, 0px) + 1.5rem) !important;
   margin-top: 0 !important;
 }
 
