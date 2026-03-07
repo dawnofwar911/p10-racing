@@ -6,6 +6,7 @@ console.log('\n🧪 Running API Logic Tests...');
 const createMockResult = (driverId: string, status: string, laps: string) => ({
   number: '1',
   position: '1',
+  grid: '1',
   points: '0',
   Driver: {
     driverId,
