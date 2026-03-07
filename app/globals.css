@@ -9,9 +9,17 @@ html, body {
   background-color: var(--f1-black) !important;
   color: var(--f1-white);
   min-height: 100vh;
-  /* Add padding for mobile status bars/notches */
   padding-top: env(safe-area-inset-top, 0px);
   margin: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+main {
+  background-color: var(--f1-black) !important;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 body {
