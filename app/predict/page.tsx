@@ -334,18 +334,6 @@ export default function PredictPage() {
     }
   };
 
-  if (loadingRace) {
-    return (
-      <main>
-        <AppNavbar />
-        <Container className="mt-5 text-center p-5">
-          <Spinner animation="border" variant="danger" />
-          <p className="mt-3 text-muted">Loading race data...</p>
-        </Container>
-      </main>
-    );
-  }
-
   if (submitted) {
     return (
       <main>

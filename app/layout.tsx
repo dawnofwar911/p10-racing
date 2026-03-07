@@ -1,7 +1,9 @@
+import { Suspense } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import Loading from './loading';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,7 +30,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
-          {children}
+          <Suspense fallback={<Loading />}>
+            {children}
+          </Suspense>
         </div>
       </body>
     </html>
