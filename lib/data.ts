@@ -38,7 +38,7 @@ export const DRIVERS: Driver[] = [
   
   // RB (Visa Cash App RB)
   { id: 'lawson', name: 'Liam Lawson', team: 'RB', code: 'LAW', number: 30, color: '#6692FF' },
-  { id: 'lindblad', name: 'Arvid Lindblad', team: 'RB', code: 'LIN', number: 41, color: '#6692FF' },
+  { id: 'arvid_lindblad', name: 'Arvid Lindblad', team: 'RB', code: 'LIN', number: 41, color: '#6692FF' },
   
   // Audi
   { id: 'hulkenberg', name: 'Nico Hulkenberg', team: 'Audi', code: 'HUL', number: 27, color: '#ffffff' },
