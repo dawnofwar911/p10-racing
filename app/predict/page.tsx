@@ -107,15 +107,17 @@ export default function PredictPage() {
           console.error('OpenF1 fetch failed:', error);
         }
 
-        // 1b. Update driver list with dynamic session data
+        // 1b. Update driver list with dynamic session data and sort by team
+        let finalDriverList = [];
         if (sessionDrivers.length > 0) {
-          setDrivers(sessionDrivers);
+          finalDriverList = sessionDrivers;
         } else {
           const apiDrivers = await fetchDrivers(CURRENT_SEASON);
-          if (apiDrivers.length > 0) {
-            setDrivers(apiDrivers);
-          }
+          finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
         }
+        
+        finalDriverList.sort((a: any, b: any) => a.team.localeCompare(b.team));
+        setDrivers(finalDriverList);
 
         // 1c. Fallback to Jolpica grid if OpenF1 grid failed
         if (finalGrid.length === 0) {

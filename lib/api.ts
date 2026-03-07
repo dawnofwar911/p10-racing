@@ -122,19 +122,28 @@ export async function fetchDrivers(season: number): Promise<any[]> {
 }
 
 export async function fetchDriversFromOpenF1(sessionKey: number): Promise<any[]> {
+  const ACRONYM_TO_ID: { [key: string]: string } = {
+    'ALB': 'albon', 'ALO': 'alonso', 'ANT': 'antonelli', 'BEA': 'bearman',
+    'BOR': 'bortoleto', 'BOT': 'bottas', 'COL': 'colapinto', 'GAS': 'gasly',
+    'HAD': 'hadjar', 'HAM': 'hamilton', 'HUL': 'hulkenberg', 'LAW': 'lawson',
+    'LEC': 'leclerc', 'LIN': 'arvid_lindblad', 'NOR': 'norris', 'OCO': 'ocon',
+    'PIA': 'piastri', 'PER': 'perez', 'RUS': 'russell', 'SAI': 'sainz',
+    'STR': 'stroll', 'VER': 'max_verstappen'
+  };
+
   try {
     const response = await fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
     if (!response.ok) return [];
     
     const data = await response.json();
     return data.map((d: any) => ({
-      id: d.driver_number.toString(), // OpenF1 uses number as unique ID in sessions
+      id: ACRONYM_TO_ID[d.name_acronym] || d.name_acronym.toLowerCase(),
       name: d.full_name,
       team: d.team_name,
       teamId: d.team_name.toLowerCase().replace(/\s+/g, '_'),
       code: d.name_acronym,
       number: d.driver_number,
-      color: `#${d.team_colour}` || TEAM_COLORS[d.team_name.toLowerCase().replace(/\s+/g, '_')] || '#B6BABD'
+      color: d.team_colour ? `#${d.team_colour}` : (TEAM_COLORS[d.team_name.toLowerCase().replace(/\s+/g, '_')] || '#B6BABD')
     }));
   } catch (error) {
     console.error('Error fetching OpenF1 drivers:', error);
