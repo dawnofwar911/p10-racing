@@ -9,7 +9,7 @@ export interface Driver {
 
 export const DRIVERS: Driver[] = [
   // Red Bull Racing
-  { id: 'max_verstappen', name: 'Max Verstappen', team: 'Red Bull Racing', code: 'VER', number: 1, color: '#3671C6' },
+  { id: 'max_verstappen', name: 'Max Verstappen', team: 'Red Bull Racing', code: 'VER', number: 3, color: '#3671C6' },
   { id: 'hadjar', name: 'Isack Hadjar', team: 'Red Bull Racing', code: 'HAD', number: 6, color: '#3671C6' },
   
   // Ferrari
@@ -17,7 +17,7 @@ export const DRIVERS: Driver[] = [
   { id: 'leclerc', name: 'Charles Leclerc', team: 'Ferrari', code: 'LEC', number: 16, color: '#E80020' },
   
   // McLaren
-  { id: 'norris', name: 'Lando Norris', team: 'McLaren', code: 'NOR', number: 4, color: '#FF8000' },
+  { id: 'norris', name: 'Lando Norris', team: 'McLaren', code: 'NOR', number: 1, color: '#FF8000' },
   { id: 'piastri', name: 'Oscar Piastri', team: 'McLaren', code: 'PIA', number: 81, color: '#FF8000' },
   
   // Mercedes

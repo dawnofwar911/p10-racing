@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Navbar, Spinner } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, fetchDriversFromOpenF1 } from '@/lib/api';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -64,8 +64,9 @@ export default function PredictPage() {
         setNextRace(currentRace);
 
         let finalGrid: any[] = [];
+        let sessionDrivers: any[] = [];
 
-        // 1a. Try OpenF1 for the starting grid (Robust 22-driver grid with penalties)
+        // 1a. Try OpenF1 for the starting grid and dynamic session drivers
         try {
           // Find the latest qualifying or race session for this meeting
           const sessionsRes = await fetch(`https://api.openf1.org/v1/sessions?year=${CURRENT_SEASON}&meeting_key=latest`);
@@ -75,12 +76,16 @@ export default function PredictPage() {
                                sessions.find((s: any) => s.session_name === 'Qualifying');
           
           if (targetSession) {
+            // Fetch the robust 22-driver grid
             const gridRes = await fetch(`https://api.openf1.org/v1/starting_grid?session_key=${targetSession.session_key}`);
             const openF1Grid = await gridRes.json();
             
+            // Fetch session-specific drivers (correct numbers for this year)
+            sessionDrivers = await fetchDriversFromOpenF1(targetSession.session_key);
+            
             if (openF1Grid && openF1Grid.length > 0) {
               const apiDrivers = await fetchDrivers(CURRENT_SEASON);
-              const sourceDrivers = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
+              const sourceDrivers = sessionDrivers.length > 0 ? sessionDrivers : (apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS);
               
               finalGrid = openF1Grid.map((g: any) => {
                 const driver = sourceDrivers.find(d => d.number === g.driver_number);
@@ -99,10 +104,20 @@ export default function PredictPage() {
             }
           }
         } catch (error) {
-          console.error('OpenF1 fetch failed, falling back to Jolpica:', error);
+          console.error('OpenF1 fetch failed:', error);
         }
 
-        // 1b. Fallback to Jolpica if OpenF1 failed
+        // 1b. Update driver list with dynamic session data
+        if (sessionDrivers.length > 0) {
+          setDrivers(sessionDrivers);
+        } else {
+          const apiDrivers = await fetchDrivers(CURRENT_SEASON);
+          if (apiDrivers.length > 0) {
+            setDrivers(apiDrivers);
+          }
+        }
+
+        // 1c. Fallback to Jolpica grid if OpenF1 grid failed
         if (finalGrid.length === 0) {
           const gridData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
           if (gridData && gridData.Results && gridData.Results.length > 0) {

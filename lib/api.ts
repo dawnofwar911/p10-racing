@@ -120,6 +120,27 @@ export async function fetchDrivers(season: number): Promise<any[]> {
   }
 }
 
+export async function fetchDriversFromOpenF1(sessionKey: number): Promise<any[]> {
+  try {
+    const response = await fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    return data.map((d: any) => ({
+      id: d.driver_number.toString(), // OpenF1 uses number as unique ID in sessions
+      name: d.full_name,
+      team: d.team_name,
+      teamId: d.team_name.toLowerCase().replace(/\s+/g, '_'),
+      code: d.name_acronym,
+      number: d.driver_number,
+      color: `#${d.team_colour}` || TEAM_COLORS[d.team_name.toLowerCase().replace(/\s+/g, '_')] || '#B6BABD'
+    }));
+  } catch (error) {
+    console.error('Error fetching OpenF1 drivers:', error);
+    return [];
+  }
+}
+
 export async function fetchQualifyingResults(season: number, round: number): Promise<any[]> {
   try {
     const response = await fetch(`${BASE_URL}/${season}/${round}/qualifying.json`);
