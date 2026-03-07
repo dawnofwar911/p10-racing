@@ -96,71 +96,65 @@ export default function LeaderboardPage() {
         <Row>
           <Col>
             <div className="table-responsive rounded border border-secondary">
-              {loading ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="danger" />
-                </div>
-              ) : (
-                <Table variant="dark" hover className="mb-0">
-                  <thead>
-                    <tr>
-                      <th className="ps-4">Pos</th>
-                      <th>Player</th>
-                      <th className="text-end">Last Race</th>
-                      <th className="text-end pe-4">Total Points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.length > 0 ? leaderboard.map((entry) => (
-                      <React.Fragment key={entry.player}>
-                        <tr 
-                          onClick={() => setExpandedPlayer(expandedPlayer === entry.player ? null : entry.player)}
-                          style={{ height: '60px', verticalAlign: 'middle', cursor: 'pointer' }}
-                        >
-                          <td className="ps-4 fw-bold">
-                            {entry.rank === 1 ? '🏆' : entry.rank}
-                          </td>
-                          <td className="fw-bold">{entry.player}</td>
-                          <td className="text-end text-muted">+{entry.lastRacePoints}</td>
-                          <td className="text-end fw-bold pe-4 fs-5">{entry.points}</td>
-                        </tr>
-                        {expandedPlayer === entry.player && entry.breakdown && (
-                          <tr className="bg-dark bg-opacity-50">
-                            <td colSpan={4} className="p-4 border-start border-danger border-4">
-                              <div className="row">
-                                <div className="col-md-6 border-end border-secondary">
-                                  <small className="text-muted text-uppercase d-block">P10 Pick Breakdown</small>
-                                  <div className="d-flex justify-content-between mt-2">
-                                    <span>Pick: <strong className="text-white">{entry.breakdown.p10Driver}</strong></span>
-                                    <span>Result: <strong className="text-white">P{entry.breakdown.actualP10Pos}</strong></span>
-                                  </div>
-                                  <div className="text-danger fw-bold mt-1">+{entry.breakdown.p10Points} pts</div>
+              <Table variant="dark" hover className="mb-0">
+                <thead>
+                  <tr>
+                    <th className="ps-4">Pos</th>
+                    <th>Player</th>
+                    <th className="text-end">Last Race</th>
+                    <th className="text-end pe-4">Total Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.length > 0 ? leaderboard.map((entry) => (
+                    <React.Fragment key={entry.player}>
+                      <tr 
+                        onClick={() => setExpandedPlayer(expandedPlayer === entry.player ? null : entry.player)}
+                        style={{ height: '60px', verticalAlign: 'middle', cursor: 'pointer' }}
+                      >
+                        <td className="ps-4 fw-bold">
+                          {entry.rank === 1 ? '🏆' : entry.rank}
+                        </td>
+                        <td className="fw-bold">{entry.player}</td>
+                        <td className="text-end text-muted">+{entry.lastRacePoints}</td>
+                        <td className="text-end fw-bold pe-4 fs-5">{entry.points}</td>
+                      </tr>
+                      {expandedPlayer === entry.player && entry.breakdown && (
+                        <tr className="bg-dark bg-opacity-50">
+                          <td colSpan={4} className="p-4 border-start border-danger border-4">
+                            <div className="row">
+                              <div className="col-md-6 border-end border-secondary">
+                                <small className="text-muted text-uppercase d-block">P10 Pick Breakdown</small>
+                                <div className="d-flex justify-content-between mt-2">
+                                  <span>Pick: <strong className="text-white">{entry.breakdown.p10Driver}</strong></span>
+                                  <span>Result: <strong className="text-white">P{entry.breakdown.actualP10Pos}</strong></span>
                                 </div>
-                                <div className="col-md-6 ps-4">
-                                  <small className="text-muted text-uppercase d-block">First DNF Bonus</small>
-                                  <div className="mt-2">
-                                    {entry.breakdown.dnfPoints > 0 ? (
-                                      <span className="text-success fw-bold">✅ Correct (+25 pts)</span>
-                                    ) : (
-                                      <span className="text-muted">❌ Incorrect (+0 pts)</span>
-                                    )}
-                                  </div>
+                                <div className="text-danger fw-bold mt-1">+{entry.breakdown.p10Points} pts</div>
+                              </div>
+                              <div className="col-md-6 ps-4">
+                                <small className="text-muted text-uppercase d-block">First DNF Bonus</small>
+                                <div className="mt-2">
+                                  {entry.breakdown.dnfPoints > 0 ? (
+                                    <span className="text-success fw-bold">✅ Correct (+25 pts)</span>
+                                  ) : (
+                                    <span className="text-muted">❌ Incorrect (+0 pts)</span>
+                                  )}
                                 </div>
                               </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    )) : (
-                      <tr>
-                        <td colSpan={4} className="text-center py-5 text-muted">
-                          No predictions submitted yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </Table>
-              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="text-center py-5 text-muted">
+                        No predictions submitted yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
             </div>
           </Col>
         </Row>
