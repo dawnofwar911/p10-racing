@@ -24,6 +24,9 @@ export default function PredictPage() {
   // Load race and user from localStorage on mount
   useEffect(() => {
     async function init() {
+      // 0. Get user early
+      const savedUser = localStorage.getItem('p10_current_user');
+
       // 1. Get real next race
       const races = await fetchCalendar(CURRENT_SEASON);
       let currentRace = RACES[0];
@@ -70,10 +73,10 @@ export default function PredictPage() {
         }
 
         // 1b. Fetch community predictions for this race (excluding current user)
-        const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
-        const allPreds = players
-          .filter(p => p !== savedUser) // Exclude current user
-          .map(p => {
+        const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+        const allPreds = playersList
+          .filter((p: string) => p !== savedUser) // Exclude current user
+          .map((p: string) => {
             const pred = localStorage.getItem(`final_pred_${p}_${currentRace.id}`);
             return pred ? JSON.parse(pred) : null;
           }).filter(p => p !== null);
@@ -88,11 +91,10 @@ export default function PredictPage() {
       }
 
       // 3. Get existing players for switching
-      const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      setExistingPlayers(players);
+      const existingPlayersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      setExistingPlayers(existingPlayersList);
 
-      // 4. Get user and load predictions
-      const savedUser = localStorage.getItem('p10_current_user');
+      // 4. Load predictions
       if (savedUser) {
         setUsername(savedUser);
         setIsLoggedIn(true);
@@ -100,7 +102,7 @@ export default function PredictPage() {
         // Load predictions for this specific race
         const finalized = localStorage.getItem(`final_pred_${savedUser}_${currentRace.id}`);
         if (finalized) {
-          const parsed = JSON.parse(finalized);
+          const parsed: { p10: string, dnf: string } = JSON.parse(finalized);
           setP10Driver(parsed.p10);
           setDnfDriver(parsed.dnf);
         } else {
