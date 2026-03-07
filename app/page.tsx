@@ -79,6 +79,18 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [nextRace]);
 
+  if (loading) {
+    return (
+      <main>
+        <AppNavbar />
+        <Container className="mt-5 text-center p-5">
+          <Spinner animation="border" variant="danger" />
+          <p className="mt-3 text-muted">Loading Formula 1 data...</p>
+        </Container>
+      </main>
+    );
+  }
+
   return (
     <main>
       <AppNavbar />
