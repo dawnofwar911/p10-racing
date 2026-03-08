@@ -13,6 +13,10 @@ export function calculateP10Points(actualPosition: number): number {
     9: 1,  // P1, P19
   };
 
+  // Extension: Any pick that is 9 or more positions away (including the back of the grid) 
+  // gets a 1-point consolation, matching the points for P1.
+  if (distance >= 9) return 1;
+  
   return pointsTable[distance] || 0;
 }
 
@@ -23,7 +27,7 @@ export function calculateDnfPoints(predictedDnfId: string, actualDnfId: string):
 
 export function calculateTotalPoints(
   predictedP10Id: string,
-  actualP10Position: number, // Position of the driver the user PREDICTED would be P10
+  actualP10Position: number, 
   predictedDnfId: string,
   actualDnfId: string
 ): number {

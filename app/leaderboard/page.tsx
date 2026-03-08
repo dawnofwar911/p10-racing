@@ -16,7 +16,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     async function calculate() {
       // LOGIC_VERSION forces re-calculation/re-fetch if we change how points or DNFs are identified
-      const LOGIC_VERSION = 'v2_fix_dnf_and_piastri'; 
+      const LOGIC_VERSION = 'v3_symmetric_and_dns_fix'; 
       const currentLogic = localStorage.getItem('p10_logic_version');
       if (currentLogic !== LOGIC_VERSION) {
         // Clear stale race results cache

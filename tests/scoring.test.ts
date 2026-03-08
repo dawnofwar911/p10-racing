@@ -22,8 +22,8 @@ try {
   assert.strictEqual(calculateP10Points(1), 1, 'P1 should equal 1 point');
   assert.strictEqual(calculateP10Points(19), 1, 'P19 should equal 1 point');
 
-  // No points (10+ away -> P20)
-  assert.strictEqual(calculateP10Points(20), 0, 'P20 should equal 0 points');
+  // Consolation points (10+ away -> P20)
+  assert.strictEqual(calculateP10Points(20), 1, 'P20 should equal 1 point consolation');
 
   console.log('  ✅ P10 Calculation Tests Passed');
 } catch (e) {

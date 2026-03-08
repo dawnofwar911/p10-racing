@@ -187,15 +187,17 @@ export function getFirstDnfDriver(race: ApiRace): ApiDriver | null {
     const s = r.status.toLowerCase();
     const isFinished = s === "finished";
     const isLapped = s.includes("lap"); 
-    const isDns = s.includes("not start") || s === "dns";
-    
-    return !isFinished && !isLapped && !isDns;
+    const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
+    const hasLaps = parseInt(r.laps) > 0;
+
+    return !isFinished && !isLapped && !isDns && hasLaps;
   });
 
   if (retirements.length === 0) return null;
 
   // The first DNF is the one who completed the fewest laps.
   retirements.sort((a, b) => parseInt(a.laps) - parseInt(b.laps));
-  
+
   return retirements[0].Driver;
 }
+
