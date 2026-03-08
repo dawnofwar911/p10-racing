@@ -11,6 +11,8 @@ body {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   overflow-x: hidden;
+  /* SAFE AREA FALLBACK - Ensuring content is pushed down */
+  padding-top: env(safe-area-inset-top, 24px);
 }
 
 /* Custom Scrollbar */
