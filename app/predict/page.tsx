@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Navbar, Spinner } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults } from '@/lib/api';
-import { Haptics, ImpactStyle, SelectionChangedStyle } from '@capacitor/haptics';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
@@ -135,7 +135,7 @@ export default function PredictPage() {
   }, []);
 
   const selectUser = (name: string) => {
-    Haptics.selectionChanged({ style: SelectionChangedStyle.Light });
+    Haptics.selectionChanged();
     localStorage.setItem('p10_current_user', name);
     setUsername(name);
     setIsLoggedIn(true);

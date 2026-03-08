@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
-import type { Metadata } from 'metadata';
+import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Loading from './loading';
 import NativeWrapper from '@/components/NativeWrapper';

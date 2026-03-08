@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "test": "npx tsx tests/run_all.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
