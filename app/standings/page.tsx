@@ -57,7 +57,7 @@ export default function StandingsPage() {
                       </span>
                     </td>
                     <td className="text-end fw-bold fs-5 text-white">
-                      {(d as any).points}
+                      {d.points}
                     </td>
                     <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>
                       {d.number}
