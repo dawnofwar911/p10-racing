@@ -1,44 +1,48 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Table, Navbar, Button, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Table, Button } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver } from '@/lib/api';
+import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from '@/lib/api';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
+interface SimplifiedResults {
+  positions: { [driverId: string]: number };
+  firstDnf: string | null;
+}
+
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(true);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   useEffect(() => {
     async function calculate() {
-      // LOGIC_VERSION forces re-calculation/re-fetch if we change how points or DNFs are identified
       const LOGIC_VERSION = 'v3_symmetric_and_dns_fix'; 
       const currentLogic = localStorage.getItem('p10_logic_version');
       if (currentLogic !== LOGIC_VERSION) {
-        // Clear stale race results cache
         const races = await fetchCalendar(CURRENT_SEASON);
-        races.forEach(r => localStorage.removeItem(`results_${r.round}`));
+        races.forEach((r: ApiCalendarRace) => localStorage.removeItem(`results_${r.round}`));
         localStorage.setItem('p10_logic_version', LOGIC_VERSION);
       }
 
-      const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const players: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
       const races = await fetchCalendar(CURRENT_SEASON);
       
-      const raceResultsMap: { [round: string]: any } = {};
-      await Promise.all(races.map(async (race) => {
+      const raceResultsMap: { [round: string]: SimplifiedResults } = {};
+      await Promise.all(races.map(async (race: ApiCalendarRace) => {
         const round = race.round;
-        let resultsData = localStorage.getItem(`results_${round}`);
+        const resultsData = localStorage.getItem(`results_${round}`);
         
         if (!resultsData) {
           const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
           if (apiResults) {
             const firstDnfDriver = getFirstDnfDriver(apiResults);
-            const simplifiedResults = {
-              positions: apiResults.Results.reduce((acc: any, r: any) => {
+            const simplifiedResults: SimplifiedResults = {
+              positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
                 acc[r.Driver.driverId] = parseInt(r.position);
                 return acc;
               }, {}),
@@ -65,12 +69,8 @@ export default function LeaderboardPage() {
 
           if (results && predStr) {
             const prediction = JSON.parse(predStr);
-
-            // FIX: Use direct P10 points calculation to avoid 25-pt freebie bug
             const actualPosOfPredictedP10 = results.positions[prediction.p10] || 20;
             const p10Score = calculateP10Points(actualPosOfPredictedP10);
-            
-            // DNF Logic: Piastri (DNS) must be excluded (handled by getFirstDnfDriver above)
             const dnfScore = (prediction.dnf && prediction.dnf === results.firstDnf) ? 25 : 0;
             const roundPoints = p10Score + dnfScore;
 

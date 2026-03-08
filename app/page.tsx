@@ -1,20 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Button, Navbar, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
-import { RACES, CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers } from '@/lib/api';
+import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
+import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import AppNavbar from '@/components/AppNavbar';
 
+interface HomeRace {
+  id: string;
+  name: string;
+  circuit: string;
+  date: string;
+  time: string;
+  round: number;
+}
+
+interface HomePrediction {
+  p10: string;
+  dnf: string;
+}
+
 export default function Home() {
-  const [nextRace, setNextRace] = useState<any>(null);
+  const [nextRace, setNextRace] = useState<HomeRace | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [userPrediction, setUserPrediction] = useState<any>(null);
+  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
-  const [allDrivers, setAllDrivers] = useState<any[]>(FALLBACK_DRIVERS);
+  const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
 
   useEffect(() => {
     async function init() {
@@ -32,12 +46,12 @@ export default function Home() {
 
       if (races.length > 0) {
         const now = new Date();
-        const upcoming = races.find(r => {
+        const upcoming = races.find((r: ApiCalendarRace) => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
           return raceTime > now;
         }) || races[0];
 
-        const raceObj = {
+        const raceObj: HomeRace = {
           id: upcoming.round,
           name: upcoming.raceName,
           circuit: upcoming.Circuit.circuitName,
@@ -48,8 +62,8 @@ export default function Home() {
         setNextRace(raceObj);
 
         if (user) {
-          const pred = localStorage.getItem(`final_pred_${user}_${raceObj.id}`);
-          if (pred) setUserPrediction(JSON.parse(pred));
+          const predStr = localStorage.getItem(`final_pred_${user}_${raceObj.id}`);
+          if (predStr) setUserPrediction(JSON.parse(predStr));
         }
       }
       setLoading(false);
@@ -154,13 +168,13 @@ export default function Home() {
                     <Col xs={6}>
                       <small className="text-muted d-block text-uppercase mb-1 fw-semibold letter-spacing-1">P10 Pick</small>
                       <span className="fs-5 fw-bold text-white">
-                        {allDrivers.find(d => d.id === userPrediction.p10)?.name || userPrediction.p10.toUpperCase()}
+                        {allDrivers.find(d => d.id === userPrediction.p10)?.name || (userPrediction.p10 && userPrediction.p10.toUpperCase())}
                       </span>
                     </Col>
                     <Col xs={6}>
                       <small className="text-muted d-block text-uppercase mb-1 fw-semibold letter-spacing-1">First DNF</small>
                       <span className="fs-5 fw-bold text-danger">
-                        {allDrivers.find(d => d.id === userPrediction.dnf)?.name || userPrediction.dnf.toUpperCase()}
+                        {allDrivers.find(d => d.id === userPrediction.dnf)?.name || (userPrediction.dnf && userPrediction.dnf.toUpperCase())}
                       </span>
                     </Col>
                   </Row>

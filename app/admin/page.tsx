@@ -1,21 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Card, Navbar, Table, Spinner, Alert } from 'react-bootstrap';
+import { useState, useEffect, useMemo } from 'react';
+import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS } from '@/lib/api';
-import Link from 'next/link';
+import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS, AppDriver, ApiCalendarRace } from '@/lib/api';
 import AppNavbar from '@/components/AppNavbar';
 
+interface AdminDriver {
+  id: string;
+  name: string;
+  team: string;
+  color: string;
+}
+
 export default function AdminPage() {
-  const [drivers, setDrivers] = useState<any[]>(FALLBACK_DRIVERS);
+  const [drivers, setDrivers] = useState<AdminDriver[]>(FALLBACK_DRIVERS);
   const [results, setResults] = useState<{ [driverId: string]: number }>({});
   const [firstDnf, setFirstDnf] = useState('');
-  const [availableRaces, setAvailableRaces] = useState<any[]>(RACES);
+  const [availableRaces, setAvailableRaces] = useState<ApiCalendarRace[]>([]);
   const [selectedRace, setSelectedRace] = useState(RACES[0].id);
   const [season, setSeason] = useState(CURRENT_SEASON);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fallbackRaces = useMemo(() => RACES.map(r => ({
+    round: r.id,
+    raceName: r.name,
+    Circuit: { circuitName: r.circuit },
+    date: r.date,
+    season: CURRENT_SEASON.toString()
+  })), []);
 
   useEffect(() => {
     async function load() {
@@ -25,7 +39,7 @@ export default function AdminPage() {
       const d = await fetchDrivers(season);
       if (d.length > 0) {
         setDrivers(d);
-        setResults(Object.fromEntries(d.map((driver, i) => [driver.id, i + 1])));
+        setResults(Object.fromEntries(d.map((driver: AppDriver, i: number) => [driver.id, i + 1])));
       } else {
         setDrivers(FALLBACK_DRIVERS);
         setResults(Object.fromEntries(FALLBACK_DRIVERS.map((driver, i) => [driver.id, i + 1])));
@@ -33,19 +47,15 @@ export default function AdminPage() {
 
       const cal = await fetchCalendar(season);
       if (cal.length > 0) {
-        const formattedRaces = cal.map(r => ({
-          id: r.round,
-          name: r.raceName,
-          round: parseInt(r.round)
-        }));
-        setAvailableRaces(formattedRaces);
-        setSelectedRace(formattedRaces[0].id);
+        setAvailableRaces(cal);
+        setSelectedRace(cal[0].round);
       } else {
-        setAvailableRaces(RACES);
-        setSelectedRace(RACES[0].id);
+        setAvailableRaces(fallbackRaces);
+        setSelectedRace(fallbackRaces[0].round);
       }
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [season]);
 
   const handlePositionChange = (driverId: string, position: number) => {
@@ -55,14 +65,14 @@ export default function AdminPage() {
   const handleFetchFromApi = async () => {
     setLoading(true);
     setError(null);
-    const raceInfo = availableRaces.find(r => r.id === selectedRace);
+    const raceInfo = availableRaces.find(r => r.round === selectedRace);
     if (!raceInfo) {
       setLoading(false);
       return;
     }
 
     try {
-      const data = await fetchRaceResults(season, raceInfo.round);
+      const data = await fetchRaceResults(season, parseInt(raceInfo.round));
       if (data) {
         const participatingDrivers = data.Results.map(r => ({
           id: r.Driver.driverId,
@@ -88,6 +98,7 @@ export default function AdminPage() {
         setError(`No results found for Season ${season}, Round ${raceInfo.round}.`);
       }
     } catch (err) {
+      console.error(err);
       setError('Failed to fetch data from API.');
     } finally {
       setLoading(false);
@@ -150,7 +161,7 @@ export default function AdminPage() {
                   className="bg-dark text-white border-secondary"
                 >
                   {availableRaces.map(race => (
-                    <option key={race.id} value={race.id}>{race.name} (R{race.round})</option>
+                    <option key={race.round} value={race.round}>{race.raceName} (R{race.round})</option>
                   ))}
                 </Form.Select>
               </Form.Group>

@@ -1,13 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Card, Navbar, Spinner } from 'react-bootstrap';
-import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults } from '@/lib/api';
+import { Container, Row, Col, Form, Button, Card, Spinner } from 'react-bootstrap';
+import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
+
+interface PredictRace {
+  id: string;
+  name: string;
+  circuit: string;
+  date: string;
+  time: string;
+  round: number;
+}
+
+interface CommunityPrediction {
+  username: string;
+  p10: string;
+  dnf: string;
+}
 
 export default function PredictPage() {
   const [username, setUsername] = useState('');
@@ -15,23 +30,23 @@ export default function PredictPage() {
   const [p10Driver, setP10Driver] = useState('');
   const [dnfDriver, setDnfDriver] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [nextRace, setNextRace] = useState<any>(RACES[0]);
+  const [nextRace, setNextRace] = useState<PredictRace>(RACES[0] as unknown as PredictRace);
   const [loadingRace, setLoadingRace] = useState(true);
-  const [drivers, setDrivers] = useState<any[]>(FALLBACK_DRIVERS);
+  const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS);
   const [isLocked, setIsLocked] = useState(false);
-  const [startingGrid, setStartingGrid] = useState<any[]>([]);
+  const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
-  const [communityPredictions, setCommunityPredictions] = useState<any[]>([]);
+  const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
 
   // Load race and user from localStorage on mount
   useEffect(() => {
     async function init() {
       const savedUser = localStorage.getItem('p10_current_user');
       const races = await fetchCalendar(CURRENT_SEASON);
-      let currentRace = RACES[0];
+      let currentRace: PredictRace = RACES[0] as unknown as PredictRace;
       if (races.length > 0) {
         const now = new Date();
-        let activeIndex = races.findIndex(r => {
+        let activeIndex = races.findIndex((r: ApiCalendarRace) => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
           const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
           return fourHoursLater > now;
@@ -60,17 +75,13 @@ export default function PredictPage() {
 
         const apiDrivers = await fetchDrivers(CURRENT_SEASON);
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        finalDriverList.sort((a: any, b: any) => a.team.localeCompare(b.team));
+        finalDriverList.sort((a: AppDriver, b: AppDriver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
 
-        let finalGrid: any[] = [];
+        let finalGrid: ApiResult[] = [];
         const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
         if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
-          finalGrid = resultsData.Results.map(r => ({
-            position: r.grid || r.position,
-            number: r.number,
-            Driver: r.Driver
-          }));
+          finalGrid = resultsData.Results;
         } else {
           const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
           if (qualiGrid && qualiGrid.length > 0) {
@@ -82,6 +93,11 @@ export default function PredictPage() {
               finalGrid.push({
                 position: (qualiGrid.length + i + 1).toString(),
                 number: d.number.toString(),
+                grid: (qualiGrid.length + i + 1).toString(),
+                points: '0',
+                status: 'DNS',
+                laps: '0',
+                Constructor: { constructorId: d.teamId, name: d.team },
                 Driver: {
                   driverId: d.id,
                   code: d.code,
@@ -194,7 +210,7 @@ export default function PredictPage() {
           <Row className="justify-content-center">
             <Col md={5}>
               <Card className="p-4 border-secondary shadow">
-                <h2 className="h4 mb-4 fw-bold">Who's Predicting?</h2>
+                <h2 className="h4 mb-4 fw-bold">Who&apos;s Predicting?</h2>
                 {existingPlayers.length > 0 && (
                   <div className="mb-4">
                     <Form.Label className="text-muted small text-uppercase fw-semibold">Recent Players</Form.Label>
@@ -226,7 +242,7 @@ export default function PredictPage() {
                       className="bg-dark text-white border-secondary py-2"
                     />
                   </Form.Group>
-                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">Let's Go</Button>
+                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">Let&apos;s Go</Button>
                 </Form>
               </Card>
             </Col>

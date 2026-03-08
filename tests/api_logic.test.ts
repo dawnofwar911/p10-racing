@@ -25,6 +25,8 @@ const mockRace: ApiRace = {
   season: '2026',
   round: '1',
   raceName: 'Test GP',
+  Circuit: { circuitName: 'Test Circuit' },
+  date: '2026-03-08',
   Results: [
     createMockResult('winner', 'Finished', '57'),
     createMockResult('lapped_driver', '+1 Lap', '56'),
@@ -52,6 +54,8 @@ const noDnfRace: ApiRace = {
   season: '2026',
   round: '2',
   raceName: 'Reliable GP',
+  Circuit: { circuitName: 'Test Circuit' },
+  date: '2026-03-15',
   Results: [
     createMockResult('p1', 'Finished', '50'),
     createMockResult('p20', '+2 Laps', '48'),
