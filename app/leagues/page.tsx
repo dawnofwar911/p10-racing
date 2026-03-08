@@ -5,6 +5,7 @@ import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from '
 import { createClient } from '@/lib/supabase/client';
 import { Session, PostgrestError } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -21,9 +22,11 @@ export default function LeaguesPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   const [newLeagueName, setNewLeagueName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [localGuests, setLocalGuests] = useState<string[]>([]);
 
   const supabase = createClient();
 
@@ -48,6 +51,11 @@ export default function LeaguesPage() {
     async function init() {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
+      
+      // Load local guests for migration
+      const guests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      setLocalGuests(guests);
+
       if (currentSession) {
         fetchLeagues(currentSession.user.id);
       } else {
@@ -56,6 +64,44 @@ export default function LeaguesPage() {
     }
     init();
   }, [supabase, fetchLeagues]);
+
+  const handleImport = async (guestName: string) => {
+    if (!session) return;
+    setActionLoading(true);
+    setError(null);
+    Haptics.impact({ style: ImpactStyle.Heavy });
+
+    try {
+      // Find all predictions for this guest in localStorage
+      let count = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`final_pred_${guestName}_`)) {
+          const raceId = key.replace(`final_pred_${guestName}_`, "");
+          const pred = JSON.parse(localStorage.getItem(key) || "");
+          
+          if (pred) {
+            const { error: upsertError } = await supabase
+              .from('predictions')
+              .upsert({
+                user_id: session.user.id,
+                race_id: `${CURRENT_SEASON}_${raceId}`,
+                p10_driver_id: pred.p10,
+                dnf_driver_id: pred.dnf,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'user_id, race_id' });
+            
+            if (!upsertError) count++;
+          }
+        }
+      }
+      setSuccess(`Successfully imported ${count} predictions to your cloud account!`);
+    } catch (err: any) {
+      setError('Migration failed: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,7 +173,7 @@ export default function LeaguesPage() {
         <AppNavbar />
         <Container className="mt-5 text-center">
           <div className="display-4 mb-4">🏆</div>
-          <h1 className="fw-bold">Multiplayer Leagues</h1>
+          <h1 className="fw-bold text-white">Multiplayer Leagues</h1>
           <p className="text-muted mb-5">Sign in to create or join private leagues and compete with your friends.</p>
           <Link href="/auth" passHref legacyBehavior>
             <Button className="btn-f1 px-5 py-3 fw-bold">SIGN IN TO PLAY</Button>
@@ -141,13 +187,14 @@ export default function LeaguesPage() {
     <main>
       <AppNavbar />
       <Container className="mt-4 mb-5">
-        <h1 className="h2 fw-bold text-uppercase letter-spacing-1 mb-4">Your Leagues</h1>
+        <h1 className="h2 fw-bold text-uppercase letter-spacing-1 mb-4 text-white">Your Leagues</h1>
 
         {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
+        {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)}>{success}</Alert>}
 
         <Row className="g-4">
           <Col lg={8}>
-            <Card className="border-secondary shadow-sm">
+            <Card className="border-secondary shadow-sm mb-4">
               <Card.Header className="bg-dark border-secondary py-3">
                 <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Active Competitions</h3>
               </Card.Header>
@@ -184,6 +231,33 @@ export default function LeaguesPage() {
                 )}
               </Card.Body>
             </Card>
+
+            {localGuests.length > 0 && (
+              <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-10">
+                <Card.Header className="bg-dark border-warning border-opacity-25 py-3">
+                  <h3 className="h6 mb-0 text-uppercase fw-bold text-warning letter-spacing-1">Import Local Data</h3>
+                </Card.Header>
+                <Card.Body className="p-4">
+                  <p className="small text-white opacity-75 mb-4">We found existing scores on this phone. Select a name to move those points into your new cloud account.</p>
+                  <div className="d-flex flex-wrap gap-3">
+                    {localGuests.map(guest => (
+                      <div key={guest} className="d-flex align-items-center bg-dark p-2 rounded border border-secondary">
+                        <span className="fw-bold me-3 ps-2 text-white">{guest}</span>
+                        <Button 
+                          variant="warning" 
+                          size="sm" 
+                          className="fw-bold" 
+                          onClick={() => handleImport(guest)}
+                          disabled={actionLoading}
+                        >
+                          IMPORT
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Card.Body>
+              </Card>
+            )}
           </Col>
 
           <Col lg={4}>
