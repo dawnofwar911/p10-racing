@@ -53,30 +53,36 @@ function LeagueDetailContent() {
       setLeagueName(league.name);
       setInviteCode(league.invite_code);
 
-      // 2. Fetch Race Results (Cached)
+      // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
       const races = await fetchCalendar(CURRENT_SEASON);
       const raceResultsMap: { [round: string]: SimplifiedResults } = {};
       
+      const { data: verifiedData } = await supabase.from('verified_results').select('*');
+      
       await Promise.all(races.map(async (race: ApiCalendarRace) => {
         const round = race.round;
-        const resultsData = localStorage.getItem(`results_${round}`);
+        const verifiedMatch = verifiedData?.find(v => v.id === `${CURRENT_SEASON}_${round}`);
         
-        if (!resultsData) {
-          const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
-          if (apiResults) {
-            const firstDnfDriver = getFirstDnfDriver(apiResults);
-            const simplified = {
-              positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
-                acc[r.Driver.driverId] = parseInt(r.position);
-                return acc;
-              }, {}),
-              firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null
-            };
-            localStorage.setItem(`results_${round}`, JSON.stringify(simplified));
-            raceResultsMap[round] = simplified;
-          }
+        if (verifiedMatch) {
+          raceResultsMap[round] = verifiedMatch.data as SimplifiedResults;
         } else {
-          raceResultsMap[round] = JSON.parse(resultsData);
+          const resultsData = localStorage.getItem(`results_${round}`);
+          if (resultsData) {
+            raceResultsMap[round] = JSON.parse(resultsData);
+          } else {
+            const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
+            if (apiResults) {
+              const firstDnfDriver = getFirstDnfDriver(apiResults);
+              const simplified = {
+                positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
+                  acc[r.Driver.driverId] = parseInt(r.position);
+                  return acc;
+                }, {}),
+                firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null
+              };
+              raceResultsMap[round] = simplified;
+            }
+          }
         }
       }));
 
@@ -150,7 +156,7 @@ function LeagueDetailContent() {
   }, [supabase, leagueId]);
 
   if (!leagueId) {
-    return <Container className="mt-5 text-center"><p>No league selected.</p></Container>;
+    return <Container className="mt-5 text-center text-white"><p>No league selected.</p></Container>;
   }
 
   return (
@@ -161,8 +167,8 @@ function LeagueDetailContent() {
         <>
           <Row className="mb-4 align-items-end">
             <Col>
-              <Badge bg="danger" className="text-uppercase mb-2 letter-spacing-1">League Dashboard</Badge>
-              <h1 className="h2 fw-bold text-uppercase mb-0">{leagueName}</h1>
+              <Badge bg="danger" className="text-uppercase mb-2 letter-spacing-1 fw-bold">League Dashboard</Badge>
+              <h1 className="h2 fw-bold text-uppercase mb-0 text-white">{leagueName}</h1>
             </Col>
             <Col xs="auto" className="text-end">
               <small className="text-muted text-uppercase d-block mb-1 fw-bold">Invite Code</small>
@@ -172,7 +178,7 @@ function LeagueDetailContent() {
 
           <Row>
             <Col>
-              <Card className="border-secondary shadow-sm">
+              <Card className="border-secondary shadow-lg">
                 <Card.Header className="bg-dark border-secondary py-3 d-flex justify-content-between align-items-center">
                   <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">League Standings</h3>
                   <small className="text-muted">{leaderboard.length} Members</small>
@@ -198,7 +204,7 @@ function LeagueDetailContent() {
                             <td className="ps-4 fw-bold text-muted">
                               {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}
                             </td>
-                            <td className="fw-bold fs-5">{entry.player}</td>
+                            <td className="fw-bold fs-5 text-white">{entry.player}</td>
                             <td className="text-end text-muted small">
                               <span className={entry.lastRacePoints > 0 ? 'text-success fw-bold' : ''}>
                                 {entry.lastRacePoints > 0 ? `+${entry.lastRacePoints}` : '-'}
@@ -210,11 +216,11 @@ function LeagueDetailContent() {
                             <tr className="bg-dark bg-opacity-75">
                               <td colSpan={4} className="p-0 border-0">
                                 <div className="p-4 border-start border-danger border-4 m-3 bg-dark rounded border border-secondary shadow-sm">
-                                  <div className="row g-4">
+                                  <div className="row g-4 text-white">
                                     <div className="col-md-6 border-end border-secondary">
                                       <small className="text-muted text-uppercase d-block mb-2 fw-bold">P10 Pick Result</small>
                                       <div className="d-flex justify-content-between align-items-center">
-                                        <span className="text-white fw-bold fs-5">{entry.breakdown.p10Driver.toUpperCase()}</span>
+                                        <span className="fw-bold fs-5">{entry.breakdown.p10Driver.toUpperCase()}</span>
                                         <span className="badge bg-secondary">P{entry.breakdown.actualP10Pos}</span>
                                       </div>
                                       <div className="mt-2 text-danger fw-bold">+{entry.breakdown.p10Points} PTS</div>
