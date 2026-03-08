@@ -4,14 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from '@/lib/api';
+import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
 interface SimplifiedResults {
   positions: { [driverId: string]: number };
   firstDnf: string | null;
+}
+
+interface LeaderboardPlayer {
+  username: string;
+  userId?: string;
+  isLocal: boolean;
+  dbPredictions?: DbPrediction[];
 }
 
 export default function LeaderboardPage() {
@@ -26,7 +32,6 @@ export default function LeaderboardPage() {
     async function calculate() {
       setLoading(true);
       
-      // 1. Fetch Calendar and Results (Cached in LocalStorage for speed)
       const races = await fetchCalendar(CURRENT_SEASON);
       const raceResultsMap: { [round: string]: SimplifiedResults } = {};
       
@@ -53,13 +58,11 @@ export default function LeaderboardPage() {
         }
       }));
 
-      // 2. Fetch User Data based on view
-      let playersData: { username: string, userId?: string, isLocal: boolean }[] = [];
+      let playersData: LeaderboardPlayer[] = [];
 
       if (view === 'global') {
-        // Fetch all profiles and their predictions from Supabase
         const { data: profiles } = await supabase.from('profiles').select('id, username');
-        const { data: predictions } = await supabase.from('predictions').select('*');
+        const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
 
         if (profiles) {
           playersData = profiles.map(p => ({ 
@@ -70,13 +73,11 @@ export default function LeaderboardPage() {
           }));
         }
       } else {
-        // Local Guest Players
         const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
         playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
       }
 
-      // 3. Calculate Scores
-      const entries: LeaderboardEntry[] = playersData.map((player: any) => {
+      const entries: LeaderboardEntry[] = playersData.map((player) => {
         let totalPoints = 0;
         let lastRacePoints = 0;
         let latestBreakdown = undefined;
@@ -85,13 +86,13 @@ export default function LeaderboardPage() {
 
         sortedRounds.forEach((round, index) => {
           const results = raceResultsMap[round];
-          let prediction = null;
+          let prediction: { p10: string, dnf: string } | null = null;
 
           if (player.isLocal) {
             const predStr = localStorage.getItem(`final_pred_${player.username}_${round}`);
             if (predStr) prediction = JSON.parse(predStr);
-          } else {
-            const dbMatch = player.dbPredictions.find((dp: any) => dp.race_id === `${CURRENT_SEASON}_${round}`);
+          } else if (player.dbPredictions) {
+            const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
             if (dbMatch) {
               prediction = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
             }
