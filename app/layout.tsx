@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" style={{ backgroundColor: '#15151e' }}>
+    <html lang="en" data-bs-theme="dark" style={{ backgroundColor: '#15151e' }}>
       <body className={inter.className} style={{ backgroundColor: '#15151e' }}>
         <NativeWrapper>
           <OfflineStatus />
