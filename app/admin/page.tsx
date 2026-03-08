@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Navbar, Table, Spinner, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchRaceResults, getFirstDnfDriverId, fetchDrivers, fetchCalendar, TEAM_COLORS } from '@/lib/api';
+import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS } from '@/lib/api';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -19,10 +19,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function load() {
-      if (loading) return; // Don't reload if we are currently fetching specific race results
+      if (loading) return;
       
       setFirstDnf(''); 
-      // Fetch drivers for the season
       const d = await fetchDrivers(season);
       if (d.length > 0) {
         setDrivers(d);
@@ -32,7 +31,6 @@ export default function AdminPage() {
         setResults(Object.fromEntries(FALLBACK_DRIVERS.map((driver, i) => [driver.id, i + 1])));
       }
 
-      // Fetch calendar for the season
       const cal = await fetchCalendar(season);
       if (cal.length > 0) {
         const formattedRaces = cal.map(r => ({
@@ -66,7 +64,6 @@ export default function AdminPage() {
     try {
       const data = await fetchRaceResults(season, raceInfo.round);
       if (data) {
-        // Only show drivers who were actually in this race
         const participatingDrivers = data.Results.map(r => ({
           id: r.Driver.driverId,
           name: `${r.Driver.givenName} ${r.Driver.familyName}`,
@@ -81,9 +78,9 @@ export default function AdminPage() {
         });
         setResults(newResults);
         
-        const dnfId = getFirstDnfDriverId(data);
-        if (dnfId) {
-          setFirstDnf(dnfId);
+        const dnf = getFirstDnfDriver(data);
+        if (dnf) {
+          setFirstDnf(dnf.driverId);
         } else {
           setFirstDnf('');
         }
@@ -194,7 +191,7 @@ export default function AdminPage() {
                           <Form.Control 
                             type="number" 
                             min="1" 
-                            max="20"
+                            max="22"
                             value={results[driver.id] || ''}
                             onChange={(e) => handlePositionChange(driver.id, parseInt(e.target.value))}
                             className="bg-dark text-white border-secondary"
