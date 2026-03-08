@@ -35,15 +35,12 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Fix for unreadable or faded text */
-* {
-  text-shadow: 0 0 1px rgba(0,0,0,0.1);
-}
-
+/* Base text color for common elements */
 h1, h2, h3, h4, h5, h6, p, span, div, label {
-  color: white !important;
+  color: white;
 }
 
+/* Muted helper */
 .text-muted {
   color: rgba(255, 255, 255, 0.5) !important;
 }
@@ -69,21 +66,6 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   transform: scale(0.98);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: var(--f1-black);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--f1-grey);
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--f1-red);
-}
-
 /* Driver / Grid Components */
 .team-pill {
   padding: 2px 10px;
@@ -92,13 +74,13 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   font-weight: 800;
   text-transform: uppercase;
   display: inline-block;
+  /* Removed !important from global color to allow dynamic contrast */
 }
 
 .driver-number {
   font-family: 'Inter', sans-serif;
   font-weight: 900;
   font-style: italic;
-  color: rgba(255, 255, 255, 0.5) !important;
 }
 
 .active-driver-card {
