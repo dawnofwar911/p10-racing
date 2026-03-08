@@ -77,7 +77,6 @@ export default function Home() {
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      // Ensure we have a valid Date object by handling the ISO format correctly
       const targetStr = `${nextRace.date}T${nextRace.time}`;
       const target = new Date(targetStr).getTime();
       const distance = target - now;
@@ -104,28 +103,28 @@ export default function Home() {
   };
 
   return (
-    <main>
+    <main style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
       <AppNavbar />
 
       <Container className="mt-5">
         <Row className="justify-content-center text-center">
           <Col md={8}>
-            <h1 className="display-4 fw-bold mb-4">Master the Midfield.</h1>
-            <p className="lead mb-5">
+            <h1 className="display-4 fw-bold mb-4 text-white">Master the Midfield.</h1>
+            <p className="lead mb-5 text-white opacity-75">
               Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
             </p>
             
             {nextRace && !loading && showCountdown && (
               <div className="d-flex justify-content-center gap-2 gap-md-3 mb-5 px-2">
                 {[
-                  { label: 'Days', val: countdown.d },
-                  { label: 'Hrs', val: countdown.h },
-                  { label: 'Min', val: countdown.m },
-                  { label: 'Sec', val: countdown.s }
+                  { label: 'DAYS', val: countdown.d },
+                  { label: 'HRS', val: countdown.h },
+                  { label: 'MINS', val: countdown.m },
+                  { label: 'SECS', val: countdown.s }
                 ].map(item => (
-                  <div key={item.label} className="p-2 p-md-3 bg-dark border border-secondary rounded flex-fill flex-md-none shadow-sm" style={{ minWidth: '70px', maxWidth: '100px' }}>
-                    <div className="fs-3 fw-bold text-white">{item.val}</div>
-                    <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>{item.label}</div>
+                  <div key={item.label} className="p-3 bg-dark border border-secondary rounded flex-fill shadow-sm" style={{ minWidth: '75px', maxWidth: '110px' }}>
+                    <div className="fs-2 fw-bold text-white mb-1">{item.val}</div>
+                    <div className="text-danger text-uppercase fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1.5px' }}>{item.label}</div>
                   </div>
                 ))}
               </div>
@@ -148,14 +147,14 @@ export default function Home() {
 
         <Row className="mt-4 g-4 px-2">
           <Col md={6}>
-            <div className="p-4 border border-secondary rounded h-100 bg-dark bg-opacity-25 shadow-sm">
+            <div className="p-4 border border-secondary rounded h-100 bg-dark shadow-sm">
               <h3 className="h6 text-uppercase fw-bold text-danger letter-spacing-1 mb-3">Next Race</h3>
               {loading ? (
                 <Spinner animation="border" size="sm" variant="danger" />
               ) : (
                 <>
                   <p className="fs-3 fw-bold mb-0 text-white">{nextRace?.name}</p>
-                  <p className="text-muted mb-2">{nextRace?.circuit}</p>
+                  <p className="text-white opacity-50 mb-3">{nextRace?.circuit}</p>
                   <div className="badge bg-danger bg-opacity-25 text-danger px-3 py-2 border border-danger border-opacity-25 rounded-pill fw-bold">
                     {nextRace && new Date(nextRace.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                   </div>
@@ -171,13 +170,13 @@ export default function Home() {
                 {userPrediction ? (
                   <Row className="mt-3 g-4">
                     <Col xs={6}>
-                      <small className="text-muted d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>P10 Pick</small>
+                      <small className="text-white opacity-50 d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>P10 Pick</small>
                       <span className="fs-5 fw-bold text-white">
                         {allDrivers.find(d => d.id === userPrediction.p10)?.name || (userPrediction.p10 && userPrediction.p10.toUpperCase())}
                       </span>
                     </Col>
                     <Col xs={6}>
-                      <small className="text-muted d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>First DNF</small>
+                      <small className="text-white opacity-50 d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>First DNF</small>
                       <span className="fs-5 fw-bold text-danger">
                         {allDrivers.find(d => d.id === userPrediction.dnf)?.name || (userPrediction.dnf && userPrediction.dnf.toUpperCase())}
                       </span>
@@ -185,7 +184,7 @@ export default function Home() {
                   </Row>
                 ) : (
                   <div className="mt-3">
-                    <p className="small text-muted mb-3">No prediction submitted for this race yet.</p>
+                    <p className="small text-white opacity-50 mb-3">No prediction submitted for this race yet.</p>
                     <Link href="/predict" className="btn btn-sm btn-outline-danger px-4 rounded-pill fw-bold" onClick={triggerHaptic}>Predict Now →</Link>
                   </div>
                 )}
@@ -196,8 +195,8 @@ export default function Home() {
       </Container>
 
       <footer className="mt-auto py-5 border-top border-secondary border-opacity-25 text-center mt-5">
-        <p className="text-muted small mb-1 fw-bold letter-spacing-1">© 2026 P10 RACING</p>
-        <Link href="/admin" className="text-muted small text-decoration-none opacity-25" onClick={triggerHaptic}>ADMIN</Link>
+        <p className="text-white opacity-25 small mb-1 fw-bold letter-spacing-1">© 2026 P10 RACING</p>
+        <Link href="/admin" className="text-white small text-decoration-none opacity-25" onClick={triggerHaptic}>ADMIN</Link>
       </footer>
     </main>
   );
