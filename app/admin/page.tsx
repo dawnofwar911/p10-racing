@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS, AppDriver, ApiCalendarRace } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
 import AppNavbar from '@/components/AppNavbar';
 
 interface AdminDriver {
@@ -22,6 +23,8 @@ export default function AdminPage() {
   const [season, setSeason] = useState(CURRENT_SEASON);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const supabase = createClient();
 
   const fallbackRaces = useMemo(() => RACES.map(r => ({
     round: r.id,
@@ -105,20 +108,38 @@ export default function AdminPage() {
     }
   };
 
-  const handleSaveResults = () => {
-    const key = prompt('Enter Admin Key to Publish:');
+  const handleSaveResults = async (target: 'local' | 'global') => {
+    const key = prompt(`Enter Admin Key to Publish ${target.toUpperCase()}:`);
     if (key !== 'p10admin') {
       alert('Invalid Key.');
       return;
     }
 
-    const raceResults = {
-      raceId: selectedRace,
+    const simplifiedResults = {
       positions: results,
       firstDnf: firstDnf
     };
-    localStorage.setItem(`results_${selectedRace}`, JSON.stringify(raceResults));
-    alert(`Results for Round ${selectedRace} published and saved locally!`);
+
+    if (target === 'local') {
+      localStorage.setItem(`results_${selectedRace}`, JSON.stringify(simplifiedResults));
+      alert(`Results for Round ${selectedRace} published and saved locally!`);
+    } else {
+      setLoading(true);
+      const { error: dbError } = await supabase
+        .from('verified_results')
+        .upsert({
+          id: `${season}_${selectedRace}`,
+          data: simplifiedResults,
+          updated_at: new Date().toISOString()
+        });
+      
+      setLoading(false);
+      if (dbError) {
+        alert('Global publish error: ' + dbError.message);
+      } else {
+        alert(`Results for Round ${selectedRace} published GLOBALLY to Supabase!`);
+      }
+    }
   };
 
   const handleResetGame = () => {
@@ -142,36 +163,22 @@ export default function AdminPage() {
       <Container className="mt-4 mb-5">
         <Row className="mb-4">
           <Col>
-            <h1 className="h2">Race Results Entry</h1>
+            <h1 className="h2 fw-bold text-uppercase letter-spacing-1">Admin Results Entry</h1>
             <div className="d-flex gap-3 align-items-end mt-3 flex-wrap">
               <Form.Group style={{ maxWidth: '150px' }}>
-                <Form.Label>Season</Form.Label>
-                <Form.Control 
-                  type="number" 
-                  value={season} 
-                  onChange={(e) => setSeason(parseInt(e.target.value))}
-                  className="bg-dark text-white border-secondary"
-                />
+                <Form.Label className="small text-muted text-uppercase fw-bold">Season</Form.Label>
+                <Form.Control type="number" value={season} onChange={(e) => setSeason(parseInt(e.target.value))} className="bg-dark text-white border-secondary" />
               </Form.Group>
               <Form.Group style={{ maxWidth: '300px' }}>
-                <Form.Label>Select Race (Round)</Form.Label>
-                <Form.Select 
-                  value={selectedRace} 
-                  onChange={(e) => setSelectedRace(e.target.value)}
-                  className="bg-dark text-white border-secondary"
-                >
+                <Form.Label className="small text-muted text-uppercase fw-bold">Select Race</Form.Label>
+                <Form.Select value={selectedRace} onChange={(e) => setSelectedRace(e.target.value)} className="bg-dark text-white border-secondary" >
                   {availableRaces.map(race => (
                     <option key={race.round} value={race.round}>{race.raceName} (R{race.round})</option>
                   ))}
                 </Form.Select>
               </Form.Group>
-              <Button 
-                variant="outline-info" 
-                onClick={handleFetchFromApi} 
-                disabled={loading}
-                className="mb-0"
-              >
-                {loading ? <Spinner animation="border" size="sm" /> : 'Fetch from API'}
+              <Button variant="outline-info" onClick={handleFetchFromApi} disabled={loading} className="px-4 fw-bold">
+                {loading ? <Spinner animation="border" size="sm" /> : 'FETCH API'}
               </Button>
             </div>
             {error && <Alert variant="danger" className="mt-3 py-2">{error}</Alert>}
@@ -180,33 +187,24 @@ export default function AdminPage() {
 
         <Row>
           <Col lg={8}>
-            <Card className="mb-4">
-              <Card.Header className="bg-dark border-secondary">
-                <h3 className="h5 mb-0">Finishing Order</h3>
-              </Card.Header>
-              <Card.Body>
-                <Table variant="dark" responsive>
+            <Card className="border-secondary shadow-sm">
+              <Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Finishing Order</h3></Card.Header>
+              <Card.Body className="p-0">
+                <Table variant="dark" hover responsive className="mb-0">
                   <thead>
-                    <tr>
-                      <th>Driver</th>
+                    <tr className="bg-dark bg-opacity-50 small text-uppercase">
+                      <th className="ps-4 py-3">Driver</th>
                       <th>Team</th>
-                      <th style={{ width: '120px' }}>Position</th>
+                      <th className="pe-4 text-end" style={{ width: '120px' }}>Position</th>
                     </tr>
                   </thead>
                   <tbody>
                     {drivers.map((driver) => (
-                      <tr key={driver.id}>
-                        <td className="text-white fw-bold">{driver.name}</td>
-                        <td style={{ color: '#a0a0a5' }} className="small">{driver.team}</td>
-                        <td>
-                          <Form.Control 
-                            type="number" 
-                            min="1" 
-                            max="22"
-                            value={results[driver.id] || ''}
-                            onChange={(e) => handlePositionChange(driver.id, parseInt(e.target.value))}
-                            className="bg-dark text-white border-secondary"
-                          />
+                      <tr key={driver.id} style={{ height: '60px', verticalAlign: 'middle' }}>
+                        <td className="ps-4 fw-bold text-white">{driver.name}</td>
+                        <td className="text-muted small">{driver.team}</td>
+                        <td className="pe-4">
+                          <Form.Control type="number" min="1" max="22" value={results[driver.id] || ''} onChange={(e) => handlePositionChange(driver.id, parseInt(e.target.value))} className="bg-dark text-white border-secondary text-end" />
                         </td>
                       </tr>
                     ))}
@@ -217,35 +215,27 @@ export default function AdminPage() {
           </Col>
 
           <Col lg={4}>
-            <Card className="mb-4">
-              <Card.Header className="bg-dark border-secondary">
-                <h3 className="h5 mb-0">Retirements</h3>
-              </Card.Header>
-              <Card.Body>
-                <Form.Group>
-                  <Form.Label>First DNF</Form.Label>
-                  <Form.Select 
-                    value={firstDnf} 
-                    onChange={(e) => setFirstDnf(e.target.value)}
-                    className="bg-dark text-white border-secondary"
-                  >
+            <Card className="border-secondary mb-4 shadow-sm">
+              <Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Verification</h3></Card.Header>
+              <Card.Body className="p-4">
+                <Form.Group className="mb-4">
+                  <Form.Label className="small text-muted text-uppercase fw-bold">First DNF</Form.Label>
+                  <Form.Select value={firstDnf} onChange={(e) => setFirstDnf(e.target.value)} className="bg-dark text-white border-secondary" >
                     <option value="">None / All Finished</option>
                     {drivers.map(driver => (
                       <option key={driver.id} value={driver.id}>{driver.name}</option>
                     ))}
                   </Form.Select>
                 </Form.Group>
+
+                <div className="d-grid gap-3">
+                  <Button variant="danger" size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className="fw-bold py-3">PUBLISH GLOBALLY</Button>
+                  <Button variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2">PUBLISH LOCALLY</Button>
+                </div>
               </Card.Body>
             </Card>
 
-            <div className="d-grid gap-2">
-              <Button variant="success" size="lg" onClick={handleSaveResults}>
-                Publish Results
-              </Button>
-              <Button variant="outline-danger" size="sm" className="mt-4" onClick={handleResetGame}>
-                Reset All Game Data
-              </Button>
-            </div>
+            <Button variant="outline-danger" size="sm" className="w-100 opacity-50 mt-4" onClick={handleResetGame}>RESET ALL GAME DATA</Button>
           </Col>
         </Row>
       </Container>

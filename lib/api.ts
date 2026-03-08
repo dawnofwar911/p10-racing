@@ -51,6 +51,7 @@ export interface AppDriver {
   code: string;
   number: number;
   color: string;
+  points: number; // Added points
 }
 
 export interface DbPrediction {
@@ -122,7 +123,7 @@ export async function fetchDrivers(season: number): Promise<AppDriver[]> {
       const data = await response.json();
       const standings = data.MRData.StandingsTable.StandingsLists[0];
       if (standings && standings.DriverStandings.length > 0) {
-        standings.DriverStandings.forEach((s: { Driver: ApiDriver, Constructors: { constructorId: string, name: string }[] }) => {
+        standings.DriverStandings.forEach((s: any) => {
           apiDrivers.push({
             id: s.Driver.driverId,
             name: `${s.Driver.givenName} ${s.Driver.familyName}`,
@@ -130,7 +131,8 @@ export async function fetchDrivers(season: number): Promise<AppDriver[]> {
             teamId: s.Constructors[0].constructorId,
             code: s.Driver.code,
             number: s.Driver.permanentNumber ? parseInt(s.Driver.permanentNumber) : 0,
-            color: TEAM_COLORS[s.Constructors[0].constructorId] || '#B6BABD'
+            color: TEAM_COLORS[s.Constructors[0].constructorId] || '#B6BABD',
+            points: parseFloat(s.points) || 0
           });
         });
       }
@@ -153,7 +155,8 @@ export async function fetchDrivers(season: number): Promise<AppDriver[]> {
               teamId: r.Constructor.constructorId,
               code: r.Driver.code,
               number: parseInt(r.number),
-              color: TEAM_COLORS[r.Constructor.constructorId] || '#B6BABD'
+              color: TEAM_COLORS[r.Constructor.constructorId] || '#B6BABD',
+              points: 0 // If not in standings yet
             });
           }
         });
@@ -189,7 +192,8 @@ export async function fetchDriversFromOpenF1(sessionKey: number): Promise<AppDri
       teamId: d.team_name.toLowerCase().replace(/\s+/g, '_'),
       code: d.name_acronym,
       number: d.driver_number,
-      color: d.team_colour ? `#${d.team_colour}` : (TEAM_COLORS[d.team_name.toLowerCase().replace(/\s+/g, '_')] || '#B6BABD')
+      color: d.team_colour ? `#${d.team_colour}` : (TEAM_COLORS[d.team_name.toLowerCase().replace(/\s+/g, '_')] || '#B6BABD'),
+      points: 0
     }));
   } catch (error) {
     console.error('Error fetching OpenF1 drivers:', error);

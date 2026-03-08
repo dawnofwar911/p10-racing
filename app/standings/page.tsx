@@ -35,10 +35,11 @@ export default function StandingsPage() {
             <Table variant="dark" hover className="mb-0">
               <thead>
                 <tr className="bg-dark bg-opacity-50">
-                  <th className="ps-4 py-3">Pos</th>
-                  <th className="py-3">Driver</th>
-                  <th className="py-3">Team</th>
-                  <th className="text-end pe-4 py-3">No.</th>
+                  <th className="ps-4 py-3 text-uppercase small letter-spacing-1">Pos</th>
+                  <th className="py-3 text-uppercase small letter-spacing-1">Driver</th>
+                  <th className="py-3 text-uppercase small letter-spacing-1">Team</th>
+                  <th className="text-end py-3 text-uppercase small letter-spacing-1">PTS</th>
+                  <th className="text-end pe-4 py-3 text-uppercase small letter-spacing-1">No.</th>
                 </tr>
               </thead>
               <tbody>
@@ -54,6 +55,9 @@ export default function StandingsPage() {
                       }}>
                         {d.team}
                       </span>
+                    </td>
+                    <td className="text-end fw-bold fs-5 text-white">
+                      {(d as any).points}
                     </td>
                     <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>
                       {d.number}
