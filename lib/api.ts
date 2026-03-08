@@ -53,6 +53,19 @@ export interface AppDriver {
   color: string;
 }
 
+export interface DbPrediction {
+  id: string;
+  user_id: string;
+  race_id: string;
+  p10_driver_id: string;
+  dnf_driver_id: string;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    username: string;
+  };
+}
+
 const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
 
 export async function fetchRaceResults(season: number, round: number): Promise<ApiRace | null> {

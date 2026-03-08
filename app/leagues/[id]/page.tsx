@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Table, Card, Spinner, Badge } from 'react-bootstrap';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from '@/lib/api';
+import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
 import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
 import AppNavbar from '@/components/AppNavbar';
@@ -12,6 +12,13 @@ import AppNavbar from '@/components/AppNavbar';
 interface SimplifiedResults {
   positions: { [driverId: string]: number };
   firstDnf: string | null;
+}
+
+interface LeagueMember {
+  profiles: {
+    id: string;
+    username: string;
+  };
 }
 
 export default function LeagueDetailPage() {
@@ -73,19 +80,23 @@ export default function LeagueDetailPage() {
       }));
 
       // 3. Fetch League Members and their predictions
-      const { data: members } = await supabase
+      const { data: membersData } = await supabase
         .from('league_members')
         .select('profiles(id, username)')
         .eq('league_id', leagueId);
+      
+      const members = membersData as unknown as LeagueMember[];
 
-      const memberIds = members?.map((m: any) => m.profiles.id) || [];
-      const { data: predictions } = await supabase
+      const memberIds = members?.map((m) => m.profiles.id) || [];
+      const { data: predictionsData } = await supabase
         .from('predictions')
         .select('*')
         .in('user_id', memberIds);
+      
+      const predictions = predictionsData as DbPrediction[];
 
       // 4. Calculate Scores
-      const entries: LeaderboardEntry[] = (members || []).map((m: any) => {
+      const entries: LeaderboardEntry[] = (members || []).map((m) => {
         const user = m.profiles;
         let totalPoints = 0;
         let lastRacePoints = 0;

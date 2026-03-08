@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
+import { Session, PostgrestError } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
@@ -27,6 +27,23 @@ export default function LeaguesPage() {
 
   const supabase = createClient();
 
+  const fetchLeagues = useCallback(async (userId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('leagues')
+        .select('*, league_members!inner(user_id)')
+        .eq('league_members.user_id', userId);
+
+      if (error) throw error;
+      setLeagues(data || []);
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
+
   useEffect(() => {
     async function init() {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -38,24 +55,7 @@ export default function LeaguesPage() {
       }
     }
     init();
-  }, [supabase]);
-
-  async function fetchLeagues(userId: string) {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('leagues')
-        .select('*, league_members!inner(user_id)')
-        .eq('league_members.user_id', userId);
-
-      if (error) throw error;
-      setLeagues(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [supabase, fetchLeagues]);
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,8 +80,8 @@ export default function LeaguesPage() {
 
       setNewLeagueName('');
       fetchLeagues(session.user.id);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -107,14 +107,15 @@ export default function LeaguesPage() {
         .insert([{ league_id: league.id, user_id: session.user.id }]);
 
       if (joinError) {
-        if (joinError.code === '23505') throw new Error('You are already a member of this league.');
+        const pgErr = joinError as PostgrestError;
+        if (pgErr.code === '23505') throw new Error('You are already a member of this league.');
         throw joinError;
       }
 
       setInviteCode('');
       fetchLeagues(session.user.id);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
     } finally {
       setActionLoading(false);
     }

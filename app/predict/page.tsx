@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Spinner } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
@@ -161,22 +161,19 @@ export default function PredictPage() {
         }
 
         // 4. Fetch community predictions (Supabase + LocalStorage fallback)
-        // Fetch all predictions for this race from DB
         const { data: dbCommunityPreds } = await supabase
           .from('predictions')
           .select('user_id, p10_driver_id, dnf_driver_id, profiles(username)')
           .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
 
-        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? dbCommunityPreds.map((p: any) => ({
+        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? (dbCommunityPreds as unknown as DbPrediction[]).map((p) => ({
           username: p.profiles?.username || 'Unknown',
           p10: p.p10_driver_id,
           dnf: p.dnf_driver_id
         })) : [];
 
-        // Filter out current user from DB list to avoid duplicate
         const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
 
-        // Fetch LocalStorage guests
         const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
         const localPreds = playersList
           .filter((p: string) => p !== currentUsername)
@@ -207,7 +204,6 @@ export default function PredictPage() {
       Haptics.impact({ style: ImpactStyle.Heavy });
       
       if (session) {
-        // Save to Supabase
         const { error } = await supabase
           .from('predictions')
           .upsert({
@@ -223,7 +219,6 @@ export default function PredictPage() {
           return;
         }
       } else {
-        // Save to LocalStorage
         const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id };
         localStorage.setItem(`final_pred_${username}_${nextRace.id}`, JSON.stringify(prediction));
         const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
@@ -241,7 +236,6 @@ export default function PredictPage() {
     Haptics.selectionChanged();
     localStorage.setItem('p10_current_user', name);
     setUsername(name);
-    // Reload local prediction for this user
     const finalized = localStorage.getItem(`final_pred_${name}_${nextRace.id}`);
     if (finalized) {
       const parsed = JSON.parse(finalized);
@@ -262,14 +256,10 @@ export default function PredictPage() {
             <Col md={5}>
               <Card className="p-4 border-secondary shadow">
                 <h2 className="h4 mb-4 fw-bold">Who&apos;s Predicting?</h2>
-                
                 <div className="mb-4">
-                  <Link href="/auth" passHref legacyBehavior>
-                    <Button variant="danger" className="w-100 py-3 fw-bold mb-2">SIGN IN / CREATE ACCOUNT</Button>
-                  </Link>
+                  <Link href="/auth" passHref legacyBehavior><Button variant="danger" className="w-100 py-3 fw-bold mb-2">SIGN IN / CREATE ACCOUNT</Button></Link>
                   <p className="text-center text-muted small mt-2">OR PLAY AS GUEST (LOCAL ONLY)</p>
                 </div>
-
                 {existingPlayers.length > 0 && (
                   <div className="mb-4">
                     <Form.Label className="text-muted small text-uppercase fw-semibold">Recent Players</Form.Label>
@@ -282,10 +272,7 @@ export default function PredictPage() {
                   </div>
                 )}
                 <Form onSubmit={(e) => { e.preventDefault(); if (username.trim()) selectUser(username); }}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Guest Name</Form.Label>
-                    <Form.Control type="text" placeholder="Enter name" value={username} onChange={(e) => setUsername(e.target.value)} className="bg-dark text-white border-secondary py-2" />
-                  </Form.Group>
+                  <Form.Group className="mb-3"><Form.Label>Guest Name</Form.Label><Form.Control type="text" placeholder="Enter name" value={username} onChange={(e) => setUsername(e.target.value)} className="bg-dark text-white border-secondary py-2" /></Form.Group>
                   <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">CONTINUE AS GUEST</Button>
                 </Form>
               </Card>
@@ -327,13 +314,7 @@ export default function PredictPage() {
 
   if (loadingRace) {
     return (
-      <main>
-        <AppNavbar />
-        <Container className="mt-5 text-center">
-          <Spinner animation="border" variant="danger" />
-          <p className="mt-3 text-muted">Loading race data...</p>
-        </Container>
-      </main>
+      <main><AppNavbar /><Container className="mt-5 text-center"><Spinner animation="border" variant="danger" /><p className="mt-3 text-muted">Loading race data...</p></Container></main>
     );
   }
 
@@ -342,37 +323,12 @@ export default function PredictPage() {
       <AppNavbar />
       <Container className="mt-4 mb-5">
         <Row className="mb-4 align-items-center">
-          <Col>
-            <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1>
-            <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
-          </Col>
-          <Col xs="auto" className="d-flex gap-2">
-            {!isLocked && !session && (
-              <Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); }} className="rounded-pill">Switch Guest</Button>
-            )}
-          </Col>
+          <Col><h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1><p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p></Col>
+          <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); }} className="rounded-pill">Switch Guest</Button>)}</Col>
         </Row>
-        
         {startingGrid.length > 0 && !isLocked && (
-          <Row className="mb-4">
-            <Col>
-              <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm">
-                <Card.Header className="bg-dark border-secondary py-2"><h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Current Grid Order</h3></Card.Header>
-                <Card.Body className="py-2">
-                  <div className="d-flex flex-wrap gap-2">
-                    {startingGrid.map((result) => (
-                      <div key={result.number} className="small border-end border-secondary pe-2">
-                        <span className="text-muted me-1">{result.position}.</span> 
-                        <span className="text-white fw-bold">{result.Driver.code}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+          <Row className="mb-4"><Col><Card className="border-secondary bg-dark bg-opacity-50 shadow-sm"><Card.Header className="bg-dark border-secondary py-2"><h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Current Grid Order</h3></Card.Header><Card.Body className="py-2"><div className="d-flex flex-wrap gap-2">{startingGrid.map((result) => (<div key={result.number} className="small border-end border-secondary pe-2"><span className="text-muted me-1">{result.position}.</span> <span className="text-white fw-bold">{result.Driver.code}</span></div>))}</div></Card.Body></Card></Col></Row>
         )}
-
         {isLocked ? (
           <div className="text-center">
             <Card className="p-5 border-danger bg-dark mb-4 shadow">
@@ -398,11 +354,7 @@ export default function PredictPage() {
                       <div className="table-responsive">
                         <table className="table table-dark table-hover mb-0 small">
                           <thead><tr className="text-muted"><th>Player</th><th>P10</th><th>DNF</th></tr></thead>
-                          <tbody>
-                            {communityPredictions.map((pred, idx) => (
-                              <tr key={idx}><td className="text-white fw-bold">{pred.username}</td><td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td><td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td></tr>
-                            ))}
-                          </tbody>
+                          <tbody>{communityPredictions.map((pred, idx) => (<tr key={idx}><td className="text-white fw-bold">{pred.username}</td><td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td><td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td></tr>))}</tbody>
                         </table>
                       </div>
                     ) : <p className="text-muted small">Only you so far!</p>}
@@ -416,36 +368,10 @@ export default function PredictPage() {
           <Form onSubmit={handleSubmit}>
             <Row>
               <Col md={6} className="mb-4">
-                <Card className="h-100 shadow-sm border-secondary">
-                  <Card.Body className="p-4">
-                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">P10 Finisher</h3>
-                    <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
-                      {drivers.map((driver) => (
-                        <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                          <div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>
-                          {p10Driver === driver.id && <div className="text-danger">●</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </Card.Body>
-                </Card>
+                <Card className="h-100 shadow-sm border-secondary"><Card.Body className="p-4"><h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">P10 Finisher</h3><div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>{drivers.map((driver) => (<div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}><div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div><div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>{p10Driver === driver.id && <div className="text-danger">●</div>}</div>))}</div></Card.Body></Card>
               </Col>
               <Col md={6} className="mb-4">
-                <Card className="h-100 shadow-sm border-secondary">
-                  <Card.Body className="p-4">
-                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">First DNF</h3>
-                    <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
-                      {drivers.map((driver) => (
-                        <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                          <div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>
-                          {dnfDriver === driver.id && <div className="text-danger">●</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </Card.Body>
-                </Card>
+                <Card className="h-100 shadow-sm border-secondary"><Card.Body className="p-4"><h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">First DNF</h3><div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>{drivers.map((driver) => (<div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}><div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div><div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>{dnfDriver === driver.id && <div className="text-danger">●</div>}</div>))}</div></Card.Body></Card>
               </Col>
             </Row>
             <div className="d-grid gap-2 mt-4"><Button type="submit" size="lg" className="btn-f1 py-3 fw-bold" disabled={!p10Driver || !dnfDriver}>LOCK IN PREDICTION</Button></div>
