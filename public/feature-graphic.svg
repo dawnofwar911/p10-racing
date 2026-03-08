@@ -1,0 +1,34 @@
+<svg width="1024" height="500" viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="500" fill="#0b0b0b" />
+  
+  <!-- F1 Accent Pattern (Abstract Track/Speed Lines) -->
+  <path d="M-100 500 L400 0 L500 0 L0 500 Z" fill="#e10600" opacity="0.1" />
+  <path d="M600 500 L1100 0 L1200 0 L700 500 Z" fill="#e10600" opacity="0.05" />
+  
+  <!-- Red Speed Strips at Bottom -->
+  <rect x="0" y="480" width="1024" height="20" fill="#e10600" />
+  <rect x="0" y="475" width="1024" height="2" fill="#ffffff" opacity="0.3" />
+
+  <!-- Logo Placeholder / Central Branding -->
+  <g transform="translate(512, 180)">
+    <!-- Shield/Circle behind logo -->
+    <circle r="120" fill="#e10600" opacity="0.1" />
+    <circle r="100" stroke="#e10600" stroke-width="4" fill="none" />
+    
+    <!-- App Name (P10 Racing) -->
+    <text y="20" font-family="Arial Black, sans-serif" font-size="80" font-weight="900" text-anchor="middle" fill="#ffffff">P10 RACING</text>
+    <text y="70" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#e10600" letter-spacing="4">F1 PREDICTIONS</text>
+  </g>
+
+  <!-- Feature List -->
+  <g transform="translate(512, 380)">
+    <text font-family="Arial, sans-serif" font-size="22" font-weight="bold" text-anchor="middle" fill="#cccccc">
+      <tspan x="0" dy="0">PREDICT THE TOP 10 • JOIN PRIVATE LEAGUES • CLIMB THE GLOBAL STANDINGS</tspan>
+    </text>
+  </g>
+
+  <!-- High-Contrast Corner Accent -->
+  <path d="M900 0 L1024 0 L1024 124 Z" fill="#e10600" />
+  <text x="1005" y="45" font-family="Arial Black, sans-serif" font-size="18" fill="#ffffff" text-anchor="middle" transform="rotate(45, 1005, 45)">F1</text>
+</svg>

@@ -35,9 +35,9 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 
 ## 🤖 Phase 4: Google Play Store Release 🏗️ IN PROGRESS
 *   [ ] **Google Play Developer Account:** Register and set up the organization profile.
-*   [ ] **Keystore Management:** Generate production signing key and store in GitHub Secrets.
-*   [ ] **Store Listing:** Create screenshots, feature graphics, and SEO descriptions.
-*   [ ] **AAB Generation:** Update CI/CD to output a signed Android App Bundle (.aab).
+*   [x] **Keystore Management:** Generate production signing key and store in GitHub Secrets.
+*   [x] **Store Listing:** Create screenshots, feature graphics, and SEO descriptions.
+*   [x] **AAB Generation:** Update CI/CD to output a signed Android App Bundle (.aab).
 
 ---
 
