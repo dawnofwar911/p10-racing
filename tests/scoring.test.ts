@@ -54,6 +54,14 @@ try {
   const total = calculateTotalPoints('driverA', 12, 'driverB', 'driverB');
   assert.strictEqual(total, 40, 'Total calculation mismatch');
   
+  // Check for placeholder matching (to avoid 25-pt freebie bug)
+  // If we pass identical placeholders for predicted and actual DNF, it incorrectly awards points
+  const noMatch = calculateTotalPoints('driverA', 12, 'user_p10_id', 'actual_dnf_id');
+  assert.strictEqual(noMatch, 15, '12 is 2 distance from 10, so 15 points. DNF mismatch = 0 points.');
+  
+  const placeholders = calculateTotalPoints('driverA', 10, '', '');
+  assert.strictEqual(placeholders, 25, 'Empty/missing DNF should not award 25 points if they match as empty');
+  
   console.log('  ✅ Total Score Integration Passed');
 } catch (e) {
   console.error('  ❌ Total Score Test Failed:', e);

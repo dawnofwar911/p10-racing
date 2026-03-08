@@ -44,7 +44,6 @@ export default function PredictPage() {
         if (activeIndex === -1) activeIndex = races.length - 1;
 
         // Check if the previous race has results yet. 
-        // If it DOESN'T, we might still want to show it or at least wait before allowing next round picks.
         if (activeIndex > 0) {
           const prevRace = races[activeIndex - 1];
           const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));

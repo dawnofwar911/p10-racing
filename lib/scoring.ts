@@ -17,6 +17,7 @@ export function calculateP10Points(actualPosition: number): number {
 }
 
 export function calculateDnfPoints(predictedDnfId: string, actualDnfId: string): number {
+  if (!predictedDnfId || !actualDnfId) return 0;
   return predictedDnfId === actualDnfId ? 25 : 0;
 }
 
