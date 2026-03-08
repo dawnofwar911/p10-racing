@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Table, Navbar, Button, Spinner } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
-import { calculateTotalPoints } from '@/lib/scoring';
+import { calculateP10Points } from '@/lib/scoring';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver } from '@/lib/api';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
@@ -15,17 +15,25 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     async function calculate() {
+      // LOGIC_VERSION forces re-calculation/re-fetch if we change how points or DNFs are identified
+      const LOGIC_VERSION = 'v2_fix_dnf_and_piastri'; 
+      const currentLogic = localStorage.getItem('p10_logic_version');
+      if (currentLogic !== LOGIC_VERSION) {
+        // Clear stale race results cache
+        const races = await fetchCalendar(CURRENT_SEASON);
+        races.forEach(r => localStorage.removeItem(`results_${r.round}`));
+        localStorage.setItem('p10_logic_version', LOGIC_VERSION);
+      }
+
       const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
       const races = await fetchCalendar(CURRENT_SEASON);
       
-      // We need results for all races that have them
       const raceResultsMap: { [round: string]: any } = {};
       await Promise.all(races.map(async (race) => {
         const round = race.round;
         let resultsData = localStorage.getItem(`results_${round}`);
         
         if (!resultsData) {
-          // Fetch and cache if not in localStorage
           const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
           if (apiResults) {
             const firstDnfDriver = getFirstDnfDriver(apiResults);
@@ -49,7 +57,6 @@ export default function LeaderboardPage() {
         let lastRacePoints = 0;
         let latestBreakdown = undefined;
 
-        // Sort rounds to find the "last race" correctly
         const sortedRounds = Object.keys(raceResultsMap).sort((a, b) => parseInt(a) - parseInt(b));
 
         sortedRounds.forEach((round, index) => {
@@ -59,14 +66,16 @@ export default function LeaderboardPage() {
           if (results && predStr) {
             const prediction = JSON.parse(predStr);
 
+            // FIX: Use direct P10 points calculation to avoid 25-pt freebie bug
             const actualPosOfPredictedP10 = results.positions[prediction.p10] || 20;
-            const p10Score = calculateTotalPoints(prediction.p10, actualPosOfPredictedP10, "none", "none");
+            const p10Score = calculateP10Points(actualPosOfPredictedP10);
+            
+            // DNF Logic: Piastri (DNS) must be excluded (handled by getFirstDnfDriver above)
             const dnfScore = (prediction.dnf && prediction.dnf === results.firstDnf) ? 25 : 0;
             const roundPoints = p10Score + dnfScore;
 
             totalPoints += roundPoints;
             
-            // Mark as last race points if it's the highest round we have results for
             if (index === sortedRounds.length - 1) {
               lastRacePoints = roundPoints;
               latestBreakdown = {
@@ -88,7 +97,6 @@ export default function LeaderboardPage() {
         };
       });
 
-      // Sort and rank
       const sorted = entries.sort((a, b) => b.points - a.points);
       const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
       
