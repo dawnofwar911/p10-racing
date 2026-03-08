@@ -6,19 +6,63 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { createClient } from '@/lib/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 export default function AppNavbar() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
 
   useEffect(() => {
-    const user = localStorage.getItem('p10_current_user');
-    setCurrentUser(user);
-  }, [pathname]);
+    async function getSession() {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
 
-  const handleLogout = () => {
+      if (currentSession) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', currentSession.user.id)
+          .single();
+        
+        if (profile) setCurrentUser(profile.username);
+      } else {
+        const localUser = localStorage.getItem('p10_current_user');
+        setCurrentUser(localUser);
+      }
+    }
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (!newSession) {
+        const localUser = localStorage.getItem('p10_current_user');
+        setCurrentUser(localUser);
+      } else {
+        // Fetch profile for the new session
+        supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', newSession.user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) setCurrentUser(data.username);
+          });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
+    if (session) {
+      await supabase.auth.signOut();
+    }
     localStorage.removeItem('p10_current_user');
     setCurrentUser(null);
     router.push('/');
@@ -57,16 +101,24 @@ export default function AppNavbar() {
           <Link href="/history" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/history' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>History</Link>
         </Nav>
         
-        {currentUser && (
-          <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
-            <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
-              Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
-            </NavbarText>
-            <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-              SIGN OUT
-            </Button>
-          </div>
-        )}
+        <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
+          {currentUser ? (
+            <>
+              <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
+                Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
+              </NavbarText>
+              <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
+                SIGN OUT
+              </Button>
+            </>
+          ) : (
+            <Link href="/auth" passHref legacyBehavior>
+              <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
+                SIGN IN
+              </Button>
+            </Link>
+          )}
+        </div>
       </NavbarCollapse>
     </Navbar>
   );

@@ -6,6 +6,8 @@ import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/li
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
+import { createClient } from '@/lib/supabase/client';
+import { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -26,7 +28,7 @@ interface CommunityPrediction {
 
 export default function PredictPage() {
   const [username, setUsername] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const [p10Driver, setP10Driver] = useState('');
   const [dnfDriver, setDnfDriver] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -37,11 +39,35 @@ export default function PredictPage() {
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
+  
+  const supabase = createClient();
 
-  // Load race and user from localStorage on mount
   useEffect(() => {
     async function init() {
-      const savedUser = localStorage.getItem('p10_current_user');
+      // 1. Handle Session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      
+      let currentUsername = '';
+      if (currentSession) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', currentSession.user.id)
+          .single();
+        if (profile) {
+          currentUsername = profile.username;
+          setUsername(profile.username);
+        }
+      } else {
+        const savedUser = localStorage.getItem('p10_current_user');
+        if (savedUser) {
+          currentUsername = savedUser;
+          setUsername(savedUser);
+        }
+      }
+
+      // 2. Get Race Data
       const races = await fetchCalendar(CURRENT_SEASON);
       let currentRace: PredictRace = RACES[0] as unknown as PredictRace;
       if (races.length > 0) {
@@ -78,6 +104,7 @@ export default function PredictPage() {
         finalDriverList.sort((a: AppDriver, b: AppDriver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
 
+        // Fetch Grid
         let finalGrid: ApiResult[] = [];
         const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
         if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
@@ -87,23 +114,17 @@ export default function PredictPage() {
           if (qualiGrid && qualiGrid.length > 0) {
             const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
             const missing = finalDriverList.filter(d => !presentIds.has(d.id));
-            
             finalGrid = [...qualiGrid];
             missing.forEach((d, i) => {
               finalGrid.push({
                 position: (qualiGrid.length + i + 1).toString(),
                 number: d.number.toString(),
                 grid: (qualiGrid.length + i + 1).toString(),
-                points: '0',
-                status: 'DNS',
-                laps: '0',
+                points: '0', status: 'DNS', laps: '0',
                 Constructor: { constructorId: d.teamId, name: d.team },
                 Driver: {
-                  driverId: d.id,
-                  code: d.code,
-                  permanentNumber: d.number.toString(),
-                  givenName: d.name.split(' ')[0],
-                  familyName: d.name.split(' ').slice(1).join(' ')
+                  driverId: d.id, code: d.code, permanentNumber: d.number.toString(),
+                  givenName: d.name.split(' ')[0], familyName: d.name.split(' ').slice(1).join(' ')
                 }
               });
             });
@@ -117,9 +138,33 @@ export default function PredictPage() {
           setIsLocked(true);
         }
 
+        // 3. Load Prediction
+        if (currentSession) {
+          const { data: dbPred } = await supabase
+            .from('predictions')
+            .select('*')
+            .eq('user_id', currentSession.user.id)
+            .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
+            .single();
+          
+          if (dbPred) {
+            setP10Driver(dbPred.p10_driver_id);
+            setDnfDriver(dbPred.dnf_driver_id);
+          }
+        } else if (currentUsername) {
+          const finalized = localStorage.getItem(`final_pred_${currentUsername}_${currentRace.id}`);
+          if (finalized) {
+            const parsed = JSON.parse(finalized);
+            setP10Driver(parsed.p10);
+            setDnfDriver(parsed.dnf);
+          }
+        }
+
+        // 4. Fetch community predictions (Supabase + LocalStorage fallback)
+        // For now, we'll just stick to LocalStorage for community view until we have more DB data
         const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
         const allPreds = playersList
-          .filter((p: string) => p !== savedUser)
+          .filter((p: string) => p !== currentUsername)
           .map((p: string) => {
             const pred = localStorage.getItem(`final_pred_${p}_${currentRace.id}`);
             return pred ? JSON.parse(pred) : null;
@@ -130,79 +175,63 @@ export default function PredictPage() {
 
       const existingPlayersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
       setExistingPlayers(existingPlayersList);
-
-      if (savedUser) {
-        setUsername(savedUser);
-        setIsLoggedIn(true);
-        const finalized = localStorage.getItem(`final_pred_${savedUser}_${currentRace.id}`);
-        if (finalized) {
-          const parsed: { p10: string, dnf: string } = JSON.parse(finalized);
-          setP10Driver(parsed.p10);
-          setDnfDriver(parsed.dnf);
-        } else {
-          const savedP10 = localStorage.getItem(`p10_${savedUser}_${currentRace.id}_prediction`);
-          const savedDNF = localStorage.getItem(`dnf_${savedUser}_${currentRace.id}_prediction`);
-          if (savedP10) setP10Driver(savedP10);
-          if (savedDNF) setDnfDriver(savedDNF);
-        }
-      }
     }
     init();
-  }, []);
+  }, [supabase]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (p10Driver && dnfDriver) {
+      Haptics.impact({ style: ImpactStyle.Heavy });
+      
+      if (session) {
+        // Save to Supabase
+        const { error } = await supabase
+          .from('predictions')
+          .upsert({
+            user_id: session.user.id,
+            race_id: `${CURRENT_SEASON}_${nextRace.id}`,
+            p10_driver_id: p10Driver,
+            dnf_driver_id: dnfDriver,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id, race_id' });
+        
+        if (error) {
+          alert('Error saving prediction: ' + error.message);
+          return;
+        }
+      } else {
+        // Save to LocalStorage
+        const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id };
+        localStorage.setItem(`final_pred_${username}_${nextRace.id}`, JSON.stringify(prediction));
+        const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
+        if (!players.includes(username)) {
+          players.push(username);
+          localStorage.setItem('p10_players', JSON.stringify(players));
+        }
+      }
+
+      setSubmitted(true);
+    }
+  };
 
   const selectUser = (name: string) => {
     Haptics.selectionChanged();
     localStorage.setItem('p10_current_user', name);
     setUsername(name);
-    setIsLoggedIn(true);
+    // Reload local prediction for this user
     const finalized = localStorage.getItem(`final_pred_${name}_${nextRace.id}`);
     if (finalized) {
       const parsed = JSON.parse(finalized);
       setP10Driver(parsed.p10);
       setDnfDriver(parsed.dnf);
     } else {
-      const savedP10 = localStorage.getItem(`p10_${name}_${nextRace.id}_prediction`);
-      const savedDNF = localStorage.getItem(`dnf_${name}_${nextRace.id}_prediction`);
-      setP10Driver(savedP10 || '');
-      setDnfDriver(savedDNF || '');
+      setP10Driver('');
+      setDnfDriver('');
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (username.trim()) {
-      selectUser(username);
-    }
-  };
-
-  const handleSwitchUser = () => {
-    localStorage.removeItem('p10_current_user');
-    setIsLoggedIn(false);
-    setUsername('');
-    setP10Driver('');
-    setDnfDriver('');
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (p10Driver && dnfDriver) {
-      Haptics.impact({ style: ImpactStyle.Heavy });
-      const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id };
-      localStorage.setItem(`final_pred_${username}_${nextRace.id}`, JSON.stringify(prediction));
-      
-      const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      if (!players.includes(username)) {
-        players.push(username);
-        localStorage.setItem('p10_players', JSON.stringify(players));
-      }
-
-      localStorage.removeItem(`p10_${username}_${nextRace.id}_prediction`);
-      localStorage.removeItem(`dnf_${username}_${nextRace.id}_prediction`);
-      setSubmitted(true);
-    }
-  };
-
-  if (!isLoggedIn) {
+  if (!session && !username) {
     return (
       <main>
         <AppNavbar />
@@ -211,38 +240,31 @@ export default function PredictPage() {
             <Col md={5}>
               <Card className="p-4 border-secondary shadow">
                 <h2 className="h4 mb-4 fw-bold">Who&apos;s Predicting?</h2>
+                
+                <div className="mb-4">
+                  <Link href="/auth" passHref legacyBehavior>
+                    <Button variant="danger" className="w-100 py-3 fw-bold mb-2">SIGN IN / CREATE ACCOUNT</Button>
+                  </Link>
+                  <p className="text-center text-muted small mt-2">OR PLAY AS GUEST (LOCAL ONLY)</p>
+                </div>
+
                 {existingPlayers.length > 0 && (
                   <div className="mb-4">
                     <Form.Label className="text-muted small text-uppercase fw-semibold">Recent Players</Form.Label>
                     <div className="d-flex flex-wrap gap-2">
                       {existingPlayers.map(p => (
-                        <Button 
-                          key={p} 
-                          variant="outline-light" 
-                          size="sm"
-                          onClick={() => selectUser(p)}
-                          className="rounded-pill px-3"
-                        >
-                          {p}
-                        </Button>
+                        <Button key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3">{p}</Button>
                       ))}
                     </div>
                     <hr className="border-secondary mt-4" />
                   </div>
                 )}
-                <Form onSubmit={handleLogin}>
+                <Form onSubmit={(e) => { e.preventDefault(); if (username.trim()) selectUser(username); }}>
                   <Form.Group className="mb-3">
-                    <Form.Label>New Player Name</Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      placeholder="Enter username" 
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                      className="bg-dark text-white border-secondary py-2"
-                    />
+                    <Form.Label>Guest Name</Form.Label>
+                    <Form.Control type="text" placeholder="Enter name" value={username} onChange={(e) => setUsername(e.target.value)} className="bg-dark text-white border-secondary py-2" />
                   </Form.Group>
-                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">Let&apos;s Go</Button>
+                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">CONTINUE AS GUEST</Button>
                 </Form>
               </Card>
             </Col>
@@ -274,9 +296,7 @@ export default function PredictPage() {
           <p className="lead mb-5 text-muted">Good luck for the {nextRace.name}, <span className="text-white fw-bold">{username}</span>.</p>
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
             <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
-            <Link href="/" passHref legacyBehavior>
-              <Button variant="outline-light" size="lg" className="px-5">Home</Button>
-            </Link>
+            <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Home</Button></Link>
           </div>
         </Container>
       </main>
@@ -302,21 +322,20 @@ export default function PredictPage() {
         <Row className="mb-4 align-items-center">
           <Col>
             <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1>
-            <p className="text-muted mb-0">Playing as: <strong className="text-white">{username}</strong></p>
+            <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
           <Col xs="auto" className="d-flex gap-2">
-            {!isLocked && (
-              <Button variant="outline-warning" size="sm" onClick={handleSwitchUser} className="rounded-pill">Switch User</Button>
+            {!isLocked && !session && (
+              <Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); }} className="rounded-pill">Switch Guest</Button>
             )}
           </Col>
         </Row>
+        
         {startingGrid.length > 0 && !isLocked && (
           <Row className="mb-4">
             <Col>
-              <Card className="border-secondary bg-dark bg-opacity-50">
-                <Card.Header className="bg-dark border-secondary py-2">
-                  <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Current Grid Order</h3>
-                </Card.Header>
+              <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm">
+                <Card.Header className="bg-dark border-secondary py-2"><h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Current Grid Order</h3></Card.Header>
                 <Card.Body className="py-2">
                   <div className="d-flex flex-wrap gap-2">
                     {startingGrid.map((result) => (
@@ -331,6 +350,7 @@ export default function PredictPage() {
             </Col>
           </Row>
         )}
+
         {isLocked ? (
           <div className="text-center">
             <Card className="p-5 border-danger bg-dark mb-4 shadow">
@@ -342,26 +362,11 @@ export default function PredictPage() {
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
                     <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Your Prediction</h3>
                     {p10Driver && dnfDriver ? (
-                      <>
-                        <Row className="g-3">
-                          <Col sm={6}>
-                            <div className="p-3 border border-secondary rounded bg-dark">
-                              <div className="text-muted small text-uppercase mb-1">P10 Pick</div>
-                              <div className="h4 mb-0 text-white fw-bold">{drivers.find(d => d.id === p10Driver)?.name || p10Driver}</div>
-                            </div>
-                          </Col>
-                          <Col sm={6}>
-                            <div className="p-3 border border-secondary rounded bg-dark">
-                              <div className="text-muted small text-uppercase mb-1">DNF Pick</div>
-                              <div className="h4 mb-0 text-danger fw-bold">{drivers.find(d => d.id === dnfDriver)?.name || dnfDriver}</div>
-                            </div>
-                          </Col>
-                        </Row>
-                        <Button variant="success" className="mt-4 w-100 fw-bold" onClick={handleShare}>Share Results ↗</Button>
-                      </>
-                    ) : (
-                      <p className="text-warning">No prediction submitted.</p>
-                    )}
+                      <Row className="g-3">
+                        <Col sm={6}><div className="p-3 border border-secondary rounded bg-dark"><div className="text-muted small text-uppercase mb-1">P10 Pick</div><div className="h4 mb-0 text-white fw-bold">{drivers.find(d => d.id === p10Driver)?.name || p10Driver}</div></div></Col>
+                        <Col sm={6}><div className="p-3 border border-secondary rounded bg-dark"><div className="text-muted small text-uppercase mb-1">DNF Pick</div><div className="h4 mb-0 text-danger fw-bold">{drivers.find(d => d.id === dnfDriver)?.name || dnfDriver}</div></div></Col>
+                      </Row>
+                    ) : <p className="text-warning">No prediction submitted.</p>}
                   </div>
                 </Col>
                 <Col lg={6} className="mb-4">
@@ -373,18 +378,12 @@ export default function PredictPage() {
                           <thead><tr className="text-muted"><th>Player</th><th>P10</th><th>DNF</th></tr></thead>
                           <tbody>
                             {communityPredictions.map((pred, idx) => (
-                              <tr key={idx}>
-                                <td className="text-white fw-bold">{pred.username}</td>
-                                <td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td>
-                                <td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td>
-                              </tr>
+                              <tr key={idx}><td className="text-white fw-bold">{pred.username}</td><td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td><td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td></tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                    ) : (
-                      <p className="text-muted small">Only you so far!</p>
-                    )}
+                    ) : <p className="text-muted small">Only you so far!</p>}
                   </div>
                 </Col>
               </Row>
@@ -398,33 +397,11 @@ export default function PredictPage() {
                 <Card className="h-100 shadow-sm border-secondary">
                   <Card.Body className="p-4">
                     <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">P10 Finisher</h3>
-                    <p className="small text-muted mb-4">Pick the driver to finish exactly 10th.</p>
                     <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
                       {drivers.map((driver) => (
-                        <div 
-                          key={`p10-${driver.id}`}
-                          className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
-                            p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'
-                          }`}
-                          onClick={() => {
-                            Haptics.selectionChanged();
-                            setP10Driver(driver.id);
-                          }}
-                          style={{ borderLeft: `6px solid ${driver.color} !important` }}
-                        >
+                        <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
                           <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                          <div className="flex-grow-1">
-                            <div className="fw-bold text-white">{driver.name}</div>
-                            <div className="d-flex align-items-center mt-1">
-                              <span className="team-pill" style={{ 
-                                backgroundColor: driver.color, 
-                                color: getContrastColor(driver.color),
-                                fontSize: '0.6rem' 
-                              }}>
-                                {driver.team}
-                              </span>
-                            </div>
-                          </div>
+                          <div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>
                           {p10Driver === driver.id && <div className="text-danger">●</div>}
                         </div>
                       ))}
@@ -436,33 +413,11 @@ export default function PredictPage() {
                 <Card className="h-100 shadow-sm border-secondary">
                   <Card.Body className="p-4">
                     <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">First DNF</h3>
-                    <p className="small text-muted mb-4">Pick the first driver to retire from the race.</p>
                     <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
                       {drivers.map((driver) => (
-                        <div 
-                          key={`dnf-${driver.id}`}
-                          className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
-                            dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'
-                          }`}
-                          onClick={() => {
-                            Haptics.selectionChanged();
-                            setDnfDriver(driver.id);
-                          }}
-                          style={{ borderLeft: `6px solid ${driver.color} !important` }}
-                        >
+                        <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
                           <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                          <div className="flex-grow-1">
-                            <div className="fw-bold text-white">{driver.name}</div>
-                            <div className="d-flex align-items-center mt-1">
-                              <span className="team-pill" style={{ 
-                                backgroundColor: driver.color, 
-                                color: getContrastColor(driver.color),
-                                fontSize: '0.6rem' 
-                              }}>
-                                {driver.team}
-                              </span>
-                            </div>
-                          </div>
+                          <div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>
                           {dnfDriver === driver.id && <div className="text-danger">●</div>}
                         </div>
                       ))}
