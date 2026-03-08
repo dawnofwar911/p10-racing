@@ -5,15 +5,32 @@
   --f1-grey: #38383f;
 }
 
+/* Base Body Styles */
 body {
   background-color: var(--f1-black);
   color: white;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   overflow-x: hidden;
-  /* SAFE AREA FALLBACK - Ensuring content is pushed down */
-  padding-top: env(safe-area-inset-top, 24px);
+  
+  /* Pushes content down for status bar without leaving white space */
+  /* Using padding ensures the background color remains consistent */
+  padding-top: env(safe-area-inset-top, 16px); 
 }
+
+/* Ensure no global opacity filters are muting text colors */
+* {
+  opacity: 1 !important;
+}
+
+/* Restore opacity ONLY where explicitly intended for subtle design */
+.text-muted, .opacity-75, .opacity-50, .opacity-25 {
+  opacity: unset !important; /* Resetting the wildcard !important */
+}
+
+/* Explicitly set high-contrast text helpers */
+.text-white { color: #ffffff !important; opacity: 1 !important; }
+.text-danger { color: var(--f1-red) !important; opacity: 1 !important; }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
