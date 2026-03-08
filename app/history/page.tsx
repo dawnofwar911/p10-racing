@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Navbar, Spinner, Table } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriverId } from '@/lib/api';
+import { fetchCalendar, fetchRaceResults, getFirstDnfDriver } from '@/lib/api';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -15,18 +15,18 @@ export default function HistoryPage() {
     async function loadHistory() {
       const races = await fetchCalendar(CURRENT_SEASON);
       const now = new Date();
-      const finished = races.filter(r => new Date(r.date) < now);
 
-      const historyData = await Promise.all(finished.map(async (r) => {
+      const historyData = await Promise.all(races.map(async (r) => {
+        // A race is "finished" if results are available
         const results = await fetchRaceResults(CURRENT_SEASON, parseInt(r.round));
         if (results) {
           const p10 = results.Results.find((res: any) => res.position === "10");
-          const dnfId = getFirstDnfDriverId(results);
+          const dnf = getFirstDnfDriver(results);
           return {
             round: r.round,
             name: r.raceName,
             p10: p10 ? `${p10.Driver.givenName} ${p10.Driver.familyName}` : 'N/A',
-            dnf: dnfId || 'None',
+            dnf: dnf ? `${dnf.givenName} ${dnf.familyName}` : 'None',
             winner: `${results.Results[0].Driver.givenName} ${results.Results[0].Driver.familyName}`
           };
         }
@@ -54,23 +54,23 @@ export default function HistoryPage() {
           <Row>
             {history.map(race => (
               <Col md={6} lg={4} key={race.round} className="mb-4">
-                <Card className="h-100 border-secondary">
-                  <Card.Header className="bg-dark border-secondary d-flex justify-content-between">
-                    <span className="fw-bold">Round {race.round}</span>
-                    <span className="text-muted small">{race.name}</span>
+                <Card className="h-100 border-secondary shadow-sm">
+                  <Card.Header className="bg-dark border-secondary d-flex justify-content-between align-items-center py-3">
+                    <span className="fw-bold text-danger">ROUND {race.round}</span>
+                    <span className="text-muted small text-uppercase">{race.name}</span>
                   </Card.Header>
-                  <Card.Body>
-                    <div className="mb-3">
-                      <small className="text-muted text-uppercase d-block">P10 Finisher</small>
-                      <span className="fs-5 fw-bold text-white">{race.p10}</span>
+                  <Card.Body className="p-4">
+                    <div className="mb-4">
+                      <small className="text-muted text-uppercase d-block mb-1 letter-spacing-1">P10 Finisher</small>
+                      <span className="fs-4 fw-bold text-white">{race.p10}</span>
                     </div>
-                    <div className="mb-3">
-                      <small className="text-muted text-uppercase d-block">First DNF</small>
-                      <span className="fs-5 fw-bold text-danger">{race.dnf}</span>
+                    <div className="mb-4">
+                      <small className="text-muted text-uppercase d-block mb-1 letter-spacing-1">First DNF</small>
+                      <span className="fs-4 fw-bold text-danger">{race.dnf}</span>
                     </div>
-                    <div>
-                      <small className="text-muted text-uppercase d-block">Race Winner</small>
-                      <span className="small text-white">{race.winner}</span>
+                    <div className="pt-3 border-top border-secondary">
+                      <small className="text-muted text-uppercase d-block mb-1">Race Winner</small>
+                      <span className="text-white fw-semibold">{race.winner}</span>
                     </div>
                   </Card.Body>
                 </Card>
@@ -78,7 +78,7 @@ export default function HistoryPage() {
             ))}
             {history.length === 0 && (
               <Col className="text-center py-5">
-                <p className="text-muted">No races have finished yet in the {CURRENT_SEASON} season.</p>
+                <p className="text-muted">No race results available yet for the {CURRENT_SEASON} season.</p>
               </Col>
             )}
           </Row>

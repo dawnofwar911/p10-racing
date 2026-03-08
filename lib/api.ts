@@ -79,11 +79,12 @@ export async function fetchDrivers(season: number): Promise<any[]> {
   try {
     // 1. Try to get pairings from the latest available results or standings
     const response = await fetch(`${BASE_URL}/${season}/driverStandings.json`);
+    let apiDrivers: any[] = [];
     if (response.ok) {
       const data = await response.json();
       const standings = data.MRData.StandingsTable.StandingsLists[0];
       if (standings && standings.DriverStandings.length > 0) {
-        return standings.DriverStandings.map((s: any) => ({
+        apiDrivers = standings.DriverStandings.map((s: any) => ({
           id: s.Driver.driverId,
           name: `${s.Driver.givenName} ${s.Driver.familyName}`,
           team: s.Constructors[0].name,
@@ -95,26 +96,32 @@ export async function fetchDrivers(season: number): Promise<any[]> {
       }
     }
 
-    // 2. Try Round 1 results specifically
+    // 2. Try Round 1 results to get the actual numbers being used this season (e.g. #1 for champ)
     const r1Response = await fetch(`${BASE_URL}/${season}/1/results.json`);
     if (r1Response.ok) {
       const r1Data = await r1Response.json();
       const race = r1Data.MRData.RaceTable.Races[0];
       if (race && race.Results) {
-        return race.Results.map((r: any) => ({
-          id: r.Driver.driverId,
-          name: `${r.Driver.givenName} ${r.Driver.familyName}`,
-          team: r.Constructor.name,
-          teamId: r.Constructor.constructorId,
-          code: r.Driver.code,
-          number: parseInt(r.Driver.permanentNumber),
-          color: TEAM_COLORS[r.Constructor.constructorId] || '#B6BABD'
-        }));
+        race.Results.forEach((r: any) => {
+          const existing = apiDrivers.find(d => d.id === r.Driver.driverId);
+          if (existing) {
+            existing.number = parseInt(r.number);
+          } else {
+            apiDrivers.push({
+              id: r.Driver.driverId,
+              name: `${r.Driver.givenName} ${r.Driver.familyName}`,
+              team: r.Constructor.name,
+              teamId: r.Constructor.constructorId,
+              code: r.Driver.code,
+              number: parseInt(r.number),
+              color: TEAM_COLORS[r.Constructor.constructorId] || '#B6BABD'
+            });
+          }
+        });
       }
     }
 
-    // 3. Last resort: Return empty so the component can use hardcoded FALLBACK_DRIVERS
-    return [];
+    return apiDrivers;
   } catch (error) {
     console.error('Error fetching drivers:', error);
     return [];
@@ -173,24 +180,22 @@ export function getP10DriverId(race: ApiRace): string | null {
   return p10Result ? p10Result.Driver.driverId : null;
 }
 
-export function getFirstDnfDriverId(race: ApiRace): string | null {
+export function getFirstDnfDriver(race: ApiRace): ApiDriver | null {
   // Filter for results where status indicates a retirement.
-  // "Finished" and statuses indicating being laps down (e.g. "+1 Lap", "Lapped") 
-  // are usually considered classified finishers, not DNFs.
+  // We want to exclude "Finished", lapped finishers, and "Did not start" (DNS).
   const retirements = race.Results.filter(r => {
-    const s = r.status;
-    const isFinished = s === "Finished";
-    const isLapped = s.toLowerCase().includes("lap"); 
+    const s = r.status.toLowerCase();
+    const isFinished = s === "finished";
+    const isLapped = s.includes("lap"); 
+    const isDns = s.includes("not start") || s === "dns";
     
-    // In Ergast/Jolpica, DNFs have statuses like "Accident", "Engine", "Power Unit", "Collision", etc.
-    return !isFinished && !isLapped;
+    return !isFinished && !isLapped && !isDns;
   });
 
   if (retirements.length === 0) return null;
 
   // The first DNF is the one who completed the fewest laps.
-  // Note: This is a simplification; in a real crash on Lap 1, multiple might have 0 laps.
   retirements.sort((a, b) => parseInt(a.laps) - parseInt(b.laps));
   
-  return retirements[0].Driver.driverId;
+  return retirements[0].Driver;
 }
