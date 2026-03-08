@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: '#e10600',
+  themeColor: '#15151e',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -30,20 +30,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <div style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
-          <NativeWrapper>
-            <OfflineStatus />
-            <Suspense fallback={<Loading />}>
-              <PageTransition>
-                <div className="page-transition">
-                  {children}
-                </div>
-              </PageTransition>
-            </Suspense>
-          </NativeWrapper>
-        </div>
+    <html lang="en" style={{ backgroundColor: '#15151e' }}>
+      <body className={inter.className} style={{ backgroundColor: '#15151e' }}>
+        <NativeWrapper>
+          <OfflineStatus />
+          <Suspense fallback={<Loading />}>
+            <PageTransition>
+              <div className="page-transition">
+                {children}
+              </div>
+            </PageTransition>
+          </Suspense>
+        </NativeWrapper>
       </body>
     </html>
   );
