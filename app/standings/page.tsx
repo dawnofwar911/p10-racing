@@ -55,7 +55,9 @@ export default function StandingsPage() {
                         {d.team}
                       </span>
                     </td>
-                    <td className="text-end pe-4 driver-number opacity-50 fs-4">{d.number}</td>
+                    <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>
+                      {d.number}
+                    </td>
                   </tr>
                 ))}
               </tbody>
