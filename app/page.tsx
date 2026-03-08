@@ -146,7 +146,7 @@ export default function Home() {
         </Row>
 
         <Row className="mt-4 g-4 px-2">
-          <Col md={6}>
+          <Col md={4}>
             <div className="p-4 border border-secondary rounded h-100 bg-dark shadow-sm">
               <h3 className="h6 text-uppercase fw-bold text-danger letter-spacing-1 mb-3">Next Race</h3>
               {loading ? (
@@ -162,9 +162,19 @@ export default function Home() {
               )}
             </div>
           </Col>
+
+          <Col md={4}>
+            <div className="p-4 border border-secondary rounded h-100 bg-dark shadow-sm">
+              <h3 className="h6 text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-3">Your Leagues</h3>
+              <p className="fs-4 fw-bold mb-2 text-white">Compete with Friends</p>
+              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-4 fw-bold mt-2" onClick={triggerHaptic}>
+                View Leagues →
+              </Link>
+            </div>
+          </Col>
           
           {currentUser && (
-            <Col md={6}>
+            <Col md={4}>
               <div className="p-4 border border-danger border-opacity-50 rounded h-100 bg-danger bg-opacity-10 shadow-sm">
                 <h3 className="h6 text-uppercase text-white fw-bold letter-spacing-1 mb-3">Your Prediction</h3>
                 {userPrediction ? (
@@ -172,13 +182,13 @@ export default function Home() {
                     <Col xs={6}>
                       <small className="text-white opacity-50 d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>P10 Pick</small>
                       <span className="fs-5 fw-bold text-white">
-                        {allDrivers.find(d => d.id === userPrediction.p10)?.name || (userPrediction.p10 && userPrediction.p10.toUpperCase())}
+                        {allDrivers.find(d => d.id === userPrediction.p10)?.name || (userPrediction.p10 && userPrediction.p10.toUpperCase().replace('_', ' '))}
                       </span>
                     </Col>
                     <Col xs={6}>
                       <small className="text-white opacity-50 d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>First DNF</small>
                       <span className="fs-5 fw-bold text-danger">
-                        {allDrivers.find(d => d.id === userPrediction.dnf)?.name || (userPrediction.dnf && userPrediction.dnf.toUpperCase())}
+                        {allDrivers.find(d => d.id === userPrediction.dnf)?.name || (userPrediction.dnf && userPrediction.dnf.toUpperCase().replace('_', ' '))}
                       </span>
                     </Col>
                   </Row>
@@ -192,11 +202,27 @@ export default function Home() {
             </Col>
           )}
         </Row>
+
+        {!currentUser && (
+          <Row className="mt-5 justify-content-center">
+            <Col md={8}>
+              <div className="p-5 border border-primary border-opacity-25 rounded bg-primary bg-opacity-10 text-center shadow-sm">
+                <h2 className="h4 fw-bold text-white mb-3">Ready to Join the Grid?</h2>
+                <p className="text-white opacity-75 mb-4">Create an account to save your predictions across devices and compete in private leagues with your friends.</p>
+                <Link href="/auth" passHref legacyBehavior>
+                  <Button variant="primary" className="px-5 py-3 fw-bold rounded-pill" onClick={triggerHaptic}>GET STARTED</Button>
+                </Link>
+              </div>
+            </Col>
+          </Row>
+        )}
       </Container>
 
       <footer className="mt-auto py-5 border-top border-secondary border-opacity-25 text-center mt-5">
-        <p className="text-white opacity-25 small mb-1 fw-bold letter-spacing-1">© 2026 P10 RACING</p>
+        <p className="text-white opacity-25 small mb-1 fw-bold letter-spacing-1">© 2026 P10 RACING • v1.0.0</p>
         <Link href="/admin" className="text-white small text-decoration-none opacity-25" onClick={triggerHaptic}>ADMIN</Link>
+        <span className="mx-2 text-white opacity-10">|</span>
+        <Link href="/privacy.html" className="text-white small text-decoration-none opacity-25" onClick={triggerHaptic}>PRIVACY</Link>
       </footer>
     </main>
   );

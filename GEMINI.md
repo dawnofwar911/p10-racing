@@ -41,7 +41,8 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 
 ---
 
-## 🍎 Phase 5: Apple App Store Release 🏗️ TO DO
+## 🍎 Phase 5: Apple App Store Release ⏸️ PAUSED (Optional)
+*   [ ] **Note:** This phase requires a $99/year Apple Developer Program subscription.
 *   [ ] **iOS Platform Integration:** Add `@capacitor/ios` and initialize the Xcode project.
 *   [ ] **Apple Developer Program:** Register for an individual/organization developer account.
 *   [ ] **App Store Connect:** Set up app metadata, icons, and screenshots for iOS.
