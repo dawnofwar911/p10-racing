@@ -78,7 +78,9 @@ export default function LeaguesPage() {
         const key = localStorage.key(i);
         if (key?.startsWith(`final_pred_${guestName}_`)) {
           const raceId = key.replace(`final_pred_${guestName}_`, "");
-          const pred = JSON.parse(localStorage.getItem(key) || "");
+          const predStr = localStorage.getItem(key);
+          if (!predStr) continue;
+          const pred = JSON.parse(predStr);
           
           if (pred) {
             const { error: upsertError } = await supabase
@@ -96,8 +98,12 @@ export default function LeaguesPage() {
         }
       }
       setSuccess(`Successfully imported ${count} predictions to your cloud account!`);
-    } catch (err: any) {
-      setError('Migration failed: ' + err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError('Migration failed: ' + err.message);
+      } else {
+        setError('Migration failed with an unknown error.');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -125,7 +131,7 @@ export default function LeaguesPage() {
       if (memberError) throw memberError;
 
       setNewLeagueName('');
-      fetchLeagues(session.user.id);
+      if (session?.user?.id) fetchLeagues(session.user.id);
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
     } finally {
@@ -159,7 +165,7 @@ export default function LeaguesPage() {
       }
 
       setInviteCode('');
-      fetchLeagues(session.user.id);
+      if (session?.user?.id) fetchLeagues(session.user.id);
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
     } finally {

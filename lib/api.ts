@@ -123,7 +123,12 @@ export async function fetchDrivers(season: number): Promise<AppDriver[]> {
       const data = await response.json();
       const standings = data.MRData.StandingsTable.StandingsLists[0];
       if (standings && standings.DriverStandings.length > 0) {
-        standings.DriverStandings.forEach((s: any) => {
+        interface ApiStanding {
+          points: string;
+          Driver: ApiDriver;
+          Constructors: { constructorId: string; name: string }[];
+        }
+        standings.DriverStandings.forEach((s: ApiStanding) => {
           apiDrivers.push({
             id: s.Driver.driverId,
             name: `${s.Driver.givenName} ${s.Driver.familyName}`,
@@ -185,7 +190,14 @@ export async function fetchDriversFromOpenF1(sessionKey: number): Promise<AppDri
     if (!response.ok) return [];
     
     const data = await response.json();
-    return data.map((d: { name_acronym: string, full_name: string, team_name: string, driver_number: number, team_colour: string }) => ({
+    interface OpenF1Driver {
+      name_acronym: string;
+      full_name: string;
+      team_name: string;
+      driver_number: number;
+      team_colour: string;
+    }
+    return data.map((d: OpenF1Driver) => ({
       id: ACRONYM_TO_ID[d.name_acronym] || d.name_acronym.toLowerCase(),
       name: d.full_name,
       team: d.team_name,
