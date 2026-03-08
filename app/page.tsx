@@ -28,6 +28,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
+  const [showCountdown, setShowCountdown] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
 
   useEffect(() => {
@@ -76,12 +77,16 @@ export default function Home() {
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      const target = new Date(`${nextRace.date}T${nextRace.time}`).getTime();
+      // Ensure we have a valid Date object by handling the ISO format correctly
+      const targetStr = `${nextRace.date}T${nextRace.time}`;
+      const target = new Date(targetStr).getTime();
       const distance = target - now;
 
       if (distance < 0) {
+        setShowCountdown(false);
         clearInterval(timer);
       } else {
+        setShowCountdown(true);
         setCountdown({
           d: Math.floor(distance / (1000 * 60 * 60 * 24)),
           h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -110,17 +115,17 @@ export default function Home() {
               Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
             </p>
             
-            {nextRace && !loading && (
-              <div className="d-flex justify-content-center gap-3 mb-5">
+            {nextRace && !loading && showCountdown && (
+              <div className="d-flex justify-content-center gap-2 gap-md-3 mb-5 px-2">
                 {[
                   { label: 'Days', val: countdown.d },
                   { label: 'Hrs', val: countdown.h },
                   { label: 'Min', val: countdown.m },
                   { label: 'Sec', val: countdown.s }
                 ].map(item => (
-                  <div key={item.label} className="p-3 bg-dark border border-secondary rounded" style={{ minWidth: '80px' }}>
-                    <div className="fs-3 fw-bold">{item.val}</div>
-                    <div className="small text-muted text-uppercase">{item.label}</div>
+                  <div key={item.label} className="p-2 p-md-3 bg-dark border border-secondary rounded flex-fill flex-md-none shadow-sm" style={{ minWidth: '70px', maxWidth: '100px' }}>
+                    <div className="fs-3 fw-bold text-white">{item.val}</div>
+                    <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.65rem', letterSpacing: '1px' }}>{item.label}</div>
                   </div>
                 ))}
               </div>
@@ -128,30 +133,30 @@ export default function Home() {
 
             <div className="d-grid gap-3 d-sm-flex justify-content-sm-center mb-5">
               <Link href="/predict" passHref legacyBehavior>
-                <Button size="lg" className="btn-f1 px-5" onClick={triggerHaptic}>
-                  {userPrediction ? 'Update Prediction' : 'Make Prediction'}
+                <Button size="lg" className="btn-f1 px-5 py-3 fw-bold" onClick={triggerHaptic}>
+                  {userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION'}
                 </Button>
               </Link>
               <Link href="/leaderboard" passHref legacyBehavior>
-                <Button variant="outline-light" size="lg" className="px-5" onClick={triggerHaptic}>
-                  Leaderboard
+                <Button variant="outline-light" size="lg" className="px-5 py-3 fw-bold" onClick={triggerHaptic}>
+                  LEADERBOARD
                 </Button>
               </Link>
             </div>
           </Col>
         </Row>
 
-        <Row className="mt-4 g-4">
+        <Row className="mt-4 g-4 px-2">
           <Col md={6}>
             <div className="p-4 border border-secondary rounded h-100 bg-dark bg-opacity-25 shadow-sm">
-              <h3 className="h5 text-uppercase fw-bold text-danger letter-spacing-1 mb-3">Next Race</h3>
+              <h3 className="h6 text-uppercase fw-bold text-danger letter-spacing-1 mb-3">Next Race</h3>
               {loading ? (
                 <Spinner animation="border" size="sm" variant="danger" />
               ) : (
                 <>
                   <p className="fs-3 fw-bold mb-0 text-white">{nextRace?.name}</p>
                   <p className="text-muted mb-2">{nextRace?.circuit}</p>
-                  <div className="badge bg-danger bg-opacity-25 text-danger px-3 py-2 border border-danger border-opacity-25 rounded-pill">
+                  <div className="badge bg-danger bg-opacity-25 text-danger px-3 py-2 border border-danger border-opacity-25 rounded-pill fw-bold">
                     {nextRace && new Date(nextRace.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                   </div>
                 </>
@@ -162,17 +167,17 @@ export default function Home() {
           {currentUser && (
             <Col md={6}>
               <div className="p-4 border border-danger border-opacity-50 rounded h-100 bg-danger bg-opacity-10 shadow-sm">
-                <h3 className="h5 text-uppercase text-white fw-bold letter-spacing-1 mb-3">Your Prediction</h3>
+                <h3 className="h6 text-uppercase text-white fw-bold letter-spacing-1 mb-3">Your Prediction</h3>
                 {userPrediction ? (
                   <Row className="mt-3 g-4">
                     <Col xs={6}>
-                      <small className="text-muted d-block text-uppercase mb-1 fw-semibold letter-spacing-1">P10 Pick</small>
+                      <small className="text-muted d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>P10 Pick</small>
                       <span className="fs-5 fw-bold text-white">
                         {allDrivers.find(d => d.id === userPrediction.p10)?.name || (userPrediction.p10 && userPrediction.p10.toUpperCase())}
                       </span>
                     </Col>
                     <Col xs={6}>
-                      <small className="text-muted d-block text-uppercase mb-1 fw-semibold letter-spacing-1">First DNF</small>
+                      <small className="text-muted d-block text-uppercase mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>First DNF</small>
                       <span className="fs-5 fw-bold text-danger">
                         {allDrivers.find(d => d.id === userPrediction.dnf)?.name || (userPrediction.dnf && userPrediction.dnf.toUpperCase())}
                       </span>
