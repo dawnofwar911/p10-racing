@@ -1,15 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Navbar, Spinner, Table } from 'react-bootstrap';
+import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver } from '@/lib/api';
+import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
+interface HistoryEntry {
+  round: string;
+  name: string;
+  p10: string;
+  dnf: string;
+  winner: string;
+}
+
 export default function HistoryPage() {
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const triggerHaptic = () => {
@@ -19,10 +27,10 @@ export default function HistoryPage() {
   useEffect(() => {
     async function loadHistory() {
       const races = await fetchCalendar(CURRENT_SEASON);
-      const historyData = await Promise.all(races.map(async (r) => {
+      const historyData = await Promise.all(races.map(async (r: ApiCalendarRace) => {
         const results = await fetchRaceResults(CURRENT_SEASON, parseInt(r.round));
         if (results) {
-          const p10 = results.Results.find((res: any) => res.position === "10");
+          const p10 = results.Results.find((res) => res.position === "10");
           const dnf = getFirstDnfDriver(results);
           return {
             round: r.round,
@@ -35,7 +43,7 @@ export default function HistoryPage() {
         return null;
       }));
 
-      setHistory(historyData.filter(h => h !== null).reverse());
+      setHistory(historyData.filter((h): h is HistoryEntry => h !== null).reverse());
       setLoading(false);
     }
     loadHistory();

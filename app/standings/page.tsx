@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Table, Spinner } from 'react-bootstrap';
-import { CURRENT_SEASON } from '@/lib/data';
+import { Container, Table, Spinner } from 'react-bootstrap';
+import { CURRENT_SEASON, Driver } from '@/lib/data';
 import { fetchDrivers } from '@/lib/api';
 import { getContrastColor } from '@/lib/utils/colors';
 import AppNavbar from '@/components/AppNavbar';
 
 export default function StandingsPage() {
-  const [standings, setStandings] = useState<any[]>([]);
+  const [standings, setStandings] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

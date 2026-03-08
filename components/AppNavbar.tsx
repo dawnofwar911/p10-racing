@@ -1,7 +1,8 @@
 'use client';
 
-import { Navbar, Container, Button, NavbarText, NavbarCollapse, NavbarToggle, Nav } from 'react-bootstrap';
+import { Navbar, Button, NavbarText, NavbarCollapse, NavbarToggle, Nav } from 'react-bootstrap';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -33,11 +34,11 @@ export default function AppNavbar() {
     <Navbar variant="dark" expand="lg" className="px-3 sticky-top border-bottom border-secondary border-opacity-25" style={{ backgroundColor: 'rgba(21, 21, 30, 0.85)', backdropFilter: 'blur(10px)' }}>
       <Link href="/" passHref legacyBehavior>
         <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center" onClick={triggerHaptic}>
-          <img 
+          <Image 
             src="/logo.svg" 
             alt="Logo" 
-            width="28" 
-            height="28" 
+            width={28} 
+            height={28} 
             className="d-inline-block align-top me-2"
           />
           <span className="d-none d-sm-inline letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>RACING</span></span>

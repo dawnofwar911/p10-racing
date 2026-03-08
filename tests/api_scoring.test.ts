@@ -9,6 +9,8 @@ const mockApiRace: ApiRace = {
   season: '2026',
   round: '1',
   raceName: 'Australian GP',
+  Circuit: { circuitName: 'Albert Park' },
+  date: '2026-03-08',
   Results: [
     { number: '63', position: '1', status: 'Finished', laps: '58', Driver: { driverId: 'russell', permanentNumber: '63', code: 'RUS', givenName: 'G', familyName: 'R' }, Constructor: { constructorId: 'mercedes', name: 'M' }, grid: '1', points: '25' },
     { number: '1',  position: '5', status: 'Finished', laps: '58', Driver: { driverId: 'norris', permanentNumber: '4', code: 'NOR', givenName: 'L', familyName: 'N' }, Constructor: { constructorId: 'mclaren', name: 'M' }, grid: '1', points: '10' },
@@ -26,7 +28,7 @@ const userPrediction = {
 
 // 3. Process API data to find actuals (Simplified Leaderboard Logic)
 const raceActuals = {
-  positions: mockApiRace.Results.reduce((acc: any, r: any) => {
+  positions: mockApiRace.Results.reduce((acc: { [key: string]: number }, r) => {
     acc[r.Driver.driverId] = parseInt(r.position);
     return acc;
   }, {}),

@@ -9,7 +9,7 @@ export interface ApiDriver {
 export interface ApiResult {
   number: string;
   position: string;
-  grid: string;
+  grid: string | null;
   points: string;
   Driver: ApiDriver;
   Constructor: {
@@ -24,7 +24,33 @@ export interface ApiRace {
   season: string;
   round: string;
   raceName: string;
+  Circuit: {
+    circuitName: string;
+  };
+  date: string;
+  time?: string;
   Results: ApiResult[];
+}
+
+export interface ApiCalendarRace {
+  season: string;
+  round: string;
+  raceName: string;
+  Circuit: {
+    circuitName: string;
+  };
+  date: string;
+  time?: string;
+}
+
+export interface AppDriver {
+  id: string;
+  name: string;
+  team: string;
+  teamId: string;
+  code: string;
+  number: number;
+  color: string;
 }
 
 const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
@@ -48,7 +74,7 @@ export async function fetchRaceResults(season: number, round: number): Promise<A
   }
 }
 
-export async function fetchCalendar(season: number): Promise<any[]> {
+export async function fetchCalendar(season: number): Promise<ApiCalendarRace[]> {
   try {
     const response = await fetch(`${BASE_URL}/${season}.json`);
     if (!response.ok) return [];
@@ -75,34 +101,34 @@ export const TEAM_COLORS: { [id: string]: string } = {
   cadillac: '#FFD700'
 };
 
-export async function fetchDrivers(season: number): Promise<any[]> {
+export async function fetchDrivers(season: number): Promise<AppDriver[]> {
   try {
-    // 1. Try to get pairings from the latest available results or standings
     const response = await fetch(`${BASE_URL}/${season}/driverStandings.json`);
-    let apiDrivers: any[] = [];
+    const apiDrivers: AppDriver[] = [];
     if (response.ok) {
       const data = await response.json();
       const standings = data.MRData.StandingsTable.StandingsLists[0];
       if (standings && standings.DriverStandings.length > 0) {
-        apiDrivers = standings.DriverStandings.map((s: any) => ({
-          id: s.Driver.driverId,
-          name: `${s.Driver.givenName} ${s.Driver.familyName}`,
-          team: s.Constructors[0].name,
-          teamId: s.Constructors[0].constructorId,
-          code: s.Driver.code,
-          number: parseInt(s.Driver.permanentNumber),
-          color: TEAM_COLORS[s.Constructors[0].constructorId] || '#B6BABD'
-        }));
+        standings.DriverStandings.forEach((s: { Driver: ApiDriver, Constructors: { constructorId: string, name: string }[] }) => {
+          apiDrivers.push({
+            id: s.Driver.driverId,
+            name: `${s.Driver.givenName} ${s.Driver.familyName}`,
+            team: s.Constructors[0].name,
+            teamId: s.Constructors[0].constructorId,
+            code: s.Driver.code,
+            number: s.Driver.permanentNumber ? parseInt(s.Driver.permanentNumber) : 0,
+            color: TEAM_COLORS[s.Constructors[0].constructorId] || '#B6BABD'
+          });
+        });
       }
     }
 
-    // 2. Try Round 1 results to get the actual numbers being used this season (e.g. #1 for champ)
     const r1Response = await fetch(`${BASE_URL}/${season}/1/results.json`);
     if (r1Response.ok) {
       const r1Data = await r1Response.json();
       const race = r1Data.MRData.RaceTable.Races[0];
       if (race && race.Results) {
-        race.Results.forEach((r: any) => {
+        race.Results.forEach((r: ApiResult) => {
           const existing = apiDrivers.find(d => d.id === r.Driver.driverId);
           if (existing) {
             existing.number = parseInt(r.number);
@@ -128,7 +154,7 @@ export async function fetchDrivers(season: number): Promise<any[]> {
   }
 }
 
-export async function fetchDriversFromOpenF1(sessionKey: number): Promise<any[]> {
+export async function fetchDriversFromOpenF1(sessionKey: number): Promise<AppDriver[]> {
   const ACRONYM_TO_ID: { [key: string]: string } = {
     'ALB': 'albon', 'ALO': 'alonso', 'ANT': 'antonelli', 'BEA': 'bearman',
     'BOR': 'bortoleto', 'BOT': 'bottas', 'COL': 'colapinto', 'GAS': 'gasly',
@@ -143,7 +169,7 @@ export async function fetchDriversFromOpenF1(sessionKey: number): Promise<any[]>
     if (!response.ok) return [];
     
     const data = await response.json();
-    return data.map((d: any) => ({
+    return data.map((d: { name_acronym: string, full_name: string, team_name: string, driver_number: number, team_colour: string }) => ({
       id: ACRONYM_TO_ID[d.name_acronym] || d.name_acronym.toLowerCase(),
       name: d.full_name,
       team: d.team_name,
@@ -158,7 +184,7 @@ export async function fetchDriversFromOpenF1(sessionKey: number): Promise<any[]>
   }
 }
 
-export async function fetchQualifyingResults(season: number, round: number): Promise<any[]> {
+export async function fetchQualifyingResults(season: number, round: number): Promise<ApiResult[]> {
   try {
     const response = await fetch(`${BASE_URL}/${season}/${round}/qualifying.json`);
     if (!response.ok) return [];
@@ -181,23 +207,19 @@ export function getP10DriverId(race: ApiRace): string | null {
 }
 
 export function getFirstDnfDriver(race: ApiRace): ApiDriver | null {
-  // Filter for results where status indicates a retirement.
-  // We want to exclude "Finished", lapped finishers, and "Did not start" (DNS).
   const retirements = race.Results.filter(r => {
     const s = r.status.toLowerCase();
     const isFinished = s === "finished";
     const isLapped = s.includes("lap"); 
     const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
     const hasLaps = parseInt(r.laps) > 0;
-
+    
     return !isFinished && !isLapped && !isDns && hasLaps;
   });
 
   if (retirements.length === 0) return null;
 
-  // The first DNF is the one who completed the fewest laps.
   retirements.sort((a, b) => parseInt(a.laps) - parseInt(b.laps));
-
+  
   return retirements[0].Driver;
 }
-

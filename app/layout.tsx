@@ -10,7 +10,7 @@ import OfflineStatus from '@/components/OfflineStatus';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'P10 Racing',
   description: 'F1 Midfield Prediction Game',
   manifest: '/manifest.json',
