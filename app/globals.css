@@ -11,6 +11,11 @@ body {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   overflow-x: hidden;
+  /* Handle Android/iOS safe area (notch/status bar) */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Custom Scrollbar */
@@ -65,16 +70,6 @@ body {
   font-style: italic;
 }
 
-/* Page Transitions */
-.page-transition {
-  animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 /* Native-style list items */
 .cursor-pointer {
   cursor: pointer;
@@ -86,4 +81,9 @@ body {
 
 .active-driver-card {
   border-left: 6px solid var(--f1-red) !important;
+}
+
+/* Ensure Navbar respects safe area if sticky */
+.sticky-top {
+  top: env(safe-area-inset-top, 0px) !important;
 }
