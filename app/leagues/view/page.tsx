@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { Container, Row, Col, Table, Card, Spinner, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Table, Card, Spinner, Badge, Button } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
 import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
 import AppNavbar from '@/components/AppNavbar';
+import { Share } from '@capacitor/share';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 interface SimplifiedResults {
   positions: { [driverId: string]: number };
@@ -32,6 +34,20 @@ function LeagueDetailContent() {
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const supabase = createClient();
+
+  const handleShare = async () => {
+    Haptics.impact({ style: ImpactStyle.Medium });
+    try {
+      await Share.share({
+        title: `Join my F1 League: ${leagueName}`,
+        text: `Predict the midfield and compete in my P10 Racing league! Join "${leagueName}" using invite code: ${inviteCode}`,
+        url: 'https://p10racing.app',
+        dialogTitle: 'Invite Friends to League',
+      });
+    } catch (error) {
+      console.error('Error sharing', error);
+    }
+  };
 
   useEffect(() => {
     async function loadLeague() {
@@ -172,7 +188,12 @@ function LeagueDetailContent() {
             </Col>
             <Col xs="auto" className="text-end">
               <small className="text-muted text-uppercase d-block mb-1 fw-bold">Invite Code</small>
-              <code className="fs-4 text-white bg-dark px-3 py-1 rounded border border-secondary">{inviteCode}</code>
+              <div className="d-flex align-items-center gap-2">
+                <code className="fs-4 text-white bg-dark px-3 py-1 rounded border border-secondary">{inviteCode}</code>
+                <Button variant="outline-danger" size="sm" className="rounded-pill px-3 fw-bold" onClick={handleShare}>
+                  SHARE
+                </Button>
+              </div>
             </Col>
           </Row>
 
