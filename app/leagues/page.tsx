@@ -22,7 +22,6 @@ export default function LeaguesPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Create / Join State
   const [newLeagueName, setNewLeagueName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
 
@@ -44,7 +43,6 @@ export default function LeaguesPage() {
   async function fetchLeagues(userId: string) {
     setLoading(true);
     try {
-      // Fetch leagues where user is a member
       const { data, error } = await supabase
         .from('leagues')
         .select('*, league_members!inner(user_id)')
@@ -66,7 +64,6 @@ export default function LeaguesPage() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
-      // 1. Create the league
       const { data: league, error: leagueError } = await supabase
         .from('leagues')
         .insert([{ name: newLeagueName, created_by: session.user.id }])
@@ -75,7 +72,6 @@ export default function LeaguesPage() {
 
       if (leagueError) throw leagueError;
 
-      // 2. Add creator as a member
       const { error: memberError } = await supabase
         .from('league_members')
         .insert([{ league_id: league.id, user_id: session.user.id }]);
@@ -84,7 +80,6 @@ export default function LeaguesPage() {
 
       setNewLeagueName('');
       fetchLeagues(session.user.id);
-      alert(`League "${league.name}" created! Code: ${league.invite_code}`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -99,7 +94,6 @@ export default function LeaguesPage() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
-      // 1. Find the league by code
       const { data: league, error: leagueError } = await supabase
         .from('leagues')
         .select('id, name')
@@ -108,7 +102,6 @@ export default function LeaguesPage() {
 
       if (leagueError) throw new Error('Invalid invite code.');
 
-      // 2. Join it
       const { error: joinError } = await supabase
         .from('league_members')
         .insert([{ league_id: league.id, user_id: session.user.id }]);
@@ -120,7 +113,6 @@ export default function LeaguesPage() {
 
       setInviteCode('');
       fetchLeagues(session.user.id);
-      alert(`Successfully joined "${league.name}"!`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -164,19 +156,21 @@ export default function LeaguesPage() {
                 ) : leagues.length > 0 ? (
                   <Table variant="dark" hover responsive className="mb-0">
                     <thead>
-                      <tr className="bg-dark bg-opacity-50">
-                        <th className="ps-4">League Name</th>
-                        <th>Invite Code</th>
-                        <th className="text-end pe-4">Actions</th>
+                      <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small">
+                        <th className="ps-4 py-3">League Name</th>
+                        <th className="py-3">Invite Code</th>
+                        <th className="text-end pe-4 py-3">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {leagues.map(league => (
                         <tr key={league.id} style={{ height: '60px', verticalAlign: 'middle' }}>
-                          <td className="ps-4 fw-bold text-white">{league.name}</td>
+                          <td className="ps-4 fw-bold text-white fs-5">{league.name}</td>
                           <td><code className="text-danger fw-bold">{league.invite_code}</code></td>
                           <td className="text-end pe-4">
-                            <Button variant="outline-light" size="sm" className="rounded-pill px-3">View</Button>
+                            <Link href={`/leagues/${league.id}`} passHref legacyBehavior>
+                              <Button variant="outline-light" size="sm" className="rounded-pill px-4 fw-bold">VIEW</Button>
+                            </Link>
                           </td>
                         </tr>
                       ))}
@@ -200,14 +194,7 @@ export default function LeaguesPage() {
                 <Form onSubmit={handleCreateLeague}>
                   <Form.Group className="mb-3">
                     <Form.Label className="small text-muted text-uppercase fw-bold">League Name</Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      placeholder="e.g. The Silverstone Club" 
-                      value={newLeagueName}
-                      onChange={(e) => setNewLeagueName(e.target.value)}
-                      required
-                      className="bg-dark text-white border-secondary py-2"
-                    />
+                    <Form.Control type="text" placeholder="e.g. The Silverstone Club" value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} required className="bg-dark text-white border-secondary py-2" />
                   </Form.Group>
                   <Button type="submit" className="btn-f1 w-100 py-2 fw-bold" disabled={actionLoading}>
                     {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
@@ -224,14 +211,7 @@ export default function LeaguesPage() {
                 <Form onSubmit={handleJoinLeague}>
                   <Form.Group className="mb-3">
                     <Form.Label className="small text-muted text-uppercase fw-bold">Invite Code</Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      placeholder="Enter 8-digit code" 
-                      value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value)}
-                      required
-                      className="bg-dark text-white border-secondary py-2"
-                    />
+                    <Form.Control type="text" placeholder="Enter 8-digit code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} required className="bg-dark text-white border-secondary py-2" />
                   </Form.Group>
                   <Button type="submit" variant="outline-danger" className="w-100 py-2 fw-bold" disabled={actionLoading}>
                     {actionLoading ? <Spinner animation="border" size="sm" /> : 'JOIN'}
