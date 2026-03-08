@@ -26,10 +26,15 @@ export default function AuthPage() {
 
     try {
       if (isSignUp) {
-        // 1. Sign up the user
+        // 1. Sign up the user - Save username in metadata as a backup
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              username: username
+            }
+          }
         });
 
         if (authError) throw authError;
@@ -45,7 +50,7 @@ export default function AuthPage() {
           if (profileError) throw profileError;
         }
         
-        alert('Check your email for the confirmation link (if enabled)!');
+        alert('Account created! Please check your email for a confirmation link (if enabled).');
       } else {
         // Login
         const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
@@ -64,9 +69,14 @@ export default function AuthPage() {
             .single();
           
           if (!existingProfile) {
-            // If profile is missing, try to create one using email prefix as guest fallback
-            const fallbackName = loginData.user.email?.split('@')[0] || 'User';
-            await supabase.from('profiles').upsert([{ id: loginData.user.id, username: fallbackName }]);
+            // Check metadata first, then fallback to email prefix
+            const metadataName = loginData.user.user_metadata?.username;
+            const fallbackName = metadataName || loginData.user.email?.split('@')[0] || 'User';
+            
+            await supabase.from('profiles').upsert([{ 
+              id: loginData.user.id, 
+              username: fallbackName 
+            }]);
           }
         }
         
