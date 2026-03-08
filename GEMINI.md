@@ -5,60 +5,46 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 
 ---
 
-## 🏗️ Phase 1: App Polish & Native Feel
-Before launching to the public, the app must feel like a native mobile application rather than a responsive website.
-
-*   [ ] **Native Navigation:** Implement smooth page transitions and swipe-to-go-back gestures.
-*   [ ] **App Icon & Splash Screen:** Design and integrate high-resolution assets using `@capacitor/splash-screen`.
-*   [ ] **Status Bar Management:** Ensure the Android status bar matches the app's dark theme using `@capacitor/status-bar`.
-*   [ ] **Haptic Feedback:** Add subtle vibrations when submitting predictions or navigating using `@capacitor/haptics`.
-*   [ ] **Offline Support & Error Handling:** Graceful "No Connection" states and cached data display when offline.
-*   [ ] **UI Refinement:** Transition generic Bootstrap components to bespoke, F1-styled native-feeling UI components.
+## 🏗️ Phase 1: App Polish & Native Feel ✅ COMPLETE
+*   [x] **Native Navigation:** Implemented smooth sliding fade transitions using `framer-motion`.
+*   [x] **Infrastructure:** Integrated `@capacitor/splash-screen`, `@capacitor/haptics`, and `@capacitor/status-bar`.
+*   [x] **Status Bar Management:** Configured native wrapper and CSS safe-area-insets to prevent UI overlap.
+*   [x] **Haptic Feedback:** Added tactile response for driver selection, navigation, and submission.
+*   [x] **Offline Support:** Created `OfflineStatus` component for real-time connection monitoring.
+*   [x] **UI Refinement:** Developed bespoke F1-styled components with a global forced dark theme and high-contrast accessibility.
 
 ---
 
-## ⚙️ Phase 2: CI/CD & Automated Pipeline (GitHub Actions)
-Automate the development workflow to ensure stability before every release.
-
-*   [ ] **Code Quality Gates:** Ensure `eslint` and `tsc` (TypeScript compiler) pass on every Pull Request.
-*   [ ] **Automated Test Suite:** Run the Node.js test suite (`tests/run_all.ts`) automatically in GitHub Actions.
-*   [ ] **Capacitor Sync:** Automate the Next.js build (`next build`) and Capacitor sync (`npx cap sync android`).
-*   [ ] **Android APK/AAB Generation:** Configure GitHub Actions to compile the Android project using Gradle and output a signed `.aab` file ready for Play Store upload.
+## ⚙️ Phase 2: CI/CD & Automated Pipeline ✅ COMPLETE
+*   [x] **Code Quality Gates:** GitHub Actions now runs `eslint` and `tsc` on every push.
+*   [x] **Automated Test Suite:** Full Node.js test suite (`tests/run_all.ts`) runs automatically in CI.
+*   [x] **Capacitor Sync:** Pipeline automates `next build` and `npx cap sync android`.
+*   [x] **Android Build:** GitHub Actions compiles the Android project and outputs a debug APK as a build artifact.
 
 ---
 
-## 🌍 Phase 3: The Multiplayer Backend Migration
-To allow users to play with their friends, the app must move away from `localStorage` to a centralized database.
-
-*   [ ] **Backend Selection:** Choose a BaaS (Backend-as-a-Service) like **Supabase** (PostgreSQL) or **Firebase** for rapid authentication and real-time database capabilities.
-*   [ ] **User Authentication:** 
-    *   Implement secure Login/Signup.
-    *   Support Google/Apple OAuth for one-click onboarding.
-*   [ ] **Database Schema Design:**
-    *   `Users`: id, username, avatar.
-    *   `Leagues`: id, name, invite_code.
-    *   `LeagueMembers`: link between Users and Leagues.
-    *   `Predictions`: user_id, race_id, p10_driver_id, dnf_driver_id.
-*   [ ] **Private Leagues:** Allow users to create groups, generate invite links/codes, and compete on private leaderboards.
-*   [ ] **Centralized Scoring Engine:** Move `calculateTotalPoints` to a secure serverless function (e.g., Supabase Edge Functions or Next.js API Routes) to prevent client-side cheating.
+## 🌍 Phase 3: The Multiplayer Backend Migration ✅ COMPLETE
+*   [x] **Backend Selection:** **Supabase** (PostgreSQL) integrated for relational data and authentication.
+*   [x] **User Authentication:** Implemented secure Email/Password login and signup with automated profile repair.
+*   [x] **Database Schema:** Tables for `profiles`, `leagues`, `league_members`, `predictions`, and `verified_results` live in production.
+*   [x] **Private Leagues:** Users can create/join leagues with 8-digit invite codes and view private leaderboards.
+*   [x] **Centralized Scoring:** Scoring engine now supports verified global results synced from Supabase.
+*   [x] **Data Migration:** Built an import tool to move "Guest" data from LocalStorage to the cloud.
 
 ---
 
-## 🚀 Phase 4: App Store Release
-The final steps to get the app into the hands of users.
-
+## 🚀 Phase 4: App Store Release 🏗️ IN PROGRESS
 *   [ ] **Google Play Developer Account:** Register and set up the organization profile.
-*   [ ] **Keystore Management:** Securely store the Android Keystore in GitHub Secrets for automated production signing.
-*   [ ] **Store Listing:** 
-    *   Create compelling screenshots and feature graphics.
-    *   Write SEO-optimized app descriptions.
-*   [ ] **Compliance:** Draft a Privacy Policy and Terms of Service (required for app stores).
-*   [ ] **Push Notifications (Optional but recommended):** Send reminders (e.g., "Qualifying is over! 2 hours left to lock in your P10 picks!") using FCM (Firebase Cloud Messaging).
+*   [ ] **Keystore Management:** Generate production signing key and store in GitHub Secrets.
+*   [ ] **Store Listing:** Create screenshots, feature graphics, and SEO descriptions.
+*   [ ] **AAB Generation:** Update CI/CD to output a signed Android App Bundle (.aab).
+*   [ ] **Push Notifications:** (Optional) Implement FCM for race reminders.
 
 ---
 
 ## 🛠️ Current Tech Stack
-*   **Frontend:** Next.js (React), Bootstrap 5, TypeScript.
-*   **Mobile Wrapper:** Capacitor JS (Android).
-*   **Data Source:** Jolpica F1 API / OpenF1 API.
-*   **Current State:** LocalStorage single-device mode, robust F1 rules engine, full test coverage for scoring edge cases.
+*   **Frontend:** Next.js 15 (React 19), Bootstrap 5, TypeScript, Framer Motion.
+*   **Backend:** Supabase (Auth, PostgreSQL, RLS).
+*   **Mobile:** Capacitor JS 8.
+*   **CI/CD:** GitHub Actions.
+*   **Data Source:** Jolpica F1 API.
