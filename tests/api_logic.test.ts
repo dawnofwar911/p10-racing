@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { getFirstDnfDriverId, ApiRace } from '../lib/api';
+import { getFirstDnfDriver, ApiRace } from '../lib/api';
 
 console.log('\n🧪 Running API Logic Tests...');
 
@@ -28,7 +28,8 @@ const mockRace: ApiRace = {
   Results: [
     createMockResult('winner', 'Finished', '57'),
     createMockResult('lapped_driver', '+1 Lap', '56'),
-    createMockResult('lapped_driver_2', 'Lapped', '55'), // "Lapped" status
+    createMockResult('lapped_driver_2', 'Lapped', '55'),
+    createMockResult('dns_driver', 'Did not start', '0'), // Should be ignored
     createMockResult('late_crash', 'Collision', '50'),
     createMockResult('early_engine', 'Engine', '5'), // Fewest laps, should be First DNF
     createMockResult('mid_accident', 'Accident', '20')
@@ -36,17 +37,9 @@ const mockRace: ApiRace = {
 };
 
 try {
-  const firstDnf = getFirstDnfDriverId(mockRace);
+  const firstDnf = getFirstDnfDriver(mockRace);
   
-  // Logic check:
-  // 'winner' -> Finished (Ignore)
-  // 'lapped_driver' -> +1 Lap (Ignore)
-  // 'lapped_driver_2' -> Lapped (Ignore)
-  // 'late_crash' -> Collision, 50 laps
-  // 'early_engine' -> Engine, 5 laps  <-- WINNER (Lowest Laps)
-  // 'mid_accident' -> Accident, 20 laps
-
-  assert.strictEqual(firstDnf, 'early_engine', `Expected 'early_engine', got '${firstDnf}'`);
+  assert.strictEqual(firstDnf?.driverId, 'early_engine', `Expected 'early_engine', got '${firstDnf?.driverId}'`);
   console.log('  ✅ First DNF Identification (Standard): Passed');
 
 } catch (e) {
@@ -54,19 +47,20 @@ try {
   process.exit(1);
 }
 
-// Test Case 2: No DNFs (Miami 2023 style)
+// Test Case 2: No DNFs
 const noDnfRace: ApiRace = {
   season: '2026',
   round: '2',
   raceName: 'Reliable GP',
   Results: [
     createMockResult('p1', 'Finished', '50'),
-    createMockResult('p20', '+2 Laps', '48')
+    createMockResult('p20', '+2 Laps', '48'),
+    createMockResult('dns', 'Did not start', '0')
   ]
 };
 
 try {
-  const result = getFirstDnfDriverId(noDnfRace);
+  const result = getFirstDnfDriver(noDnfRace);
   assert.strictEqual(result, null, `Expected null for no DNFs, got '${result}'`);
   console.log('  ✅ No DNF Scenario: Passed');
 } catch (e) {

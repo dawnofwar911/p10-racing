@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Navbar, Spinner } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, fetchDriversFromOpenF1 } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults } from '@/lib/api';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -33,21 +33,23 @@ export default function PredictPage() {
       if (races.length > 0) {
         const now = new Date();
         
-        // Find the first race that is either in the future 
-        // OR has happened but DOES NOT HAVE RESULTS YET
+        // Find the first race that is in the future
+        // A race is "ongoing" for 4 hours after start
         let activeIndex = races.findIndex(r => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
-          return raceTime > now;
+          const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
+          return fourHoursLater > now;
         });
 
         if (activeIndex === -1) activeIndex = races.length - 1;
 
-        // Check if the race that just happened (activeIndex - 1) has results
+        // Check if the previous race has results yet. 
+        // If it DOESN'T, we might still want to show it or at least wait before allowing next round picks.
         if (activeIndex > 0) {
           const prevRace = races[activeIndex - 1];
           const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
           if (!results) {
-            // No results yet! Keep this race as the "active" one for predictions/viewing
+            // No results yet! Keep this race as the "active" one for viewing status
             activeIndex--;
           }
         }
@@ -63,78 +65,26 @@ export default function PredictPage() {
         };
         setNextRace(currentRace);
 
-        let finalGrid: any[] = [];
-        let sessionDrivers: any[] = [];
-
-        // 1a. Try OpenF1 for the starting grid and dynamic session drivers
-        try {
-          // Find the latest qualifying or race session for this meeting
-          const sessionsRes = await fetch(`https://api.openf1.org/v1/sessions?year=${CURRENT_SEASON}&meeting_key=latest`);
-          const sessions = await sessionsRes.json();
-          // Prefer 'Race' then 'Qualifying'
-          const targetSession = sessions.find((s: any) => s.session_name === 'Race') || 
-                               sessions.find((s: any) => s.session_name === 'Qualifying');
-          
-          if (targetSession) {
-            // Fetch the robust 22-driver grid
-            const gridRes = await fetch(`https://api.openf1.org/v1/starting_grid?session_key=${targetSession.session_key}`);
-            const openF1Grid = await gridRes.json();
-            
-            // Fetch session-specific drivers (correct numbers for this year)
-            sessionDrivers = await fetchDriversFromOpenF1(targetSession.session_key);
-            
-            if (openF1Grid && openF1Grid.length > 0) {
-              const apiDrivers = await fetchDrivers(CURRENT_SEASON);
-              const sourceDrivers = sessionDrivers.length > 0 ? sessionDrivers : (apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS);
-              
-              finalGrid = openF1Grid.map((g: any) => {
-                const driver = sourceDrivers.find(d => d.number === g.driver_number);
-                return {
-                  position: g.position.toString(),
-                  number: g.driver_number.toString(),
-                  Driver: {
-                    driverId: driver?.id || `driver_${g.driver_number}`,
-                    code: driver?.code || '???',
-                    permanentNumber: g.driver_number.toString(),
-                    givenName: driver?.name.split(' ')[0] || '',
-                    familyName: driver?.name.split(' ').slice(1).join(' ') || ''
-                  }
-                };
-              });
-            }
-          }
-        } catch (error) {
-          console.error('OpenF1 fetch failed:', error);
-        }
-
-        // 1b. Update driver list with dynamic session data and sort by team
-        let finalDriverList = [];
-        if (sessionDrivers.length > 0) {
-          finalDriverList = sessionDrivers;
-        } else {
-          const apiDrivers = await fetchDrivers(CURRENT_SEASON);
-          finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        }
-        
+        // Fetch dynamic drivers early to get correct numbers
+        const apiDrivers = await fetchDrivers(CURRENT_SEASON);
+        const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
         finalDriverList.sort((a: any, b: any) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
 
-        // 1c. Fallback to Jolpica grid if OpenF1 grid failed
-        if (finalGrid.length === 0) {
-          const gridData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
-          if (gridData && gridData.Results && gridData.Results.length > 0) {
-            finalGrid = gridData.Results.map(r => ({
-              position: r.grid || r.position,
-              number: r.number,
-              Driver: r.Driver
-            }));
-          } else {
-            const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
-            const apiDrivers = await fetchDrivers(CURRENT_SEASON);
-            const sourceDrivers = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-            
+        // Fetch Grid
+        let finalGrid: any[] = [];
+        const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
+        if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
+          finalGrid = resultsData.Results.map(r => ({
+            position: r.grid || r.position,
+            number: r.number,
+            Driver: r.Driver
+          }));
+        } else {
+          const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
+          if (qualiGrid && qualiGrid.length > 0) {
             const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
-            const missing = sourceDrivers.filter(d => !presentIds.has(d.id));
+            const missing = finalDriverList.filter(d => !presentIds.has(d.id));
             
             finalGrid = [...qualiGrid];
             missing.forEach((d, i) => {
@@ -152,7 +102,6 @@ export default function PredictPage() {
             });
           }
         }
-        
         setStartingGrid(finalGrid);
 
         const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
@@ -161,10 +110,10 @@ export default function PredictPage() {
           setIsLocked(true);
         }
 
-        // 1b. Fetch community predictions for this race (excluding current user)
+        // Fetch community predictions for this race (excluding current user)
         const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
         const allPreds = playersList
-          .filter((p: string) => p !== savedUser) // Exclude current user
+          .filter((p: string) => p !== savedUser)
           .map((p: string) => {
             const pred = localStorage.getItem(`final_pred_${p}_${currentRace.id}`);
             return pred ? JSON.parse(pred) : null;
@@ -173,17 +122,11 @@ export default function PredictPage() {
       }
       setLoadingRace(false);
 
-      // 2. Fetch dynamic drivers
-      const apiDrivers = await fetchDrivers(CURRENT_SEASON);
-      if (apiDrivers.length > 0) {
-        setDrivers(apiDrivers);
-      }
-
-      // 3. Get existing players for switching
+      // Get existing players for switching
       const existingPlayersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
       setExistingPlayers(existingPlayersList);
 
-      // 4. Load predictions
+      // Load predictions
       if (savedUser) {
         setUsername(savedUser);
         setIsLoggedIn(true);
@@ -209,17 +152,16 @@ export default function PredictPage() {
     localStorage.setItem('p10_current_user', name);
     setUsername(name);
     setIsLoggedIn(true);
-    // Load predictions for this user
-    const savedP10 = localStorage.getItem(`p10_${name}_${nextRace.id}_prediction`);
-    const savedDNF = localStorage.getItem(`dnf_${name}_${nextRace.id}_prediction`);
     
-    // Also check for finalized prediction to allow editing
+    // Check for finalized prediction first
     const finalized = localStorage.getItem(`final_pred_${name}_${nextRace.id}`);
     if (finalized) {
       const parsed = JSON.parse(finalized);
       setP10Driver(parsed.p10);
       setDnfDriver(parsed.dnf);
     } else {
+      const savedP10 = localStorage.getItem(`p10_${name}_${nextRace.id}_prediction`);
+      const savedDNF = localStorage.getItem(`dnf_${name}_${nextRace.id}_prediction`);
       setP10Driver(savedP10 || '');
       setDnfDriver(savedDNF || '');
     }
@@ -241,7 +183,6 @@ export default function PredictPage() {
   };
 
   const getContrastColor = (hexcolor: string) => {
-    // If it's pure white or very light (like Cadillac Gold), use black text
     if (hexcolor.toLowerCase() === '#ffffff' || hexcolor.toLowerCase() === '#ffd700') {
       return '#000';
     }
@@ -252,7 +193,6 @@ export default function PredictPage() {
     e.preventDefault();
     if (p10Driver && dnfDriver) {
       const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id };
-      // Save finalized prediction indexed by race
       localStorage.setItem(`final_pred_${username}_${nextRace.id}`, JSON.stringify(prediction));
       
       const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
@@ -274,12 +214,12 @@ export default function PredictPage() {
         <Container className="mt-5">
           <Row className="justify-content-center">
             <Col md={5}>
-              <Card className="p-4 border-secondary">
-                <h2 className="h4 mb-4">Who are you?</h2>
+              <Card className="p-4 border-secondary shadow">
+                <h2 className="h4 mb-4 fw-bold">Who's Predicting?</h2>
                 
                 {existingPlayers.length > 0 && (
                   <div className="mb-4">
-                    <Form.Label className="text-muted small text-uppercase">Existing Players</Form.Label>
+                    <Form.Label className="text-muted small text-uppercase fw-semibold">Recent Players</Form.Label>
                     <div className="d-flex flex-wrap gap-2">
                       {existingPlayers.map(p => (
                         <Button 
@@ -287,6 +227,7 @@ export default function PredictPage() {
                           variant="outline-light" 
                           size="sm"
                           onClick={() => selectUser(p)}
+                          className="rounded-pill px-3"
                         >
                           {p}
                         </Button>
@@ -298,17 +239,17 @@ export default function PredictPage() {
 
                 <Form onSubmit={handleLogin}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Enter New Username</Form.Label>
+                    <Form.Label>New Player Name</Form.Label>
                     <Form.Control 
                       type="text" 
-                      placeholder="e.g. lando4lyf" 
+                      placeholder="Enter username" 
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
-                      className="bg-dark text-white border-secondary"
+                      className="bg-dark text-white border-secondary py-2"
                     />
                   </Form.Group>
-                  <Button type="submit" className="btn-f1 w-100">Start Predicting</Button>
+                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">Let's Go</Button>
                 </Form>
               </Card>
             </Col>
@@ -330,7 +271,7 @@ export default function PredictPage() {
       }).catch(console.error);
     } else {
       navigator.clipboard.writeText(text);
-      alert('Prediction copied to clipboard! Send it to your friends.');
+      alert('Prediction copied to clipboard!');
     }
   };
 
@@ -340,17 +281,29 @@ export default function PredictPage() {
         <AppNavbar />
         <Container className="mt-5 text-center">
           <div className="mb-4 display-1">🏁</div>
-          <h2 className="display-6 mb-4">Prediction Received!</h2>
+          <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
           <p className="lead mb-5 text-muted">Good luck for the {nextRace.name}, <span className="text-white fw-bold">{username}</span>.</p>
           
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
-            <Button variant="success" size="lg" onClick={handleShare} className="px-4">
+            <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">
               Share Picks ↗
             </Button>
             <Link href="/" passHref legacyBehavior>
-              <Button variant="outline-light" size="lg" className="px-4">Back to Home</Button>
+              <Button variant="outline-light" size="lg" className="px-5">Home</Button>
             </Link>
           </div>
+        </Container>
+      </main>
+    );
+  }
+
+  if (loadingRace) {
+    return (
+      <main>
+        <AppNavbar />
+        <Container className="mt-5 text-center">
+          <Spinner animation="border" variant="danger" />
+          <p className="mt-3 text-muted">Loading race data...</p>
         </Container>
       </main>
     );
@@ -363,32 +316,19 @@ export default function PredictPage() {
       <Container className="mt-4 mb-5">
         <Row className="mb-4 align-items-center">
           <Col>
-            <h1 className="h2 mb-1">Make Your Prediction</h1>
-            <p className="text-muted mb-0">Playing as: <strong className="text-white">{username}</strong> • {nextRace.name}</p>
+            <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1>
+            <p className="text-muted mb-0">Playing as: <strong className="text-white">{username}</strong></p>
           </Col>
           <Col xs="auto" className="d-flex gap-2">
             {!isLocked && (
-              <>
-                <Button 
-                  variant="outline-warning" 
-                  size="sm"
-                  onClick={handleSwitchUser}
-                >
-                  Switch User
-                </Button>
-                <Button 
-                  variant="outline-secondary" 
-                  size="sm"
-                  onClick={() => {
-                    setP10Driver('');
-                    setDnfDriver('');
-                    localStorage.removeItem(`p10_${username}_prediction`);
-                    localStorage.removeItem(`dnf_${username}_prediction`);
-                  }}
-                >
-                  Clear
-                </Button>
-              </>
+              <Button 
+                variant="outline-warning" 
+                size="sm"
+                onClick={handleSwitchUser}
+                className="rounded-pill"
+              >
+                Switch User
+              </Button>
             )}
           </Col>
         </Row>
@@ -397,14 +337,15 @@ export default function PredictPage() {
           <Row className="mb-4">
             <Col>
               <Card className="border-secondary bg-dark bg-opacity-50">
-                <Card.Header className="bg-dark border-secondary">
-                  <h3 className="h6 mb-0 text-uppercase fw-bold text-danger">Starting Grid (Qualifying Results)</h3>
+                <Card.Header className="bg-dark border-secondary py-2">
+                  <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Current Grid Order</h3>
                 </Card.Header>
                 <Card.Body className="py-2">
                   <div className="d-flex flex-wrap gap-2">
                     {startingGrid.map((result) => (
                       <div key={result.number} className="small border-end border-secondary pe-2">
-                        <span className="text-muted">{result.position}.</span> <span className="text-white fw-bold">{result.Driver.code}</span>
+                        <span className="text-muted me-1">{result.position}.</span> 
+                        <span className="text-white fw-bold">{result.Driver.code}</span>
                       </div>
                     ))}
                   </div>
@@ -416,52 +357,52 @@ export default function PredictPage() {
 
         {isLocked ? (
           <div className="text-center">
-            <Card className="p-5 border-danger bg-dark mb-4">
+            <Card className="p-5 border-danger bg-dark mb-4 shadow">
               <div className="display-4 mb-3">🔒</div>
-              <h2 className="mb-4">Predictions Closed</h2>
-              <p className="lead mb-4 text-muted">The {nextRace.name} started more than 2 minutes ago. Predictions are no longer accepted.</p>
+              <h2 className="mb-4 fw-bold">Predictions Closed</h2>
+              <p className="lead mb-4 text-muted">The {nextRace.name} is underway. Good luck!</p>
               
               <Row className="text-start">
                 <Col lg={6} className="mb-4">
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
-                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-2">Your Prediction</h3>
+                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Your Prediction</h3>
                     {p10Driver && dnfDriver ? (
                       <>
                         <Row className="g-3">
                           <Col sm={6}>
-                            <div className="p-3 border border-secondary rounded">
-                              <div className="text-muted small text-uppercase mb-1">P10 Finisher</div>
-                              <div className="h4 mb-0 text-danger">{drivers.find(d => d.id === p10Driver)?.name || p10Driver}</div>
+                            <div className="p-3 border border-secondary rounded bg-dark">
+                              <div className="text-muted small text-uppercase mb-1">P10 Pick</div>
+                              <div className="h4 mb-0 text-white fw-bold">{drivers.find(d => d.id === p10Driver)?.name || p10Driver}</div>
                             </div>
                           </Col>
                           <Col sm={6}>
-                            <div className="p-3 border border-secondary rounded">
-                              <div className="text-muted small text-uppercase mb-1">First DNF</div>
-                              <div className="h4 mb-0 text-danger">{drivers.find(d => d.id === dnfDriver)?.name || dnfDriver}</div>
+                            <div className="p-3 border border-secondary rounded bg-dark">
+                              <div className="text-muted small text-uppercase mb-1">DNF Pick</div>
+                              <div className="h4 mb-0 text-danger fw-bold">{drivers.find(d => d.id === dnfDriver)?.name || dnfDriver}</div>
                             </div>
                           </Col>
                         </Row>
-                        <Button variant="success" className="mt-4 w-100" onClick={handleShare}>
-                          Share Your Picks ↗
+                        <Button variant="success" className="mt-4 w-100 fw-bold" onClick={handleShare}>
+                          Share Results ↗
                         </Button>
                       </>
                     ) : (
-                      <p className="text-warning">No prediction was submitted for this race.</p>
+                      <p className="text-warning">No prediction submitted.</p>
                     )}
                   </div>
                 </Col>
                 
                 <Col lg={6} className="mb-4">
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
-                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-2">Community Picks</h3>
+                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Community</h3>
                     {communityPredictions.length > 0 ? (
                       <div className="table-responsive">
                         <table className="table table-dark table-hover mb-0 small">
                           <thead>
-                            <tr>
+                            <tr className="text-muted">
                               <th>Player</th>
-                              <th>P10 Pick</th>
-                              <th>DNF Pick</th>
+                              <th>P10</th>
+                              <th>DNF</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -469,14 +410,14 @@ export default function PredictPage() {
                               <tr key={idx}>
                                 <td className="text-white fw-bold">{pred.username}</td>
                                 <td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td>
-                                <td>{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td>
+                                <td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
                     ) : (
-                      <p className="text-muted small">No other predictions yet.</p>
+                      <p className="text-muted small">Only you so far!</p>
                     )}
                   </div>
                 </Col>
@@ -484,82 +425,70 @@ export default function PredictPage() {
             </Card>
             
             <Link href="/" passHref legacyBehavior>
-              <Button variant="outline-light" size="lg">Back to Home</Button>
+              <Button variant="outline-light" size="lg" className="px-5">Back Home</Button>
             </Link>
           </div>
         ) : (
           <Form onSubmit={handleSubmit}>
             <Row>
               <Col md={6} className="mb-4">
-                <Card className="h-100 shadow-sm">
+                <Card className="h-100 shadow-sm border-secondary">
                   <Card.Body className="p-4">
-                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3">P10 FINISHER</h3>
-                    <p className="small text-muted mb-4">Who will cross the line in 10th place?</p>
+                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">P10 Finisher</h3>
+                    <p className="small text-muted mb-4">Pick the driver to finish exactly 10th.</p>
                     
-                    <Form.Group>
+                    <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
                       {drivers.map((driver) => (
                         <div 
                           key={`p10-${driver.id}`}
                           className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
-                            p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25' : 'border-secondary opacity-75'
+                            p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'
                           }`}
                           onClick={() => setP10Driver(driver.id)}
                           style={{ borderLeft: `6px solid ${driver.color} !important` }}
                         >
-                          <div className="driver-number me-3 text-white" style={{ width: '40px', opacity: p10Driver === driver.id ? 1 : 0.6 }}>
+                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>
                             {driver.number}
                           </div>
                           <div className="flex-grow-1">
-                            <div className={`fw-bold ${p10Driver === driver.id ? 'text-white' : 'text-light'}`} style={{ fontSize: '1.1rem' }}>{driver.name}</div>
-                            <div className="d-flex align-items-center mt-1">
-                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color) }}>
-                                {driver.team}
-                              </span>
-                            </div>
+                            <div className="fw-bold text-white">{driver.name}</div>
+                            <div className="text-muted small">{driver.team}</div>
                           </div>
-                          {p10Driver === driver.id && (
-                            <div className="bg-danger rounded-circle p-1 ms-2" style={{ width: '12px', height: '12px' }}></div>
-                          )}
+                          {p10Driver === driver.id && <div className="text-danger">●</div>}
                         </div>
                       ))}
-                    </Form.Group>
+                    </div>
                   </Card.Body>
                 </Card>
               </Col>
 
               <Col md={6} className="mb-4">
-                <Card className="h-100 shadow-sm">
+                <Card className="h-100 shadow-sm border-secondary">
                   <Card.Body className="p-4">
-                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3">FIRST DNF</h3>
-                    <p className="small text-muted mb-4">Which driver will be the first to retire?</p>
+                    <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">First DNF</h3>
+                    <p className="small text-muted mb-4">Pick the first driver to retire from the race.</p>
                     
-                    <Form.Group>
+                    <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
                       {drivers.map((driver) => (
                         <div 
                           key={`dnf-${driver.id}`}
                           className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
-                            dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25' : 'border-secondary opacity-75'
+                            dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'
                           }`}
                           onClick={() => setDnfDriver(driver.id)}
                           style={{ borderLeft: `6px solid ${driver.color} !important` }}
                         >
-                          <div className="driver-number me-3 text-white" style={{ width: '40px', opacity: dnfDriver === driver.id ? 1 : 0.6 }}>
+                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>
                             {driver.number}
                           </div>
                           <div className="flex-grow-1">
-                            <div className={`fw-bold ${dnfDriver === driver.id ? 'text-white' : 'text-light'}`} style={{ fontSize: '1.1rem' }}>{driver.name}</div>
-                            <div className="d-flex align-items-center mt-1">
-                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color) }}>
-                                {driver.team}
-                              </span>
-                            </div>
+                            <div className="fw-bold text-white">{driver.name}</div>
+                            <div className="text-muted small">{driver.team}</div>
                           </div>
-                          {dnfDriver === driver.id && (
-                            <div className="bg-danger rounded-circle p-1 ms-2" style={{ width: '12px', height: '12px' }}></div>
-                          )}
+                          {dnfDriver === driver.id && <div className="text-danger">●</div>}
                         </div>
                       ))}
-                    </Form.Group>
+                    </div>
                   </Card.Body>
                 </Card>
               </Col>
@@ -569,10 +498,10 @@ export default function PredictPage() {
               <Button 
                 type="submit" 
                 size="lg" 
-                className="btn-f1 py-3" 
+                className="btn-f1 py-3 fw-bold" 
                 disabled={!p10Driver || !dnfDriver}
               >
-                Submit Prediction
+                LOCK IN PREDICTION
               </Button>
             </div>
           </Form>
