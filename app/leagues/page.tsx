@@ -169,7 +169,7 @@ export default function LeaguesPage() {
                           <td className="ps-4 fw-bold text-white fs-5">{league.name}</td>
                           <td><code className="text-danger fw-bold">{league.invite_code}</code></td>
                           <td className="text-end pe-4">
-                            <Link href={`/leagues/${league.id}`} passHref legacyBehavior>
+                            <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
                               <Button variant="outline-light" size="sm" className="rounded-pill px-4 fw-bold">VIEW</Button>
                             </Link>
                           </td>
