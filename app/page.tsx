@@ -5,6 +5,7 @@ import { Container, Row, Col, Button, Navbar, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { RACES, CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import AppNavbar from '@/components/AppNavbar';
 
 export default function Home() {
@@ -79,6 +80,10 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [nextRace]);
 
+  const triggerHaptic = () => {
+    Haptics.impact({ style: ImpactStyle.Medium });
+  };
+
   return (
     <main>
       <AppNavbar />
@@ -109,12 +114,12 @@ export default function Home() {
 
             <div className="d-grid gap-3 d-sm-flex justify-content-sm-center mb-5">
               <Link href="/predict" passHref legacyBehavior>
-                <Button size="lg" className="btn-f1 px-5">
+                <Button size="lg" className="btn-f1 px-5" onClick={triggerHaptic}>
                   {userPrediction ? 'Update Prediction' : 'Make Prediction'}
                 </Button>
               </Link>
               <Link href="/leaderboard" passHref legacyBehavior>
-                <Button variant="outline-light" size="lg" className="px-5">
+                <Button variant="outline-light" size="lg" className="px-5" onClick={triggerHaptic}>
                   Leaderboard
                 </Button>
               </Link>
@@ -124,17 +129,17 @@ export default function Home() {
 
         <Row className="mt-4 g-4">
           <Col md={6}>
-            <div className="p-4 border border-secondary rounded h-100 bg-dark bg-opacity-25">
-              <h3 className="h5 text-uppercase" style={{ color: '#e10600' }}>Next Race</h3>
+            <div className="p-4 border border-secondary rounded h-100 bg-dark bg-opacity-25 shadow-sm">
+              <h3 className="h5 text-uppercase fw-bold text-danger letter-spacing-1 mb-3">Next Race</h3>
               {loading ? (
                 <Spinner animation="border" size="sm" variant="danger" />
               ) : (
                 <>
-                  <p className="fs-4 fw-bold mb-0">{nextRace?.name}</p>
-                  <p className="text-muted mb-0">{nextRace?.circuit}</p>
-                  <small className="text-light opacity-50">
+                  <p className="fs-3 fw-bold mb-0 text-white">{nextRace?.name}</p>
+                  <p className="text-muted mb-2">{nextRace?.circuit}</p>
+                  <div className="badge bg-danger bg-opacity-25 text-danger px-3 py-2 border border-danger border-opacity-25 rounded-pill">
                     {nextRace && new Date(nextRace.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                  </small>
+                  </div>
                 </>
               )}
             </div>
@@ -142,27 +147,27 @@ export default function Home() {
           
           {currentUser && (
             <Col md={6}>
-              <div className="p-4 border border-danger rounded h-100 bg-danger bg-opacity-10">
-                <h3 className="h5 text-uppercase text-white">Your Prediction</h3>
+              <div className="p-4 border border-danger border-opacity-50 rounded h-100 bg-danger bg-opacity-10 shadow-sm">
+                <h3 className="h5 text-uppercase text-white fw-bold letter-spacing-1 mb-3">Your Prediction</h3>
                 {userPrediction ? (
-                  <Row className="mt-3">
+                  <Row className="mt-3 g-4">
                     <Col xs={6}>
-                      <small className="text-muted d-block text-uppercase">P10 Pick</small>
-                      <span className="fw-bold text-white">
+                      <small className="text-muted d-block text-uppercase mb-1 fw-semibold letter-spacing-1">P10 Pick</small>
+                      <span className="fs-5 fw-bold text-white">
                         {allDrivers.find(d => d.id === userPrediction.p10)?.name || userPrediction.p10.toUpperCase()}
                       </span>
                     </Col>
                     <Col xs={6}>
-                      <small className="text-muted d-block text-uppercase">First DNF</small>
-                      <span className="fw-bold text-white">
+                      <small className="text-muted d-block text-uppercase mb-1 fw-semibold letter-spacing-1">First DNF</small>
+                      <span className="fs-5 fw-bold text-danger">
                         {allDrivers.find(d => d.id === userPrediction.dnf)?.name || userPrediction.dnf.toUpperCase()}
                       </span>
                     </Col>
                   </Row>
                 ) : (
                   <div className="mt-3">
-                    <p className="small text-muted mb-0">No prediction submitted for this race yet.</p>
-                    <Link href="/predict" className="small text-danger text-decoration-none">Predict now →</Link>
+                    <p className="small text-muted mb-3">No prediction submitted for this race yet.</p>
+                    <Link href="/predict" className="btn btn-sm btn-outline-danger px-4 rounded-pill fw-bold" onClick={triggerHaptic}>Predict Now →</Link>
                   </div>
                 )}
               </div>
@@ -171,9 +176,9 @@ export default function Home() {
         </Row>
       </Container>
 
-      <footer className="mt-5 py-4 border-top border-secondary text-center">
-        <p className="text-muted small">© 2026 P10 Racing</p>
-        <Link href="/admin" className="text-muted small text-decoration-none opacity-50">Admin</Link>
+      <footer className="mt-auto py-5 border-top border-secondary border-opacity-25 text-center mt-5">
+        <p className="text-muted small mb-1 fw-bold letter-spacing-1">© 2026 P10 RACING</p>
+        <Link href="/admin" className="text-muted small text-decoration-none opacity-25" onClick={triggerHaptic}>ADMIN</Link>
       </footer>
     </main>
   );

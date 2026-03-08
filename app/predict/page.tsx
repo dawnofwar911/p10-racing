@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Navbar, Spinner } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults } from '@/lib/api';
+import { Haptics, ImpactStyle, SelectionChangedStyle } from '@capacitor/haptics';
+import { getContrastColor } from '@/lib/utils/colors';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -24,17 +26,11 @@ export default function PredictPage() {
   // Load race and user from localStorage on mount
   useEffect(() => {
     async function init() {
-      // 0. Get user early
       const savedUser = localStorage.getItem('p10_current_user');
-
-      // 1. Get real next race
       const races = await fetchCalendar(CURRENT_SEASON);
       let currentRace = RACES[0];
       if (races.length > 0) {
         const now = new Date();
-        
-        // Find the first race that is in the future
-        // A race is "ongoing" for 4 hours after start
         let activeIndex = races.findIndex(r => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
           const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
@@ -43,12 +39,10 @@ export default function PredictPage() {
 
         if (activeIndex === -1) activeIndex = races.length - 1;
 
-        // Check if the previous race has results yet. 
         if (activeIndex > 0) {
           const prevRace = races[activeIndex - 1];
           const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
           if (!results) {
-            // No results yet! Keep this race as the "active" one for viewing status
             activeIndex--;
           }
         }
@@ -64,13 +58,11 @@ export default function PredictPage() {
         };
         setNextRace(currentRace);
 
-        // Fetch dynamic drivers early to get correct numbers
         const apiDrivers = await fetchDrivers(CURRENT_SEASON);
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
         finalDriverList.sort((a: any, b: any) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
 
-        // Fetch Grid
         let finalGrid: any[] = [];
         const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
         if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
@@ -104,12 +96,11 @@ export default function PredictPage() {
         setStartingGrid(finalGrid);
 
         const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
-        const lockTime = new Date(raceStartTime.getTime() + 120000); // 2 minutes after start
+        const lockTime = new Date(raceStartTime.getTime() + 120000);
         if (now > lockTime) {
           setIsLocked(true);
         }
 
-        // Fetch community predictions for this race (excluding current user)
         const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
         const allPreds = playersList
           .filter((p: string) => p !== savedUser)
@@ -121,16 +112,12 @@ export default function PredictPage() {
       }
       setLoadingRace(false);
 
-      // Get existing players for switching
       const existingPlayersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
       setExistingPlayers(existingPlayersList);
 
-      // Load predictions
       if (savedUser) {
         setUsername(savedUser);
         setIsLoggedIn(true);
-        
-        // Load predictions for this specific race
         const finalized = localStorage.getItem(`final_pred_${savedUser}_${currentRace.id}`);
         if (finalized) {
           const parsed: { p10: string, dnf: string } = JSON.parse(finalized);
@@ -148,11 +135,10 @@ export default function PredictPage() {
   }, []);
 
   const selectUser = (name: string) => {
+    Haptics.selectionChanged({ style: SelectionChangedStyle.Light });
     localStorage.setItem('p10_current_user', name);
     setUsername(name);
     setIsLoggedIn(true);
-    
-    // Check for finalized prediction first
     const finalized = localStorage.getItem(`final_pred_${name}_${nextRace.id}`);
     if (finalized) {
       const parsed = JSON.parse(finalized);
@@ -181,16 +167,10 @@ export default function PredictPage() {
     setDnfDriver('');
   };
 
-  const getContrastColor = (hexcolor: string) => {
-    if (hexcolor.toLowerCase() === '#ffffff' || hexcolor.toLowerCase() === '#ffd700') {
-      return '#000';
-    }
-    return '#fff';
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (p10Driver && dnfDriver) {
+      Haptics.impact({ style: ImpactStyle.Heavy });
       const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id };
       localStorage.setItem(`final_pred_${username}_${nextRace.id}`, JSON.stringify(prediction));
       
@@ -215,7 +195,6 @@ export default function PredictPage() {
             <Col md={5}>
               <Card className="p-4 border-secondary shadow">
                 <h2 className="h4 mb-4 fw-bold">Who's Predicting?</h2>
-                
                 {existingPlayers.length > 0 && (
                   <div className="mb-4">
                     <Form.Label className="text-muted small text-uppercase fw-semibold">Recent Players</Form.Label>
@@ -235,7 +214,6 @@ export default function PredictPage() {
                     <hr className="border-secondary mt-4" />
                   </div>
                 )}
-
                 <Form onSubmit={handleLogin}>
                   <Form.Group className="mb-3">
                     <Form.Label>New Player Name</Form.Label>
@@ -262,12 +240,8 @@ export default function PredictPage() {
     const p10Name = drivers.find(d => d.id === p10Driver)?.name || p10Driver;
     const dnfName = drivers.find(d => d.id === dnfDriver)?.name || dnfDriver;
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
-    
     if (navigator.share) {
-      navigator.share({
-        title: 'P10 Racing Predictions',
-        text: text,
-      }).catch(console.error);
+      navigator.share({ title: 'P10 Racing Predictions', text: text }).catch(console.error);
     } else {
       navigator.clipboard.writeText(text);
       alert('Prediction copied to clipboard!');
@@ -282,11 +256,8 @@ export default function PredictPage() {
           <div className="mb-4 display-1">🏁</div>
           <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
           <p className="lead mb-5 text-muted">Good luck for the {nextRace.name}, <span className="text-white fw-bold">{username}</span>.</p>
-          
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
-            <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">
-              Share Picks ↗
-            </Button>
+            <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
             <Link href="/" passHref legacyBehavior>
               <Button variant="outline-light" size="lg" className="px-5">Home</Button>
             </Link>
@@ -311,7 +282,6 @@ export default function PredictPage() {
   return (
     <main>
       <AppNavbar />
-
       <Container className="mt-4 mb-5">
         <Row className="mb-4 align-items-center">
           <Col>
@@ -320,18 +290,10 @@ export default function PredictPage() {
           </Col>
           <Col xs="auto" className="d-flex gap-2">
             {!isLocked && (
-              <Button 
-                variant="outline-warning" 
-                size="sm"
-                onClick={handleSwitchUser}
-                className="rounded-pill"
-              >
-                Switch User
-              </Button>
+              <Button variant="outline-warning" size="sm" onClick={handleSwitchUser} className="rounded-pill">Switch User</Button>
             )}
           </Col>
         </Row>
-
         {startingGrid.length > 0 && !isLocked && (
           <Row className="mb-4">
             <Col>
@@ -353,14 +315,12 @@ export default function PredictPage() {
             </Col>
           </Row>
         )}
-
         {isLocked ? (
           <div className="text-center">
             <Card className="p-5 border-danger bg-dark mb-4 shadow">
               <div className="display-4 mb-3">🔒</div>
               <h2 className="mb-4 fw-bold">Predictions Closed</h2>
               <p className="lead mb-4 text-muted">The {nextRace.name} is underway. Good luck!</p>
-              
               <Row className="text-start">
                 <Col lg={6} className="mb-4">
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
@@ -381,29 +341,20 @@ export default function PredictPage() {
                             </div>
                           </Col>
                         </Row>
-                        <Button variant="success" className="mt-4 w-100 fw-bold" onClick={handleShare}>
-                          Share Results ↗
-                        </Button>
+                        <Button variant="success" className="mt-4 w-100 fw-bold" onClick={handleShare}>Share Results ↗</Button>
                       </>
                     ) : (
                       <p className="text-warning">No prediction submitted.</p>
                     )}
                   </div>
                 </Col>
-                
                 <Col lg={6} className="mb-4">
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
                     <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Community</h3>
                     {communityPredictions.length > 0 ? (
                       <div className="table-responsive">
                         <table className="table table-dark table-hover mb-0 small">
-                          <thead>
-                            <tr className="text-muted">
-                              <th>Player</th>
-                              <th>P10</th>
-                              <th>DNF</th>
-                            </tr>
-                          </thead>
+                          <thead><tr className="text-muted"><th>Player</th><th>P10</th><th>DNF</th></tr></thead>
                           <tbody>
                             {communityPredictions.map((pred, idx) => (
                               <tr key={idx}>
@@ -422,10 +373,7 @@ export default function PredictPage() {
                 </Col>
               </Row>
             </Card>
-            
-            <Link href="/" passHref legacyBehavior>
-              <Button variant="outline-light" size="lg" className="px-5">Back Home</Button>
-            </Link>
+            <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Back Home</Button></Link>
           </div>
         ) : (
           <Form onSubmit={handleSubmit}>
@@ -435,7 +383,6 @@ export default function PredictPage() {
                   <Card.Body className="p-4">
                     <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">P10 Finisher</h3>
                     <p className="small text-muted mb-4">Pick the driver to finish exactly 10th.</p>
-                    
                     <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
                       {drivers.map((driver) => (
                         <div 
@@ -443,15 +390,24 @@ export default function PredictPage() {
                           className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
                             p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'
                           }`}
-                          onClick={() => setP10Driver(driver.id)}
+                          onClick={() => {
+                            Haptics.selectionChanged();
+                            setP10Driver(driver.id);
+                          }}
                           style={{ borderLeft: `6px solid ${driver.color} !important` }}
                         >
-                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>
-                            {driver.number}
-                          </div>
+                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
                           <div className="flex-grow-1">
                             <div className="fw-bold text-white">{driver.name}</div>
-                            <div className="text-muted small">{driver.team}</div>
+                            <div className="d-flex align-items-center mt-1">
+                              <span className="team-pill" style={{ 
+                                backgroundColor: driver.color, 
+                                color: getContrastColor(driver.color),
+                                fontSize: '0.6rem' 
+                              }}>
+                                {driver.team}
+                              </span>
+                            </div>
                           </div>
                           {p10Driver === driver.id && <div className="text-danger">●</div>}
                         </div>
@@ -460,13 +416,11 @@ export default function PredictPage() {
                   </Card.Body>
                 </Card>
               </Col>
-
               <Col md={6} className="mb-4">
                 <Card className="h-100 shadow-sm border-secondary">
                   <Card.Body className="p-4">
                     <h3 className="h5 mb-4 border-start border-4 border-danger ps-3 fw-bold text-uppercase">First DNF</h3>
                     <p className="small text-muted mb-4">Pick the first driver to retire from the race.</p>
-                    
                     <div className="driver-list-scroll" style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
                       {drivers.map((driver) => (
                         <div 
@@ -474,15 +428,24 @@ export default function PredictPage() {
                           className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${
                             dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'
                           }`}
-                          onClick={() => setDnfDriver(driver.id)}
+                          onClick={() => {
+                            Haptics.selectionChanged();
+                            setDnfDriver(driver.id);
+                          }}
                           style={{ borderLeft: `6px solid ${driver.color} !important` }}
                         >
-                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>
-                            {driver.number}
-                          </div>
+                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
                           <div className="flex-grow-1">
                             <div className="fw-bold text-white">{driver.name}</div>
-                            <div className="text-muted small">{driver.team}</div>
+                            <div className="d-flex align-items-center mt-1">
+                              <span className="team-pill" style={{ 
+                                backgroundColor: driver.color, 
+                                color: getContrastColor(driver.color),
+                                fontSize: '0.6rem' 
+                              }}>
+                                {driver.team}
+                              </span>
+                            </div>
                           </div>
                           {dnfDriver === driver.id && <div className="text-danger">●</div>}
                         </div>
@@ -492,17 +455,7 @@ export default function PredictPage() {
                 </Card>
               </Col>
             </Row>
-
-            <div className="d-grid gap-2 mt-4">
-              <Button 
-                type="submit" 
-                size="lg" 
-                className="btn-f1 py-3 fw-bold" 
-                disabled={!p10Driver || !dnfDriver}
-              >
-                LOCK IN PREDICTION
-              </Button>
-            </div>
+            <div className="d-grid gap-2 mt-4"><Button type="submit" size="lg" className="btn-f1 py-3 fw-bold" disabled={!p10Driver || !dnfDriver}>LOCK IN PREDICTION</Button></div>
           </Form>
         )}
       </Container>

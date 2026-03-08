@@ -1,13 +1,16 @@
 import { Suspense } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata } from 'metadata';
 import { Inter } from 'next/font/google';
 import Loading from './loading';
+import NativeWrapper from '@/components/NativeWrapper';
+import PageTransition from '@/components/PageTransition';
+import OfflineStatus from '@/components/OfflineStatus';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'P10 Racing',
   description: 'F1 Midfield Prediction Game',
   manifest: '/manifest.json',
@@ -30,11 +33,16 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
-          <Suspense fallback={<Loading />}>
-            <div className="page-transition">
-              {children}
-            </div>
-          </Suspense>
+          <NativeWrapper>
+            <OfflineStatus />
+            <Suspense fallback={<Loading />}>
+              <PageTransition>
+                <div className="page-transition">
+                  {children}
+                </div>
+              </PageTransition>
+            </Suspense>
+          </NativeWrapper>
         </div>
       </body>
     </html>

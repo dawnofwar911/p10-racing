@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Table, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchDrivers } from '@/lib/api';
+import { getContrastColor } from '@/lib/utils/colors';
 import AppNavbar from '@/components/AppNavbar';
 
 export default function StandingsPage() {
@@ -12,7 +13,6 @@ export default function StandingsPage() {
 
   useEffect(() => {
     async function load() {
-      // The fetchDrivers function already uses the driverStandings endpoint!
       const data = await fetchDrivers(CURRENT_SEASON);
       setStandings(data);
       setLoading(false);
@@ -24,34 +24,44 @@ export default function StandingsPage() {
     <main>
       <AppNavbar />
       <Container className="mt-4">
-        <h1 className="h2 mb-4">World Championship Standings</h1>
+        <h1 className="h2 mb-4 fw-bold text-uppercase letter-spacing-1">World Championship Standings</h1>
         
-        <div className="table-responsive rounded border border-secondary">
-          <Table variant="dark" hover className="mb-0">
-            <thead>
-              <tr>
-                <th className="ps-4">Pos</th>
-                <th>Driver</th>
-                <th>Team</th>
-                <th className="text-end pe-4">No.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((d, i) => (
-                <tr key={d.id} style={{ height: '50px', verticalAlign: 'middle' }}>
-                  <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                  <td className="fw-bold text-white">{d.name}</td>
-                  <td>
-                    <span className="team-pill" style={{ backgroundColor: d.color, fontSize: '0.7rem' }}>
-                      {d.team}
-                    </span>
-                  </td>
-                  <td className="text-end pe-4 driver-number opacity-50" style={{ fontSize: '1rem' }}>{d.number}</td>
+        {loading ? (
+          <div className="text-center py-5">
+            <Spinner animation="border" variant="danger" />
+          </div>
+        ) : (
+          <div className="table-responsive rounded border border-secondary shadow-sm">
+            <Table variant="dark" hover className="mb-0">
+              <thead>
+                <tr className="bg-dark bg-opacity-50">
+                  <th className="ps-4 py-3">Pos</th>
+                  <th className="py-3">Driver</th>
+                  <th className="py-3">Team</th>
+                  <th className="text-end pe-4 py-3">No.</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
+              </thead>
+              <tbody>
+                {standings.map((d, i) => (
+                  <tr key={d.id} style={{ height: '60px', verticalAlign: 'middle' }}>
+                    <td className="ps-4 fw-bold text-muted">{i + 1}</td>
+                    <td className="fw-bold text-white fs-5">{d.name}</td>
+                    <td>
+                      <span className="team-pill" style={{ 
+                        backgroundColor: d.color, 
+                        color: getContrastColor(d.color),
+                        fontSize: '0.7rem' 
+                      }}>
+                        {d.team}
+                      </span>
+                    </td>
+                    <td className="text-end pe-4 driver-number opacity-50 fs-4">{d.number}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        )}
       </Container>
     </main>
   );
