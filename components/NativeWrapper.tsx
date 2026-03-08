@@ -11,11 +11,15 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
       if (!Capacitor.isNativePlatform()) return;
 
       try {
-        // 1. Configure the Status Bar to match our F1 dark theme
+        // 1. Ensure the status bar does NOT overlap the webview
+        // This pushes the webview down below the status bar automatically
+        await StatusBar.setOverlaysWebView({ overlay: false });
+        
+        // 2. Configure the Status Bar style
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: '#15151e' });
         
-        // 2. Hide the splash screen once the app is initialized
+        // 3. Hide the splash screen once the app is initialized
         await SplashScreen.hide();
       } catch (err) {
         console.warn('Native initialization error:', err);
