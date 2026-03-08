@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Table, Button } from 'react-bootstrap';
+import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import AppNavbar from '@/components/AppNavbar';
 
@@ -15,24 +16,20 @@ interface SimplifiedResults {
 
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(true);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
+  const [view, setView] = useState<'global' | 'local'>('global');
+
+  const supabase = createClient();
 
   useEffect(() => {
     async function calculate() {
-      const LOGIC_VERSION = 'v3_symmetric_and_dns_fix'; 
-      const currentLogic = localStorage.getItem('p10_logic_version');
-      if (currentLogic !== LOGIC_VERSION) {
-        const races = await fetchCalendar(CURRENT_SEASON);
-        races.forEach((r: ApiCalendarRace) => localStorage.removeItem(`results_${r.round}`));
-        localStorage.setItem('p10_logic_version', LOGIC_VERSION);
-      }
-
-      const players: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      const races = await fetchCalendar(CURRENT_SEASON);
+      setLoading(true);
       
+      // 1. Fetch Calendar and Results (Cached in LocalStorage for speed)
+      const races = await fetchCalendar(CURRENT_SEASON);
       const raceResultsMap: { [round: string]: SimplifiedResults } = {};
+      
       await Promise.all(races.map(async (race: ApiCalendarRace) => {
         const round = race.round;
         const resultsData = localStorage.getItem(`results_${round}`);
@@ -56,7 +53,30 @@ export default function LeaderboardPage() {
         }
       }));
 
-      const entries: LeaderboardEntry[] = players.map((player: string) => {
+      // 2. Fetch User Data based on view
+      let playersData: { username: string, userId?: string, isLocal: boolean }[] = [];
+
+      if (view === 'global') {
+        // Fetch all profiles and their predictions from Supabase
+        const { data: profiles } = await supabase.from('profiles').select('id, username');
+        const { data: predictions } = await supabase.from('predictions').select('*');
+
+        if (profiles) {
+          playersData = profiles.map(p => ({ 
+            username: p.username, 
+            userId: p.id, 
+            isLocal: false,
+            dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+          }));
+        }
+      } else {
+        // Local Guest Players
+        const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+        playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
+      }
+
+      // 3. Calculate Scores
+      const entries: LeaderboardEntry[] = playersData.map((player: any) => {
         let totalPoints = 0;
         let lastRacePoints = 0;
         let latestBreakdown = undefined;
@@ -65,10 +85,19 @@ export default function LeaderboardPage() {
 
         sortedRounds.forEach((round, index) => {
           const results = raceResultsMap[round];
-          const predStr = localStorage.getItem(`final_pred_${player}_${round}`);
+          let prediction = null;
 
-          if (results && predStr) {
-            const prediction = JSON.parse(predStr);
+          if (player.isLocal) {
+            const predStr = localStorage.getItem(`final_pred_${player.username}_${round}`);
+            if (predStr) prediction = JSON.parse(predStr);
+          } else {
+            const dbMatch = player.dbPredictions.find((dp: any) => dp.race_id === `${CURRENT_SEASON}_${round}`);
+            if (dbMatch) {
+              prediction = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
+            }
+          }
+
+          if (results && prediction) {
             const actualPosOfPredictedP10 = results.positions[prediction.p10] || 20;
             const p10Score = calculateP10Points(actualPosOfPredictedP10);
             const dnfScore = (prediction.dnf && prediction.dnf === results.firstDnf) ? 25 : 0;
@@ -90,7 +119,7 @@ export default function LeaderboardPage() {
 
         return {
           rank: 0,
-          player,
+          player: player.username,
           points: totalPoints,
           lastRacePoints: lastRacePoints,
           breakdown: latestBreakdown
@@ -104,7 +133,7 @@ export default function LeaderboardPage() {
       setLoading(false);
     }
     calculate();
-  }, []);
+  }, [supabase, view]);
 
   return (
     <main>
@@ -113,13 +142,28 @@ export default function LeaderboardPage() {
       <Container className="mt-4">
         <Row className="mb-4 align-items-center">
           <Col>
-            <h1 className="h2 mb-1 text-uppercase fw-bold">Leaderboard</h1>
-            <p className="text-muted small mb-0">Total points across all completed races</p>
+            <h1 className="h2 mb-1 text-uppercase fw-bold letter-spacing-1">Leaderboard</h1>
+            <p className="text-muted small mb-0">Live points from the {CURRENT_SEASON} season</p>
           </Col>
           <Col xs="auto">
-             <Link href="/predict" passHref legacyBehavior>
-                <Button className="btn-f1 px-4">Make Predictions</Button>
-             </Link>
+            <ButtonGroup className="bg-dark rounded border border-secondary p-1">
+              <Button 
+                variant={view === 'global' ? 'danger' : 'dark'} 
+                size="sm" 
+                onClick={() => setView('global')}
+                className="rounded px-3"
+              >
+                GLOBAL
+              </Button>
+              <Button 
+                variant={view === 'local' ? 'danger' : 'dark'} 
+                size="sm" 
+                onClick={() => setView('local')}
+                className="rounded px-3"
+              >
+                GUESTS
+              </Button>
+            </ButtonGroup>
           </Col>
         </Row>
 
@@ -128,7 +172,7 @@ export default function LeaderboardPage() {
             <div className="table-responsive rounded border border-secondary shadow-sm">
               <Table variant="dark" hover className="mb-0">
                 <thead>
-                  <tr className="bg-dark bg-opacity-50">
+                  <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small">
                     <th className="ps-4 py-3">Pos</th>
                     <th className="py-3">Player</th>
                     <th className="text-end py-3">Last Race</th>
@@ -136,20 +180,22 @@ export default function LeaderboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboard.length > 0 ? leaderboard.map((entry) => (
+                  {loading ? (
+                    <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="danger" /></td></tr>
+                  ) : leaderboard.length > 0 ? leaderboard.map((entry) => (
                     <React.Fragment key={entry.player}>
                       <tr 
                         onClick={() => setExpandedPlayer(expandedPlayer === entry.player ? null : entry.player)}
                         style={{ height: '70px', verticalAlign: 'middle', cursor: 'pointer' }}
                         className={expandedPlayer === entry.player ? 'bg-danger bg-opacity-10' : ''}
                       >
-                        <td className="ps-4 fw-bold">
-                          {entry.rank === 1 ? '🏆' : entry.rank}
+                        <td className="ps-4 fw-bold text-muted">
+                          {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}
                         </td>
                         <td className="fw-bold fs-5">{entry.player}</td>
                         <td className="text-end text-muted small">
-                          <span className={entry.lastRacePoints > 0 ? 'text-success' : ''}>
-                            +{entry.lastRacePoints}
+                          <span className={entry.lastRacePoints > 0 ? 'text-success fw-bold' : ''}>
+                            {entry.lastRacePoints > 0 ? `+${entry.lastRacePoints}` : '-'}
                           </span>
                         </td>
                         <td className="text-end fw-bold pe-4 fs-4 text-white">{entry.points}</td>
@@ -157,26 +203,26 @@ export default function LeaderboardPage() {
                       {expandedPlayer === entry.player && entry.breakdown && (
                         <tr className="bg-dark bg-opacity-75">
                           <td colSpan={4} className="p-0 border-0">
-                            <div className="p-4 border-start border-danger border-4 m-3 bg-dark rounded border border-secondary">
+                            <div className="p-4 border-start border-danger border-4 m-3 bg-dark rounded border border-secondary shadow-sm">
                               <div className="row g-4">
                                 <div className="col-md-6 border-end border-secondary">
-                                  <small className="text-muted text-uppercase d-block mb-2">P10 Pick Result</small>
+                                  <small className="text-muted text-uppercase d-block mb-2 fw-bold">P10 Pick Result</small>
                                   <div className="d-flex justify-content-between align-items-center">
-                                    <span className="text-white fw-bold">{entry.breakdown.p10Driver.toUpperCase()}</span>
+                                    <span className="text-white fw-bold fs-5">{entry.breakdown.p10Driver.toUpperCase()}</span>
                                     <span className="badge bg-secondary">P{entry.breakdown.actualP10Pos}</span>
                                   </div>
                                   <div className="mt-2 text-danger fw-bold">+{entry.breakdown.p10Points} PTS</div>
                                 </div>
                                 <div className="col-md-6 ps-md-4">
-                                  <small className="text-muted text-uppercase d-block mb-2">First DNF Bonus</small>
+                                  <small className="text-muted text-uppercase d-block mb-2 fw-bold">First DNF Bonus</small>
                                   <div className="mt-1">
                                     {entry.breakdown.dnfPoints > 0 ? (
                                       <div className="text-success fw-bold d-flex align-items-center">
-                                        <span className="fs-4 me-2">✅</span> Correct (+25 PTS)
+                                        <span className="fs-4 me-2">🏎️💨</span> Correct (+25 PTS)
                                       </div>
                                     ) : (
-                                      <div className="text-muted d-flex align-items-center">
-                                        <span className="fs-4 me-2">❌</span> Incorrect (+0 PTS)
+                                      <div className="text-muted d-flex align-items-center opacity-50">
+                                        <span className="fs-4 me-2">🏁</span> Incorrect (+0 PTS)
                                       </div>
                                     )}
                                   </div>
@@ -190,7 +236,7 @@ export default function LeaderboardPage() {
                   )) : (
                     <tr>
                       <td colSpan={4} className="text-center py-5 text-muted">
-                        No predictions submitted yet.
+                        No predictions found for this view.
                       </td>
                     </tr>
                   )}

@@ -43,7 +43,6 @@ export default function AppNavbar() {
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
       } else {
-        // Fetch profile for the new session
         supabase
           .from('profiles')
           .select('username')
@@ -96,6 +95,7 @@ export default function AppNavbar() {
       <NavbarCollapse id="basic-navbar-nav">
         <Nav className="me-auto mt-3 mt-lg-0 gap-lg-2">
           <Link href="/predict" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/predict' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Predict</Link>
+          <Link href="/leagues" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leagues' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leagues</Link>
           <Link href="/leaderboard" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leaderboard' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leaderboard</Link>
           <Link href="/standings" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/standings' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Standings</Link>
           <Link href="/history" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/history' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>History</Link>

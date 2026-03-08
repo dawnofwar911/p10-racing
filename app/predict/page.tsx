@@ -161,15 +161,37 @@ export default function PredictPage() {
         }
 
         // 4. Fetch community predictions (Supabase + LocalStorage fallback)
-        // For now, we'll just stick to LocalStorage for community view until we have more DB data
+        // Fetch all predictions for this race from DB
+        const { data: dbCommunityPreds } = await supabase
+          .from('predictions')
+          .select('user_id, p10_driver_id, dnf_driver_id, profiles(username)')
+          .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
+
+        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? dbCommunityPreds.map((p: any) => ({
+          username: p.profiles?.username || 'Unknown',
+          p10: p.p10_driver_id,
+          dnf: p.dnf_driver_id
+        })) : [];
+
+        // Filter out current user from DB list to avoid duplicate
+        const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
+
+        // Fetch LocalStorage guests
         const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-        const allPreds = playersList
+        const localPreds = playersList
           .filter((p: string) => p !== currentUsername)
           .map((p: string) => {
             const pred = localStorage.getItem(`final_pred_${p}_${currentRace.id}`);
             return pred ? JSON.parse(pred) : null;
           }).filter(p => p !== null);
-        setCommunityPredictions(allPreds);
+        
+        const formattedLocalPreds: CommunityPrediction[] = localPreds.map(p => ({
+          username: p.username,
+          p10: p.p10,
+          dnf: p.dnf
+        }));
+
+        setCommunityPredictions([...otherDbPreds, ...formattedLocalPreds]);
       }
       setLoadingRace(false);
 
