@@ -12,6 +12,7 @@ import { Session } from '@supabase/supabase-js';
 export default function AppNavbar() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
@@ -28,11 +29,17 @@ export default function AppNavbar() {
           .eq('id', currentSession.user.id)
           .single();
         
-        if (profile) setCurrentUser(profile.username);
+        if (profile) {
+          setCurrentUser(profile.username);
+        } else {
+          // If authenticated but no profile, use email as fallback
+          setCurrentUser(currentSession.user.email?.split('@')[0] || 'User');
+        }
       } else {
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
       }
+      setIsAuthReady(true);
     }
 
     getSession();
@@ -49,7 +56,11 @@ export default function AppNavbar() {
           .eq('id', newSession.user.id)
           .single()
           .then(({ data }) => {
-            if (data) setCurrentUser(data.username);
+            if (data) {
+              setCurrentUser(data.username);
+            } else {
+              setCurrentUser(newSession.user.email?.split('@')[0] || 'User');
+            }
           });
       }
     });
@@ -102,7 +113,7 @@ export default function AppNavbar() {
         </Nav>
         
         <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
-          {currentUser ? (
+          {isAuthReady && (session || currentUser) ? (
             <>
               <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
                 Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
@@ -111,13 +122,13 @@ export default function AppNavbar() {
                 SIGN OUT
               </Button>
             </>
-          ) : (
+          ) : isAuthReady ? (
             <Link href="/auth" passHref legacyBehavior>
               <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
                 SIGN IN
               </Button>
             </Link>
-          )}
+          ) : null}
         </div>
       </NavbarCollapse>
     </Navbar>

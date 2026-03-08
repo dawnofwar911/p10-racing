@@ -35,35 +35,47 @@ export default function AuthPage() {
         if (authError) throw authError;
 
         if (authData.user) {
-          // 2. Create the public profile with username
+          // 2. Create the public profile
           const { error: profileError } = await supabase
             .from('profiles')
-            .insert([
+            .upsert([
               { id: authData.user.id, username: username }
             ]);
 
           if (profileError) throw profileError;
         }
         
-        alert('Check your email for the confirmation link!');
+        alert('Check your email for the confirmation link (if enabled)!');
       } else {
         // Login
-        const { error: loginError } = await supabase.auth.signInWithPassword({
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (loginError) throw loginError;
+
+        // PROFILE REPAIR: Ensure profile exists on login
+        if (loginData.user) {
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', loginData.user.id)
+            .single();
+          
+          if (!existingProfile) {
+            // If profile is missing, try to create one using email prefix as guest fallback
+            const fallbackName = loginData.user.email?.split('@')[0] || 'User';
+            await supabase.from('profiles').upsert([{ id: loginData.user.id, username: fallbackName }]);
+          }
+        }
         
         router.push('/');
         router.refresh();
       }
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An error occurred during authentication.');
-      }
+    } catch (err: any) {
+      console.error('Detailed Auth Error:', err);
+      setError(err.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
@@ -146,6 +158,9 @@ export default function AuthPage() {
                 </Form>
               </Card.Body>
             </Card>
+            <p className="text-center text-muted small mt-4">
+              🛡️ Passwords are encrypted and never stored in plain text.
+            </p>
           </Col>
         </Row>
       </Container>
