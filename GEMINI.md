@@ -33,11 +33,13 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 
 ---
 
-## 🤖 Phase 4: Google Play Store Release 🏗️ IN PROGRESS
-*   [ ] **Google Play Developer Account:** Register and set up the organization profile.
+## 🤖 Phase 4: Google Play Store Release ✅ COMPLETE (Internal Testing)
+*   [x] **Google Play Developer Account:** Register and set up the organization profile.
 *   [x] **Keystore Management:** Generate production signing key and store in GitHub Secrets.
 *   [x] **Store Listing:** Create screenshots, feature graphics, and SEO descriptions.
 *   [x] **AAB Generation:** Update CI/CD to output a signed Android App Bundle (.aab).
+*   [x] **Privacy & Compliance:** Hosted Privacy Policy and Account Deletion request pages.
+*   [x] **In-App Deletion:** Implementation of `delete_user_data` RPC and UI button.
 
 ---
 
@@ -55,6 +57,7 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 ## 🛠️ Current Tech Stack
 *   **Frontend:** Next.js 15 (React 19), Bootstrap 5, TypeScript, Framer Motion.
 *   **Backend:** Supabase (Auth, PostgreSQL, RLS).
+*   **Hosting:** Vercel (Production Web & Policy hosting).
 *   **Mobile:** Capacitor JS 8 (Android & iOS).
 *   **CI/CD:** GitHub Actions.
 *   **Data Source:** Jolpica F1 API.
