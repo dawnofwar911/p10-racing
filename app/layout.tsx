@@ -37,11 +37,11 @@ export default function RootLayout({
           <div className="d-flex flex-column min-vh-100">
             <AppNavbar />
             <OfflineStatus />
-            <Suspense fallback={<Loading />}>
-              <PageTransition>
+            <PageTransition>
+              <Suspense fallback={<Loading />}>
                 {children}
-              </PageTransition>
-            </Suspense>
+              </Suspense>
+            </PageTransition>
           </div>
         </NativeWrapper>
       </body>
