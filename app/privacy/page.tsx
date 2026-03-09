@@ -68,7 +68,7 @@ export default function PrivacyPage() {
                 </ul>
 
                 <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">5. Contact Us</h2>
-                <p>If you have any questions about this Privacy Policy, please contact us at support@p10racing.app</p>
+                <p>If you have any questions about this Privacy Policy, please contact us at p10racing@gmail.com</p>
                 <p className="mt-4">
                   For account deletion requests, visit our <a href="https://p10-racing.vercel.app/delete-account" className="text-danger">Deletion Request Page</a>.
                 </p>

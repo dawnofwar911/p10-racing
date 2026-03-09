@@ -134,7 +134,7 @@ export default function AppNavbar() {
         
         if (error) {
           console.error('Error deleting account:', error);
-          alert('Failed to delete account. Please contact support@p10racing.app');
+          alert('Failed to delete account. Please contact p10racing@gmail.com');
           return;
         }
 
