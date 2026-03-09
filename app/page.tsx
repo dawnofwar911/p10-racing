@@ -77,7 +77,7 @@ export default function Home() {
       setLoading(false);
     }
     init();
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     if (!nextRace) return;

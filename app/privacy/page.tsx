@@ -37,7 +37,7 @@ export default function PrivacyPage() {
                 <p className="small text-danger fw-bold text-uppercase letter-spacing-1 mb-4">Last Updated: March 8, 2026</p>
 
                 <p className="mb-4">
-                  P10 Racing ("we", "us", or "our") operates the P10 Racing mobile application. 
+                  P10 Racing (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the P10 Racing mobile application. 
                   This page informs you of our policies regarding the collection, use, and disclosure of 
                   personal data when you use our Service.
                 </p>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
                 <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">1. Information Collection and Use</h2>
                 <p>We collect several different types of information for various purposes to provide and improve our Service to you:</p>
                 <ul className="ps-3 mb-4">
-                  <li className="mb-2"><strong>Personal Data:</strong> While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you ("Personal Data"), such as your email address for account creation.</li>
+                  <li className="mb-2"><strong>Personal Data:</strong> While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you (&quot;Personal Data&quot;), such as your email address for account creation.</li>
                   <li className="mb-2"><strong>Usage Data:</strong> We may collect information on how the Service is accessed and used. This may include information such as your device type, operating system, and interaction with the app features.</li>
                 </ul>
 
