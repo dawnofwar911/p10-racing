@@ -50,17 +50,41 @@ CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles FOR
 CREATE POLICY "Users can insert their own profile." ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
+-- 1. Profiles Table... (existing code)
+
+-- ...
+
+-- 5. Helper Function to break recursion (Security Definer)
+-- This function gets the leagues a user is in without triggering RLS loops
+CREATE OR REPLACE FUNCTION public.get_my_leagues()
+RETURNS SETOF uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT league_id FROM league_members WHERE user_id = auth.uid();
+$$;
+
+-- ENABLE ROW LEVEL SECURITY (RLS)
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leagues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.league_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
+
+-- POLICIES
+
+-- Profiles... (existing)
+
 -- Leagues: Members can view, anyone can create
 CREATE POLICY "Leagues are viewable by members." ON public.leagues FOR SELECT USING (
-  id IN (SELECT league_id FROM public.league_members WHERE user_id = auth.uid())
+  id IN (SELECT get_my_leagues())
 );
 CREATE POLICY "Creators can view their own leagues." ON public.leagues FOR SELECT USING (auth.uid() = created_by);
 CREATE POLICY "Anyone authenticated can create a league." ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- League Members: Viewable by league mates
 CREATE POLICY "Members can see each other." ON public.league_members FOR SELECT USING (
-  user_id = auth.uid() OR
-  league_id IN (SELECT league_id FROM public.league_members WHERE user_id = auth.uid())
+  league_id IN (SELECT get_my_leagues())
 );
 CREATE POLICY "Users can join leagues." ON public.league_members FOR INSERT WITH CHECK (auth.uid() = user_id);
 
