@@ -215,18 +215,20 @@ export default function Home() {
                       </span>
                     </Col>
                   </Row>
-                ) : (
+                ) : !loading ? (
                   <div>
                     <p className="extra-small text-white opacity-50 mb-2" style={{ fontSize: '0.7rem' }}>No prediction yet.</p>
                     <Link href="/predict" className="btn btn-sm btn-outline-danger px-3 rounded-pill fw-bold" style={{ fontSize: '0.65rem' }} onClick={triggerHaptic}>Predict Now →</Link>
                   </div>
+                ) : (
+                  <div className="py-2"><Spinner animation="border" size="sm" variant="danger" /></div>
                 )}
               </div>
             </Col>
           )}
         </Row>
 
-        {!hasSession && !currentUser && (
+        {!loading && !hasSession && !currentUser && (
           <Row className="mt-4 justify-content-center">
             <Col md={6}>
               <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
