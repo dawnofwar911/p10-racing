@@ -122,18 +122,21 @@ export default function Home() {
             </p>
             
             {nextRace && !loading && showCountdown && (
-              <div className="d-flex justify-content-center gap-2 gap-md-3 mb-5 px-2">
-                {[
-                  { label: 'DAYS', val: countdown.d },
-                  { label: 'HRS', val: countdown.h },
-                  { label: 'MINS', val: countdown.m },
-                  { label: 'SECS', val: countdown.s }
-                ].map(item => (
-                  <div key={item.label} className="p-3 bg-dark border border-secondary rounded flex-fill shadow-sm" style={{ minWidth: '75px', maxWidth: '110px' }}>
-                    <div className="fs-2 fw-bold text-white mb-1">{item.val}</div>
-                    <div className="text-danger text-uppercase fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1.5px' }}>{item.label}</div>
-                  </div>
-                ))}
+              <div className="mb-5">
+                <div className="text-uppercase fw-bold text-danger mb-3 letter-spacing-2 small opacity-75">Race Starts In</div>
+                <div className="d-flex justify-content-center gap-2 gap-md-2 px-2 mx-auto" style={{ maxWidth: '400px' }}>
+                  {[
+                    { label: 'D', val: countdown.d },
+                    { label: 'H', val: countdown.h },
+                    { label: 'M', val: countdown.m },
+                    { label: 'S', val: countdown.s }
+                  ].map(item => (
+                    <div key={item.label} className="p-2 bg-dark border border-secondary rounded flex-fill shadow-sm" style={{ minWidth: '60px' }}>
+                      <div className="h4 fw-bold text-white mb-0">{item.val}</div>
+                      <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem', letterSpacing: '1px' }}>{item.label}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
