@@ -145,7 +145,7 @@ export default function AppNavbar() {
         </Nav>
         
         <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
-          {isAuthReady && (session || currentUser) ? (
+          {(session || currentUser) ? (
             <>
               <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
                 Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
@@ -160,7 +160,9 @@ export default function AppNavbar() {
                 SIGN IN
               </Button>
             </Link>
-          ) : null}
+          ) : (
+            <div style={{ height: '31px', width: '80px' }}></div> /* Placeholder to prevent layout shift */
+          )}
         </div>
       </NavbarCollapse>
     </Navbar>
