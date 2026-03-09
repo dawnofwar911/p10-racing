@@ -65,6 +65,17 @@ export default function LeaguesPage() {
     init();
   }, [supabase, fetchLeagues]);
 
+  if (loading && !leagues.length) {
+    return (
+      <main>
+        <AppNavbar />
+        <Container className="vh-100 d-flex align-items-center justify-content-center">
+          <Spinner animation="border" variant="danger" />
+        </Container>
+      </main>
+    );
+  }
+
   const handleImport = async (guestName: string) => {
     if (!session) return;
     setActionLoading(true);
