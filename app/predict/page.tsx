@@ -34,6 +34,7 @@ export default function PredictPage() {
   const [submitted, setSubmitted] = useState(false);
   const [nextRace, setNextRace] = useState<PredictRace>(RACES[0] as unknown as PredictRace);
   const [loadingRace, setLoadingRace] = useState(true);
+  const [loadingSession, setLoadingSession] = useState(true); // Gating state
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS);
   const [isLocked, setIsLocked] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
@@ -50,6 +51,13 @@ export default function PredictPage() {
       
       let currentUsername = '';
       if (currentSession) {
+        // Try cache first for username to speed up UI
+        const cachedUser = localStorage.getItem('p10_cache_username');
+        if (cachedUser) {
+          setUsername(cachedUser);
+          currentUsername = cachedUser;
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('username')
@@ -58,6 +66,7 @@ export default function PredictPage() {
         if (profile) {
           currentUsername = profile.username;
           setUsername(profile.username);
+          localStorage.setItem('p10_cache_username', profile.username);
         }
       } else {
         const savedUser = localStorage.getItem('p10_current_user');
@@ -66,6 +75,7 @@ export default function PredictPage() {
           setUsername(savedUser);
         }
       }
+      setLoadingSession(false); // Auth check complete
 
       // 2. Get Race Data
       const races = await fetchCalendar(CURRENT_SEASON);
@@ -246,6 +256,17 @@ export default function PredictPage() {
       setDnfDriver('');
     }
   };
+
+  if (loadingSession) {
+    return (
+      <main>
+        <AppNavbar />
+        <Container className="mt-5 text-center">
+          <Spinner animation="border" variant="danger" />
+        </Container>
+      </main>
+    );
+  }
 
   if (!session && !username) {
     return (

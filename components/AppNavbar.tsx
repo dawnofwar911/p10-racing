@@ -96,14 +96,19 @@ export default function AppNavbar() {
 
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
+    // Clear all session-related cache immediately
     localStorage.removeItem('p10_cache_username');
     localStorage.removeItem('p10_cache_is_admin');
+    localStorage.removeItem('p10_current_user');
+    
     if (session) {
       await supabase.auth.signOut();
     }
-    localStorage.removeItem('p10_current_user');
+    
+    setSession(null);
     setCurrentUser(null);
     setIsAdmin(false);
+    setIsAuthReady(true);
     router.push('/');
   };
 
