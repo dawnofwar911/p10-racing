@@ -35,7 +35,7 @@ export default function DeleteAccountPage() {
               <p className="mb-4">
                 Alternatively, if you no longer have the app installed, please send an email to:
                 <br />
-                <strong className="text-danger">p10racing@gmail.com</strong>
+                <strong className="text-danger">p10racing.app@gmail.com</strong>
               </p>
               
               <p className="small border-top border-secondary pt-3 mt-4">
