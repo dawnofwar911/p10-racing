@@ -54,6 +54,7 @@ CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USIN
 CREATE POLICY "Leagues are viewable by members." ON public.leagues FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.league_members WHERE league_id = public.leagues.id AND user_id = auth.uid())
 );
+CREATE POLICY "Creators can view their own leagues." ON public.leagues FOR SELECT USING (auth.uid() = created_by);
 CREATE POLICY "Anyone authenticated can create a league." ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- League Members: Viewable by league mates
