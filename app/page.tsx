@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { createClient } from '@/lib/supabase/client';
 import AppNavbar from '@/components/AppNavbar';
 
 interface HomeRace {
@@ -25,14 +26,20 @@ interface HomePrediction {
 export default function Home() {
   const [nextRace, setNextRace] = useState<HomeRace | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
   const [showCountdown, setShowCountdown] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
+  
+  const supabase = createClient();
 
   useEffect(() => {
     async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      setHasSession(!!session);
+      
       const user = localStorage.getItem('p10_current_user');
       setCurrentUser(user);
 
@@ -203,14 +210,14 @@ export default function Home() {
           )}
         </Row>
 
-        {!currentUser && (
+        {!hasSession && !currentUser && (
           <Row className="mt-5 justify-content-center">
-            <Col md={8}>
-              <div className="p-5 border border-primary border-opacity-25 rounded bg-primary bg-opacity-10 text-center shadow-sm">
-                <h2 className="h4 fw-bold text-white mb-3">Ready to Join the Grid?</h2>
-                <p className="text-white opacity-75 mb-4">Create an account to save your predictions across devices and compete in private leagues with your friends.</p>
+            <Col md={6}>
+              <div className="p-4 border border-primary border-opacity-25 rounded bg-primary bg-opacity-10 text-center shadow-sm">
+                <h2 className="h5 fw-bold text-white mb-2">Ready to Join the Grid?</h2>
+                <p className="small text-white opacity-75 mb-4">Create an account to save your predictions across devices and compete in private leagues.</p>
                 <Link href="/auth" passHref legacyBehavior>
-                  <Button variant="primary" className="px-5 py-3 fw-bold rounded-pill" onClick={triggerHaptic}>GET STARTED</Button>
+                  <Button variant="primary" size="sm" className="px-5 py-2 fw-bold rounded-pill" onClick={triggerHaptic}>GET STARTED</Button>
                 </Link>
               </div>
             </Col>
@@ -220,7 +227,7 @@ export default function Home() {
 
       <footer className="mt-auto py-5 border-top border-secondary border-opacity-25 text-center mt-5">
         <p className="text-white opacity-25 small mb-1 fw-bold letter-spacing-1">© 2026 P10 RACING • v1.0.0</p>
-        <Link href="/privacy.html" className="text-white small text-decoration-none opacity-25" onClick={triggerHaptic}>PRIVACY</Link>
+        <Link href="/privacy" className="text-white small text-decoration-none opacity-25 hover-opacity-100" onClick={triggerHaptic}>PRIVACY POLICY</Link>
       </footer>
     </main>
   );
