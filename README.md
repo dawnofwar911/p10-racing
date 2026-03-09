@@ -19,7 +19,7 @@ P10 Racing is a multiplayer mobile application for F1 fans who love the midfield
 - A Supabase account
 
 ### 1. Database Configuration
-Run the schema found in `lib/supabase/schema.sql` and `lib/supabase/results_migration.sql` in your Supabase SQL Editor to initialize the tables and RLS policies.
+Run the schema found in `lib/supabase/schema.sql`, `lib/supabase/results_migration.sql`, and `lib/supabase/delete_user.sql` in your Supabase SQL Editor to initialize the tables, RLS policies, and account deletion functions.
 
 ### 2. Environment Variables
 Create a `.env.local` file in the root directory:
@@ -28,7 +28,15 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 3. Installation
+### 3. Web & Privacy Policy Hosting (Vercel)
+The web version and privacy policy are hosted on Vercel. 
+- **Production URL:** `https://p10-racing.vercel.app`
+- **Privacy Policy:** `/privacy`
+- **Account Deletion:** `/delete-account`
+
+Ensure the Environment Variables are also added to the Vercel project settings.
+
+### 4. Installation
 ```bash
 npm install
 ```
