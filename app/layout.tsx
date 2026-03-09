@@ -32,7 +32,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-bs-theme="dark">
-      <body className={inter.className} style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
+      <body className={inter.className} style={{ backgroundColor: '#15151e', minHeight: '100vh', overflowX: 'hidden' }}>
         <NativeWrapper>
           <div className="d-flex flex-column min-vh-100">
             <AppNavbar />

@@ -7,7 +7,7 @@ import { Session, PostgrestError } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
-// import AppNavbar from '@/components/AppNavbar'; // Removed
+import LoadingView from '@/components/LoadingView';
 
 interface League {
   id: string;
@@ -66,11 +66,7 @@ export default function LeaguesPage() {
   }, [supabase, fetchLeagues]);
 
   if (loading && !leagues.length) {
-    return (
-      <Container className="vh-100 d-flex align-items-center justify-content-center">
-        <Spinner animation="border" variant="danger" />
-      </Container>
-    );
+    return <LoadingView />;
   }
 
   const handleImport = async (guestName: string) => {

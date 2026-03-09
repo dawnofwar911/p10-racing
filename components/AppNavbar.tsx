@@ -14,9 +14,14 @@ export default function AppNavbar() {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [pathname]);
 
   useEffect(() => {
     async function getSession() {
@@ -119,7 +124,7 @@ export default function AppNavbar() {
   const isOnAdminPage = pathname === '/admin';
 
   return (
-    <Navbar variant="dark" expand="lg" className="px-3 sticky-top border-bottom border-secondary border-opacity-25" style={{ backgroundColor: 'rgba(21, 21, 30, 0.85)', backdropFilter: 'blur(10px)' }}>
+    <Navbar expanded={expanded} onToggle={setExpanded} variant="dark" expand="lg" className="px-3 sticky-top border-bottom border-secondary border-opacity-25" style={{ backgroundColor: 'rgba(21, 21, 30, 0.85)', backdropFilter: 'blur(10px)' }}>
       <Link href="/" passHref legacyBehavior>
         <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center" onClick={triggerHaptic}>
           <Image 

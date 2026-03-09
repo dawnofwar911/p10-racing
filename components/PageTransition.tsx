@@ -13,7 +13,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
+        transition={{ duration: 0.1, ease: "linear" }}
         className="flex-grow-1"
         style={{ minHeight: '100%' }}
       >

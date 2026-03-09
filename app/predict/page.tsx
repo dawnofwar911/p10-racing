@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Card, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Card } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -9,6 +9,7 @@ import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
+import LoadingView from '@/components/LoadingView';
 
 interface PredictRace {
   id: string;
@@ -251,13 +252,6 @@ export default function PredictPage() {
       setDnfDriver('');
     }
   };
-
-  const LoadingView = () => (
-    <Container className="d-flex flex-column justify-content-center align-items-center flex-grow-1" style={{ minHeight: '60vh' }}>
-      <Spinner animation="border" variant="danger" style={{ width: '3rem', height: '3rem' }} />
-      <p className="mt-3 text-muted text-uppercase letter-spacing-1 fw-bold">Loading Data...</p>
-    </Container>
-  );
 
   if (loadingSession || loadingRace) {
     return <LoadingView />;

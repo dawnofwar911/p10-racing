@@ -5,7 +5,7 @@ import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-b
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-// import AppNavbar from '@/components/AppNavbar'; // Removed
+import LoadingView from '@/components/LoadingView';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
@@ -109,11 +109,7 @@ export default function AuthPage() {
   };
 
   if (checkingAuth) {
-    return (
-      <Container className="vh-100 d-flex align-items-center justify-content-center">
-        <Spinner animation="border" variant="danger" />
-      </Container>
-    );
+    return <LoadingView />;
   }
 
   return (
