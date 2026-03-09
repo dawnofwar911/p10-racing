@@ -91,7 +91,7 @@ export default function Home() {
   useEffect(() => {
     if (!nextRace) return;
 
-    const timer = setInterval(() => {
+    const calculate = () => {
       const now = new Date().getTime();
       const targetStr = `${nextRace.date}T${nextRace.time}`;
       const target = new Date(targetStr).getTime();
@@ -99,7 +99,6 @@ export default function Home() {
 
       if (distance < 0) {
         setShowCountdown(false);
-        clearInterval(timer);
       } else {
         setShowCountdown(true);
         setCountdown({
@@ -109,7 +108,10 @@ export default function Home() {
           s: Math.floor((distance % (1000 * 60)) / 1000)
         });
       }
-    }, 1000);
+    };
+
+    calculate(); // Run immediately
+    const timer = setInterval(calculate, 1000); // Then every second
 
     return () => clearInterval(timer);
   }, [nextRace]);
