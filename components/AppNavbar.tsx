@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 
@@ -117,6 +117,37 @@ export default function AppNavbar() {
     router.push('/');
   };
 
+  const handleDeleteAccount = async () => {
+    if (!session) return;
+    
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete your account? This action is permanent and will remove all your predictions and league data."
+    );
+
+    if (confirmDelete) {
+      Haptics.notification({ type: NotificationType.Warning });
+      
+      try {
+        // Supabase RLS and cascading deletes handle the data removal
+        // based on the schema (ON DELETE CASCADE)
+        const { error } = await supabase.rpc('delete_user_data');
+        
+        if (error) {
+          console.error('Error deleting account:', error);
+          alert('Failed to delete account. Please contact support@p10racing.app');
+          return;
+        }
+
+        // Sign out after deletion
+        await handleLogout();
+        alert('Your account and data have been successfully deleted.');
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        alert('An unexpected error occurred. Please try again.');
+      }
+    }
+  };
+
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
   };
@@ -160,9 +191,16 @@ export default function AppNavbar() {
               <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
                 Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
               </NavbarText>
-              <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-                SIGN OUT
-              </Button>
+              <div className="d-flex gap-2">
+                <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
+                  SIGN OUT
+                </Button>
+                {session && (
+                  <Button variant="outline-danger" size="sm" onClick={handleDeleteAccount} className="rounded-pill px-3 border-opacity-25" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    DELETE ACCOUNT
+                  </Button>
+                )}
+              </div>
             </>
           ) : isAuthReady ? (
             <Link href="/auth" passHref legacyBehavior>
