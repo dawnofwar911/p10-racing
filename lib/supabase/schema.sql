@@ -52,14 +52,15 @@ CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USIN
 
 -- Leagues: Members can view, anyone can create
 CREATE POLICY "Leagues are viewable by members." ON public.leagues FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.league_members WHERE league_id = public.leagues.id AND user_id = auth.uid())
+  id IN (SELECT league_id FROM public.league_members WHERE user_id = auth.uid())
 );
 CREATE POLICY "Creators can view their own leagues." ON public.leagues FOR SELECT USING (auth.uid() = created_by);
 CREATE POLICY "Anyone authenticated can create a league." ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- League Members: Viewable by league mates
 CREATE POLICY "Members can see each other." ON public.league_members FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.league_members AS m WHERE m.league_id = public.league_members.league_id AND m.user_id = auth.uid())
+  user_id = auth.uid() OR
+  league_id IN (SELECT league_id FROM public.league_members WHERE user_id = auth.uid())
 );
 CREATE POLICY "Users can join leagues." ON public.league_members FOR INSERT WITH CHECK (auth.uid() = user_id);
 
