@@ -136,29 +136,61 @@ export default function LeaguesPage() {
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) return;
+    if (!session) {
+      setError('You must be signed in to create a league.');
+      return;
+    }
     setActionLoading(true);
+    setError(null);
+    setSuccess(null);
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
+      // 1. Insert league and return the new row immediately
       const { data: league, error: leagueError } = await supabase
         .from('leagues')
-        .insert([{ name: newLeagueName, created_by: session.user.id }])
+        .insert([{ 
+          name: newLeagueName.trim(), 
+          created_by: session.user.id 
+        }])
         .select()
         .single();
 
-      if (leagueError) throw leagueError;
+      if (leagueError) {
+        console.error('League creation error:', leagueError);
+        throw new Error(`Failed to create league: ${leagueError.message}`);
+      }
 
+      if (!league) {
+        throw new Error('League created but no data was returned.');
+      }
+
+      // 2. Add creator as first member
       const { error: memberError } = await supabase
         .from('league_members')
-        .insert([{ league_id: league.id, user_id: session.user.id }]);
+        .insert([{ 
+          league_id: league.id, 
+          user_id: session.user.id 
+        }]);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('Member join error:', memberError);
+        // Even if joining fails, the league exists, so we should refresh
+        setError(`League created, but failed to join: ${memberError.message}`);
+      } else {
+        setSuccess(`League "${league.name}" created successfully!`);
+        setNewLeagueName('');
+      }
 
-      setNewLeagueName('');
-      if (session?.user?.id) fetchLeagues(session.user.id);
+      // 3. Refresh list
+      fetchLeagues(session.user.id);
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+      console.error('Full creation flow error:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred during league creation.');
+      }
     } finally {
       setActionLoading(false);
     }
