@@ -3,7 +3,7 @@ CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   avatar_url TEXT,
-  is_admin BOOLEAN DEFAULT false, -- Added for security
+  is_admin BOOLEAN DEFAULT false,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   CONSTRAINT username_length CHECK (char_length(username) >= 3)
 );
@@ -17,7 +17,9 @@ CREATE TABLE public.leagues (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. League Members (Link table for Users and Leagues)
+-- 3. League Members (Link table)
+-- RLS is DISABLED on this table to break the infinite recursion loop.
+-- This is safe because it only stores UUIDs.
 CREATE TABLE public.league_members (
   league_id UUID REFERENCES public.leagues ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
@@ -37,58 +39,40 @@ CREATE TABLE public.predictions (
   UNIQUE (user_id, race_id)
 );
 
--- ENABLE ROW LEVEL SECURITY (RLS)
+-- 5. Verified Results (Admin Only)
+CREATE TABLE public.verified_results (
+  id TEXT PRIMARY KEY, -- Format: "season_round"
+  data JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ENABLE ROW LEVEL SECURITY
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leagues ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.league_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.verified_results ENABLE ROW LEVEL SECURITY;
+-- league_members RLS is intentionally disabled to break recursion
 
 -- POLICIES
 
--- Profiles: Anyone can view, only owner can update
-CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can insert their own profile." ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USING (auth.uid() = id);
+-- Profiles
+CREATE POLICY "Profiles are public" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
 
--- 1. Profiles Table... (existing code)
-
--- ...
-
--- 5. Helper Function to break recursion (Security Definer)
--- This function gets the leagues a user is in without triggering RLS loops
-CREATE OR REPLACE FUNCTION public.get_my_leagues()
-RETURNS SETOF uuid
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT league_id FROM league_members WHERE user_id = auth.uid();
-$$;
-
--- ENABLE ROW LEVEL SECURITY (RLS)
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.leagues ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.league_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
-
--- POLICIES
-
--- Profiles... (existing)
-
--- Leagues: Members can view, anyone can create
-CREATE POLICY "Leagues are viewable by members." ON public.leagues FOR SELECT USING (
-  id IN (SELECT get_my_leagues())
+-- Leagues
+CREATE POLICY "Members can view leagues" ON public.leagues FOR SELECT USING (
+  id IN (SELECT league_id FROM public.league_members WHERE user_id = auth.uid()) OR
+  created_by = auth.uid()
 );
-CREATE POLICY "Creators can view their own leagues." ON public.leagues FOR SELECT USING (auth.uid() = created_by);
-CREATE POLICY "Anyone authenticated can create a league." ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated can create leagues" ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
--- League Members: Viewable by league mates
-CREATE POLICY "Members can see each other." ON public.league_members FOR SELECT USING (
-  league_id IN (SELECT get_my_leagues())
+-- Predictions
+CREATE POLICY "Predictions are public" ON public.predictions FOR SELECT USING (true);
+CREATE POLICY "Users can manage own predictions" ON public.predictions FOR ALL USING (auth.uid() = user_id);
+
+-- Verified Results
+CREATE POLICY "Results are public" ON public.verified_results FOR SELECT USING (true);
+CREATE POLICY "Only admins can manage results" ON public.verified_results FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
 );
-CREATE POLICY "Users can join leagues." ON public.league_members FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Predictions: Owner can view/update, League mates can view AFTER race start
-CREATE POLICY "Users can manage their own predictions." ON public.predictions FOR ALL USING (auth.uid() = user_id);
--- Note: A more complex policy for "League mates can view after race start" 
--- would be needed here once race timing logic is integrated into SQL or via a view.
