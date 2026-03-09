@@ -220,8 +220,6 @@ export default function Home() {
 
       <footer className="mt-auto py-5 border-top border-secondary border-opacity-25 text-center mt-5">
         <p className="text-white opacity-25 small mb-1 fw-bold letter-spacing-1">© 2026 P10 RACING • v1.0.0</p>
-        <Link href="/admin" className="text-white small text-decoration-none opacity-25" onClick={triggerHaptic}>ADMIN</Link>
-        <span className="mx-2 text-white opacity-10">|</span>
         <Link href="/privacy.html" className="text-white small text-decoration-none opacity-25" onClick={triggerHaptic}>PRIVACY</Link>
       </footer>
     </main>

@@ -10,4 +10,10 @@ CREATE TABLE public.verified_results (
 ALTER TABLE public.verified_results ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Verified results viewable by everyone." ON public.verified_results FOR SELECT USING (true);
-CREATE POLICY "Only admins can modify results." ON public.verified_results FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Only admins can modify results." ON public.verified_results FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE profiles.id = auth.uid() 
+    AND profiles.is_admin = true
+  )
+);
