@@ -20,6 +20,17 @@ export default function AppNavbar() {
 
   useEffect(() => {
     async function getSession() {
+      // 1. Load from cache immediately for instant UI
+      const cachedUser = localStorage.getItem('p10_cache_username');
+      const cachedIsAdmin = localStorage.getItem('p10_cache_is_admin') === 'true';
+      if (cachedUser) {
+        setCurrentUser(cachedUser);
+        setIsAdmin(cachedIsAdmin);
+      } else {
+        const localUser = localStorage.getItem('p10_current_user');
+        setCurrentUser(localUser);
+      }
+
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
 
@@ -33,11 +44,16 @@ export default function AppNavbar() {
         if (profile) {
           setCurrentUser(profile.username);
           setIsAdmin(!!profile.is_admin);
+          localStorage.setItem('p10_cache_username', profile.username);
+          localStorage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
         } else {
-          // If authenticated but no profile, use email as fallback
-          setCurrentUser(currentSession.user.email?.split('@')[0] || 'User');
+          const fallback = currentSession.user.email?.split('@')[0] || 'User';
+          setCurrentUser(fallback);
+          localStorage.setItem('p10_cache_username', fallback);
         }
       } else {
+        localStorage.removeItem('p10_cache_username');
+        localStorage.removeItem('p10_cache_is_admin');
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
       }
@@ -49,6 +65,8 @@ export default function AppNavbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       if (!newSession) {
+        localStorage.removeItem('p10_cache_username');
+        localStorage.removeItem('p10_cache_is_admin');
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
         setIsAdmin(false);
@@ -62,8 +80,12 @@ export default function AppNavbar() {
             if (data) {
               setCurrentUser(data.username);
               setIsAdmin(!!data.is_admin);
+              localStorage.setItem('p10_cache_username', data.username);
+              localStorage.setItem('p10_cache_is_admin', String(!!data.is_admin));
             } else {
-              setCurrentUser(newSession.user.email?.split('@')[0] || 'User');
+              const fallback = newSession.user.email?.split('@')[0] || 'User';
+              setCurrentUser(fallback);
+              localStorage.setItem('p10_cache_username', fallback);
             }
           });
       }
@@ -74,11 +96,14 @@ export default function AppNavbar() {
 
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
+    localStorage.removeItem('p10_cache_username');
+    localStorage.removeItem('p10_cache_is_admin');
     if (session) {
       await supabase.auth.signOut();
     }
     localStorage.removeItem('p10_current_user');
     setCurrentUser(null);
+    setIsAdmin(false);
     router.push('/');
   };
 
