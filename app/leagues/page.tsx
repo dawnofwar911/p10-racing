@@ -146,24 +146,29 @@ export default function LeaguesPage() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
-      // 1. Insert league and return the new row immediately
-      const { data: league, error: leagueError } = await supabase
+      // DEBUG: Let us know if the function starts
+      console.log('Starting league creation for:', newLeagueName);
+      
+      // 1. Insert league
+      const { data: leagues, error: leagueError } = await supabase
         .from('leagues')
         .insert([{ 
           name: newLeagueName.trim(), 
           created_by: session.user.id 
         }])
-        .select()
-        .single();
+        .select();
 
       if (leagueError) {
-        console.error('League creation error:', leagueError);
-        throw new Error(`Failed to create league: ${leagueError.message}`);
+        alert('DB Error: ' + leagueError.message);
+        throw leagueError;
       }
 
-      if (!league) {
-        throw new Error('League created but no data was returned.');
+      if (!leagues || leagues.length === 0) {
+        alert('No data returned from DB. Check RLS policies.');
+        throw new Error('No data returned');
       }
+
+      const league = leagues[0];
 
       // 2. Add creator as first member
       const { error: memberError } = await supabase
@@ -174,11 +179,10 @@ export default function LeaguesPage() {
         }]);
 
       if (memberError) {
-        console.error('Member join error:', memberError);
-        // Even if joining fails, the league exists, so we should refresh
-        setError(`League created, but failed to join: ${memberError.message}`);
+        alert('Join Error: ' + memberError.message);
       } else {
-        setSuccess(`League "${league.name}" created successfully!`);
+        alert('Success! League created.');
+        setSuccess(`League "${league.name}" created!`);
         setNewLeagueName('');
       }
 
