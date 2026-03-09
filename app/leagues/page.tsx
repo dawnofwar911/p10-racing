@@ -146,9 +146,6 @@ export default function LeaguesPage() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
-      // DEBUG: Let us know if the function starts
-      console.log('Starting league creation for:', newLeagueName);
-      
       // 1. Insert league
       const { data: leagues, error: leagueError } = await supabase
         .from('leagues')
@@ -158,14 +155,10 @@ export default function LeaguesPage() {
         }])
         .select();
 
-      if (leagueError) {
-        alert('DB Error: ' + leagueError.message);
-        throw leagueError;
-      }
+      if (leagueError) throw leagueError;
 
       if (!leagues || leagues.length === 0) {
-        alert('No data returned from DB. Check RLS policies.');
-        throw new Error('No data returned');
+        throw new Error('League created but no data returned.');
       }
 
       const league = leagues[0];
@@ -179,9 +172,8 @@ export default function LeaguesPage() {
         }]);
 
       if (memberError) {
-        alert('Join Error: ' + memberError.message);
+        setError(`League created, but failed to join: ${memberError.message}`);
       } else {
-        alert('Success! League created.');
         setSuccess(`League "${league.name}" created!`);
         setNewLeagueName('');
       }
