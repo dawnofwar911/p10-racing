@@ -5,7 +5,7 @@ import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert } from '
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS, AppDriver, ApiCalendarRace } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-import AppNavbar from '@/components/AppNavbar';
+// import AppNavbar from '@/components/AppNavbar'; // Removed
 
 interface AdminDriver {
   id: string;
@@ -174,9 +174,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main>
-      <AppNavbar />
-
+    <>
       <Container className="mt-4 mb-5">
         <Row className="mb-4">
           <Col>
@@ -258,6 +256,6 @@ export default function AdminPage() {
           </Col>
         </Row>
       </Container>
-    </main>
+    </>
   );
 }

@@ -7,7 +7,7 @@ import { Session, PostgrestError } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
-import AppNavbar from '@/components/AppNavbar';
+// import AppNavbar from '@/components/AppNavbar'; // Removed
 
 interface League {
   id: string;
@@ -67,12 +67,9 @@ export default function LeaguesPage() {
 
   if (loading && !leagues.length) {
     return (
-      <main>
-        <AppNavbar />
-        <Container className="vh-100 d-flex align-items-center justify-content-center">
-          <Spinner animation="border" variant="danger" />
-        </Container>
-      </main>
+      <Container className="vh-100 d-flex align-items-center justify-content-center">
+        <Spinner animation="border" variant="danger" />
+      </Container>
     );
   }
 
@@ -228,23 +225,19 @@ export default function LeaguesPage() {
 
   if (!session && !loading) {
     return (
-      <main>
-        <AppNavbar />
-        <Container className="mt-5 text-center">
-          <div className="display-4 mb-4">🏆</div>
-          <h1 className="fw-bold text-white">Multiplayer Leagues</h1>
-          <p className="text-muted mb-5">Sign in to create or join private leagues and compete with your friends.</p>
-          <Link href="/auth" passHref legacyBehavior>
-            <Button className="btn-f1 px-5 py-3 fw-bold">SIGN IN TO PLAY</Button>
-          </Link>
-        </Container>
-      </main>
+      <Container className="mt-5 text-center">
+        <div className="display-4 mb-4">🏆</div>
+        <h1 className="fw-bold text-white">Multiplayer Leagues</h1>
+        <p className="text-muted mb-5">Sign in to create or join private leagues and compete with your friends.</p>
+        <Link href="/auth" passHref legacyBehavior>
+          <Button className="btn-f1 px-5 py-3 fw-bold">SIGN IN TO PLAY</Button>
+        </Link>
+      </Container>
     );
   }
 
   return (
-    <main>
-      <AppNavbar />
+    <>
       <Container className="mt-4 mb-5">
         <h1 className="h2 fw-bold text-uppercase letter-spacing-1 mb-4 text-white">Your Leagues</h1>
 
@@ -356,6 +349,6 @@ export default function LeaguesPage() {
           </Col>
         </Row>
       </Container>
-    </main>
+    </>
   );
 }

@@ -6,7 +6,7 @@ import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-import AppNavbar from '@/components/AppNavbar';
+// import AppNavbar from '@/components/AppNavbar'; // Removed
 
 interface SimplifiedResults {
   positions: { [driverId: string]: number };
@@ -137,9 +137,7 @@ export default function LeaderboardPage() {
   }, [supabase, view]);
 
   return (
-    <main>
-      <AppNavbar />
-
+    <>
       <Container className="mt-4">
         <Row className="mb-4 align-items-center">
           <Col>
@@ -247,6 +245,6 @@ export default function LeaderboardPage() {
           </Col>
         </Row>
       </Container>
-    </main>
+    </>
   );
 }

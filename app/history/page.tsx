@@ -6,7 +6,7 @@ import { CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import Link from 'next/link';
-import AppNavbar from '@/components/AppNavbar';
+// import AppNavbar from '@/components/AppNavbar'; // Removed
 
 interface HistoryEntry {
   round: string;
@@ -50,9 +50,7 @@ export default function HistoryPage() {
   }, []);
 
   return (
-    <main>
-      <AppNavbar />
-
+    <>
       <Container className="mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h1 className="h2 fw-bold text-uppercase letter-spacing-1">Race History</h1>
@@ -97,6 +95,6 @@ export default function HistoryPage() {
           </Row>
         )}
       </Container>
-    </main>
+    </>
   );
 }
