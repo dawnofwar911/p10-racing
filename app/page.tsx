@@ -43,6 +43,13 @@ export default function Home() {
       const user = localStorage.getItem('p10_current_user');
       setCurrentUser(user);
 
+      // Load from cache first
+      const cachedRace = localStorage.getItem('p10_cache_next_race');
+      const cachedDrivers = localStorage.getItem('p10_cache_drivers');
+      if (cachedRace) setNextRace(JSON.parse(cachedRace));
+      if (cachedDrivers) setAllDrivers(JSON.parse(cachedDrivers));
+      if (cachedRace || cachedDrivers) setLoading(false);
+
       const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
         fetchDrivers(CURRENT_SEASON)
@@ -50,6 +57,7 @@ export default function Home() {
 
       if (drivers.length > 0) {
         setAllDrivers(drivers);
+        localStorage.setItem('p10_cache_drivers', JSON.stringify(drivers));
       }
 
       if (races.length > 0) {
@@ -68,6 +76,7 @@ export default function Home() {
           round: parseInt(upcoming.round)
         };
         setNextRace(raceObj);
+        localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
 
         if (user) {
           const predStr = localStorage.getItem(`final_pred_${user}_${raceObj.id}`);
