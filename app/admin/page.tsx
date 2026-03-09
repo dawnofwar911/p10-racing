@@ -14,6 +14,8 @@ interface AdminDriver {
   color: string;
 }
 
+import { useRouter } from 'next/navigation';
+
 export default function AdminPage() {
   const [drivers, setDrivers] = useState<AdminDriver[]>(FALLBACK_DRIVERS);
   const [results, setResults] = useState<{ [driverId: string]: number }>({});
@@ -21,10 +23,37 @@ export default function AdminPage() {
   const [availableRaces, setAvailableRaces] = useState<ApiCalendarRace[]>([]);
   const [selectedRace, setSelectedRace] = useState(RACES[0].id);
   const [season, setSeason] = useState(CURRENT_SEASON);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const supabase = createClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    async function checkAdmin() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth');
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!profile?.is_admin) {
+        router.push('/');
+        return;
+      }
+
+      setIsAdmin(true);
+      setLoading(false);
+    }
+    checkAdmin();
+  }, [supabase, router]);
 
   const fallbackRaces = useMemo(() => RACES.map(r => ({
     round: r.id,
@@ -35,9 +64,9 @@ export default function AdminPage() {
   })), []);
 
   useEffect(() => {
+    if (!isAdmin) return;
+    
     async function load() {
-      if (loading) return;
-      
       setFirstDnf(''); 
       const d = await fetchDrivers(season);
       if (d.length > 0) {
@@ -59,7 +88,7 @@ export default function AdminPage() {
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [season]);
+  }, [season, isAdmin]);
 
   const handlePositionChange = (driverId: string, position: number) => {
     setResults(prev => ({ ...prev, [driverId]: position }));
@@ -109,12 +138,6 @@ export default function AdminPage() {
   };
 
   const handleSaveResults = async (target: 'local' | 'global') => {
-    const key = prompt(`Enter Admin Key to Publish ${target.toUpperCase()}:`);
-    if (key !== 'p10admin') {
-      alert('Invalid Key.');
-      return;
-    }
-
     const simplifiedResults = {
       positions: results,
       firstDnf: firstDnf
@@ -122,7 +145,7 @@ export default function AdminPage() {
 
     if (target === 'local') {
       localStorage.setItem(`results_${selectedRace}`, JSON.stringify(simplifiedResults));
-      alert(`Results for Round ${selectedRace} published and saved locally!`);
+      alert(`Results for Round ${selectedRace} saved locally!`);
     } else {
       setLoading(true);
       const { error: dbError } = await supabase
@@ -137,24 +160,18 @@ export default function AdminPage() {
       if (dbError) {
         alert('Global publish error: ' + dbError.message);
       } else {
-        alert(`Results for Round ${selectedRace} published GLOBALLY to Supabase!`);
+        alert(`Results for Round ${selectedRace} published GLOBALLY!`);
       }
     }
   };
 
-  const handleResetGame = () => {
-    const key = prompt('Enter Admin Key to RESET EVERYTHING:');
-    if (key !== 'p10admin') {
-      alert('Invalid Key.');
-      return;
-    }
-
-    if (confirm('Are you sure you want to RESET the entire game? This will delete all users, predictions, and results.')) {
-      localStorage.clear();
-      alert('Game data has been reset.');
-      window.location.href = '/';
-    }
-  };
+  if (!isAdmin || (loading && drivers.length === 0)) {
+    return (
+      <Container className="vh-100 d-flex align-items-center justify-content-center">
+        <Spinner animation="border" variant="danger" />
+      </Container>
+    );
+  }
 
   return (
     <main>
@@ -235,7 +252,9 @@ export default function AdminPage() {
               </Card.Body>
             </Card>
 
-            <Button variant="outline-danger" size="sm" className="w-100 opacity-50 mt-4" onClick={handleResetGame}>RESET ALL GAME DATA</Button>
+            <div className="text-center mt-4 opacity-25">
+              <small className="text-uppercase letter-spacing-1">Admin Mode Active</small>
+            </div>
           </Col>
         </Row>
       </Container>

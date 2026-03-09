@@ -3,6 +3,7 @@ CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   avatar_url TEXT,
+  is_admin BOOLEAN DEFAULT false, -- Added for security
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   CONSTRAINT username_length CHECK (char_length(username) >= 3)
 );

@@ -98,6 +98,20 @@ export default function LeaguesPage() {
         }
       }
       setSuccess(`Successfully imported ${count} predictions to your cloud account!`);
+      
+      // Post-migration cleanup
+      const currentGuests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
+      localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
+      setLocalGuests(filteredGuests);
+      
+      // Optional: Cleanup the actual prediction keys
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`final_pred_${guestName}_`)) {
+          localStorage.removeItem(key);
+        }
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError('Migration failed: ' + err.message);
@@ -238,8 +252,8 @@ export default function LeaguesPage() {
               </Card.Body>
             </Card>
 
-            {localGuests.length > 0 && (
-              <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-10">
+            {session && localGuests.length > 0 && (
+              <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-10 mb-4">
                 <Card.Header className="bg-dark border-warning border-opacity-25 py-3">
                   <h3 className="h6 mb-0 text-uppercase fw-bold text-warning letter-spacing-1">Import Local Data</h3>
                 </Card.Header>

@@ -12,6 +12,7 @@ import { Session } from '@supabase/supabase-js';
 export default function AppNavbar() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -25,12 +26,13 @@ export default function AppNavbar() {
       if (currentSession) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('username')
+          .select('username, is_admin')
           .eq('id', currentSession.user.id)
           .single();
         
         if (profile) {
           setCurrentUser(profile.username);
+          setIsAdmin(!!profile.is_admin);
         } else {
           // If authenticated but no profile, use email as fallback
           setCurrentUser(currentSession.user.email?.split('@')[0] || 'User');
@@ -49,15 +51,17 @@ export default function AppNavbar() {
       if (!newSession) {
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
+        setIsAdmin(false);
       } else {
         supabase
           .from('profiles')
-          .select('username')
+          .select('username, is_admin')
           .eq('id', newSession.user.id)
           .single()
           .then(({ data }) => {
             if (data) {
               setCurrentUser(data.username);
+              setIsAdmin(!!data.is_admin);
             } else {
               setCurrentUser(newSession.user.email?.split('@')[0] || 'User');
             }
@@ -82,7 +86,7 @@ export default function AppNavbar() {
     Haptics.impact({ style: ImpactStyle.Light });
   };
 
-  const isAdmin = pathname === '/admin';
+  const isOnAdminPage = pathname === '/admin';
 
   return (
     <Navbar variant="dark" expand="lg" className="px-3 sticky-top border-bottom border-secondary border-opacity-25" style={{ backgroundColor: 'rgba(21, 21, 30, 0.85)', backdropFilter: 'blur(10px)' }}>
@@ -97,7 +101,7 @@ export default function AppNavbar() {
           />
           <span className="d-none d-sm-inline letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>RACING</span></span>
           <span className="d-inline d-sm-none letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>R</span></span>
-          {isAdmin && <span className="ms-2 badge bg-danger" style={{ fontSize: '0.6rem' }}>ADMIN</span>}
+          {isOnAdminPage && <span className="ms-2 badge bg-danger" style={{ fontSize: '0.6rem' }}>ADMIN</span>}
         </Navbar.Brand>
       </Link>
       
@@ -110,6 +114,9 @@ export default function AppNavbar() {
           <Link href="/leaderboard" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leaderboard' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leaderboard</Link>
           <Link href="/standings" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/standings' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Standings</Link>
           <Link href="/history" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/history' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>History</Link>
+          {isAdmin && (
+            <Link href="/admin" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/admin' ? 'text-danger border-bottom border-danger border-2' : 'text-warning opacity-75'}`} style={{ fontSize: '0.75rem' }}>Admin</Link>
+          )}
         </Nav>
         
         <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
