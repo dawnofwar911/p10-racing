@@ -9,7 +9,6 @@ import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
-import AppNavbar from '@/components/AppNavbar';
 
 interface PredictRace {
   id: string;
@@ -34,7 +33,7 @@ export default function PredictPage() {
   const [submitted, setSubmitted] = useState(false);
   const [nextRace, setNextRace] = useState<PredictRace>(RACES[0] as unknown as PredictRace);
   const [loadingRace, setLoadingRace] = useState(true);
-  const [loadingSession, setLoadingSession] = useState(true); // Gating state
+  const [loadingSession, setLoadingSession] = useState(true); 
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS);
   const [isLocked, setIsLocked] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
@@ -51,7 +50,6 @@ export default function PredictPage() {
       
       let currentUsername = '';
       if (currentSession) {
-        // Try cache first for username to speed up UI
         const cachedUser = localStorage.getItem('p10_cache_username');
         if (cachedUser) {
           setUsername(cachedUser);
@@ -75,7 +73,7 @@ export default function PredictPage() {
           setUsername(savedUser);
         }
       }
-      setLoadingSession(false); // Auth check complete
+      setLoadingSession(false);
 
       // 2. Get Race Data
       const races = await fetchCalendar(CURRENT_SEASON);
@@ -114,7 +112,6 @@ export default function PredictPage() {
         finalDriverList.sort((a: AppDriver, b: AppDriver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
 
-        // Fetch Grid
         let finalGrid: ApiResult[] = [];
         const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
         if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
@@ -148,7 +145,6 @@ export default function PredictPage() {
           setIsLocked(true);
         }
 
-        // 3. Load Prediction
         if (currentSession) {
           const { data: dbPred } = await supabase
             .from('predictions')
@@ -170,7 +166,6 @@ export default function PredictPage() {
           }
         }
 
-        // 4. Fetch community predictions (Supabase + LocalStorage fallback)
         const { data: dbCommunityPreds } = await supabase
           .from('predictions')
           .select('user_id, p10_driver_id, dnf_driver_id, profiles(username)')
@@ -257,21 +252,20 @@ export default function PredictPage() {
     }
   };
 
-  if (loadingSession) {
-    return (
-      <main>
-        <AppNavbar />
-        <Container className="mt-5 text-center">
-          <Spinner animation="border" variant="danger" />
-        </Container>
-      </main>
-    );
+  const LoadingView = () => (
+    <Container className="d-flex flex-column justify-content-center align-items-center flex-grow-1" style={{ minHeight: '60vh' }}>
+      <Spinner animation="border" variant="danger" style={{ width: '3rem', height: '3rem' }} />
+      <p className="mt-3 text-muted text-uppercase letter-spacing-1 fw-bold">Loading Data...</p>
+    </Container>
+  );
+
+  if (loadingSession || loadingRace) {
+    return <LoadingView />;
   }
 
   if (!session && !username) {
     return (
-      <main>
-        <AppNavbar />
+      <>
         <Container className="mt-5">
           <Row className="justify-content-center">
             <Col md={5}>
@@ -300,7 +294,7 @@ export default function PredictPage() {
             </Col>
           </Row>
         </Container>
-      </main>
+      </>
     );
   }
 
@@ -318,8 +312,7 @@ export default function PredictPage() {
 
   if (submitted) {
     return (
-      <main>
-        <AppNavbar />
+      <>
         <Container className="mt-5 text-center">
           <div className="mb-4 display-1">🏁</div>
           <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
@@ -329,19 +322,12 @@ export default function PredictPage() {
             <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Home</Button></Link>
           </div>
         </Container>
-      </main>
-    );
-  }
-
-  if (loadingRace) {
-    return (
-      <main><AppNavbar /><Container className="mt-5 text-center"><Spinner animation="border" variant="danger" /><p className="mt-3 text-muted">Loading race data...</p></Container></main>
+      </>
     );
   }
 
   return (
-    <main>
-      <AppNavbar />
+    <>
       <Container className="mt-4 mb-5">
         <Row className="mb-4 align-items-center">
           <Col><h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1><p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p></Col>
@@ -399,6 +385,6 @@ export default function PredictPage() {
           </Form>
         )}
       </Container>
-    </main>
+    </>
   );
 }

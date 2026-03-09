@@ -19,8 +19,10 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: '#15151e' });
         
-        // 3. Hide the splash screen once the app is initialized
-        await SplashScreen.hide();
+        // 3. Hide the splash screen with a small delay to prevent flicker
+        setTimeout(async () => {
+          await SplashScreen.hide();
+        }, 300);
       } catch (err) {
         console.warn('Native initialization error:', err);
       }

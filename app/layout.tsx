@@ -7,6 +7,7 @@ import Loading from './loading';
 import NativeWrapper from '@/components/NativeWrapper';
 import PageTransition from '@/components/PageTransition';
 import OfflineStatus from '@/components/OfflineStatus';
+import AppNavbar from '@/components/AppNavbar';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -31,16 +32,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-bs-theme="dark">
-      <body className={inter.className}>
+      <body className={inter.className} style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
         <NativeWrapper>
-          <OfflineStatus />
-          <Suspense fallback={<Loading />}>
-            <PageTransition>
-              <div className="page-transition">
+          <div className="d-flex flex-column min-vh-100">
+            <AppNavbar />
+            <OfflineStatus />
+            <Suspense fallback={<Loading />}>
+              <PageTransition>
                 {children}
-              </div>
-            </PageTransition>
-          </Suspense>
+              </PageTransition>
+            </Suspense>
+          </div>
         </NativeWrapper>
       </body>
     </html>

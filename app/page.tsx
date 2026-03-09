@@ -7,7 +7,6 @@ import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
-import AppNavbar from '@/components/AppNavbar';
 
 interface HomeRace {
   id: string;
@@ -121,9 +120,7 @@ export default function Home() {
   };
 
   return (
-    <main style={{ backgroundColor: '#15151e', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <AppNavbar />
-
+    <>
       <Container className="mt-3 mt-md-4 flex-grow-1">
         <Row className="justify-content-center text-center">
           <Col md={8} className="mb-2">
@@ -247,6 +244,6 @@ export default function Home() {
         <p className="text-white opacity-20 extra-small mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>© 2026 P10 RACING • v1.0.0</p>
         <Link href="/privacy" className="text-white extra-small text-decoration-none opacity-20 hover-opacity-100" style={{ fontSize: '0.6rem' }} onClick={triggerHaptic}>PRIVACY POLICY</Link>
       </footer>
-    </main>
+    </>
   );
 }

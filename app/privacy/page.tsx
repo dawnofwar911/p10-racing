@@ -3,7 +3,7 @@
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { useRouter } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import AppNavbar from '@/components/AppNavbar';
+// import AppNavbar from '@/components/AppNavbar'; // Removed
 
 export default function PrivacyPage() {
   const router = useRouter();
@@ -14,9 +14,7 @@ export default function PrivacyPage() {
   };
 
   return (
-    <main style={{ backgroundColor: '#15151e', minHeight: '100vh' }}>
-      <AppNavbar />
-
+    <>
       <Container className="py-5">
         <Row className="justify-content-center">
           <Col lg={8}>
@@ -80,6 +78,6 @@ export default function PrivacyPage() {
           </Col>
         </Row>
       </Container>
-    </main>
+    </>
   );
 }

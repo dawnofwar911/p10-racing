@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
 import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
-import AppNavbar from '@/components/AppNavbar';
+// import AppNavbar from '@/components/AppNavbar'; // Removed
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
@@ -281,11 +281,10 @@ function LeagueDetailContent() {
 
 export default function LeagueDetailPage() {
   return (
-    <main>
-      <AppNavbar />
+    <>
       <Suspense fallback={<Container className="mt-5 text-center"><Spinner animation="border" variant="danger" /></Container>}>
         <LeagueDetailContent />
       </Suspense>
-    </main>
+    </>
   );
 }

@@ -5,7 +5,7 @@ import { Container, Table, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON, Driver } from '@/lib/data';
 import { fetchDrivers } from '@/lib/api';
 import { getContrastColor } from '@/lib/utils/colors';
-import AppNavbar from '@/components/AppNavbar';
+// import AppNavbar from '@/components/AppNavbar'; // Removed
 
 export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>([]);
@@ -32,8 +32,7 @@ export default function StandingsPage() {
   }, []);
 
   return (
-    <main>
-      <AppNavbar />
+    <>
       <Container className="mt-4">
         <h1 className="h2 mb-4 fw-bold text-uppercase letter-spacing-1">World Championship Standings</h1>
         
@@ -80,6 +79,6 @@ export default function StandingsPage() {
           </div>
         )}
       </Container>
-    </main>
+    </>
   );
 }
