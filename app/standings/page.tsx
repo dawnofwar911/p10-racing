@@ -13,8 +13,19 @@ export default function StandingsPage() {
 
   useEffect(() => {
     async function load() {
+      // 1. Load from cache first
+      const cached = localStorage.getItem('p10_cache_standings');
+      if (cached) {
+        setStandings(JSON.parse(cached));
+        setLoading(false);
+      }
+
+      // 2. Fetch fresh data
       const data = await fetchDrivers(CURRENT_SEASON);
-      setStandings(data);
+      if (data.length > 0) {
+        setStandings(data);
+        localStorage.setItem('p10_cache_standings', JSON.stringify(data));
+      }
       setLoading(false);
     }
     load();

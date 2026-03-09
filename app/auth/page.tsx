@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -13,10 +13,23 @@ export default function AuthPage() {
   const [username, setUsername] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const supabase = createClient();
   const router = useRouter();
+
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push('/');
+      } else {
+        setCheckingAuth(false);
+      }
+    }
+    checkAuth();
+  }, [supabase, router]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +107,17 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <main>
+        <AppNavbar />
+        <Container className="vh-100 d-flex align-items-center justify-content-center">
+          <Spinner animation="border" variant="danger" />
+        </Container>
+      </main>
+    );
+  }
 
   return (
     <main>
