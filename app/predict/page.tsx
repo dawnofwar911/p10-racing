@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Card } from 'react-bootstrap';
+import { useState, useEffect, Suspense } from 'react';
+import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -9,6 +9,7 @@ import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 
 interface PredictRace {
@@ -26,7 +27,7 @@ interface CommunityPrediction {
   dnf: string;
 }
 
-export default function PredictPage() {
+function PredictContent() {
   const [username, setUsername] = useState('');
   const [session, setSession] = useState<Session | null>(null);
   const [p10Driver, setP10Driver] = useState('');
@@ -40,8 +41,16 @@ export default function PredictPage() {
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   
   const supabase = createClient();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('howto') === 'true') {
+      setShowHowToPlay(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function init() {
@@ -324,7 +333,21 @@ export default function PredictPage() {
     <>
       <Container className="mt-4 mb-5">
         <Row className="mb-4 align-items-center">
-          <Col><h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1><p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p></Col>
+          <Col>
+            <div className="d-flex align-items-center gap-2">
+              <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1>
+              <Button 
+                variant="outline-secondary" 
+                size="sm" 
+                className="rounded-circle p-0 d-flex align-items-center justify-content-center opacity-50" 
+                style={{ width: '22px', height: '22px', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px' }}
+                onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setShowHowToPlay(true); }}
+              >
+                ?
+              </Button>
+            </div>
+            <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
+          </Col>
           <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); }} className="rounded-pill">Switch Guest</Button>)}</Col>
         </Row>
         {startingGrid.length > 0 && !isLocked && (
@@ -379,6 +402,67 @@ export default function PredictPage() {
           </Form>
         )}
       </Container>
+
+      <Modal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} centered size="lg" contentClassName="bg-dark border-secondary">
+        <Modal.Header closeButton closeVariant="white" className="border-secondary">
+          <Modal.Title className="fw-bold text-uppercase letter-spacing-1">How to <span className="text-danger">Play</span></Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="px-4 py-4">
+          <section className="mb-4">
+            <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">The Objective</h3>
+            <p className="text-white opacity-75 small">
+              Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.
+            </p>
+          </section>
+
+          <section className="mb-4">
+            <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-3">Scoring: P10 Finisher</h3>
+            <p className="text-white opacity-75 extra-small mb-3">
+              Points are awarded based on how close your pick is to 10th place:
+            </p>
+            <div className="bg-black bg-opacity-50 border border-secondary border-opacity-25 rounded overflow-hidden">
+              <table className="table table-dark table-sm mb-0 extra-small">
+                <thead>
+                  <tr className="text-uppercase opacity-50" style={{ fontSize: '0.6rem' }}>
+                    <th className="ps-3 py-2">Actual Finish</th>
+                    <th className="pe-3 py-2 text-end">Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="table-active fw-bold"><td className="ps-3 py-1">P10 (Exact)</td><td className="pe-3 py-1 text-end text-danger">25</td></tr>
+                  <tr><td className="ps-3 py-1">P9 or P11</td><td className="pe-3 py-1 text-end">18</td></tr>
+                  <tr><td className="ps-3 py-1">P8 or P12</td><td className="pe-3 py-1 text-end">15</td></tr>
+                  <tr><td className="ps-3 py-1">P7 or P13</td><td className="pe-3 py-1 text-end">12</td></tr>
+                  <tr><td className="ps-3 py-1">P6 or P14</td><td className="pe-3 py-1 text-end">10</td></tr>
+                  <tr><td className="ps-3 py-1">P5 or P15</td><td className="pe-3 py-1 text-end">8</td></tr>
+                  <tr><td className="ps-3 py-1">P4 or P16</td><td className="pe-3 py-1 text-end">6</td></tr>
+                  <tr><td className="ps-3 py-1">P3 or P17</td><td className="pe-3 py-1 text-end">4</td></tr>
+                  <tr><td className="ps-3 py-1">P2 or P18</td><td className="pe-3 py-1 text-end">2</td></tr>
+                  <tr><td className="ps-3 py-1">P1 or P19+</td><td className="pe-3 py-1 text-end">1</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">Scoring: First DNF</h3>
+            <p className="text-white opacity-75 small mb-0">
+              Get the first driver to retire correctly and earn a massive <span className="fw-bold text-danger">+25 Points</span>.
+            </p>
+          </section>
+        </Modal.Body>
+        <Modal.Footer className="border-secondary">
+          <Button variant="danger" className="w-100 fw-bold py-2" onClick={() => setShowHowToPlay(false)}>GOT IT</Button>
+        </Modal.Footer>
+      </Modal>
     </>
+  );
+}
+
+export default function PredictPage() {
+  return (
+    <Suspense fallback={<LoadingView />}>
+      <PredictContent />
+    </Suspense>
   );
 }

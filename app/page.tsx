@@ -148,7 +148,7 @@ export default function Home() {
               </div>
             )}
 
-            <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-4 px-4 px-sm-0">
+            <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
               <Link href="/predict" passHref legacyBehavior>
                 <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
                   {userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION'}
@@ -158,6 +158,12 @@ export default function Home() {
                 <Button variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
                   LEADERBOARD
                 </Button>
+              </Link>
+            </div>
+            
+            <div className="mb-4">
+              <Link href="/predict?howto=true" className="text-decoration-none text-danger fw-bold letter-spacing-1 small opacity-75 hover-opacity-100" onClick={triggerHaptic} style={{ fontSize: '0.7rem' }}>
+                HOW IT WORKS →
               </Link>
             </div>
           </Col>
@@ -241,7 +247,7 @@ export default function Home() {
       </Container>
 
       <footer className="mt-auto py-4 border-top border-secondary border-opacity-10 text-center">
-        <p className="text-white opacity-20 extra-small mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>© 2026 P10 RACING • v1.0.0</p>
+        <p className="text-white opacity-20 extra-small mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>© 2026 P10 RACING • v1.1.0</p>
         <Link href="/privacy" className="text-white extra-small text-decoration-none opacity-20 hover-opacity-100" style={{ fontSize: '0.6rem' }} onClick={triggerHaptic}>PRIVACY POLICY</Link>
       </footer>
     </>
