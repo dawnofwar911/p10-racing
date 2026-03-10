@@ -61,3 +61,13 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 *   **Mobile:** Capacitor JS 8 (Android & iOS).
 *   **CI/CD:** GitHub Actions.
 *   **Data Source:** Jolpica F1 API.
+
+---
+
+## 📦 Versioning Mandates
+*   **Source of Truth:** Always use `package.json` version for all release-related versioning.
+*   **Sync:** Do not hardcode versions in `android/app/build.gradle` or the UI footer; they are automated.
+*   **Increment Policy:** You **MUST** increment the version in `package.json` before finishing any task that includes a bug fix or new feature.
+    *   **Patch (x.x.1):** Bug fixes, small tweaks.
+    *   **Minor (x.1.x):** New features, significant UI changes.
+    *   **Major (1.x.x):** Breaking changes or major architectural shifts.

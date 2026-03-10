@@ -82,5 +82,17 @@ The project includes a robust test suite covering:
 
 Run all tests with: `npm run test`
 
+## 📦 Versioning & Releases
+
+To ensure consistency across web, Android, and the App Store, we use a single source of truth for versioning:
+
+1.  **Source of Truth:** The `version` field in `package.json`.
+2.  **Automatic Sync:**
+    -   **Android:** The `versionName` in `android/app/build.gradle` is automatically pulled from `package.json`.
+    -   **UI:** The version displayed in the homepage footer is dynamically imported from `package.json`.
+3.  **Process:**
+    -   Increment the version in `package.json` after **every** bug fix (patch) or new feature (minor/major).
+    -   The `versionCode` for Android is automatically incremented by the GitHub Actions pipeline using `${{ github.run_number }}` to ensure uniqueness for the Play Store.
+
 ## 📄 License
 This project is for personal and community use. F1 and related marks are trademarks of Formula One Licensing BV.
