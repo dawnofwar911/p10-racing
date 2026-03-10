@@ -215,7 +215,7 @@ function PredictContent() {
       setExistingPlayers(existingPlayersList);
     }
     init();
-  }, [supabase]);
+  }, [supabase, isSeasonFinished]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

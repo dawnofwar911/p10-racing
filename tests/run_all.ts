@@ -1,5 +1,6 @@
 // Run with: npx tsx tests/run_all.ts
 import './season_logic.test.ts';
+import './leaderboard_ranking.test.ts';
 import './scoring.test.ts';
 import './api_logic.test.ts';
 import './api_scoring.test.ts';
