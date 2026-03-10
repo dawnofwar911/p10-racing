@@ -80,8 +80,29 @@ export default function LeaguesPage() {
       let count = 0;
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key?.startsWith(`final_pred_${guestName}_`)) {
-          const raceId = key.replace(`final_pred_${guestName}_`, "");
+        if (!key) continue;
+
+        let season = CURRENT_SEASON;
+        let raceId = '';
+        let match = false;
+
+        // Pattern 1: final_pred_SEASON_USERNAME_ROUND
+        if (key.startsWith('final_pred_')) {
+          const parts = key.split('_');
+          if (parts.length >= 5 && parts[3] === guestName) {
+            season = parseInt(parts[2]);
+            raceId = parts[4];
+            match = true;
+          } 
+          // Pattern 2: final_pred_USERNAME_ROUND (Old style)
+          else if (parts.length === 4 && parts[2] === guestName) {
+            season = CURRENT_SEASON; // Default to current
+            raceId = parts[3];
+            match = true;
+          }
+        }
+
+        if (match) {
           const predStr = localStorage.getItem(key);
           if (!predStr) continue;
           const pred = JSON.parse(predStr);
@@ -91,7 +112,7 @@ export default function LeaguesPage() {
               .from('predictions')
               .upsert({
                 user_id: session.user.id,
-                race_id: `${CURRENT_SEASON}_${raceId}`,
+                race_id: `${season}_${raceId}`,
                 p10_driver_id: pred.p10,
                 dnf_driver_id: pred.dnf,
                 updated_at: new Date().toISOString()
@@ -109,10 +130,10 @@ export default function LeaguesPage() {
       localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
       setLocalGuests(filteredGuests);
       
-      // Optional: Cleanup the actual prediction keys
+      // Cleanup the actual prediction keys
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const key = localStorage.key(i);
-        if (key?.startsWith(`final_pred_${guestName}_`)) {
+        if (key && (key.includes(`_final_pred_${guestName}_`) || key.startsWith(`final_pred_${guestName}_`) || (key.startsWith('final_pred_') && key.includes(`_${guestName}_`)))) {
           localStorage.removeItem(key);
         }
       }

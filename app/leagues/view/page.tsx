@@ -82,7 +82,7 @@ function LeagueDetailContent() {
         if (verifiedMatch) {
           raceResultsMap[round] = verifiedMatch.data as SimplifiedResults;
         } else {
-          const resultsData = localStorage.getItem(`results_${round}`);
+          const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
           if (resultsData) {
             raceResultsMap[round] = JSON.parse(resultsData);
           } else {
@@ -225,7 +225,12 @@ function LeagueDetailContent() {
                             <td className="ps-4 fw-bold text-muted">
                               {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}
                             </td>
-                            <td className="fw-bold fs-5 text-white">{entry.player}</td>
+                            <td className="fw-bold fs-5 text-white">
+                              {entry.player}
+                              {entry.rank === 1 && !loading && leaderboard.length > 1 && (
+                                <span className="ms-2 badge bg-warning text-dark small p-1" style={{ fontSize: '0.6rem' }}>LEAGUE CHAMPION</span>
+                              )}
+                            </td>
                             <td className="text-end text-muted small">
                               <span className={entry.lastRacePoints > 0 ? 'text-success fw-bold' : ''}>
                                 {entry.lastRacePoints > 0 ? `+${entry.lastRacePoints}` : '-'}

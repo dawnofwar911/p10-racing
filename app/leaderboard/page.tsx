@@ -37,7 +37,7 @@ export default function LeaderboardPage() {
       
       await Promise.all(races.map(async (race: ApiCalendarRace) => {
         const round = race.round;
-        const resultsData = localStorage.getItem(`results_${round}`);
+        const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
         
         if (!resultsData) {
           const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
               }, {}),
               firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null
             };
-            localStorage.setItem(`results_${round}`, JSON.stringify(simplifiedResults));
+            localStorage.setItem(`results_${CURRENT_SEASON}_${round}`, JSON.stringify(simplifiedResults));
             raceResultsMap[round] = simplifiedResults;
           }
         } else {
@@ -89,7 +89,7 @@ export default function LeaderboardPage() {
           let prediction: { p10: string, dnf: string } | null = null;
 
           if (player.isLocal) {
-            const predStr = localStorage.getItem(`final_pred_${player.username}_${round}`);
+            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
             if (predStr) prediction = JSON.parse(predStr);
           } else if (player.dbPredictions) {
             const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
@@ -191,7 +191,12 @@ export default function LeaderboardPage() {
                         <td className="ps-4 fw-bold text-muted">
                           {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}
                         </td>
-                        <td className="fw-bold fs-5">{entry.player}</td>
+                        <td className="fw-bold fs-5">
+                          {entry.player}
+                          {entry.rank === 1 && !loading && leaderboard.length > 1 && (
+                            <span className="ms-2 badge bg-warning text-dark small p-1" style={{ fontSize: '0.6rem' }}>SEASON CHAMPION</span>
+                          )}
+                        </td>
                         <td className="text-end text-muted small">
                           <span className={entry.lastRacePoints > 0 ? 'text-success fw-bold' : ''}>
                             {entry.lastRacePoints > 0 ? `+${entry.lastRacePoints}` : '-'}

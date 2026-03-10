@@ -32,6 +32,8 @@ export default function Home() {
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
   const [showCountdown, setShowCountdown] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
+  const [isSeasonFinished, setIsSeasonFinished] = useState(false);
+  const [champion, setChampion] = useState<string | null>(null);
   
   const supabase = createClient();
 
@@ -65,21 +67,38 @@ export default function Home() {
         const upcoming = races.find((r: ApiCalendarRace) => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
           return raceTime > now;
-        }) || races[0];
+        });
+
+        if (!upcoming) {
+          setIsSeasonFinished(true);
+          // Fetch leaderboard to find champion
+          const { data: profiles } = await supabase.from('profiles').select('id, username');
+          const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+          
+          if (profiles && predictions) {
+            // Re-use logic from LeaderboardPage or move it to a helper (but for now let's simplify)
+            // Simplified champion calculation (only for global)
+            // Note: This is a heavy calculation to do on the home page, but for end-of-season it's rare.
+            // In a real app, you'd store the winners in a table.
+            setChampion(null); // Placeholder for now, we'll implement calculation below if needed
+          }
+        }
+
+        const raceToShow = upcoming || races[races.length - 1]; // Use last race if season finished
 
         const raceObj: HomeRace = {
-          id: upcoming.round,
-          name: upcoming.raceName,
-          circuit: upcoming.Circuit.circuitName,
-          date: upcoming.date,
-          time: upcoming.time || '00:00:00Z',
-          round: parseInt(upcoming.round)
+          id: raceToShow.round,
+          name: raceToShow.raceName,
+          circuit: raceToShow.Circuit.circuitName,
+          date: raceToShow.date,
+          time: raceToShow.time || '00:00:00Z',
+          round: parseInt(raceToShow.round)
         };
         setNextRace(raceObj);
         localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
 
         if (user) {
-          const predStr = localStorage.getItem(`final_pred_${user}_${raceObj.id}`);
+          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${user}_${raceObj.id}`);
           if (predStr) setUserPrediction(JSON.parse(predStr));
         }
       }
@@ -130,7 +149,18 @@ export default function Home() {
               Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
             </p>
             
-            {nextRace && !loading && showCountdown && (
+            {nextRace && !loading && isSeasonFinished && (
+              <div className="mb-4 p-4 border border-warning rounded bg-warning bg-opacity-10 shadow-lg">
+                <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
+                <h2 className="display-6 fw-bold text-white mb-2">SEASON {CURRENT_SEASON} FINISHED</h2>
+                <p className="text-muted small mb-3">Congratulations to all players! Check the leaderboard to see the final standings.</p>
+                <Link href="/leaderboard" passHref legacyBehavior>
+                  <Button variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</Button>
+                </Link>
+              </div>
+            )}
+
+            {nextRace && !loading && !isSeasonFinished && showCountdown && (
               <div className="mb-4">
                 <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
                 <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
@@ -150,14 +180,22 @@ export default function Home() {
             )}
 
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
-              <Link href="/predict" passHref legacyBehavior>
-                <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
-                  {userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION'}
-                </Button>
-              </Link>
+              {!isSeasonFinished ? (
+                <Link href="/predict" passHref legacyBehavior>
+                  <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                    {userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION'}
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/history" passHref legacyBehavior>
+                  <Button size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                    VIEW SEASON RECAP
+                  </Button>
+                </Link>
+              )}
               <Link href="/leaderboard" passHref legacyBehavior>
                 <Button variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
-                  LEADERBOARD
+                  {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
                 </Button>
               </Link>
             </div>
