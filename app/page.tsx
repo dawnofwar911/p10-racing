@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
 import packageInfo from '../package.json';
@@ -33,7 +33,6 @@ export default function Home() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
-  const [champion, setChampion] = useState<string | null>(null);
   
   const supabase = createClient();
 
@@ -80,7 +79,6 @@ export default function Home() {
             // Simplified champion calculation (only for global)
             // Note: This is a heavy calculation to do on the home page, but for end-of-season it's rare.
             // In a real app, you'd store the winners in a table.
-            setChampion(null); // Placeholder for now, we'll implement calculation below if needed
           }
         }
 
