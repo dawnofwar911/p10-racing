@@ -144,9 +144,10 @@ export default function AdminPage() {
     };
 
     if (target === 'local') {
-      localStorage.setItem(`results_${selectedRace}`, JSON.stringify(simplifiedResults));
+      localStorage.setItem(`results_${season}_${selectedRace}`, JSON.stringify(simplifiedResults));
       alert(`Results for Round ${selectedRace} saved locally!`);
-    } else {
+    }
+ else {
       setLoading(true);
       const { error: dbError } = await supabase
         .from('verified_results')

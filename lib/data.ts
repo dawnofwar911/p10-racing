@@ -88,4 +88,15 @@ export interface UserPrediction {
   raceId: string;
 }
 
-export const CURRENT_SEASON = new Date().getFullYear();
+export const getSystemSeason = () => new Date().getFullYear();
+
+export const isPreseason = () => {
+  const now = new Date();
+  const month = now.getMonth(); // 0-indexed, Jan=0, Feb=1, Mar=2
+  // Preseason is Jan and Feb. Season starts in March.
+  return month < 2;
+};
+
+export const CURRENT_SEASON = isPreseason() ? getSystemSeason() - 1 : getSystemSeason();
+export const NEXT_SEASON = CURRENT_SEASON + 1;
+export const DISPLAY_SEASON = CURRENT_SEASON;

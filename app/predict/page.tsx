@@ -42,6 +42,7 @@ function PredictContent() {
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   
   const supabase = createClient();
   const searchParams = useSearchParams();
@@ -96,9 +97,12 @@ function PredictContent() {
           return fourHoursLater > now;
         });
 
-        if (activeIndex === -1) activeIndex = races.length - 1;
+        if (activeIndex === -1) {
+          activeIndex = races.length - 1;
+          setIsSeasonFinished(true);
+        }
 
-        if (activeIndex > 0) {
+        if (activeIndex > 0 && !isSeasonFinished) {
           const prevRace = races[activeIndex - 1];
           const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
           if (!results) {
@@ -151,7 +155,7 @@ function PredictContent() {
 
         const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
         const lockTime = new Date(raceStartTime.getTime() + 120000);
-        if (now > lockTime) {
+        if (now > lockTime || isSeasonFinished) {
           setIsLocked(true);
         }
 
@@ -168,7 +172,7 @@ function PredictContent() {
             setDnfDriver(dbPred.dnf_driver_id);
           }
         } else if (currentUsername) {
-          const finalized = localStorage.getItem(`final_pred_${currentUsername}_${currentRace.id}`);
+          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUsername}_${currentRace.id}`);
           if (finalized) {
             const parsed = JSON.parse(finalized);
             setP10Driver(parsed.p10);
@@ -193,7 +197,7 @@ function PredictContent() {
         const localPreds = playersList
           .filter((p: string) => p !== currentUsername)
           .map((p: string) => {
-            const pred = localStorage.getItem(`final_pred_${p}_${currentRace.id}`);
+            const pred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${p}_${currentRace.id}`);
             return pred ? JSON.parse(pred) : null;
           }).filter(p => p !== null);
         
@@ -234,8 +238,8 @@ function PredictContent() {
           return;
         }
       } else {
-        const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id };
-        localStorage.setItem(`final_pred_${username}_${nextRace.id}`, JSON.stringify(prediction));
+        const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id, season: CURRENT_SEASON };
+        localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
         const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
         if (!players.includes(username)) {
           players.push(username);
@@ -251,7 +255,7 @@ function PredictContent() {
     Haptics.selectionChanged();
     localStorage.setItem('p10_current_user', name);
     setUsername(name);
-    const finalized = localStorage.getItem(`final_pred_${name}_${nextRace.id}`);
+    const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${name}_${nextRace.id}`);
     if (finalized) {
       const parsed = JSON.parse(finalized);
       setP10Driver(parsed.p10);
@@ -356,9 +360,13 @@ function PredictContent() {
         {isLocked ? (
           <div className="text-center">
             <Card className="p-5 border-danger bg-dark mb-4 shadow">
-              <div className="display-4 mb-3">🔒</div>
-              <h2 className="mb-4 fw-bold">Predictions Closed</h2>
-              <p className="lead mb-4 text-muted">The {nextRace.name} is underway. Good luck!</p>
+              <div className="display-4 mb-3">{isSeasonFinished ? '🏆' : '🔒'}</div>
+              <h2 className="mb-4 fw-bold">{isSeasonFinished ? 'Season Finished' : 'Predictions Closed'}</h2>
+              <p className="lead mb-4 text-muted">
+                {isSeasonFinished 
+                  ? `The ${CURRENT_SEASON} season has concluded. See you in ${CURRENT_SEASON + 1}!` 
+                  : `The ${nextRace.name} is underway. Good luck!`}
+              </p>
               <Row className="text-start">
                 <Col lg={6} className="mb-4">
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
