@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.p10racing.app",
+      "sha256_cert_fingerprints": [
+        "12:41:B9:49:39:62:03:00:45:6C:08:91:9F:FB:26:6B:A3:62:8A:D3:C9:F0:24:1C:0D:CE:14:AA:95:CC:32:CA",
+        "AB:B2:1A:70:57:CF:F6:03:75:DE:82:F8:A2:9C:C2:6B:B7:5D:8D:6B:07:9C:0D:AC:84:3D:62:91:C7:06:E8:9E"
+      ]
+    }
+  }
+]

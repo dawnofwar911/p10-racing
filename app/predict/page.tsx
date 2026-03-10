@@ -8,6 +8,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
+import { Share } from '@capacitor/share';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
@@ -266,6 +267,30 @@ function PredictContent() {
     }
   };
 
+  const handleShare = async () => {
+    const p10Name = drivers.find(d => d.id === p10Driver)?.name || p10Driver;
+    const dnfName = drivers.find(d => d.id === dnfDriver)?.name || dnfDriver;
+    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
+    
+    try {
+      await Share.share({
+        title: 'P10 Racing Predictions',
+        text: text,
+        url: 'https://p10-racing.vercel.app/predict',
+        dialogTitle: 'Share your Picks',
+      });
+    } catch (error) {
+      console.error('Error sharing', error);
+      // Fallback for non-native or failed share
+      if (navigator.share) {
+        navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10-racing.vercel.app/predict' }).catch(console.error);
+      } else {
+        navigator.clipboard.writeText(text + '\n\nhttps://p10-racing.vercel.app/predict');
+        alert('Prediction copied to clipboard!');
+      }
+    }
+  };
+
   if (loadingSession || loadingRace) {
     return <LoadingView />;
   }
@@ -304,18 +329,6 @@ function PredictContent() {
       </>
     );
   }
-
-  const handleShare = () => {
-    const p10Name = drivers.find(d => d.id === p10Driver)?.name || p10Driver;
-    const dnfName = drivers.find(d => d.id === dnfDriver)?.name || dnfDriver;
-    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
-    if (navigator.share) {
-      navigator.share({ title: 'P10 Racing Predictions', text: text }).catch(console.error);
-    } else {
-      navigator.clipboard.writeText(text);
-      alert('Prediction copied to clipboard!');
-    }
-  };
 
   if (submitted) {
     return (

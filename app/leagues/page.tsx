@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { Session, PostgrestError } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 
 interface League {
@@ -16,7 +17,7 @@ interface League {
   created_at: string;
 }
 
-export default function LeaguesPage() {
+function LeaguesContent() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +30,7 @@ export default function LeaguesPage() {
   const [localGuests, setLocalGuests] = useState<string[]>([]);
 
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   const fetchLeagues = useCallback(async (userId: string) => {
     setLoading(true);
@@ -61,13 +63,15 @@ export default function LeaguesPage() {
       } else {
         setLoading(false);
       }
+
+      // Check for join parameter
+      const joinCode = searchParams.get('join');
+      if (joinCode) {
+        setInviteCode(joinCode);
+      }
     }
     init();
-  }, [supabase, fetchLeagues]);
-
-  if (loading && !leagues.length) {
-    return <LoadingView />;
-  }
+  }, [supabase, fetchLeagues, searchParams]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;
@@ -253,6 +257,10 @@ export default function LeaguesPage() {
     );
   }
 
+  if (loading && !leagues.length) {
+    return <LoadingView />;
+  }
+
   return (
     <>
       <Container className="mt-4 mb-5">
@@ -367,5 +375,13 @@ export default function LeaguesPage() {
         </Row>
       </Container>
     </>
+  );
+}
+
+export default function LeaguesPage() {
+  return (
+    <Suspense fallback={<LoadingView />}>
+      <LeaguesContent />
+    </Suspense>
   );
 }
