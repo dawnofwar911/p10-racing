@@ -90,8 +90,8 @@ export interface UserPrediction {
 
 export const getSystemSeason = () => new Date().getFullYear();
 
-export const isPreseason = () => {
-  const now = new Date();
+export const isPreseason = (date?: Date) => {
+  const now = date || new Date();
   const month = now.getMonth(); // 0-indexed, Jan=0, Feb=1, Mar=2
   // Preseason is Jan and Feb. Season starts in March.
   return month < 2;
