@@ -50,7 +50,7 @@ export default function Home() {
       if (cachedDrivers) setAllDrivers(JSON.parse(cachedDrivers));
       if (cachedRace || cachedDrivers) setLoading(false);
 
-      const [races, drivers] = await Promise.all([
+        const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
         fetchDrivers(CURRENT_SEASON)
       ]);
@@ -67,7 +67,16 @@ export default function Home() {
           return raceTime > now;
         });
 
-        if (!upcoming) {
+        // Calculate if ALL races in the calendar have results in localStorage
+        let resultsCount = 0;
+        races.forEach((r: ApiCalendarRace) => {
+          if (localStorage.getItem(`results_${CURRENT_SEASON}_${r.round}`)) {
+            resultsCount++;
+          }
+        });
+        const allRacesHaveResults = resultsCount > 0 && resultsCount === races.length;
+
+        if (!upcoming && allRacesHaveResults) {
           setIsSeasonFinished(true);
           // Fetch leaderboard to find champion
           const { data: profiles } = await supabase.from('profiles').select('id, username');
