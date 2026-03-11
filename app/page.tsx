@@ -69,6 +69,14 @@ export default function Home() {
 
         if (!upcoming) {
           setIsSeasonFinished(true);
+          // Fetch leaderboard to find champion
+          const { data: profiles } = await supabase.from('profiles').select('id, username');
+          const { data: predictions } = await supabase.from('predictions').select('*') as { data: any[] | null };
+          
+          if (profiles && predictions) {
+            // TODO: Move shared scoring logic to lib/scoring.ts to calculate champion here
+            // without duplicating LeaderboardPage logic.
+          }
         }
 
         const raceToShow = upcoming || races[races.length - 1]; // Use last race if season finished
