@@ -155,7 +155,7 @@ export default function AppNavbar() {
   const isOnAdminPage = pathname === '/admin';
 
   return (
-    <Navbar expanded={expanded} onToggle={setExpanded} variant="dark" expand="lg" className="px-3 sticky-top border-bottom border-secondary border-opacity-25" style={{ backgroundColor: 'rgba(21, 21, 30, 0.85)', backdropFilter: 'blur(10px)' }}>
+    <Navbar expanded={expanded} onToggle={setExpanded} variant="dark" expand="lg" className="px-3 sticky-top border-bottom border-secondary border-opacity-25" style={{ backgroundColor: '#15151e', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <Link href="/" passHref legacyBehavior>
         <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center" onClick={triggerHaptic}>
           <Image 

@@ -35,7 +35,7 @@ main {
 .navbar.sticky-top {
   /* When sticky-top is used, it will be at the very top of the screen (under status bar) */
   /* We add extra padding to the navbar itself so its content is below the status bar */
-  padding-top: env(safe-area-inset-top, 12px) !important;
+  padding-top: env(safe-area-inset-top, 0px) !important;
   top: 0 !important;
 }
 
