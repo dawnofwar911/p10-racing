@@ -2,6 +2,7 @@ package com.p10racing.app;
 
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
+import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -10,5 +11,8 @@ public class MainActivity extends BridgeActivity {
         // Enable edge-to-edge display for Android 15 (SDK 35+) support
         EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
+        
+        // Ensure the content can be drawn under the system bars
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     }
 }
