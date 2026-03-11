@@ -56,6 +56,7 @@ CREATE TABLE public.bug_reports (
   device_info JSONB,
   image_url TEXT,
   status TEXT DEFAULT 'open',
+  github_issue_number INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
