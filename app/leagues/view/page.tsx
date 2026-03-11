@@ -24,6 +24,7 @@ function LeagueDetailContent() {
   const [inviteCode, setInviteCode] = useState('');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -69,6 +70,7 @@ function LeagueDetailContent() {
       
       const { data: verifiedData } = await supabase.from('verified_results').select('*');
       
+      let resultsFoundCount = 0;
       await Promise.all(races.map(async (race: ApiCalendarRace) => {
         const round = race.round;
         const raceDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
@@ -76,10 +78,12 @@ function LeagueDetailContent() {
         
         if (verifiedMatch) {
           raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
+          resultsFoundCount++;
         } else {
           const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
           if (resultsData) {
             raceResultsMap[round] = { ...JSON.parse(resultsData), date: raceDate };
+            resultsFoundCount++;
           } else {
             const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
             if (apiResults) {
@@ -93,10 +97,13 @@ function LeagueDetailContent() {
                 date: raceDate
               };
               raceResultsMap[round] = simplified;
+              resultsFoundCount++;
             }
           }
         }
       }));
+
+      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
       // 3. Fetch League Members and their profiles
       const { data: membersListData, error: membersError } = await supabase
@@ -242,7 +249,7 @@ function LeagueDetailContent() {
                             </td>
                             <td className="fw-bold fs-5 text-white">
                               {entry.player}
-                              {entry.rank === 1 && !loading && leaderboard.length > 1 && (
+                              {entry.rank === 1 && !loading && leaderboard.length > 1 && isSeasonComplete && (
                                 <span className="ms-2 badge bg-warning text-dark small p-1" style={{ fontSize: '0.6rem' }}>LEAGUE CHAMPION</span>
                               )}
                             </td>
