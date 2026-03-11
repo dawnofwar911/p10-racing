@@ -61,10 +61,7 @@ CREATE POLICY "Profiles are public" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
 
 -- Leagues
-CREATE POLICY "Members can view leagues" ON public.leagues FOR SELECT USING (
-  id IN (SELECT league_id FROM public.league_members WHERE user_id = auth.uid()) OR
-  created_by = auth.uid()
-);
+CREATE POLICY "Leagues are viewable by authenticated users" ON public.leagues FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Authenticated can create leagues" ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 -- Predictions

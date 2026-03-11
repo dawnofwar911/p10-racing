@@ -217,13 +217,17 @@ function LeaguesContent() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
+      const code = inviteCode.trim().toLowerCase();
       const { data: league, error: leagueError } = await supabase
         .from('leagues')
         .select('id, name')
-        .eq('invite_code', inviteCode.trim())
+        .eq('invite_code', code)
         .single();
 
-      if (leagueError) throw new Error('Invalid invite code.');
+      if (leagueError) {
+        console.error('League query error:', leagueError);
+        throw new Error('League not found. Please check your invite code.');
+      }
 
       const { error: joinError } = await supabase
         .from('league_members')
