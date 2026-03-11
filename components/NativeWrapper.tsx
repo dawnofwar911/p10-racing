@@ -16,11 +16,12 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
 
       try {
         // 1. Ensure the status bar does NOT overlap the webview
-        await StatusBar.setOverlaysWebView({ overlay: false });
+        // Note: For SDK 35+, edge-to-edge is default. 
+        // We set overlay to true to allow our CSS safe-area-insets to handle the padding.
+        await StatusBar.setOverlaysWebView({ overlay: true });
         
         // 2. Configure the Status Bar style
         await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: '#15151e' });
         
         // 3. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
