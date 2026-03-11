@@ -11,6 +11,10 @@ html, :root {
   color-scheme: dark;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   background-color: var(--f1-black) !important;
   color: white !important;
@@ -19,30 +23,18 @@ body {
   overflow-x: hidden;
   margin: 0;
   padding: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
   /* Support for edge-to-edge display */
-  padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Push content down ONLY inside main, to keep background consistent */
+/* Let main grow to fill space */
 main {
-  min-height: 100vh;
-}
-
-/* Sticky Navbar fix for safe area */
-.navbar.sticky-top {
-  /* When sticky-top is used, it will be at the very top of the screen (under status bar) */
-  /* We add extra padding to the navbar itself so its content is below the status bar */
-  padding-top: env(safe-area-inset-top, 0px) !important;
-  top: 0 !important;
-}
-
-/* If body already has padding-top, we don't want the navbar to have it too if it's NOT sticky */
-/* But since our navbar is sticky-top globally, we adjust the body padding */
-body {
-  padding-top: 0; /* Let the navbar handle the top inset */
+  flex-grow: 1;
 }
 
 /* Global Dark Bootstrap Overrides */

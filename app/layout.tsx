@@ -33,18 +33,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-bs-theme="dark">
-      <body className={inter.className} style={{ backgroundColor: '#15151e', minHeight: '100vh', overflowX: 'hidden' }}>
+      <body className={inter.className}>
         <NativeWrapper>
-          <div className="d-flex flex-column min-vh-100">
-            <AppNavbar />
-            <OfflineStatus />
-            <PageTransition>
+          <AppNavbar />
+          <OfflineStatus />
+          <PageTransition>
+            <main>
               <Suspense fallback={<Loading />}>
                 {children}
               </Suspense>
-            </PageTransition>
-            <AppFooter />
-          </div>
+            </main>
+          </PageTransition>
+          <AppFooter />
         </NativeWrapper>
       </body>
     </html>
