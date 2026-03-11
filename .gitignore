@@ -41,5 +41,9 @@ next-env.d.ts
 # Capacitor
 /android/app/build
 /android/app/src/main/assets/public
+
+# gemini-cli settings
 .gemini/
+
+# GitHub App credentials
 gha-creds-*.json
