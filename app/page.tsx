@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
-import packageInfo from '../package.json';
 
 interface HomeRace {
   id: string;
@@ -33,7 +32,7 @@ export default function Home() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
-  
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -70,16 +69,6 @@ export default function Home() {
 
         if (!upcoming) {
           setIsSeasonFinished(true);
-          // Fetch leaderboard to find champion
-          const { data: profiles } = await supabase.from('profiles').select('id, username');
-          const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
-          
-          if (profiles && predictions) {
-            // Re-use logic from LeaderboardPage or move it to a helper (but for now let's simplify)
-            // Simplified champion calculation (only for global)
-            // Note: This is a heavy calculation to do on the home page, but for end-of-season it's rare.
-            // In a real app, you'd store the winners in a table.
-          }
         }
 
         const raceToShow = upcoming || races[races.length - 1]; // Use last race if season finished
@@ -282,11 +271,6 @@ export default function Home() {
           </Row>
         )}
       </Container>
-
-      <footer className="mt-auto py-4 border-top border-secondary border-opacity-10 text-center">
-        <p className="text-white opacity-20 extra-small mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>© 2026 P10 RACING • v{packageInfo.version}</p>
-        <Link href="/privacy" className="text-white extra-small text-decoration-none opacity-20 hover-opacity-100" style={{ fontSize: '0.6rem' }} onClick={triggerHaptic}>PRIVACY POLICY</Link>
-      </footer>
     </>
   );
 }

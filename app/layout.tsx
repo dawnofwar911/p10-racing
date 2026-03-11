@@ -8,6 +8,7 @@ import NativeWrapper from '@/components/NativeWrapper';
 import PageTransition from '@/components/PageTransition';
 import OfflineStatus from '@/components/OfflineStatus';
 import AppNavbar from '@/components/AppNavbar';
+import AppFooter from '@/components/AppFooter';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,6 +43,7 @@ export default function RootLayout({
                 {children}
               </Suspense>
             </PageTransition>
+            <AppFooter />
           </div>
         </NativeWrapper>
       </body>
