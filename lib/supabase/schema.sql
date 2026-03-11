@@ -47,11 +47,24 @@ CREATE TABLE public.verified_results (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 6. Bug Reports
+CREATE TABLE public.bug_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  device_info JSONB,
+  image_url TEXT,
+  status TEXT DEFAULT 'open',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- ENABLE ROW LEVEL SECURITY
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leagues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.verified_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bug_reports ENABLE ROW LEVEL SECURITY;
 -- league_members RLS is intentionally disabled to break recursion
 
 -- POLICIES
@@ -73,3 +86,16 @@ CREATE POLICY "Results are public" ON public.verified_results FOR SELECT USING (
 CREATE POLICY "Only admins can manage results" ON public.verified_results FOR ALL USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
 );
+
+-- Bug Reports
+CREATE POLICY "Anyone can submit bug reports" ON public.bug_reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "Only admins can view bug reports" ON public.bug_reports FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+);
+
+-- STORAGE POLICIES (Note: Buckets must be created in Dashboard first, but these policies apply)
+-- 1. Create a bucket named 'bug-screenshots' in the Supabase Dashboard
+-- 2. Enable RLS on the bucket
+-- 3. Run these:
+-- CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'bug-screenshots');
+-- CREATE POLICY "Anyone can upload screenshots" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'bug-screenshots');
