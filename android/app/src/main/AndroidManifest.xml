@@ -31,6 +31,13 @@
                 <data android:host="p10-racing.vercel.app" />
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="p10racing" />
+            </intent-filter>
+
         </activity>
 
         <provider
