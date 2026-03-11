@@ -16,13 +16,6 @@ interface SimplifiedResults {
   firstDnf: string | null;
 }
 
-interface MemberQueryResult {
-  profiles: {
-    id: string;
-    username: string;
-  };
-}
-
 function LeagueDetailContent() {
   const searchParams = useSearchParams();
   const leagueId = searchParams.get('id');
@@ -105,19 +98,27 @@ function LeagueDetailContent() {
         }
       }));
 
-      // 3. Fetch League Members and their predictions
-      const { data: membersData, error: membersError } = await supabase
+      // 3. Fetch League Members and their profiles
+      const { data: membersListData, error: membersError } = await supabase
         .from('league_members')
-        .select('profiles:user_id(id, username)')
+        .select('user_id')
         .eq('league_id', leagueId);
       
       if (membersError) {
-        console.error('Error fetching members:', membersError);
+        console.error('Error fetching members list:', membersError);
       }
 
-      const members = (membersData as unknown as MemberQueryResult[] || []).map(m => m.profiles);
+      const memberIds = membersListData?.map(m => m.user_id) || [];
+      
+      // Fetch Profiles for those members
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', memberIds);
 
-      const memberIds = members?.map((m) => m.id) || [];
+      const members = profilesData || [];
+
+      // Fetch predictions for those members
       const { data: predictionsData } = await supabase
         .from('predictions')
         .select('*')
@@ -126,7 +127,7 @@ function LeagueDetailContent() {
       const predictions = predictionsData as DbPrediction[];
 
       // 4. Calculate Scores
-      const entries: LeaderboardEntry[] = (members || []).map((user) => {
+      const entries: LeaderboardEntry[] = members.map((user) => {
         let totalPoints = 0;
         let lastRacePoints = 0;
         let latestBreakdown = undefined;
@@ -138,7 +139,11 @@ function LeagueDetailContent() {
           const results = raceResultsMap[round];
           
           // ONLY count scores if the race happened AFTER the league was created
-          if (results.date < leagueCreatedAt) return;
+          // We allow some buffer (12 hours) if the race time is exactly 00:00:00Z to avoid timezone issues
+          const isRaceTimeDefault = results.date.toISOString().includes('T00:00:00.000Z');
+          const comparisonDate = isRaceTimeDefault ? new Date(results.date.getTime() + 24 * 60 * 60 * 1000) : results.date;
+
+          if (comparisonDate < leagueCreatedAt) return;
 
           const dbMatch = userPreds.find(dp => dp.race_id === `${CURRENT_SEASON}_${round}`);
           
