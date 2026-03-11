@@ -128,7 +128,7 @@ jobs:
           ./gradlew bundleRelease
 
       - name: Sign Android Release AAB
-        uses: r0adkll/sign-android-release@v1
+        uses: r0adkll/sign-android-release@v1.3.0
         id: sign_aab
         with:
           releaseDirectory: android/app/build/outputs/bundle/release
