@@ -23,6 +23,7 @@ interface LeaderboardPlayer {
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [view, setView] = useState<'global' | 'local'>('global');
 
@@ -35,6 +36,7 @@ export default function LeaderboardPage() {
       const races = await fetchCalendar(CURRENT_SEASON);
       const raceResultsMap: { [round: string]: SimplifiedResults } = {};
       
+      let resultsFoundCount = 0;
       await Promise.all(races.map(async (race: ApiCalendarRace) => {
         const round = race.round;
         const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
@@ -52,11 +54,15 @@ export default function LeaderboardPage() {
             };
             localStorage.setItem(`results_${CURRENT_SEASON}_${round}`, JSON.stringify(simplifiedResults));
             raceResultsMap[round] = simplifiedResults;
+            resultsFoundCount++;
           }
         } else {
           raceResultsMap[round] = JSON.parse(resultsData);
+          resultsFoundCount++;
         }
       }));
+
+      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
       let playersData: LeaderboardPlayer[] = [];
 
@@ -193,7 +199,7 @@ export default function LeaderboardPage() {
                         </td>
                         <td className="fw-bold fs-5">
                           {entry.player}
-                          {entry.rank === 1 && !loading && leaderboard.length > 1 && (
+                          {entry.rank === 1 && !loading && leaderboard.length > 1 && isSeasonComplete && (
                             <span className="ms-2 badge bg-warning text-dark small p-1" style={{ fontSize: '0.6rem' }}>SEASON CHAMPION</span>
                           )}
                         </td>
