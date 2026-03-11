@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
 
@@ -71,7 +71,7 @@ export default function Home() {
           setIsSeasonFinished(true);
           // Fetch leaderboard to find champion
           const { data: profiles } = await supabase.from('profiles').select('id, username');
-          const { data: predictions } = await supabase.from('predictions').select('*') as { data: any[] | null };
+          const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
           
           if (profiles && predictions) {
             // TODO: Move shared scoring logic to lib/scoring.ts to calculate champion here

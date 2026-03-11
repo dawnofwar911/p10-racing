@@ -12,6 +12,10 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Must use service 
 const githubToken = process.env.GITHUB_TOKEN!;
 const repoFullName = process.env.GITHUB_REPOSITORY!; // e.g. "user/p10-racing"
 
+interface GitHubIssueResponse {
+  number: number;
+}
+
 const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
 async function sync() {
@@ -75,7 +79,7 @@ ${bug.image_url ? `![Screenshot](${bug.image_url})` : '*No screenshot provided*'
         throw new Error(`GitHub API Error: ${JSON.stringify(errorData)}`);
       }
 
-      const issueData: any = await response.json();
+      const issueData = await response.json() as GitHubIssueResponse;
       const issueNumber = issueData.number;
 
       // 2. Update bug report in Supabase with issue number
