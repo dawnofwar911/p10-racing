@@ -16,8 +16,9 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
 
       try {
         // 1. Android 15 handles edge-to-edge natively in MainActivity.java.
-        // We only use Capacitor to set the icon style.
-        await StatusBar.setStyle({ style: Style.Dark });
+        // We use Light style because the app theme is dark (#15151e),
+        // so we want light icons (white) on the status bar.
+        await StatusBar.setStyle({ style: Style.Light });
         
         // 2. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
