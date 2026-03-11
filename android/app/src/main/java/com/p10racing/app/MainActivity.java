@@ -12,6 +12,11 @@ public class MainActivity extends BridgeActivity {
         EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         
+        // Ensure the ActionBar is hidden even if the theme fails to suppress it
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().hide();
+        }
+        
         // Ensure the content can be drawn under the system bars
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     }
