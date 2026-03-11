@@ -22,7 +22,7 @@ CREATE TABLE public.leagues (
 -- This is safe because it only stores UUIDs.
 CREATE TABLE public.league_members (
   league_id UUID REFERENCES public.leagues ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles ON DELETE CASCADE NOT NULL,
   joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   PRIMARY KEY (league_id, user_id)
 );
