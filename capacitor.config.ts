@@ -8,6 +8,11 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     hostname: 'p10-racing.vercel.app'
+  },
+  plugins: {
+    StatusBar: {
+      overlaysWebView: true
+    }
   }
 };
 
