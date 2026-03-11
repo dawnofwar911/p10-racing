@@ -15,8 +15,12 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
       if (!Capacitor.isNativePlatform()) return;
 
       try {
-        // 1. Android 15 handles edge-to-edge natively in MainActivity.java.
-        // We use Dark style because the app theme is dark (#15151e),
+        // 1. Ensure the status bar overlaps the webview so CSS safe-area-insets work
+        if (Capacitor.getPlatform() === 'android') {
+          await StatusBar.setOverlaysWebView({ overlay: true });
+        }
+        
+        // 2. We use Dark style because the app theme is dark (#15151e),
         // so we want light icons (white) on the status bar.
         // Style.Dark = Light text for dark backgrounds.
         await StatusBar.setStyle({ style: Style.Dark });
