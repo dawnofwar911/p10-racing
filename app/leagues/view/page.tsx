@@ -16,7 +16,7 @@ interface SimplifiedResults {
   firstDnf: string | null;
 }
 
-interface LeagueMember {
+interface MemberQueryResult {
   profiles: {
     id: string;
     username: string;
@@ -57,7 +57,7 @@ function LeagueDetailContent() {
       // 1. Fetch League Info
       const { data: league, error: leagueError } = await supabase
         .from('leagues')
-        .select('name, invite_code')
+        .select('name, invite_code, created_at')
         .eq('id', leagueId)
         .single();
 
@@ -68,23 +68,25 @@ function LeagueDetailContent() {
       }
       setLeagueName(league.name);
       setInviteCode(league.invite_code);
+      const leagueCreatedAt = new Date(league.created_at);
 
       // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
       const races = await fetchCalendar(CURRENT_SEASON);
-      const raceResultsMap: { [round: string]: SimplifiedResults } = {};
+      const raceResultsMap: { [round: string]: SimplifiedResults & { date: Date } } = {};
       
       const { data: verifiedData } = await supabase.from('verified_results').select('*');
       
       await Promise.all(races.map(async (race: ApiCalendarRace) => {
         const round = race.round;
+        const raceDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
         const verifiedMatch = verifiedData?.find(v => v.id === `${CURRENT_SEASON}_${round}`);
         
         if (verifiedMatch) {
-          raceResultsMap[round] = verifiedMatch.data as SimplifiedResults;
+          raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
         } else {
           const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
           if (resultsData) {
-            raceResultsMap[round] = JSON.parse(resultsData);
+            raceResultsMap[round] = { ...JSON.parse(resultsData), date: raceDate };
           } else {
             const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
             if (apiResults) {
@@ -94,7 +96,8 @@ function LeagueDetailContent() {
                   acc[r.Driver.driverId] = parseInt(r.position);
                   return acc;
                 }, {}),
-                firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null
+                firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null,
+                date: raceDate
               };
               raceResultsMap[round] = simplified;
             }
@@ -103,14 +106,18 @@ function LeagueDetailContent() {
       }));
 
       // 3. Fetch League Members and their predictions
-      const { data: membersData } = await supabase
+      const { data: membersData, error: membersError } = await supabase
         .from('league_members')
-        .select('profiles(id, username)')
+        .select('profiles:user_id(id, username)')
         .eq('league_id', leagueId);
       
-      const members = membersData as unknown as LeagueMember[];
+      if (membersError) {
+        console.error('Error fetching members:', membersError);
+      }
 
-      const memberIds = members?.map((m) => m.profiles.id) || [];
+      const members = (membersData as unknown as MemberQueryResult[] || []).map(m => m.profiles);
+
+      const memberIds = members?.map((m) => m.id) || [];
       const { data: predictionsData } = await supabase
         .from('predictions')
         .select('*')
@@ -119,8 +126,7 @@ function LeagueDetailContent() {
       const predictions = predictionsData as DbPrediction[];
 
       // 4. Calculate Scores
-      const entries: LeaderboardEntry[] = (members || []).map((m) => {
-        const user = m.profiles;
+      const entries: LeaderboardEntry[] = (members || []).map((user) => {
         let totalPoints = 0;
         let lastRacePoints = 0;
         let latestBreakdown = undefined;
@@ -130,6 +136,10 @@ function LeagueDetailContent() {
 
         sortedRounds.forEach((round, index) => {
           const results = raceResultsMap[round];
+          
+          // ONLY count scores if the race happened AFTER the league was created
+          if (results.date < leagueCreatedAt) return;
+
           const dbMatch = userPreds.find(dp => dp.race_id === `${CURRENT_SEASON}_${round}`);
           
           if (results && dbMatch) {
