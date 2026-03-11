@@ -23,11 +23,34 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         await StatusBar.setBackgroundColor({ color: '#15151e' });
         
         // 3. Handle Deep Links
+        const handleDeepLink = (rawUrl: string) => {
+          try {
+            const url = new URL(rawUrl);
+            let path = url.pathname;
+            
+            // Handle custom schemes like p10racing://leagues (where "leagues" might be the host)
+            if (url.protocol === 'p10racing:') {
+              path = url.host + url.pathname;
+              if (!path.startsWith('/')) path = '/' + path;
+            }
+            
+            const fullPath = path + url.search;
+            console.log('Navigating to deep link:', fullPath);
+            router.push(fullPath);
+          } catch (err) {
+            console.warn('Error parsing deep link URL:', err);
+          }
+        };
+
         App.addListener('appUrlOpen', (event) => {
-          // Example: https://p10-racing.vercel.app/leagues?join=12345678
-          const url = new URL(event.url);
-          const path = url.pathname + url.search;
-          router.push(path);
+          handleDeepLink(event.url);
+        });
+
+        // Handle URL that launched the app
+        App.getLaunchUrl().then((launchUrl) => {
+          if (launchUrl?.url) {
+            handleDeepLink(launchUrl.url);
+          }
         });
 
         // 4. Hide the splash screen with a small delay to prevent flicker

@@ -3,5 +3,5 @@
     <string name="app_name">P10 Racing</string>
     <string name="title_activity_main">P10 Racing</string>
     <string name="package_name">com.p10racing.app</string>
-    <string name="custom_url_scheme">com.p10racing.app</string>
+    <string name="custom_url_scheme">p10racing</string>
 </resources>
