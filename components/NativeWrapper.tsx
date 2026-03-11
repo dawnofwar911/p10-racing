@@ -15,15 +15,11 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
       if (!Capacitor.isNativePlatform()) return;
 
       try {
-        // 1. Ensure the status bar does NOT overlap the webview
-        // Note: For SDK 35+, edge-to-edge is default. 
-        // We set overlay to true to allow our CSS safe-area-insets to handle the padding.
-        await StatusBar.setOverlaysWebView({ overlay: true });
-        
-        // 2. Configure the Status Bar style
+        // 1. Android 15 handles edge-to-edge natively in MainActivity.java.
+        // We only use Capacitor to set the icon style.
         await StatusBar.setStyle({ style: Style.Dark });
         
-        // 3. Handle Deep Links
+        // 2. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
           try {
             const url = new URL(rawUrl);
