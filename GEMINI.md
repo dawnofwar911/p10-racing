@@ -71,3 +71,4 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
     *   **Patch (x.x.1):** Bug fixes, small tweaks.
     *   **Minor (x.1.x):** New features, significant UI changes.
     *   **Major (1.x.x):** Breaking changes or major architectural shifts.
+*   **Exemption:** Purely internal CI/CD, build pipeline, or workflow-only changes (that do not affect the app's code or behavior) do not require a version bump. These are automatically handled by the `versionCode` in the build process.
