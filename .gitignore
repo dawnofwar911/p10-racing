@@ -40,3 +40,5 @@ next-env.d.ts
 # Capacitor
 /android/app/build
 /android/app/src/main/assets/public
+.gemini/
+gha-creds-*.json
