@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON, SimplifiedResults } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
@@ -23,83 +23,107 @@ export default function LeaderboardPage() {
 
   const supabase = createClient();
 
-  useEffect(() => {
-    async function calculate() {
-      setLoading(true);
-      
-      // 1. Fetch all verified results from Supabase
-      const { data: dbResults } = await supabase
-        .from('verified_results')
-        .select('*');
+  const calculate = useCallback(async () => {
+    setLoading(true);
+    
+    // 1. Fetch all verified results from Supabase
+    const { data: dbResults } = await supabase
+      .from('verified_results')
+      .select('*');
 
-      const raceResultsMap: { [round: string]: SimplifiedResults } = {};
-      if (dbResults) {
-        dbResults.forEach(res => {
-          const round = res.id.split('_')[1];
-          raceResultsMap[round] = res.data as unknown as SimplifiedResults;
-        });
+    const raceResultsMap: { [round: string]: SimplifiedResults } = {};
+    if (dbResults) {
+      dbResults.forEach(res => {
+        const round = res.id.split('_')[1];
+        raceResultsMap[round] = res.data as unknown as SimplifiedResults;
+      });
+    }
+
+    // 2. Fetch Calendar to check if season is complete
+    const races = await fetchCalendar(CURRENT_SEASON);
+    const resultsFoundCount = Object.keys(raceResultsMap).length;
+    setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
+
+    let playersData: LeaderboardPlayer[] = [];
+
+    if (view === 'global') {
+      const { data: profiles } = await supabase.from('profiles').select('id, username');
+      const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+
+      if (profiles) {
+        playersData = profiles.map(p => ({ 
+          username: p.username, 
+          userId: p.id, 
+          isLocal: false,
+          dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+        }));
       }
+    } else {
+      const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
+    }
 
-      // 2. Fetch Calendar to check if season is complete
-      const races = await fetchCalendar(CURRENT_SEASON);
-      const resultsFoundCount = Object.keys(raceResultsMap).length;
-      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
+    const entries: LeaderboardEntry[] = playersData.map((player) => {
+      const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
 
-      let playersData: LeaderboardPlayer[] = [];
-
-      if (view === 'global') {
-        const { data: profiles } = await supabase.from('profiles').select('id, username');
-        const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
-
-        if (profiles) {
-          playersData = profiles.map(p => ({ 
-            username: p.username, 
-            userId: p.id, 
-            isLocal: false,
-            dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
-          }));
-        }
-      } else {
-        const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-        playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
-      }
-
-      const entries: LeaderboardEntry[] = playersData.map((player) => {
-        const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
-
-        // Prepare predictions for calculateSeasonPoints
-        Object.keys(raceResultsMap).forEach(round => {
-          if (player.isLocal) {
-            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
-            if (predStr) playerPredictions[round] = JSON.parse(predStr);
-          } else if (player.dbPredictions) {
-            const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
-            if (dbMatch) {
-              playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
-            }
+      // Prepare predictions for calculateSeasonPoints
+      Object.keys(raceResultsMap).forEach(round => {
+        if (player.isLocal) {
+          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
+          if (predStr) playerPredictions[round] = JSON.parse(predStr);
+        } else if (player.dbPredictions) {
+          const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
+          if (dbMatch) {
+            playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
           }
-        });
-
-        const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
-
-        return {
-          rank: 0,
-          player: player.username,
-          points: totalPoints,
-          lastRacePoints: lastRacePoints,
-          breakdown: latestBreakdown,
-          history: history
-        };
+        }
       });
 
-      const sorted = entries.sort((a, b) => b.points - a.points);
-      const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
-      
-      setLeaderboard(ranked);
-      setLoading(false);
-    }
-    calculate();
+      const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
+
+      return {
+        rank: 0,
+        player: player.username,
+        points: totalPoints,
+        lastRacePoints: lastRacePoints,
+        breakdown: latestBreakdown,
+        history: history
+      };
+    });
+
+    const sorted = entries.sort((a, b) => b.points - a.points);
+    const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
+    
+    setLeaderboard(ranked);
+    setLoading(false);
   }, [supabase, view]);
+
+  useEffect(() => {
+    calculate();
+  }, [calculate]);
+
+  // Real-time subscription
+  useEffect(() => {
+    if (view !== 'global') return;
+
+    const channel = supabase
+      .channel('leaderboard-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'verified_results' },
+        () => calculate()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'predictions' },
+        () => calculate()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, view, calculate]);
 
   return (
     <>
