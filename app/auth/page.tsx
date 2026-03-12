@@ -12,9 +12,11 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isResetPassword, setIsResetPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   
   const supabase = createClient();
   const router = useRouter();
@@ -31,10 +33,41 @@ export default function AuthPage() {
     checkAuth();
   }, [supabase, router]);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setMessage(null);
+    Haptics.impact({ style: ImpactStyle.Medium });
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (resetError) throw resetError;
+      
+      setMessage('Password reset link sent! Check your email.');
+    } catch (err: unknown) {
+      console.error('Reset Password Error:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isResetPassword) {
+      return handleResetPassword(e);
+    }
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
@@ -119,15 +152,18 @@ export default function AuthPage() {
           <Col md={6} lg={5}>
             <Card className="border-secondary shadow-lg overflow-hidden">
               <div className="bg-danger py-2 px-4 text-white fw-bold text-uppercase letter-spacing-1 small">
-                {isSignUp ? 'New Player Registration' : 'Player Login'}
+                {isResetPassword ? 'Reset Password' : (isSignUp ? 'New Player Registration' : 'Player Login')}
               </div>
               <Card.Body className="p-4 p-md-5">
                 <div className="text-center mb-4">
                   <h1 className="h3 fw-bold text-white mb-2">P10 RACING</h1>
-                  <p className="text-muted small">Enter the midfield battle.</p>
+                  <p className="text-muted small">
+                    {isResetPassword ? 'Get back in the race.' : 'Enter the midfield battle.'}
+                  </p>
                 </div>
 
                 {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
+                {message && <Alert variant="success" className="py-2 small">{message}</Alert>}
 
                 <Form onSubmit={handleAuth}>
                   {isSignUp && (
@@ -156,34 +192,57 @@ export default function AuthPage() {
                     />
                   </Form.Group>
 
-                  <Form.Group className="mb-4">
-                    <Form.Label className="text-muted small text-uppercase fw-bold">Password</Form.Label>
-                    <Form.Control 
-                      type="password" 
-                      placeholder="••••••••" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="bg-dark text-white border-secondary py-2"
-                    />
-                  </Form.Group>
+                  {!isResetPassword && (
+                    <Form.Group className="mb-4">
+                      <Form.Label className="text-muted small text-uppercase fw-bold d-flex justify-content-between">
+                        <span>Password</span>
+                        {!isSignUp && (
+                          <button 
+                            type="button" 
+                            className="btn btn-link text-muted text-decoration-none p-0 border-0 small text-lowercase"
+                            onClick={() => setIsResetPassword(true)}
+                          >
+                            Forgot?
+                          </button>
+                        )}
+                      </Form.Label>
+                      <Form.Control 
+                        type="password" 
+                        placeholder="••••••••" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="bg-dark text-white border-secondary py-2"
+                      />
+                    </Form.Group>
+                  )}
 
                   <Button 
                     type="submit" 
                     className="btn-f1 w-100 py-3 fw-bold mb-3" 
                     disabled={loading}
                   >
-                    {loading ? <Spinner animation="border" size="sm" /> : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN')}
+                    {loading ? <Spinner animation="border" size="sm" /> : (isResetPassword ? 'SEND RESET LINK' : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'))}
                   </Button>
 
                   <div className="text-center">
-                    <button 
-                      type="button"
-                      className="btn btn-link text-danger text-decoration-none small fw-bold"
-                      onClick={() => setIsSignUp(!isSignUp)}
-                    >
-                      {isSignUp ? 'ALREADY HAVE AN ACCOUNT? LOGIN' : 'NEED AN ACCOUNT? SIGN UP'}
-                    </button>
+                    {isResetPassword ? (
+                      <button 
+                        type="button"
+                        className="btn btn-link text-danger text-decoration-none small fw-bold"
+                        onClick={() => setIsResetPassword(false)}
+                      >
+                        BACK TO LOGIN
+                      </button>
+                    ) : (
+                      <button 
+                        type="button"
+                        className="btn btn-link text-danger text-decoration-none small fw-bold"
+                        onClick={() => setIsSignUp(!isSignUp)}
+                      >
+                        {isSignUp ? 'ALREADY HAVE AN ACCOUNT? LOGIN' : 'NEED AN ACCOUNT? SIGN UP'}
+                      </button>
+                    )}
                   </div>
                 </Form>
               </Card.Body>
