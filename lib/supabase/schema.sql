@@ -18,8 +18,6 @@ CREATE TABLE public.leagues (
 );
 
 -- 3. League Members (Link table)
--- RLS is DISABLED on this table to break the infinite recursion loop.
--- This is safe because it only stores UUIDs.
 CREATE TABLE public.league_members (
   league_id UUID REFERENCES public.leagues ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES public.profiles ON DELETE CASCADE NOT NULL,
@@ -63,10 +61,56 @@ CREATE TABLE public.bug_reports (
 -- ENABLE ROW LEVEL SECURITY
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leagues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.league_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.verified_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bug_reports ENABLE ROW LEVEL SECURITY;
--- league_members RLS is intentionally disabled to break recursion
+
+-- HELPER FUNCTIONS
+
+-- 1. Function to check if a user is a member of a league (Breaks recursion)
+CREATE OR REPLACE FUNCTION public.is_league_member(l_id UUID) 
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.league_members 
+    WHERE league_id = l_id AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+-- 2. Function to join a league by invite code (Bypasses restricted SELECT on leagues)
+CREATE OR REPLACE FUNCTION public.join_league_by_code(code TEXT) 
+RETURNS JSONB AS $$
+DECLARE
+  l_id UUID;
+  l_name TEXT;
+BEGIN
+  -- Check if user is authenticated
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- 1. Find the league by code
+  SELECT id, name INTO l_id, l_name FROM public.leagues WHERE LOWER(invite_code) = LOWER(code);
+  
+  IF l_id IS NULL THEN
+    RAISE EXCEPTION 'League not found';
+  END IF;
+
+  -- 2. Check if already a member
+  IF EXISTS (SELECT 1 FROM public.league_members WHERE league_id = l_id AND user_id = auth.uid()) THEN
+    RAISE EXCEPTION 'You are already a member of this league.';
+  END IF;
+  
+  -- 3. Join the league
+  INSERT INTO public.league_members (league_id, user_id)
+  VALUES (l_id, auth.uid());
+  
+  -- 4. Return some info
+  RETURN jsonb_build_object('id', l_id, 'name', l_name);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
 -- POLICIES
 
@@ -75,8 +119,43 @@ CREATE POLICY "Profiles are public" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
 
 -- Leagues
-CREATE POLICY "Leagues are viewable by authenticated users" ON public.leagues FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Leagues are viewable by members" ON public.leagues 
+  FOR SELECT USING (
+    auth.uid() = created_by OR 
+    is_league_member(id) OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+  );
+
 CREATE POLICY "Authenticated can create leagues" ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Leagues can be updated by creator" ON public.leagues 
+  FOR UPDATE USING (
+    auth.uid() = created_by OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+  );
+
+CREATE POLICY "Leagues can be deleted by creator" ON public.leagues 
+  FOR DELETE USING (
+    auth.uid() = created_by OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+  );
+
+-- League Members
+CREATE POLICY "Members can see each other" ON public.league_members 
+  FOR SELECT USING (
+    auth.uid() = user_id OR
+    is_league_member(league_id) OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+  );
+
+CREATE POLICY "Users can join leagues" ON public.league_members 
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can leave leagues" ON public.league_members 
+  FOR DELETE USING (
+    auth.uid() = user_id OR 
+    EXISTS (SELECT 1 FROM public.leagues WHERE id = league_id AND created_by = auth.uid())
+  );
 
 -- Predictions
 CREATE POLICY "Predictions are public" ON public.predictions FOR SELECT USING (true);

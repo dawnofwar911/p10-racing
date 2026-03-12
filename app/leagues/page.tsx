@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Session, PostgrestError } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
@@ -32,13 +32,13 @@ function LeaguesContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
 
-  const fetchLeagues = useCallback(async (userId: string) => {
+  const fetchLeagues = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('leagues')
-        .select('*, league_members!inner(user_id)')
-        .eq('league_members.user_id', userId);
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setLeagues(data || []);
@@ -59,7 +59,7 @@ function LeaguesContent() {
       setLocalGuests(guests);
 
       if (currentSession) {
-        fetchLeagues(currentSession.user.id);
+        fetchLeagues();
       } else {
         setLoading(false);
       }
@@ -197,7 +197,7 @@ function LeaguesContent() {
       }
 
       // 3. Refresh list
-      fetchLeagues(session.user.id);
+      fetchLeagues();
     } catch (err: unknown) {
       console.error('Full creation flow error:', err);
       if (err instanceof Error) {
@@ -218,29 +218,19 @@ function LeaguesContent() {
 
     try {
       const code = inviteCode.trim().toLowerCase();
-      const { data: league, error: leagueError } = await supabase
-        .from('leagues')
-        .select('id, name')
-        .eq('invite_code', code)
-        .single();
+      
+      // Use the RPC to join. It returns {id, name} on success or throws an error.
+      const { data, error } = await supabase
+        .rpc('join_league_by_code', { code });
 
-      if (leagueError) {
-        console.error('League query error:', leagueError);
-        throw new Error('League not found. Please check your invite code.');
+      if (error) {
+        console.error('Join error:', error);
+        throw new Error(error.message || 'Failed to join league. Check code.');
       }
 
-      const { error: joinError } = await supabase
-        .from('league_members')
-        .insert([{ league_id: league.id, user_id: session.user.id }]);
-
-      if (joinError) {
-        const pgErr = joinError as PostgrestError;
-        if (pgErr.code === '23505') throw new Error('You are already a member of this league.');
-        throw joinError;
-      }
-
+      setSuccess(`Joined league "${data.name}"!`);
       setInviteCode('');
-      if (session?.user?.id) fetchLeagues(session.user.id);
+      if (session?.user?.id) fetchLeagues();
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
     } finally {
