@@ -166,7 +166,7 @@ export default function AuthPage() {
                 <Form onSubmit={handleAuth}>
                   {isSignUp && (
                     <Form.Group className="mb-3">
-                      <Form.Label className="text-muted small text-uppercase fw-bold">Username</Form.Label>
+                      <Form.Label className="text-white small text-uppercase fw-bold">Username</Form.Label>
                       <Form.Control 
                         type="text" 
                         placeholder="e.g. LandoFan4" 
@@ -179,7 +179,7 @@ export default function AuthPage() {
                   )}
 
                   <Form.Group className="mb-3">
-                    <Form.Label className="text-muted small text-uppercase fw-bold">Email Address</Form.Label>
+                    <Form.Label className="text-white small text-uppercase fw-bold">Email Address</Form.Label>
                     <Form.Control 
                       type="email" 
                       placeholder="name@example.com" 
@@ -192,19 +192,7 @@ export default function AuthPage() {
 
                   {!isResetPassword && (
                     <Form.Group className="mb-4">
-                      <Form.Label className="text-muted small text-uppercase fw-bold d-flex justify-content-between align-items-center">
-                        <span>Password</span>
-                        {!isSignUp && (
-                          <button 
-                            type="button" 
-                            className="btn btn-link text-danger text-decoration-none p-0 ps-2 border-0 small text-lowercase fw-bold opacity-75 hover-opacity-100"
-                            onClick={() => setIsResetPassword(true)}
-                            style={{ fontSize: '0.7rem' }}
-                          >
-                            Forgot?
-                          </button>
-                        )}
-                      </Form.Label>
+                      <Form.Label className="text-white small text-uppercase fw-bold">Password</Form.Label>
                       <Form.Control 
                         type="password" 
                         placeholder="••••••••" 
@@ -213,6 +201,18 @@ export default function AuthPage() {
                         required
                         className="bg-dark text-white border-secondary py-2"
                       />
+                      {!isSignUp && (
+                        <div className="text-end mt-1">
+                          <button 
+                            type="button" 
+                            className="btn btn-link text-danger text-decoration-none p-0 border-0 extra-small text-lowercase fw-bold opacity-75 hover-opacity-100"
+                            onClick={() => setIsResetPassword(true)}
+                            style={{ fontSize: '0.65rem' }}
+                          >
+                            Forgot your password?
+                          </button>
+                        </div>
+                      )}
                     </Form.Group>
                   )}
 
