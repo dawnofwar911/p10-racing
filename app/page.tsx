@@ -122,7 +122,7 @@ export default function Home() {
       setLoading(false);
     }
     init();
-  }, [supabase]);
+  }, [supabase, router]);
 
   useEffect(() => {
     if (!nextRace) return;

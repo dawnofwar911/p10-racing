@@ -46,11 +46,18 @@ npm install
 # Run web version
 npm run dev
 
-# Run full test suite
-npm run test
-
+# Run full Vitest suite (Modern, Mocked E2E)
 # Type-check
 npm run type-check
+
+# Run tests (Vitest with E2E Mocks)
+npm test
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Watch mode for development
+npm run test:watch
 ```
 
 ### 5. Android Development
@@ -70,17 +77,20 @@ npx cap open android
 - **Styling**: Bootstrap 5 + Custom CSS
 - **State Management**: React Hooks + Supabase Auth
 - **Database**: PostgreSQL (Supabase)
+- **Testing**: Vitest + MSW (Mock Service Worker) + React Testing Library
 - **Mobile Bridge**: Capacitor JS
-- **Automation**: GitHub Actions (Lint, Type-check, Test, APK Build)
+- **Automation**: GitHub Actions (Lint, Type-check, Vitest, APK Build)
 
 ## 🧪 Testing
-The project includes a robust test suite covering:
-- **Scoring Logic**: Distance-based points and DNF bonuses.
-- **API Integrity**: Correct parsing of F1 results and DNF identification.
-- **Sync Logic**: Reachability and schema verification for Supabase.
-- **Race Timing**: Automated lockouts and round transitions.
+The project uses **Vitest** for a fast, modern testing experience, combined with **MSW** to mock cloud services (Supabase, FCM, F1 API) and **Capacitor** plugins.
 
-Run all tests with: `npm run test`
+- **Mocked E2E**: Tests real Supabase client logic by intercepting network calls. No real database or secrets required in CI.
+- **Scoring Logic**: 100% verified distance-based points and DNF calculations.
+- **Data Integrity**: Automated checks for team colors, driver IDs, and season logic.
+- **Race Logic**: Validates the "active race" index and prediction locking mechanisms.
+
+Run all tests: `npm test`
+New tests should use the `.vitest.test.ts` extension.
 
 ## 📦 Versioning & Releases
 
