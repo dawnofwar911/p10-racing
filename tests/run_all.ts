@@ -13,5 +13,6 @@ import './utils.test.ts';
 import './api_extended.test.ts';
 import './data_logic.test.ts';
 import './api_logic_extended.test.ts';
+import './notifications.test.ts';
 
 console.log('\n🎉 All Tests Completed Successfully!');

@@ -146,8 +146,7 @@ export default function AdminPage() {
     if (target === 'local') {
       localStorage.setItem(`results_${season}_${selectedRace}`, JSON.stringify(simplifiedResults));
       alert(`Results for Round ${selectedRace} saved locally!`);
-    }
- else {
+    } else {
       setLoading(true);
       const { error: dbError } = await supabase
         .from('verified_results')
@@ -165,6 +164,43 @@ export default function AdminPage() {
       }
     }
   };
+
+  const handleNotifyQuali = async () => {
+    if (!confirm('This will send a push notification to ALL users. Continue?')) return;
+    
+    setLoading(true);
+    const { error: rpcError } = await supabase.rpc('send_broadcast_notification', {
+      p_title: 'Qualifying Results Are In!',
+      p_body: `The grid for the ${availableRaces.find(r => r.round === selectedRace)?.raceName} is ready. Make your P10 picks now!`,
+      p_type: 'quali',
+      p_url: '/predict'
+    });
+    
+    setLoading(false);
+    if (rpcError) {
+      alert('Notification error: ' + rpcError.message);
+    } else {
+      alert('Broadcast notification sent!');
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setLoading(true);
+    const { error: rpcError } = await supabase.rpc('send_test_notification', {
+      p_user_id: user.id
+    });
+    
+    setLoading(false);
+    if (rpcError) {
+      alert('Test notification error: ' + rpcError.message);
+    } else {
+      alert('Test notification sent to your device!');
+    }
+  };
+
 
   if (!isAdmin || (loading && drivers.length === 0)) {
     return (
@@ -247,6 +283,25 @@ export default function AdminPage() {
                 <div className="d-grid gap-3">
                   <Button variant="danger" size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className="fw-bold py-3">PUBLISH GLOBALLY</Button>
                   <Button variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2">PUBLISH LOCALLY</Button>
+                </div>
+              </Card.Body>
+            </Card>
+
+            <Card className="border-secondary mb-4 shadow-sm bg-dark">
+              <Card.Header className="bg-dark border-secondary py-3">
+                <h3 className="h6 mb-0 text-uppercase fw-bold text-white">Push Notifications</h3>
+              </Card.Header>
+              <Card.Body className="p-4">
+                <div className="d-grid gap-2">
+                  <Button variant="warning" onClick={handleNotifyQuali} disabled={loading} className="fw-bold text-dark">
+                    NOTIFY QUALI FINISHED
+                  </Button>
+                  <Button variant="outline-info" onClick={handleSendTestNotification} disabled={loading} className="fw-bold">
+                    SEND TEST TO ME
+                  </Button>
+                </div>
+                <div className="mt-3 small text-muted">
+                  Note: Broadcast sends to ALL users with registered tokens.
                 </div>
               </Card.Body>
             </Card>
