@@ -43,26 +43,46 @@ export function calculateTotalPoints(
  */
 export function calculateSeasonPoints(
   playerPredictions: { [round: string]: { p10: string, dnf: string } | null },
-  raceResultsMap: { [round: string]: SimplifiedResults }
+  raceResultsMap: { [round: string]: SimplifiedResults & { date?: Date } },
+  minDate?: Date
 ) {
   let totalPoints = 0;
   let lastRacePoints = 0;
   let latestBreakdown = undefined;
 
   const sortedRounds = Object.keys(raceResultsMap).sort((a, b) => parseInt(a) - parseInt(b));
+  const history: { round: string, points: number, totalSoFar: number, p10Driver: string, dnfDriver: string, p10Pos: number, dnfCorrect: boolean }[] = [];
 
   sortedRounds.forEach((round, index) => {
     const results = raceResultsMap[round];
     const prediction = playerPredictions[round];
 
     if (results && prediction) {
+      if (minDate && results.date) {
+        // We allow some buffer (24 hours) if the race time is exactly 00:00:00Z to avoid timezone issues
+        const isRaceTimeDefault = results.date.toISOString().includes('T00:00:00.000Z');
+        const comparisonDate = isRaceTimeDefault ? new Date(results.date.getTime() + 24 * 60 * 60 * 1000) : results.date;
+        if (comparisonDate < minDate) return;
+      }
+
       const actualPosOfPredictedP10 = results.positions[prediction.p10] ?? 20;
       const p10Score = calculateP10Points(actualPosOfPredictedP10);
-      const dnfScore = calculateDnfPoints(prediction.dnf, results.firstDnf || '');
+      const dnfCorrect = prediction.dnf === (results.firstDnf || '');
+      const dnfScore = dnfCorrect ? 25 : 0;
       const roundPoints = p10Score + dnfScore;
 
       totalPoints += roundPoints;
       
+      history.push({
+        round,
+        points: roundPoints,
+        totalSoFar: totalPoints,
+        p10Driver: prediction.p10,
+        dnfDriver: prediction.dnf,
+        p10Pos: actualPosOfPredictedP10,
+        dnfCorrect
+      });
+
       if (index === sortedRounds.length - 1) {
         lastRacePoints = roundPoints;
         latestBreakdown = {
@@ -75,5 +95,5 @@ export function calculateSeasonPoints(
     }
   });
 
-  return { totalPoints, lastRacePoints, latestBreakdown };
+  return { totalPoints, lastRacePoints, latestBreakdown, history };
 }

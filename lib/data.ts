@@ -79,6 +79,15 @@ export interface LeaderboardEntry {
     p10Driver: string;
     actualP10Pos: number;
   };
+  history?: { 
+    round: string, 
+    points: number, 
+    totalSoFar: number, 
+    p10Driver: string, 
+    dnfDriver: string, 
+    p10Pos: number, 
+    dnfCorrect: boolean 
+  }[];
 }
 
 export interface SimplifiedResults {
