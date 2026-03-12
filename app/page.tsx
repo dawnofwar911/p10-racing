@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
-import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
+import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS, SimplifiedResults } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -33,6 +34,7 @@ export default function Home() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
+  const [champion, setChampion] = useState<string | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -94,10 +96,45 @@ export default function Home() {
           // Fetch leaderboard to find champion
           const { data: profiles } = await supabase.from('profiles').select('id, username');
           const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+          const { data: dbResults } = await supabase.from('verified_results').select('*');
+
+          const raceResultsMap: { [round: string]: SimplifiedResults } = {};
+          if (dbResults) {
+            dbResults.forEach(res => {
+              const round = res.id.split('_')[1];
+              raceResultsMap[round] = res.data as unknown as SimplifiedResults;
+            });
+          }
           
-          if (profiles && predictions) {
-            // TODO: Move shared scoring logic to lib/scoring.ts to calculate champion here
-            // without duplicating LeaderboardPage logic.
+          if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
+            const players = profiles.map(p => ({ 
+              username: p.username, 
+              predictions: predictions
+                .filter(pred => pred.user_id === p.id)
+                .reduce((acc, pred) => {
+                  const round = pred.race_id.split('_')[1];
+                  acc[round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
+                  return acc;
+                }, {} as { [round: string]: { p10: string, dnf: string } })
+            }));
+
+            // Include local players for a complete champion search
+            const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+            localPlayers.forEach(lp => {
+              const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
+              Object.keys(raceResultsMap).forEach(round => {
+                const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${lp}_${round}`);
+                if (predStr) lpPreds[round] = JSON.parse(predStr);
+              });
+              players.push({ username: lp, predictions: lpPreds });
+            });
+
+            const ranked = players.map(player => ({
+              username: player.username,
+              points: calculateSeasonPoints(player.predictions, raceResultsMap).totalPoints
+            })).sort((a, b) => b.points - a.points);
+
+            if (ranked.length > 0) setChampion(ranked[0].username);
           }
         }
 
@@ -169,8 +206,10 @@ export default function Home() {
             {nextRace && !loading && isSeasonFinished && (
               <div className="mb-4 p-4 border border-warning rounded bg-warning bg-opacity-10 shadow-lg">
                 <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
-                <h2 className="display-6 fw-bold text-white mb-2">SEASON {CURRENT_SEASON} FINISHED</h2>
-                <p className="text-muted small mb-3">Congratulations to all players! Check the leaderboard to see the final standings.</p>
+                <h2 className="display-6 fw-bold text-white mb-2">
+                  {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
+                </h2>
+                <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
                 <Link href="/leaderboard" passHref legacyBehavior>
                   <Button variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</Button>
                 </Link>

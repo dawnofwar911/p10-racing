@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { App } from '@capacitor/app';
+import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 
@@ -15,14 +16,21 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
       if (!Capacitor.isNativePlatform()) return;
 
       try {
+        const info = await Device.getInfo();
+        const platform = info.platform;
+        const osVersion = parseInt(info.osVersion || '0', 10);
+
         // 1. Ensure the status bar overlaps the webview so CSS safe-area-insets work
-        if (Capacitor.getPlatform() === 'android') {
+        // Note: Android 15+ (API 35+) enforces edge-to-edge by default.
+        if (platform === 'android' && osVersion < 15) {
           await StatusBar.setOverlaysWebView({ overlay: true });
         }
         
         // 2. We use Dark style because the app theme is dark (#15151e),
         // so we want light icons (white) on the status bar.
         // Style.Dark = Light text for dark backgrounds.
+        // On Android 15+, this might still trigger a deprecation warning in the plugin,
+        // but it is currently the only way to set the icon color through Capacitor.
         await StatusBar.setStyle({ style: Style.Dark });
         
         // 2. Handle Deep Links

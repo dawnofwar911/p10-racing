@@ -72,14 +72,27 @@ npx cap sync android
 npx cap open android
 ```
 
-## 🏗️ Architecture
-- **Framework**: Next.js 15 (App Router)
-- **Styling**: Bootstrap 5 + Custom CSS
-- **State Management**: React Hooks + Supabase Auth
-- **Database**: PostgreSQL (Supabase)
-- **Testing**: Vitest + MSW (Mock Service Worker) + React Testing Library
-- **Mobile Bridge**: Capacitor JS
-- **Automation**: GitHub Actions (Lint, Type-check, Vitest, APK Build)
+## 🏗️ Architecture & Data Flow
+
+### Core Components
+- **Frontend**: Next.js 15 (App Router) + Capacitor JS (Mobile Bridge).
+- **Backend**: Supabase (PostgreSQL, Auth, RLS).
+- **External API**: [Jolpica (Ergast) F1 API](https://api.jolpi.ca/ergast/f1) for real-time race data.
+
+### Automated Results Ingestion
+The app uses **Supabase Edge Functions** to automate the season:
+1. **Checker Function**: A scheduled Edge Function (`check-f1-results`) periodically polls the Jolpica API.
+2. **Auto-Publication**: Once official race results are available, the function extracts the finishing positions and the first DNF, then `upserts` this data into the `verified_results` table.
+3. **Manual Override**: The Admin page allows manual adjustments to `verified_results` if the API is delayed or incorrect.
+
+### Scoring Engine
+- **Client-Side Calculation**: To support both logged-in users and "Guest" players, the final point calculation happens on the **Frontend**.
+- **The Flow**: When a user views the leaderboard, the app fetches all `predictions` (from Supabase or LocalStorage) and all `verified_results`, then compares them using the centralized logic in `lib/scoring.ts`.
+- **Points**: 25pts for an exact P10 match (scaling down by distance) + 25pts for the correct first DNF.
+
+### Notifications
+- **DB Triggers**: A PostgreSQL trigger on the `verified_results` table automatically detects new results and calls a broadcast RPC.
+- **FCM Sender**: A second Edge Function (`push-notifications-sender`) sends the actual Firebase Cloud Messages to all registered device tokens.
 
 ## 🧪 Testing
 The project uses **Vitest** for a fast, modern testing experience, combined with **MSW** to mock cloud services (Supabase, FCM, F1 API) and **Capacitor** plugins.
