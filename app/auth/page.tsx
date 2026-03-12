@@ -23,10 +23,14 @@ export default function AuthPage() {
 
   useEffect(() => {
     async function checkAuth() {
-      // Check for recovery hash first
-      if (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token=')) {
-        console.log('Recovery hash detected on auth page, redirecting to reset-password');
-        router.push('/auth/reset-password' + window.location.hash);
+      // Check for recovery hash or PKCE code
+      const hasRecoveryToken = window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token=');
+      const hasRecoveryCode = window.location.search.includes('code=');
+      
+      if (hasRecoveryToken || hasRecoveryCode) {
+        console.log('Recovery token/code detected on auth page, redirecting to reset-password');
+        const target = '/auth/reset-password' + window.location.search + window.location.hash;
+        router.push(target);
         return;
       }
 

@@ -39,10 +39,14 @@ export default function Home() {
 
   useEffect(() => {
     async function init() {
-      // 0. Check for recovery hash first - handle Supabase redirecting to home page
-      if (typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
-        console.log('Recovery hash detected on home page, redirecting to reset-password');
-        router.push('/auth/reset-password' + window.location.hash);
+      // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
+      const hasRecoveryToken = typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='));
+      const hasRecoveryCode = typeof window !== 'undefined' && window.location.search.includes('code=');
+      
+      if (hasRecoveryToken || hasRecoveryCode) {
+        console.log('Recovery token/code detected on home page, redirecting to reset-password');
+        const target = '/auth/reset-password' + window.location.search + window.location.hash;
+        router.push(target);
         return;
       }
 
