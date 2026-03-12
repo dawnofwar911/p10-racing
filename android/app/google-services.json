@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "346735509404",
+    "project_id": "p10-racing-b8e36",
+    "storage_bucket": "p10-racing-b8e36.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:346735509404:android:c0ed4ab4a6149601b61259",
+        "android_client_info": {
+          "package_name": "com.p10racing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqLIitzXXJExh4EeF_RXXg72MSqf0I6Ug"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
