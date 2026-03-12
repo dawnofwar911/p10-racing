@@ -19,32 +19,60 @@ export default function ResetPasswordPage() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('ResetPasswordPage mounted. Hash:', window.location.hash);
+    console.log('ResetPasswordPage mounted. Hash length:', window.location.hash.length);
     
-    // Listen for the initial session or recovery event
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event in ResetPasswordPage:', event, session ? 'Session exists' : 'No session');
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && window.location.hash.includes('type=recovery'))) {
-        console.log('Detected password recovery flow');
+    const handleSession = async () => {
+      // 1. Check if we already have a session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (currentSession) {
+        console.log('Session already exists');
         setCheckingAuth(false);
-      } else if (session) {
+        return;
+      }
+
+      // 2. Try to parse hash manually if Supabase missed it
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+
+        if (accessToken && refreshToken && type === 'recovery') {
+          console.log('Manually detected recovery tokens, setting session...');
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (!setSessionError) {
+            console.log('Manual session set successful');
+            setCheckingAuth(false);
+            return;
+          } else {
+            console.error('Error setting manual session:', setSessionError);
+          }
+        }
+      }
+    };
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event in ResetPasswordPage:', event);
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && window.location.hash.includes('type=recovery')) || session) {
         setCheckingAuth(false);
       }
     });
 
-    // Fallback: check if we already have a session after a brief delay
-    // to allow the URL fragment to be processed
+    handleSession();
+
+    // Fallback: final check after a delay
     const timer = setTimeout(async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('Fallback session check:', session ? 'Session exists' : 'No session');
-      
       if (!session) {
-        // Double check if there is a recovery token in the hash but Supabase missed it
+        // One last check for hash presence to be safe
         if (window.location.hash.includes('access_token=') && window.location.hash.includes('type=recovery')) {
-          console.log('Hash contains recovery token but no session found. Attempting manual session refresh...');
-          // Sometimes refreshing the page or waiting longer helps, but let's try to show the form anyway
-          // as the hash is present.
-          setCheckingAuth(false);
+           setCheckingAuth(false);
         } else {
           setError('Invalid or expired reset link. Please request a new one from the login page.');
           setCheckingAuth(false);
@@ -52,7 +80,7 @@ export default function ResetPasswordPage() {
       } else {
         setCheckingAuth(false);
       }
-    }, 5000); // Increased to 5 seconds for slower connections/processing
+    }, 4000);
 
     return () => {
       subscription.unsubscribe();
