@@ -1,38 +1,30 @@
--- 1. Enable RLS (Mandatory)
+-- 1. CLEAN SLATE: Wipe every possible policy we've created to prevent overlap
+DO $$ 
+DECLARE 
+    pol RECORD;
+BEGIN 
+    FOR pol IN (SELECT policyname, tablename FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('leagues', 'league_members')) 
+    LOOP 
+        EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, pol.tablename); 
+    END LOOP; 
+END $$;
+
+-- 2. ENABLE RLS
 ALTER TABLE public.leagues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.league_members ENABLE ROW LEVEL SECURITY;
 
--- 2. Wipe ALL potential conflicting policies
-DROP POLICY IF EXISTS "leagues_select_policy" ON public.leagues;
-DROP POLICY IF EXISTS "leagues_insert_policy" ON public.leagues;
-DROP POLICY IF EXISTS "leagues_all_policy" ON public.leagues;
-DROP POLICY IF EXISTS "members_select_policy" ON public.league_members;
-DROP POLICY IF EXISTS "members_insert_policy" ON public.league_members;
-DROP POLICY IF EXISTS "members_delete_policy" ON public.league_members;
-DROP POLICY IF EXISTS "admin_leagues" ON public.leagues;
-DROP POLICY IF EXISTS "admin_members" ON public.league_members;
-DROP POLICY IF EXISTS "Leagues are viewable by authenticated users" ON public.leagues;
-DROP POLICY IF EXISTS "Leagues are viewable by members" ON public.leagues;
-DROP POLICY IF EXISTS "Members can see each other" ON public.league_members;
-DROP POLICY IF EXISTS "leagues_select" ON public.leagues;
-DROP POLICY IF EXISTS "leagues_insert" ON public.leagues;
-DROP POLICY IF EXISTS "leagues_update_delete" ON public.leagues;
-DROP POLICY IF EXISTS "members_select" ON public.league_members;
-DROP POLICY IF EXISTS "members_insert" ON public.league_members;
-DROP POLICY IF EXISTS "members_delete" ON public.league_members;
-
--- 3. Wipe and Re-create functions with SECURITY DEFINER
+-- 3. RESET FUNCTIONS
+DROP FUNCTION IF EXISTS public.check_p10_membership(UUID, UUID);
 DROP FUNCTION IF EXISTS public.is_p10_league_member(UUID);
-DROP FUNCTION IF EXISTS public.is_league_member(UUID);
 DROP FUNCTION IF EXISTS public.join_league_by_code(TEXT);
 
--- Bulletproof membership check function
-CREATE OR REPLACE FUNCTION public.check_p10_membership(l_id UUID, u_id UUID) 
+-- Bulletproof Membership Check (Runs as System)
+CREATE OR REPLACE FUNCTION public.p10_is_member(l_id UUID) 
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.league_members 
-    WHERE league_id = l_id AND user_id = u_id
+    WHERE league_id = l_id AND user_id = auth.uid()
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
@@ -47,7 +39,7 @@ BEGIN
   SELECT id, name INTO l_id, l_name FROM public.leagues WHERE LOWER(invite_code) = LOWER(code);
   IF l_id IS NULL THEN RAISE EXCEPTION 'League not found'; END IF;
 
-  IF public.check_p10_membership(l_id, auth.uid()) THEN
+  IF EXISTS (SELECT 1 FROM public.league_members WHERE league_id = l_id AND user_id = auth.uid()) THEN
     RAISE EXCEPTION 'You are already a member of this league.';
   END IF;
   
@@ -56,38 +48,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
--- 4. FINAL LEAGUES POLICIES
--- Uses the function to bypass RLS on league_members during the check
-CREATE POLICY "leagues_select_v4" ON public.leagues FOR SELECT
-  USING (
-    created_by = auth.uid() OR 
-    public.check_p10_membership(id, auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
+-- 4. LEAGUES POLICIES (Non-Recursive)
+CREATE POLICY "leagues_owner_select" ON public.leagues FOR SELECT USING (created_by = auth.uid());
+CREATE POLICY "leagues_member_select" ON public.leagues FOR SELECT USING (
+  id IN (SELECT league_id FROM public.league_members WHERE user_id = auth.uid())
+);
+CREATE POLICY "leagues_admin_all" ON public.leagues FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+);
+CREATE POLICY "leagues_owner_manage" ON public.leagues FOR ALL USING (created_by = auth.uid());
 
-CREATE POLICY "leagues_insert_v4" ON public.leagues FOR INSERT
-  WITH CHECK (auth.uid() = created_by);
-
-CREATE POLICY "leagues_modify_v4" ON public.leagues FOR ALL
-  USING (
-    created_by = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
-
--- 5. FINAL LEAGUE MEMBERS POLICIES
-CREATE POLICY "members_select_v4" ON public.league_members FOR SELECT
-  USING (
-    user_id = auth.uid() OR 
-    public.check_p10_membership(league_id, auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
-
-CREATE POLICY "members_insert_v4" ON public.league_members FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "members_delete_v4" ON public.league_members FOR DELETE
-  USING (
-    user_id = auth.uid() OR 
-    EXISTS (SELECT 1 FROM public.leagues WHERE id = league_id AND created_by = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
+-- 5. LEAGUE MEMBERS POLICIES (Non-Recursive)
+CREATE POLICY "members_self_select" ON public.league_members FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "members_others_select" ON public.league_members FOR SELECT USING (public.p10_is_member(league_id));
+CREATE POLICY "members_admin_all" ON public.league_members FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+);
+CREATE POLICY "members_insert" ON public.league_members FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "members_delete" ON public.league_members FOR DELETE USING (user_id = auth.uid());

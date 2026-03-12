@@ -9,6 +9,7 @@ import PageTransition from '@/components/PageTransition';
 import OfflineStatus from '@/components/OfflineStatus';
 import AppNavbar from '@/components/AppNavbar';
 import AppFooter from '@/components/AppFooter';
+import PushNotificationHandler from '@/components/PushNotificationHandler';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="en" data-bs-theme="dark">
       <body className={inter.className}>
         <NativeWrapper>
+          <PushNotificationHandler />
           <AppNavbar />
           <OfflineStatus />
           <PageTransition>
