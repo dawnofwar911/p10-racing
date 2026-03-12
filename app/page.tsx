@@ -7,6 +7,7 @@ import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 interface HomeRace {
   id: string;
@@ -34,9 +35,17 @@ export default function Home() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
 
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     async function init() {
+      // 0. Check for recovery hash first - handle Supabase redirecting to home page
+      if (typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='))) {
+        console.log('Recovery hash detected on home page, redirecting to reset-password');
+        router.push('/auth/reset-password' + window.location.hash);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       setHasSession(!!session);
       

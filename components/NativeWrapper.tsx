@@ -37,7 +37,7 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
               if (!path.startsWith('/')) path = '/' + path;
             }
             
-            const fullPath = path + url.search;
+            const fullPath = path + url.search + url.hash;
             console.log('Navigating to deep link:', fullPath);
             router.push(fullPath);
           } catch (err) {
