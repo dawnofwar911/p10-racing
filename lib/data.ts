@@ -81,6 +81,11 @@ export interface LeaderboardEntry {
   };
 }
 
+export interface SimplifiedResults {
+  positions: { [driverId: string]: number };
+  firstDnf: string | null;
+}
+
 export interface UserPrediction {
   username: string;
   p10: string;

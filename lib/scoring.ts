@@ -1,3 +1,5 @@
+import { SimplifiedResults } from './data';
+
 export function calculateP10Points(actualPosition: number): number {
   const distance = Math.abs(actualPosition - 10);
   const pointsTable: { [key: number]: number } = {
@@ -34,4 +36,44 @@ export function calculateTotalPoints(
   const p10Points = calculateP10Points(actualP10Position);
   const dnfPoints = calculateDnfPoints(predictedDnfId, actualDnfId);
   return p10Points + dnfPoints;
+}
+
+/**
+ * Calculates total points for a player over all races that have verified results.
+ */
+export function calculateSeasonPoints(
+  playerPredictions: { [round: string]: { p10: string, dnf: string } | null },
+  raceResultsMap: { [round: string]: SimplifiedResults }
+) {
+  let totalPoints = 0;
+  let lastRacePoints = 0;
+  let latestBreakdown = undefined;
+
+  const sortedRounds = Object.keys(raceResultsMap).sort((a, b) => parseInt(a) - parseInt(b));
+
+  sortedRounds.forEach((round, index) => {
+    const results = raceResultsMap[round];
+    const prediction = playerPredictions[round];
+
+    if (results && prediction) {
+      const actualPosOfPredictedP10 = results.positions[prediction.p10] ?? 20;
+      const p10Score = calculateP10Points(actualPosOfPredictedP10);
+      const dnfScore = calculateDnfPoints(prediction.dnf, results.firstDnf || '');
+      const roundPoints = p10Score + dnfScore;
+
+      totalPoints += roundPoints;
+      
+      if (index === sortedRounds.length - 1) {
+        lastRacePoints = roundPoints;
+        latestBreakdown = {
+          p10Points: p10Score,
+          dnfPoints: dnfScore,
+          p10Driver: prediction.p10,
+          actualP10Pos: actualPosOfPredictedP10
+        };
+      }
+    }
+  });
+
+  return { totalPoints, lastRacePoints, latestBreakdown };
 }

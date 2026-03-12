@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for Android 15 (API 35) and above. -->
+    <style name="AppTheme.NoActionBar" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/f1_black</item>
+        <!-- For Android 15+, edge-to-edge is enforced. We avoid setting explicit colors here 
+             to avoid deprecation warnings, as the system handles it by default. -->
+    </style>
+</resources>

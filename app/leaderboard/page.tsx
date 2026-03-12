@@ -2,16 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
-import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
-import { calculateP10Points } from '@/lib/scoring';
+import { LeaderboardEntry, CURRENT_SEASON, SimplifiedResults } from '@/lib/data';
+import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchCalendar, DbPrediction } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-// import AppNavbar from '@/components/AppNavbar'; // Removed
-
-interface SimplifiedResults {
-  positions: { [driverId: string]: number };
-  firstDnf: string | null;
-}
 
 interface LeaderboardPlayer {
   username: string;
@@ -71,45 +65,22 @@ export default function LeaderboardPage() {
       }
 
       const entries: LeaderboardEntry[] = playersData.map((player) => {
-        let totalPoints = 0;
-        let lastRacePoints = 0;
-        let latestBreakdown = undefined;
+        const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
 
-        const sortedRounds = Object.keys(raceResultsMap).sort((a, b) => parseInt(a) - parseInt(b));
-
-        sortedRounds.forEach((round, index) => {
-          const results = raceResultsMap[round];
-          let prediction: { p10: string, dnf: string } | null = null;
-
+        // Prepare predictions for calculateSeasonPoints
+        Object.keys(raceResultsMap).forEach(round => {
           if (player.isLocal) {
             const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
-            if (predStr) prediction = JSON.parse(predStr);
+            if (predStr) playerPredictions[round] = JSON.parse(predStr);
           } else if (player.dbPredictions) {
             const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
             if (dbMatch) {
-              prediction = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
-            }
-          }
-
-          if (results && prediction) {
-            const actualPosOfPredictedP10 = results.positions[prediction.p10] || 20;
-            const p10Score = calculateP10Points(actualPosOfPredictedP10);
-            const dnfScore = (prediction.dnf && prediction.dnf === results.firstDnf) ? 25 : 0;
-            const roundPoints = p10Score + dnfScore;
-
-            totalPoints += roundPoints;
-            
-            if (index === sortedRounds.length - 1) {
-              lastRacePoints = roundPoints;
-              latestBreakdown = {
-                p10Points: p10Score,
-                dnfPoints: dnfScore,
-                p10Driver: prediction.p10,
-                actualP10Pos: actualPosOfPredictedP10
-              };
+              playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
             }
           }
         });
+
+        const { totalPoints, lastRacePoints, latestBreakdown } = calculateSeasonPoints(playerPredictions, raceResultsMap);
 
         return {
           rank: 0,

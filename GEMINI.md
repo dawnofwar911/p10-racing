@@ -65,9 +65,13 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 ---
 
 *   **Testing:** New tests MUST use the `.vitest.test.ts` extension and leverage MSW for cloud service mocking to ensure CI/CD performance and isolation.
+*   **Architectural Mandates:**
+    *   **Automated Ingestion:** The `verified_results` table is automatically populated by a Supabase Edge Function polling the Jolpica F1 API. Manual entry is a fallback only.
+    *   **Client-Side Scoring:** Point calculation (predictions vs. verified results) MUST happen on the frontend using `lib/scoring.ts` to support both guest and authenticated users consistently.
 *   **Versioning Mandates:**
 *   **Source of Truth:** Always use `package.json` version for all release-related versioning.
 *   **Sync:** Do not hardcode versions in `android/app/build.gradle` or the UI footer; they are automated.
+*   **Android API Mandate:** You MUST NOT use deprecated Android APIs or parameters (e.g., `setStatusBarColor`, `setNavigationBarColor`) that conflict with Android 15's default edge-to-edge enforcement. Use version-specific resource overrides (e.g., `values-v35/styles.xml`) where necessary and proactively investigate console deprecation warnings. Rely on CSS `safe-area-insets` and modern Capacitor configuration for layout.
 *   **Increment Policy:** You **MUST** increment the version in `package.json` before finishing any task that includes a bug fix or new feature.
     *   **Patch (x.x.1):** Bug fixes, small tweaks.
     *   **Minor (x.1.x):** New features, significant UI changes.
