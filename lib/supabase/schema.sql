@@ -68,13 +68,13 @@ ALTER TABLE public.bug_reports ENABLE ROW LEVEL SECURITY;
 
 -- HELPER FUNCTIONS
 
--- 1. Function to check if a user is a member of a league (Breaks recursion)
-CREATE OR REPLACE FUNCTION public.is_league_member(l_id UUID) 
+-- 1. Bulletproof membership check function (Bypasses RLS to prevent recursion)
+CREATE OR REPLACE FUNCTION public.check_p10_membership(l_id UUID, u_id UUID) 
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.league_members 
-    WHERE league_id = l_id AND user_id = auth.uid()
+    WHERE league_id = l_id AND user_id = u_id
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
@@ -99,7 +99,7 @@ BEGIN
   END IF;
 
   -- 2. Check if already a member
-  IF EXISTS (SELECT 1 FROM public.league_members WHERE league_id = l_id AND user_id = auth.uid()) THEN
+  IF public.check_p10_membership(l_id, auth.uid()) THEN
     RAISE EXCEPTION 'You are already a member of this league.';
   END IF;
   
@@ -119,32 +119,26 @@ CREATE POLICY "Profiles are public" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
 
 -- Leagues
-CREATE POLICY "Leagues are viewable by members" ON public.leagues 
-  FOR SELECT USING (
-    auth.uid() = created_by OR 
-    is_league_member(id) OR
+CREATE POLICY "leagues_select_policy" ON public.leagues FOR SELECT
+  USING (
+    created_by = auth.uid() OR 
+    public.check_p10_membership(id, auth.uid()) OR
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
   );
 
 CREATE POLICY "Authenticated can create leagues" ON public.leagues FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Leagues can be updated by creator" ON public.leagues 
-  FOR UPDATE USING (
-    auth.uid() = created_by OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
-
-CREATE POLICY "Leagues can be deleted by creator" ON public.leagues 
-  FOR DELETE USING (
-    auth.uid() = created_by OR
+CREATE POLICY "leagues_modify_policy" ON public.leagues FOR ALL
+  USING (
+    created_by = auth.uid() OR
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
   );
 
 -- League Members
-CREATE POLICY "Members can see each other" ON public.league_members 
-  FOR SELECT USING (
-    auth.uid() = user_id OR
-    is_league_member(league_id) OR
+CREATE POLICY "members_select_policy" ON public.league_members FOR SELECT
+  USING (
+    user_id = auth.uid() OR 
+    public.check_p10_membership(league_id, auth.uid()) OR
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
   );
 
@@ -154,7 +148,8 @@ CREATE POLICY "Users can join leagues" ON public.league_members
 CREATE POLICY "Users can leave leagues" ON public.league_members 
   FOR DELETE USING (
     auth.uid() = user_id OR 
-    EXISTS (SELECT 1 FROM public.leagues WHERE id = league_id AND created_by = auth.uid())
+    EXISTS (SELECT 1 FROM public.leagues WHERE id = league_id AND created_by = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
   );
 
 -- Predictions
