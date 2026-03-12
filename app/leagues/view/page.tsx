@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { Container, Row, Col, Table, Card, Spinner, Badge, Button } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -43,130 +43,159 @@ function LeagueDetailContent() {
     }
   };
 
-  useEffect(() => {
-    async function loadLeague() {
-      if (!leagueId) return;
-      setLoading(true);
-      
-      // 1. Fetch League Info
-      const { data: league, error: leagueError } = await supabase
-        .from('leagues')
-        .select('name, invite_code, created_at')
-        .eq('id', leagueId)
-        .single();
+  const loadLeague = useCallback(async () => {
+    if (!leagueId) return;
+    setLoading(true);
+    
+    // 1. Fetch League Info
+    const { data: league, error: leagueError } = await supabase
+      .from('leagues')
+      .select('name, invite_code, created_at')
+      .eq('id', leagueId)
+      .single();
 
-      if (leagueError) {
-        console.error(leagueError);
-        setLoading(false);
-        return;
-      }
-      setLeagueName(league.name);
-      setInviteCode(league.invite_code);
-      const leagueCreatedAt = new Date(league.created_at);
+    if (leagueError) {
+      console.error(leagueError);
+      setLoading(false);
+      return;
+    }
+    setLeagueName(league.name);
+    setInviteCode(league.invite_code);
+    const leagueCreatedAt = new Date(league.created_at);
 
-      // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
-      const races = await fetchCalendar(CURRENT_SEASON);
-      const raceResultsMap: { [round: string]: SimplifiedResults & { date: Date } } = {};
+    // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
+    const races = await fetchCalendar(CURRENT_SEASON);
+    const raceResultsMap: { [round: string]: SimplifiedResults & { date: Date } } = {};
+    
+    const { data: verifiedData } = await supabase.from('verified_results').select('*');
+    
+    let resultsFoundCount = 0;
+    await Promise.all(races.map(async (race: ApiCalendarRace) => {
+      const round = race.round;
+      const raceDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
+      const verifiedMatch = verifiedData?.find(v => v.id === `${CURRENT_SEASON}_${round}`);
       
-      const { data: verifiedData } = await supabase.from('verified_results').select('*');
-      
-      let resultsFoundCount = 0;
-      await Promise.all(races.map(async (race: ApiCalendarRace) => {
-        const round = race.round;
-        const raceDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
-        const verifiedMatch = verifiedData?.find(v => v.id === `${CURRENT_SEASON}_${round}`);
-        
-        if (verifiedMatch) {
-          raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
+      if (verifiedMatch) {
+        raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
+        resultsFoundCount++;
+      } else {
+        const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
+        if (resultsData) {
+          raceResultsMap[round] = { ...JSON.parse(resultsData), date: raceDate };
           resultsFoundCount++;
         } else {
-          const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
-          if (resultsData) {
-            raceResultsMap[round] = { ...JSON.parse(resultsData), date: raceDate };
+          const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
+          if (apiResults) {
+            const firstDnfDriver = getFirstDnfDriver(apiResults);
+            const simplified = {
+              positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
+                acc[r.Driver.driverId] = parseInt(r.position);
+                return acc;
+              }, {}),
+              firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null,
+              date: raceDate
+            };
+            raceResultsMap[round] = simplified;
             resultsFoundCount++;
-          } else {
-            const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
-            if (apiResults) {
-              const firstDnfDriver = getFirstDnfDriver(apiResults);
-              const simplified = {
-                positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
-                  acc[r.Driver.driverId] = parseInt(r.position);
-                  return acc;
-                }, {}),
-                firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null,
-                date: raceDate
-              };
-              raceResultsMap[round] = simplified;
-              resultsFoundCount++;
-            }
           }
         }
-      }));
-
-      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
-
-      // 3. Fetch League Members and their profiles
-      const { data: membersListData, error: membersError } = await supabase
-        .from('league_members')
-        .select('user_id')
-        .eq('league_id', leagueId);
-      
-      if (membersError) {
-        console.error('Error fetching members list:', membersError);
       }
+    }));
 
-      const memberIds = membersListData?.map(m => m.user_id) || [];
+    setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
+
+    // 3. Fetch League Members and their profiles
+    const { data: membersListData, error: membersError } = await supabase
+      .from('league_members')
+      .select('user_id')
+      .eq('league_id', leagueId);
+    
+    if (membersError) {
+      console.error('Error fetching members list:', membersError);
+    }
+
+    const memberIds = membersListData?.map(m => m.user_id) || [];
+    
+    // Fetch Profiles for those members
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', memberIds);
+
+    const members = profilesData || [];
+
+    // Fetch predictions for those members
+    const { data: predictionsData } = await supabase
+      .from('predictions')
+      .select('*')
+      .in('user_id', memberIds);
+    
+    const predictions = predictionsData as DbPrediction[];
+
+    // 4. Calculate Scores
+    const entries: LeaderboardEntry[] = members.map((user) => {
+      const userPreds = predictions?.filter(p => p.user_id === user.id) || [];
+      const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
       
-      // Fetch Profiles for those members
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', memberIds);
-
-      const members = profilesData || [];
-
-      // Fetch predictions for those members
-      const { data: predictionsData } = await supabase
-        .from('predictions')
-        .select('*')
-        .in('user_id', memberIds);
-      
-      const predictions = predictionsData as DbPrediction[];
-
-      // 4. Calculate Scores
-      const entries: LeaderboardEntry[] = members.map((user) => {
-        const userPreds = predictions?.filter(p => p.user_id === user.id) || [];
-        const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
-        
-        userPreds.forEach(p => {
-          const round = p.race_id.split('_')[1];
-          playerPredictions[round] = { p10: p.p10_driver_id, dnf: p.dnf_driver_id };
-        });
-
-        const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(
-          playerPredictions,
-          raceResultsMap,
-          leagueCreatedAt
-        );
-
-        return {
-          rank: 0,
-          player: user.username,
-          points: totalPoints,
-          lastRacePoints: lastRacePoints,
-          breakdown: latestBreakdown,
-          history: history
-        };
+      userPreds.forEach(p => {
+        const round = p.race_id.split('_')[1];
+        playerPredictions[round] = { p10: p.p10_driver_id, dnf: p.dnf_driver_id };
       });
 
-      const sorted = entries.sort((a, b) => b.points - a.points);
-      const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
-      
-      setLeaderboard(ranked);
-      setLoading(false);
-    }
-    loadLeague();
+      const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(
+        playerPredictions,
+        raceResultsMap,
+        leagueCreatedAt
+      );
+
+      return {
+        rank: 0,
+        player: user.username,
+        points: totalPoints,
+        lastRacePoints: lastRacePoints,
+        breakdown: latestBreakdown,
+        history: history
+      };
+    });
+
+    const sorted = entries.sort((a, b) => b.points - a.points);
+    const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
+    
+    setLeaderboard(ranked);
+    setLoading(false);
   }, [supabase, leagueId]);
+
+  useEffect(() => {
+    loadLeague();
+  }, [loadLeague]);
+
+  // Real-time subscription
+  useEffect(() => {
+    if (!leagueId) return;
+
+    const channel = supabase
+      .channel(`league-${leagueId}-realtime`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'verified_results' },
+        () => loadLeague()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'predictions' },
+        () => loadLeague()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'league_members', filter: `league_id=eq.${leagueId}` },
+        () => loadLeague()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, leagueId, loadLeague]);
 
   if (!leagueId) {
     return <Container className="mt-5 text-center text-white"><p>No league selected.</p></Container>;
