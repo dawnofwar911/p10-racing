@@ -144,12 +144,15 @@ export default function ResetPasswordPage() {
 
       if (updateError) throw updateError;
       
-      setMessage('Password updated successfully! Redirecting to login...');
+      // Explicitly sign out to force re-login with new credentials
+      await supabase.auth.signOut();
+      
+      setMessage('🏁 Password updated successfully! Please log in with your new credentials.');
       Haptics.notification({ type: NotificationType.Success });
       
       setTimeout(() => {
         router.push('/auth');
-      }, 2000);
+      }, 3000);
     } catch (err: unknown) {
       console.error('Update Password Error:', err);
       if (err instanceof Error) {
@@ -177,7 +180,10 @@ export default function ResetPasswordPage() {
             <Card.Body className="p-4 p-md-5">
               <div className="text-center mb-4">
                 <h1 className="h3 fw-bold text-white mb-2">P10 RACING</h1>
-                <p className="text-muted small">Enter your new password below.</p>
+                <p className="text-muted small">Account verified via recovery link.</p>
+                <div className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-2 rounded-pill small fw-bold">
+                  ACTION REQUIRED: SET NEW PASSWORD
+                </div>
               </div>
 
               {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
