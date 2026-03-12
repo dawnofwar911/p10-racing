@@ -1,6 +1,6 @@
 'use client';
 
-import { Navbar, Button, NavbarText, NavbarCollapse, NavbarToggle, Nav } from 'react-bootstrap';
+import { Navbar, Button, NavbarText, NavbarCollapse, NavbarToggle, Nav, Modal, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
@@ -15,6 +15,8 @@ export default function AppNavbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
@@ -119,32 +121,30 @@ export default function AppNavbar() {
 
   const handleDeleteAccount = async () => {
     if (!session) return;
+    setIsDeleting(true);
+    Haptics.notification({ type: NotificationType.Warning });
     
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete your account? This action is permanent and will remove all your predictions and league data."
-    );
-
-    if (confirmDelete) {
-      Haptics.notification({ type: NotificationType.Warning });
+    try {
+      // Supabase RLS and cascading deletes handle the data removal
+      // based on the schema (ON DELETE CASCADE)
+      const { error } = await supabase.rpc('delete_user_data');
       
-      try {
-        // Supabase RLS and cascading deletes handle the data removal
-        // based on the schema (ON DELETE CASCADE)
-        const { error } = await supabase.rpc('delete_user_data');
-        
-        if (error) {
-          console.error('Error deleting account:', error);
-          alert('Failed to delete account. Please contact p10racing.app@gmail.com');
-          return;
-        }
-
-        // Sign out after deletion
-        await handleLogout();
-        alert('Your account and data have been successfully deleted.');
-      } catch (err) {
-        console.error('Unexpected error:', err);
-        alert('An unexpected error occurred. Please try again.');
+      if (error) {
+        console.error('Error deleting account:', error);
+        alert('Failed to delete account. Please contact p10racing.app@gmail.com');
+        setIsDeleting(false);
+        return;
       }
+
+      // Sign out after deletion
+      await handleLogout();
+      setShowDeleteModal(false);
+      setIsDeleting(false);
+      alert('Your account and data have been successfully deleted.');
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('An unexpected error occurred. Please try again.');
+      setIsDeleting(false);
     }
   };
 
@@ -155,6 +155,7 @@ export default function AppNavbar() {
   const isOnAdminPage = pathname === '/admin';
 
   return (
+    <>
     <Navbar 
       expanded={expanded} 
       onToggle={setExpanded} 
@@ -204,7 +205,7 @@ export default function AppNavbar() {
                 </Button>
                 {session && (
                   <button 
-                    onClick={handleDeleteAccount} 
+                    onClick={() => setShowDeleteModal(true)} 
                     className="btn btn-link text-danger p-0 border-0 ms-2 opacity-50" 
                     style={{ fontSize: '0.6rem', textDecoration: 'none' }}
                   >
@@ -225,5 +226,26 @@ export default function AppNavbar() {
         </div>
       </NavbarCollapse>
     </Navbar>
+
+    <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="bg-dark border-secondary">
+      <Modal.Header closeButton closeVariant="white" className="border-secondary">
+        <Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Delete Account?</Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="text-white opacity-75 py-4">
+        Are you sure you want to delete your account?
+        <div className="mt-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded small text-danger">
+          <strong>This action is permanent:</strong> All your predictions, league memberships, and scores will be removed forever.
+        </div>
+      </Modal.Body>
+      <Modal.Footer className="border-secondary">
+        <Button variant="outline-light" onClick={() => setShowDeleteModal(false)} disabled={isDeleting} className="rounded-pill px-4">
+          CANCEL
+        </Button>
+        <Button variant="danger" onClick={handleDeleteAccount} disabled={isDeleting} className="rounded-pill px-4 fw-bold">
+          {isDeleting ? <Spinner animation="border" size="sm" className="me-2" /> : 'DELETE PERMANENTLY'}
+        </Button>
+      </Modal.Footer>
+    </Modal>
+    </>
   );
 }

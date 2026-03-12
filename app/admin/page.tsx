@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS, AppDriver, ApiCalendarRace } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-// import AppNavbar from '@/components/AppNavbar'; // Removed
+import { Haptics, NotificationType } from '@capacitor/haptics';
 
 interface AdminDriver {
   id: string;
@@ -26,9 +26,18 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [status, setStatus] = useState<{message: string, variant: string} | null>(null);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
   
   const supabase = createClient();
   const router = useRouter();
+
+  useEffect(() => {
+    if (status) {
+      const timer = setTimeout(() => setStatus(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
 
   useEffect(() => {
     async function checkAdmin() {
@@ -126,6 +135,7 @@ export default function AdminPage() {
         } else {
           setFirstDnf('');
         }
+        setStatus({ message: 'Data fetched successfully from API.', variant: 'success' });
       } else {
         setError(`No results found for Season ${season}, Round ${raceInfo.round}.`);
       }
@@ -145,7 +155,7 @@ export default function AdminPage() {
 
     if (target === 'local') {
       localStorage.setItem(`results_${season}_${selectedRace}`, JSON.stringify(simplifiedResults));
-      alert(`Results for Round ${selectedRace} saved locally!`);
+      setStatus({ message: `Results for Round ${selectedRace} saved locally!`, variant: 'info' });
     } else {
       setLoading(true);
       const { error: dbError } = await supabase
@@ -158,29 +168,32 @@ export default function AdminPage() {
       
       setLoading(false);
       if (dbError) {
-        alert('Global publish error: ' + dbError.message);
+        setStatus({ message: 'Global publish error: ' + dbError.message, variant: 'danger' });
       } else {
-        alert(`Results for Round ${selectedRace} published GLOBALLY!`);
+        setStatus({ message: `Results for Round ${selectedRace} published GLOBALLY!`, variant: 'success' });
+        Haptics.notification({ type: NotificationType.Success });
       }
     }
   };
 
   const handleNotifyQuali = async () => {
-    if (!confirm('This will send a push notification to ALL users. Continue?')) return;
-    
+    setShowNotifyModal(false);
     setLoading(true);
+    const raceName = availableRaces.find(r => r.round === selectedRace)?.raceName;
+    
     const { error: rpcError } = await supabase.rpc('send_broadcast_notification', {
       p_title: 'Qualifying Results Are In!',
-      p_body: `The grid for the ${availableRaces.find(r => r.round === selectedRace)?.raceName} is ready. Make your P10 picks now!`,
+      p_body: `The grid for the ${raceName} is ready. Make your P10 picks now!`,
       p_type: 'quali',
       p_url: '/predict'
     });
     
     setLoading(false);
     if (rpcError) {
-      alert('Notification error: ' + rpcError.message);
+      setStatus({ message: 'Notification error: ' + rpcError.message, variant: 'danger' });
     } else {
-      alert('Broadcast notification sent!');
+      setStatus({ message: 'Broadcast notification sent!', variant: 'success' });
+      Haptics.notification({ type: NotificationType.Success });
     }
   };
 
@@ -195,9 +208,10 @@ export default function AdminPage() {
     
     setLoading(false);
     if (rpcError) {
-      alert('Test notification error: ' + rpcError.message);
+      setStatus({ message: 'Test notification error: ' + rpcError.message, variant: 'danger' });
     } else {
-      alert('Test notification sent to your device!');
+      setStatus({ message: 'Test notification sent to your device!', variant: 'success' });
+      Haptics.notification({ type: NotificationType.Success });
     }
   };
 
@@ -213,6 +227,11 @@ export default function AdminPage() {
   return (
     <>
       <Container className="mt-4 mb-5">
+        {status && (
+          <Alert variant={status.variant} onClose={() => setStatus(null)} dismissible className="sticky-top mt-2 shadow-sm border-secondary">
+            {status.message}
+          </Alert>
+        )}
         <Row className="mb-4">
           <Col>
             <h1 className="h2 fw-bold text-uppercase letter-spacing-1">Admin Results Entry</h1>
@@ -293,7 +312,7 @@ export default function AdminPage() {
               </Card.Header>
               <Card.Body className="p-4">
                 <div className="d-grid gap-2">
-                  <Button variant="warning" onClick={handleNotifyQuali} disabled={loading} className="fw-bold text-dark">
+                  <Button variant="warning" onClick={() => setShowNotifyModal(true)} disabled={loading} className="fw-bold text-dark">
                     NOTIFY QUALI FINISHED
                   </Button>
                   <Button variant="outline-info" onClick={handleSendTestNotification} disabled={loading} className="fw-bold">
@@ -312,6 +331,27 @@ export default function AdminPage() {
           </Col>
         </Row>
       </Container>
+
+      <Modal show={showNotifyModal} onHide={() => setShowNotifyModal(false)} centered contentClassName="bg-dark border-secondary">
+        <Modal.Header closeButton closeVariant="white" className="border-secondary">
+          <Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Broadcast Notification?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-white opacity-75">
+          This will send a push notification to <strong>ALL</strong> users who have enabled them.
+          <div className="mt-3 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded small text-warning">
+            Title: Qualifying Results Are In!<br/>
+            Target Race: {availableRaces.find(r => r.round === selectedRace)?.raceName}
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-secondary">
+          <Button variant="outline-light" onClick={() => setShowNotifyModal(false)} className="rounded-pill px-4">
+            CANCEL
+          </Button>
+          <Button variant="warning" onClick={handleNotifyQuali} className="rounded-pill px-4 fw-bold text-dark">
+            SEND BROADCAST
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }
