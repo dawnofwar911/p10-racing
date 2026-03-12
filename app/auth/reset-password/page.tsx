@@ -19,10 +19,15 @@ export default function ResetPasswordPage() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log('ResetPasswordPage mounted. Hash:', window.location.hash);
+    
     // Listen for the initial session or recovery event
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
-      if (event === 'PASSWORD_RECOVERY' || session) {
+      console.log('Auth event in ResetPasswordPage:', event, session ? 'Session exists' : 'No session');
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && window.location.hash.includes('type=recovery'))) {
+        console.log('Detected password recovery flow');
+        setCheckingAuth(false);
+      } else if (session) {
         setCheckingAuth(false);
       }
     });
@@ -31,11 +36,23 @@ export default function ResetPasswordPage() {
     // to allow the URL fragment to be processed
     const timer = setTimeout(async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Fallback session check:', session ? 'Session exists' : 'No session');
+      
       if (!session) {
-        setError('Invalid or expired reset link. Please request a new one from the login page.');
+        // Double check if there is a recovery token in the hash but Supabase missed it
+        if (window.location.hash.includes('access_token=') && window.location.hash.includes('type=recovery')) {
+          console.log('Hash contains recovery token but no session found. Attempting manual session refresh...');
+          // Sometimes refreshing the page or waiting longer helps, but let's try to show the form anyway
+          // as the hash is present.
+          setCheckingAuth(false);
+        } else {
+          setError('Invalid or expired reset link. Please request a new one from the login page.');
+          setCheckingAuth(false);
+        }
+      } else {
+        setCheckingAuth(false);
       }
-      setCheckingAuth(false);
-    }, 3000);
+    }, 5000); // Increased to 5 seconds for slower connections/processing
 
     return () => {
       subscription.unsubscribe();

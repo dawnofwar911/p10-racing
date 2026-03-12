@@ -23,6 +23,13 @@ export default function AuthPage() {
 
   useEffect(() => {
     async function checkAuth() {
+      // Check for recovery hash first
+      if (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token=')) {
+        console.log('Recovery hash detected on auth page, redirecting to reset-password');
+        router.push('/auth/reset-password' + window.location.hash);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         router.push('/');
