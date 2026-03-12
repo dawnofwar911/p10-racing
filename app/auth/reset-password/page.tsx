@@ -19,25 +19,28 @@ export default function ResetPasswordPage() {
   const router = useRouter();
 
   useEffect(() => {
-    async function checkSession() {
-      // The recovery link should automatically set the session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // If no session, they might have landed here without a valid link
-        // or the link expired.
-        // We'll give them a moment to see if the hash is being processed.
-        setTimeout(async () => {
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-          if (!retrySession) {
-            setError('Invalid or expired reset link. Please try again.');
-          }
-          setCheckingAuth(false);
-        }, 1000);
-      } else {
+    // Listen for the initial session or recovery event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event);
+      if (event === 'PASSWORD_RECOVERY' || session) {
         setCheckingAuth(false);
       }
-    }
-    checkSession();
+    });
+
+    // Fallback: check if we already have a session after a brief delay
+    // to allow the URL fragment to be processed
+    const timer = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Invalid or expired reset link. Please request a new one from the login page.');
+      }
+      setCheckingAuth(false);
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, [supabase]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
