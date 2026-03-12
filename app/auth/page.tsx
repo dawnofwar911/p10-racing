@@ -44,50 +44,33 @@ export default function AuthPage() {
     checkAuth();
   }, [supabase, router]);
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
-
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-
-      if (resetError) throw resetError;
-      
-      setMessage('Password reset link sent! Check your email.');
-    } catch (err: unknown) {
-      console.error('Reset Password Error:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unexpected error occurred.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isResetPassword) {
-      return handleResetPassword(e);
-    }
     setLoading(true);
     setError(null);
     setMessage(null);
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://p10-racing.vercel.app';
+      
+      if (isResetPassword) {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${siteUrl}/auth/reset-password`,
+        });
+
+        if (resetError) throw resetError;
+        setMessage('🏁 Reset link dispatched! Check your inbox.');
+        return;
+      }
+
       if (isSignUp) {
-        // 1. Sign up the user - Save username in metadata as a backup
+        // 1. Sign up the user
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: `${siteUrl}/auth`,
             data: {
               username: username
             }
@@ -101,13 +84,17 @@ export default function AuthPage() {
           const { error: profileError } = await supabase
             .from('profiles')
             .upsert([
-              { id: authData.user.id, username: username }
+              { id: authData.user.id, username: username, is_admin: false }
             ]);
 
           if (profileError) throw profileError;
         }
         
-        alert('Account created! Please check your email for a confirmation link (if enabled).');
+        // Professional confirmation flow
+        setMessage('🏎️ Registration Received! Check your inbox to confirm your Grid Access.');
+        setIsSignUp(false); // Move to login view
+        setEmail(''); // Clear for privacy
+        setPassword('');
       } else {
         // Login
         const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
