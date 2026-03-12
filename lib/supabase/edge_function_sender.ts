@@ -1,7 +1,9 @@
 // Supabase Edge Function: push-notifications-sender
-// This function should be triggered by a Supabase Database Webhook on the 'notifications' table.
+// Automatically generates OAuth2 tokens using a Firebase Service Account.
+// Location: lib/supabase/edge_function_sender.ts (Reference)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { JWT } from 'https://esm.sh/google-auth-library@9';
 
 interface NotificationRecord {
   id: string;
@@ -20,31 +22,32 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const FIREBASE_PROJECT_ID = Deno.env.get('FIREBASE_PROJECT_ID')!;
-    // This requires a Google OAuth2 token. 
-    // In a real deployment, you would use a service account JSON to generate this.
-    const FCM_ACCESS_TOKEN = Deno.env.get('FCM_ACCESS_TOKEN')!; 
+    const SERVICE_ACCOUNT_JSON = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')!;
 
+    const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1. Fetch tokens to send to
+    // 1. Generate a fresh Google OAuth2 Token
+    const client = new JWT({
+      email: serviceAccount.client_email,
+      key: serviceAccount.private_key,
+      scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+    });
+
+    const tokenResponse = await client.getAccessToken();
+    const accessToken = tokenResponse.token;
+
+    if (!accessToken) throw new Error('Failed to generate Google Access Token');
+
+    // 2. Fetch target tokens
     let query = supabase.from('push_tokens').select('token');
-    
-    // If user_id is null, it's a broadcast to everyone
-    if (record.user_id) {
-      query = query.eq('user_id', record.user_id);
-    }
+    if (record.user_id) query = query.eq('user_id', record.user_id);
+    const { data: tokenRows } = await query;
 
-    const { data: tokenRows, error: tokenError } = await query;
-
-    if (tokenError || !tokenRows || tokenRows.length === 0) {
-      console.log('No tokens found for notification:', record.id);
-      return new Response('No tokens');
-    }
-
+    if (!tokenRows || tokenRows.length === 0) return new Response('No tokens');
     const tokens = tokenRows.map(r => r.token);
-    console.log(`Sending "${record.title}" to ${tokens.length} devices...`);
 
-    // 2. Send to Firebase (FCM v1 API)
+    // 3. Send to FCM v1 API
     const results = await Promise.all(tokens.map(async (token) => {
       const response = await fetch(
         `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`,
@@ -52,27 +55,16 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${FCM_ACCESS_TOKEN}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             message: {
               token: token,
-              notification: {
-                title: record.title,
-                body: record.body,
-              },
-              data: {
-                ...record.data,
-                type: record.type,
-                notification_id: record.id
-              },
+              notification: { title: record.title, body: record.body },
+              data: { ...record.data, type: record.type, notification_id: record.id },
               android: {
                 priority: 'high',
-                notification: {
-                  channel_id: 'default',
-                  icon: 'ic_stat_name', // Ensure this exists in your Android res/drawable
-                  color: '#e10600'
-                }
+                notification: { channel_id: 'default', color: '#e10600' }
               }
             },
           }),
@@ -85,8 +77,8 @@ Deno.serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error('Error in push-sender:', errorMessage);
-    return new Response(errorMessage, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Push Error:', msg);
+    return new Response(msg, { status: 500 });
   }
 });
