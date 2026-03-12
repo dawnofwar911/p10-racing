@@ -1,4 +1,5 @@
 name: P10 Racing CI/CD
+run-name: ${{ github.event.head_commit.message || github.workflow }}
 
 on:
   push:
