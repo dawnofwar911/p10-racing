@@ -34,6 +34,21 @@ Deno.serve(async () => {
     const upcomingRace = races.find((r: { date: string }) => new Date(r.date) >= now) || races[races.length - 1];
     const round = upcomingRace.round;
 
+    // --- NEW: Sync Calendar ---
+    // Every time we check, let's sync the next few races to the DB to ensure locking works
+    const racesToSync = races.filter((r: { date: string }) => new Date(r.date) >= now).slice(0, 3);
+    for (const r of (racesToSync.length > 0 ? racesToSync : [races[races.length - 1]])) {
+      const raceId = `${season}_${r.round}`;
+      const raceStartTime = `${r.date}T${r.time || '00:00:00Z'}`;
+      
+      await supabase.from('races').upsert({
+        id: raceId,
+        start_time: raceStartTime,
+        race_name: r.raceName
+      }, { onConflict: 'id' });
+    }
+    // --- END SYNC ---
+
     console.log(`Checking results for Season ${season}, Round ${round} (${upcomingRace.raceName})`);
 
     // 2. Check for Qualifying Results

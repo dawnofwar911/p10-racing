@@ -4,7 +4,7 @@
 
 -- 1. Profiles Table (Linked to Auth.Users)
 CREATE TABLE public.profiles (
-  id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
+  id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   avatar_url TEXT,
   is_admin BOOLEAN DEFAULT false,
@@ -17,7 +17,7 @@ CREATE TABLE public.leagues (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   invite_code TEXT UNIQUE NOT NULL DEFAULT substring(md5(random()::text) from 1 for 8),
-  created_by UUID REFERENCES auth.users NOT NULL,
+  created_by UUID REFERENCES auth.users ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -32,7 +32,7 @@ CREATE TABLE public.league_members (
 -- 4. Predictions Table
 CREATE TABLE public.predictions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users NOT NULL,
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
   race_id TEXT NOT NULL, -- Format: "season_round" e.g., "2026_1"
   p10_driver_id TEXT NOT NULL,
   dnf_driver_id TEXT NOT NULL,
@@ -49,10 +49,18 @@ CREATE TABLE public.verified_results (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 5b. Race Calendar (Source of truth for locking)
+CREATE TABLE public.races (
+  id TEXT PRIMARY KEY, -- Format: "season_round"
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  race_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- 6. Bug Reports
 CREATE TABLE public.bug_reports (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users,
+  user_id UUID REFERENCES auth.users ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   device_info JSONB,
@@ -163,6 +171,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION public.send_test_notification(p_user_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO public.notifications (user_id, title, body, type, data)
+  VALUES (p_user_id, 'Test Notification', 'If you see this, push notifications are working! 🏎️💨', 'test', jsonb_build_object('url', '/'));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Trigger for Race Results
 CREATE OR REPLACE FUNCTION public.on_verified_results_published()
 RETURNS TRIGGER AS $$
@@ -179,9 +195,35 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS tr_on_verified_results_published ON public.verified_results;
 CREATE TRIGGER tr_on_verified_results_published AFTER INSERT OR UPDATE ON public.verified_results FOR EACH ROW EXECUTE FUNCTION public.on_verified_results_published();
 
+-- Locking Trigger: Prevent predictions after race start
+CREATE OR REPLACE FUNCTION public.ensure_prediction_not_locked()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_start_time TIMESTAMP WITH TIME ZONE;
+BEGIN
+  -- Get the start time for the race. Format: "season_round"
+  SELECT start_time INTO v_start_time FROM public.races WHERE id = NEW.race_id;
+
+  -- If the race is found and current time is > start_time + 2 minutes, block the update
+  IF v_start_time IS NOT NULL AND now() > (v_start_time + INTERVAL '2 minutes') THEN
+    RAISE EXCEPTION 'This race has already started. Predictions are locked.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER tr_lock_predictions BEFORE INSERT OR UPDATE ON public.predictions
+FOR EACH ROW EXECUTE FUNCTION public.ensure_prediction_not_locked();
+
 -- ==========================================================
 -- POLICIES
 -- ==========================================================
+
+-- Profiles
+ALTER TABLE public.races ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Races are public" ON public.races FOR SELECT USING (true);
+CREATE POLICY "Admins manage races" ON public.races FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true));
 
 -- Profiles
 CREATE POLICY "Profiles are public" ON public.profiles FOR SELECT USING (true);
@@ -212,6 +254,10 @@ CREATE POLICY "Users can manage own predictions" ON public.predictions FOR ALL U
 -- Results
 CREATE POLICY "Results are public" ON public.verified_results FOR SELECT USING (true);
 CREATE POLICY "Admin results manage" ON public.verified_results FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true));
+
+-- Bug Reports
+CREATE POLICY "Anyone can report bugs" ON public.bug_reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can manage bug reports" ON public.bug_reports FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true));
 
 -- Notifications & Tokens
 CREATE POLICY "Users manage own tokens" ON public.push_tokens FOR ALL USING (auth.uid() = user_id);
