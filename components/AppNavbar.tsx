@@ -153,6 +153,7 @@ export default function AppNavbar() {
   };
 
   const isOnAdminPage = pathname === '/admin';
+  const isOnResetPage = pathname === '/auth/reset-password';
 
   return (
     <>
@@ -176,55 +177,60 @@ export default function AppNavbar() {
           <span className="d-none d-sm-inline letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>RACING</span></span>
           <span className="d-inline d-sm-none letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>R</span></span>
           {isOnAdminPage && <span className="ms-2 badge bg-danger" style={{ fontSize: '0.6rem' }}>ADMIN</span>}
+          {isOnResetPage && <span className="ms-2 badge bg-warning text-dark" style={{ fontSize: '0.6rem' }}>RECOVERY MODE</span>}
         </Navbar.Brand>
       </Link>
       
-      <NavbarToggle aria-controls="basic-navbar-nav" className="border-0 shadow-none p-0" onClick={triggerHaptic} />
-      
-      <NavbarCollapse id="basic-navbar-nav">
-        <Nav className="me-auto mt-3 mt-lg-0 gap-lg-2">
-          <Link href="/predict" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/predict' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Predict</Link>
-          <Link href="/leagues" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leagues' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leagues</Link>
-          <Link href="/leaderboard" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leaderboard' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leaderboard</Link>
-          <Link href="/standings" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/standings' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Standings</Link>
-          <Link href="/history" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/history' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>History</Link>
-          {isAdmin && (
-            <Link href="/admin" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/admin' ? 'text-danger border-bottom border-danger border-2' : 'text-warning opacity-75'}`} style={{ fontSize: '0.75rem' }}>Admin</Link>
-          )}
-        </Nav>
-        
-        <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
-          {(session || currentUser) ? (
-            <>
-              <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
-                Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
-              </NavbarText>
-              <div className="d-flex align-items-center gap-2">
-                <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-                  SIGN OUT
-                </Button>
-                {session && (
-                  <button 
-                    onClick={() => setShowDeleteModal(true)} 
-                    className="btn btn-link text-danger p-0 border-0 ms-2 opacity-50" 
-                    style={{ fontSize: '0.6rem', textDecoration: 'none' }}
-                  >
-                    DELETE DATA
-                  </button>
-                )}
-              </div>
-            </>
-          ) : isAuthReady ? (
-            <Link href="/auth" passHref legacyBehavior>
-              <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
-                SIGN IN
-              </Button>
-            </Link>
-          ) : (
-            <div style={{ height: '31px', width: '80px' }}></div> /* Placeholder to prevent layout shift */
-          )}
-        </div>
-      </NavbarCollapse>
+      {!isOnResetPage && (
+        <>
+          <NavbarToggle aria-controls="basic-navbar-nav" className="border-0 shadow-none p-0" onClick={triggerHaptic} />
+          
+          <NavbarCollapse id="basic-navbar-nav">
+            <Nav className="me-auto mt-3 mt-lg-0 gap-lg-2">
+              <Link href="/predict" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/predict' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Predict</Link>
+              <Link href="/leagues" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leagues' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leagues</Link>
+              <Link href="/leaderboard" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leaderboard' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leaderboard</Link>
+              <Link href="/standings" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/standings' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Standings</Link>
+              <Link href="/history" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/history' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>History</Link>
+              {isAdmin && (
+                <Link href="/admin" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/admin' ? 'text-danger border-bottom border-danger border-2' : 'text-warning opacity-75'}`} style={{ fontSize: '0.75rem' }}>Admin</Link>
+              )}
+            </Nav>
+            
+            <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
+              {(session || currentUser) ? (
+                <>
+                  <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
+                    Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
+                  </NavbarText>
+                  <div className="d-flex align-items-center gap-2">
+                    <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
+                      SIGN OUT
+                    </Button>
+                    {session && (
+                      <button 
+                        onClick={() => setShowDeleteModal(true)} 
+                        className="btn btn-link text-danger p-0 border-0 ms-2 opacity-50" 
+                        style={{ fontSize: '0.6rem', textDecoration: 'none' }}
+                      >
+                        DELETE DATA
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : isAuthReady ? (
+                <Link href="/auth" passHref legacyBehavior>
+                  <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
+                    SIGN IN
+                  </Button>
+                </Link>
+              ) : (
+                <div style={{ height: '31px', width: '80px' }}></div> /* Placeholder to prevent layout shift */
+              )}
+            </div>
+          </NavbarCollapse>
+        </>
+      )}
     </Navbar>
 
     <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="bg-dark border-secondary">
