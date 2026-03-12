@@ -30,7 +30,7 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      // 2. Try to parse hash manually if Supabase missed it
+      // 2. Try to parse hash manually (Implicit Flow)
       const hash = window.location.hash.substring(1);
       if (hash) {
         const params = new URLSearchParams(hash);
@@ -49,10 +49,17 @@ export default function ResetPasswordPage() {
             console.log('Manual session set successful');
             setCheckingAuth(false);
             return;
-          } else {
-            console.error('Error setting manual session:', setSessionError);
           }
         }
+      }
+
+      // 3. Check for PKCE 'code' in query params
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get('code');
+      if (code) {
+        console.log('Detected PKCE code, waiting for Supabase to exchange it...');
+        // Supabase Browser Client handles this automatically if onAuthStateChange is active
+        return;
       }
     };
 
@@ -70,9 +77,19 @@ export default function ResetPasswordPage() {
     const timer = setTimeout(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        // One last check for hash presence to be safe
-        if (window.location.hash.includes('access_token=') && window.location.hash.includes('type=recovery')) {
-           setCheckingAuth(false);
+        const hasHashToken = window.location.hash.includes('access_token=');
+        const hasCodeParam = window.location.search.includes('code=');
+
+        if (hasHashToken || hasCodeParam) {
+           console.log('Token or code present, suppressing error to allow more time');
+           // If we still have no session after 8 seconds total, THEN show error
+           setTimeout(async () => {
+             const { data: { session: lastTry } } = await supabase.auth.getSession();
+             if (!lastTry) {
+               setError('Invalid or expired reset link. Please request a new one.');
+               setCheckingAuth(false);
+             }
+           }, 4000);
         } else {
           setError('Invalid or expired reset link. Please request a new one from the login page.');
           setCheckingAuth(false);
