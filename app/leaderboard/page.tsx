@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateP10Points } from '@/lib/scoring';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
+import { fetchCalendar, DbPrediction } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 // import AppNavbar from '@/components/AppNavbar'; // Removed
 
@@ -33,35 +33,22 @@ export default function LeaderboardPage() {
     async function calculate() {
       setLoading(true);
       
-      const races = await fetchCalendar(CURRENT_SEASON);
-      const raceResultsMap: { [round: string]: SimplifiedResults } = {};
-      
-      let resultsFoundCount = 0;
-      await Promise.all(races.map(async (race: ApiCalendarRace) => {
-        const round = race.round;
-        const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
-        
-        if (!resultsData) {
-          const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
-          if (apiResults) {
-            const firstDnfDriver = getFirstDnfDriver(apiResults);
-            const simplifiedResults: SimplifiedResults = {
-              positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
-                acc[r.Driver.driverId] = parseInt(r.position);
-                return acc;
-              }, {}),
-              firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null
-            };
-            localStorage.setItem(`results_${CURRENT_SEASON}_${round}`, JSON.stringify(simplifiedResults));
-            raceResultsMap[round] = simplifiedResults;
-            resultsFoundCount++;
-          }
-        } else {
-          raceResultsMap[round] = JSON.parse(resultsData);
-          resultsFoundCount++;
-        }
-      }));
+      // 1. Fetch all verified results from Supabase
+      const { data: dbResults } = await supabase
+        .from('verified_results')
+        .select('*');
 
+      const raceResultsMap: { [round: string]: SimplifiedResults } = {};
+      if (dbResults) {
+        dbResults.forEach(res => {
+          const round = res.id.split('_')[1];
+          raceResultsMap[round] = res.data as unknown as SimplifiedResults;
+        });
+      }
+
+      // 2. Fetch Calendar to check if season is complete
+      const races = await fetchCalendar(CURRENT_SEASON);
+      const resultsFoundCount = Object.keys(raceResultsMap).length;
       setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
       let playersData: LeaderboardPlayer[] = [];

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from '@/lib/api';
+import { fetchCalendar, fetchDrivers } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import Link from 'next/link';
 // import AppNavbar from '@/components/AppNavbar'; // Removed
@@ -26,24 +27,46 @@ export default function HistoryPage() {
 
   useEffect(() => {
     async function loadHistory() {
-      const races = await fetchCalendar(CURRENT_SEASON);
-      const historyData = await Promise.all(races.map(async (r: ApiCalendarRace) => {
-        const results = await fetchRaceResults(CURRENT_SEASON, parseInt(r.round));
-        if (results) {
-          const p10 = results.Results.find((res) => res.position === "10");
-          const dnf = getFirstDnfDriver(results);
-          return {
-            round: r.round,
-            name: r.raceName,
-            p10: p10 ? `${p10.Driver.givenName} ${p10.Driver.familyName}` : 'N/A',
-            dnf: dnf ? `${dnf.givenName} ${dnf.familyName}` : 'None',
-            winner: `${results.Results[0].Driver.givenName} ${results.Results[0].Driver.familyName}`
-          };
-        }
-        return null;
-      }));
+      const supabase = createClient();
+      
+      // 1. Fetch all verified results from Supabase
+      const { data: dbResults } = await supabase
+        .from('verified_results')
+        .select('*');
 
-      setHistory(historyData.filter((h): h is HistoryEntry => h !== null).reverse());
+      if (!dbResults || dbResults.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch Drivers and Calendar to map names
+      const [drivers, races] = await Promise.all([
+        fetchDrivers(CURRENT_SEASON),
+        fetchCalendar(CURRENT_SEASON)
+      ]);
+
+      const historyData: HistoryEntry[] = dbResults.map(res => {
+        const round = res.id.split('_')[1];
+        const raceInfo = races.find(r => r.round === round);
+        const data = res.data as { positions: { [id: string]: number }, firstDnf: string | null };
+
+        const p10Id = Object.entries(data.positions).find(([, pos]) => pos === 10)?.[0];
+        const winnerId = Object.entries(data.positions).find(([, pos]) => pos === 1)?.[0];
+
+        const p10Driver = drivers.find(d => d.id === p10Id);
+        const dnfDriver = drivers.find(d => d.id === data.firstDnf);
+        const winnerDriver = drivers.find(d => d.id === winnerId);
+
+        return {
+          round: round,
+          name: raceInfo?.raceName || `Round ${round}`,
+          p10: p10Driver ? p10Driver.name : 'Unknown',
+          dnf: dnfDriver ? dnfDriver.name : (data.firstDnf === 'None' ? 'None' : 'None'),
+          winner: winnerDriver ? winnerDriver.name : 'Unknown'
+        };
+      });
+
+      setHistory(historyData.sort((a, b) => parseInt(b.round) - parseInt(a.round)));
       setLoading(false);
     }
     loadHistory();
