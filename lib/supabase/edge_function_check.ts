@@ -1,7 +1,7 @@
 // Supabase Edge Function: check-f1-results
 // This script is intended to be deployed to Supabase Edge Functions.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
