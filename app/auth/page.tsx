@@ -192,13 +192,14 @@ export default function AuthPage() {
 
                   {!isResetPassword && (
                     <Form.Group className="mb-4">
-                      <Form.Label className="text-muted small text-uppercase fw-bold d-flex justify-content-between">
+                      <Form.Label className="text-muted small text-uppercase fw-bold d-flex justify-content-between align-items-center">
                         <span>Password</span>
                         {!isSignUp && (
                           <button 
                             type="button" 
-                            className="btn btn-link text-muted text-decoration-none p-0 border-0 small text-lowercase"
+                            className="btn btn-link text-danger text-decoration-none p-0 ps-2 border-0 small text-lowercase fw-bold opacity-75 hover-opacity-100"
                             onClick={() => setIsResetPassword(true)}
+                            style={{ fontSize: '0.7rem' }}
                           >
                             Forgot?
                           </button>
