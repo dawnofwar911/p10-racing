@@ -198,14 +198,18 @@ export default function AppNavbar() {
               <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
                 Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
               </NavbarText>
-              <div className="d-flex gap-2">
+              <div className="d-flex align-items-center gap-2">
                 <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
                   SIGN OUT
                 </Button>
                 {session && (
-                  <Button variant="outline-danger" size="sm" onClick={handleDeleteAccount} className="rounded-pill px-3 border-opacity-25" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-                    DELETE ACCOUNT
-                  </Button>
+                  <button 
+                    onClick={handleDeleteAccount} 
+                    className="btn btn-link text-danger p-0 border-0 ms-2 opacity-50" 
+                    style={{ fontSize: '0.6rem', textDecoration: 'none' }}
+                  >
+                    DELETE DATA
+                  </button>
                 )}
               </div>
             </>
