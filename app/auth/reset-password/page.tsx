@@ -57,9 +57,23 @@ export default function ResetPasswordPage() {
       const searchParams = new URLSearchParams(window.location.search);
       const code = searchParams.get('code');
       if (code) {
-        console.log('Detected PKCE code, waiting for Supabase to exchange it...');
-        // Supabase Browser Client handles this automatically if onAuthStateChange is active
-        return;
+        console.log('Detected PKCE code, manually attempting exchange...');
+        // On some platforms, Supabase doesn't auto-exchange the code
+        // so we manually call it here.
+        try {
+          // Note: createClient should be browser-safe
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+             console.error('Exchange error:', exchangeError);
+             // We don't throw yet, as Supabase might have already done it
+          } else {
+             console.log('Manual code exchange success!');
+             setCheckingAuth(false);
+             return;
+          }
+        } catch (e) {
+          console.error('PKCE exchange error:', e);
+        }
       }
     };
 
