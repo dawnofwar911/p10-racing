@@ -165,6 +165,13 @@ export default function ResetPasswordPage() {
     }
   };
 
+  const handleCancel = async () => {
+    setLoading(true);
+    Haptics.impact({ style: ImpactStyle.Light });
+    await supabase.auth.signOut();
+    router.push('/auth');
+  };
+
   if (checkingAuth) {
     return <LoadingView />;
   }
@@ -222,6 +229,17 @@ export default function ResetPasswordPage() {
                   >
                     {loading ? <Spinner animation="border" size="sm" /> : 'UPDATE PASSWORD'}
                   </Button>
+
+                  <div className="text-center mt-3 pt-3 border-top border-secondary border-opacity-25">
+                    <button 
+                      type="button" 
+                      className="btn btn-link text-muted text-decoration-none small fw-bold opacity-75 hover-opacity-100"
+                      onClick={handleCancel}
+                      disabled={loading}
+                    >
+                      CANCEL & RETURN TO LOGIN
+                    </button>
+                  </div>
                 </Form>
               )}
 
