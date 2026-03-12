@@ -52,8 +52,11 @@ describe('API Logic Tests', () => {
         })
       );
 
+      // Silence console.error for this expected failure
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const result = await fetchRaceResults(2026, 1);
       expect(result).toBeNull();
+      consoleSpy.mockRestore();
     });
   });
 
@@ -136,16 +139,20 @@ describe('API Logic Tests', () => {
   describe('fetchDriversFromOpenF1', () => {
     it('should fetch and map OpenF1 drivers', async () => {
       server.use(
-        http.get(`https://api.openf1.org/v1/drivers?session_key=9159`, () => {
-          return HttpResponse.json([
-            {
-              name_acronym: 'VER',
-              full_name: 'Max Verstappen',
-              team_name: 'Red Bull Racing',
-              driver_number: 1,
-              team_colour: '3671C6'
-            }
-          ]);
+        http.get(`https://api.openf1.org/v1/drivers`, ({ request }) => {
+          const url = new URL(request.url);
+          if (url.searchParams.get('session_key') === '9159') {
+            return HttpResponse.json([
+              {
+                name_acronym: 'VER',
+                full_name: 'Max Verstappen',
+                team_name: 'Red Bull Racing',
+                driver_number: 1,
+                team_colour: '3671C6'
+              }
+            ]);
+          }
+          return new HttpResponse(null, { status: 404 });
         })
       );
 
@@ -157,7 +164,7 @@ describe('API Logic Tests', () => {
 
     it('should handle error for OpenF1 API', async () => {
       server.use(
-        http.get(`https://api.openf1.org/v1/drivers?session_key=9159`, () => {
+        http.get(`https://api.openf1.org/v1/drivers`, () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
