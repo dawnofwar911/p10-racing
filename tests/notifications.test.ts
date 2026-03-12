@@ -20,24 +20,29 @@ async function testNotifications() {
       console.log('✅ Push tokens table ready');
     }
 
-    // 2. Test send_broadcast_notification (check if it exists)
-    const { error: broadcastError } = await supabase.rpc('send_broadcast_notification', {
-      p_title: 'Test Broadcast',
-      p_body: 'This is a test broadcast',
-      p_type: 'test',
-      p_url: '/'
-    });
-
-    if (broadcastError) {
-      if (broadcastError.message.includes('permission denied')) {
-         console.log('✅ Broadcast RPC exists but permission denied (expected for anon)');
-      } else if (broadcastError.message.includes('does not exist')) {
-         console.log('ℹ️ Broadcast RPC does not exist. Apply SQL first.');
-      } else {
-         console.log('ℹ️ Broadcast RPC error:', broadcastError.message);
-      }
+    // 2. Test logic (SKIP live RPC in CI to avoid phantom notifications)
+    if (process.env.GITHUB_ACTIONS) {
+      console.log('ℹ️ Skipping live RPC calls in CI environment.');
     } else {
-      console.log('✅ send_broadcast_notification RPC called successfully');
+      // 2. Test send_broadcast_notification (check if it exists)
+      const { error: broadcastError } = await supabase.rpc('send_broadcast_notification', {
+        p_title: 'Test Broadcast',
+        p_body: 'This is a test broadcast',
+        p_type: 'test',
+        p_url: '/'
+      });
+
+      if (broadcastError) {
+        if (broadcastError.message.includes('permission denied')) {
+           console.log('✅ Broadcast RPC exists but permission denied (expected for anon)');
+        } else if (broadcastError.message.includes('does not exist')) {
+           console.log('ℹ️ Broadcast RPC does not exist. Apply SQL first.');
+        } else {
+           console.log('ℹ️ Broadcast RPC error:', broadcastError.message);
+        }
+      } else {
+        console.log('✅ send_broadcast_notification RPC called successfully');
+      }
     }
 
   } catch (err) {
