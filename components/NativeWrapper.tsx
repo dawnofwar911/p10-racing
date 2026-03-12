@@ -28,17 +28,22 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         // 2. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
           try {
+            console.log('Processing raw deep link:', rawUrl);
             const url = new URL(rawUrl);
             let path = url.pathname;
             
-            // Handle custom schemes like p10racing://leagues (where "leagues" might be the host)
+            // Handle custom schemes like p10racing:// (if used)
             if (url.protocol === 'p10racing:') {
               path = url.host + url.pathname;
-              if (!path.startsWith('/')) path = '/' + path;
             }
             
+            // Ensure path starts with /
+            if (!path.startsWith('/')) path = '/' + path;
+            
+            // Critical: Include search (query params like ?code=) and hash (#access_token=)
             const fullPath = path + url.search + url.hash;
-            console.log('Navigating to deep link:', fullPath);
+            console.log('Navigating to full deep link path:', fullPath);
+            
             router.push(fullPath);
           } catch (err) {
             console.warn('Error parsing deep link URL:', err);
