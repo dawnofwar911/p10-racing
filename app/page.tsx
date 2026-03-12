@@ -44,15 +44,22 @@ export default function Home() {
       // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
       const hasRecoveryToken = typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='));
       const hasRecoveryCode = typeof window !== 'undefined' && window.location.search.includes('code=');
-      
+
       if (hasRecoveryToken || hasRecoveryCode) {
         console.log('Recovery token/code detected on home page, redirecting to reset-password');
         const target = '/auth/reset-password' + window.location.search + window.location.hash;
-        router.push(target);
+        router.replace(target);
         return;
       }
 
       const { data: { session } } = await supabase.auth.getSession();
+
+      // Secondary check: if session exists but user came from recovery
+      if (session && window.location.hash.includes('type=recovery')) {
+        router.replace('/auth/reset-password' + window.location.hash);
+        return;
+      }
+
       setHasSession(!!session);
       
       const user = localStorage.getItem('p10_current_user');
