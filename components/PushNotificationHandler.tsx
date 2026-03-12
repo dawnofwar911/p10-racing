@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { PushNotifications, Token } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { Device } from '@capacitor/device';
 import { createClient } from '@/lib/supabase/client';
 import { usePathname } from 'next/navigation';
@@ -33,6 +34,12 @@ export default function PushNotificationHandler() {
           return;
         }
 
+        // Also check/request local notifications permission
+        const localPerms = await LocalNotifications.checkPermissions();
+        if (localPerms.display === 'prompt') {
+          await LocalNotifications.requestPermissions();
+        }
+
         await PushNotifications.register();
 
         // Listen for token registration
@@ -57,9 +64,32 @@ export default function PushNotificationHandler() {
         });
 
         // Listen for incoming notifications
-        PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        PushNotifications.addListener('pushNotificationReceived', async (notification) => {
           console.log('Push notification received: ' + JSON.stringify(notification));
-          // You could show a local alert or update UI state here
+          
+          // If the app is in the foreground, we need to show a local notification
+          // to get a banner.
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                title: notification.title || 'P10 Racing',
+                body: notification.body || '',
+                id: Math.floor(Math.random() * 1000000),
+                extra: notification.data,
+                smallIcon: 'ic_stat_name', // Needs to match your resource name
+                iconColor: '#e10600'
+              }
+            ]
+          });
+        });
+
+        // Listen for local notification clicks (foreground)
+        LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
+           console.log('Local notification action performed', notification);
+           const data = notification.notification.extra;
+           if (data && data.url) {
+             window.location.href = data.url;
+           }
         });
 
         // Listen for notification clicks
