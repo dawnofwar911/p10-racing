@@ -17,7 +17,7 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 
 ## ⚙️ Phase 2: CI/CD & Automated Pipeline ✅ COMPLETE
 *   [x] **Code Quality Gates:** GitHub Actions now runs `eslint` and `tsc` on every push.
-*   [x] **Automated Test Suite:** Full Node.js test suite (`tests/run_all.ts`) runs automatically in CI.
+*   [x] **Automated Test Suite:** High-fidelity Vitest suite with MSW cloud mocking (~90% logic coverage).
 *   [x] **Capacitor Sync:** Pipeline automates `next build` and `npx cap sync`.
 *   [x] **Android Build:** GitHub Actions compiles the Android project and outputs a debug APK.
 
@@ -64,7 +64,8 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 
 ---
 
-## 📦 Versioning Mandates
+*   **Testing:** New tests MUST use the `.vitest.test.ts` extension and leverage MSW for cloud service mocking to ensure CI/CD performance and isolation.
+*   **Versioning Mandates:**
 *   **Source of Truth:** Always use `package.json` version for all release-related versioning.
 *   **Sync:** Do not hardcode versions in `android/app/build.gradle` or the UI footer; they are automated.
 *   **Increment Policy:** You **MUST** increment the version in `package.json` before finishing any task that includes a bug fix or new feature.

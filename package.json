@@ -1,6 +1,6 @@
 {
   "name": "p10-racing",
-  "version": "1.8.7",
+  "version": "1.9.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "npx tsx tests/run_all.ts"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
@@ -33,12 +35,20 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.0",
+    "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.1.6",
-    "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "jsdom": "^28.1.0",
+    "msw": "^2.12.10",
+    "pg-mem": "^3.0.14",
+    "typescript": "^5",
+    "vitest": "^4.1.0"
   }
 }
