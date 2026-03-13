@@ -80,14 +80,16 @@ export default function AuthPage() {
         if (authError) throw authError;
 
         if (authData.user) {
-          // 2. Create the public profile
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert([
-              { id: authData.user.id, username: username, is_admin: false }
-            ]);
-
-          if (profileError) throw profileError;
+          // 2. Try to create the public profile (might fail if email confirmation is required)
+          try {
+            await supabase
+              .from('profiles')
+              .upsert([
+                { id: authData.user.id, username: username, is_admin: false }
+              ]);
+          } catch (e) {
+            console.log('Profile creation delayed until email confirmation:', e);
+          }
         }
         
         // Professional confirmation flow
@@ -113,14 +115,20 @@ export default function AuthPage() {
             .single();
           
           if (!existingProfile) {
-            // Check metadata first, then fallback to email prefix
+            // Check metadata first (from signup), then fallback to email prefix
             const metadataName = loginData.user.user_metadata?.username;
             const fallbackName = metadataName || loginData.user.email?.split('@')[0] || 'User';
             
-            await supabase.from('profiles').upsert([{ 
+            console.log('Repairing profile for user:', fallbackName);
+            const { error: repairError } = await supabase.from('profiles').upsert([{ 
               id: loginData.user.id, 
-              username: fallbackName 
+              username: fallbackName,
+              is_admin: false
             }]);
+            
+            if (repairError) {
+              console.error('Failed to repair profile:', repairError);
+            }
           }
         }
         

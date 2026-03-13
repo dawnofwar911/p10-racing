@@ -42,10 +42,12 @@ export default function Home() {
   useEffect(() => {
     async function init() {
       // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
-      const hasRecoveryToken = typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='));
+      // We ONLY want to redirect to reset-password if it is a recovery type
+      const isRecovery = typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'));
       const hasRecoveryCode = typeof window !== 'undefined' && window.location.search.includes('code=');
 
-      if (hasRecoveryToken || hasRecoveryCode) {
+      if (isRecovery || hasRecoveryCode) {
+        // If it's a recovery code, we redirect to reset-password
         console.log('Recovery token/code detected on home page, redirecting to reset-password');
         const target = '/auth/reset-password' + window.location.search + window.location.hash;
         router.replace(target);
@@ -61,7 +63,6 @@ export default function Home() {
         router.replace('/auth/reset-password' + window.location.hash);
         return;
       }
-
       setHasSession(!!session);
       
       const user = localStorage.getItem('p10_current_user');
