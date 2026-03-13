@@ -40,14 +40,20 @@ export default function RootLayout({
           <PushNotificationHandler />
           <AppNavbar />
           <OfflineStatus />
-          <PageTransition>
-            <main>
+          
+          {/* THE PERMANENT SCROLL CONTAINER */}
+          <main id="main-scroll-container">
+            <PageTransition>
               <Suspense fallback={<Loading />}>
                 {children}
               </Suspense>
-              <AppFooter />
-            </main>
-          </PageTransition>
+            </PageTransition>
+            <AppFooter />
+            
+            {/* SPACER FOR BOTTOM NAV */}
+            <div className="mobile-nav-spacer d-md-none"></div>
+          </main>
+
           <MobileBottomNav />
         </NativeWrapper>
       </body>
