@@ -49,6 +49,14 @@ main {
   /* Safe area padding for content */
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+  /* Top padding to clear the sticky header and offline banner */
+  padding-top: 0.5rem;
+}
+
+/* Offline Banner stability */
+.offline-banner {
+  flex-shrink: 0;
+  z-index: 1035;
 }
 
 /* Ensure the transition container maintains its size */
