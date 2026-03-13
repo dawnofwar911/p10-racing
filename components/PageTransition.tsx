@@ -7,13 +7,13 @@ export default function PageTransition({ children }: { children: React.ReactNode
   const pathname = usePathname();
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
-        initial={{ opacity: 0, x: 8 }}
+        initial={{ opacity: 0, x: 10 }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -8 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
+        exit={{ opacity: 0, x: -10 }}
+        transition={{ duration: 0.15, ease: "easeInOut" }}
         className="page-transition-container"
       >
         <div className="d-flex flex-column flex-grow-1" style={{ minHeight: '100%' }}>
