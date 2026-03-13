@@ -14,15 +14,10 @@ export default function AppNavbar() {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const pathname = usePathname();
   const supabase = createClient();
-
-  useEffect(() => {
-    setExpanded(false);
-  }, [pathname]);
 
   useEffect(() => {
     async function getSession() {
