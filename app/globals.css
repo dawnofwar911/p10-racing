@@ -12,7 +12,7 @@ html, :root {
   background-color: var(--f1-black) !important;
   color-scheme: dark;
   height: 100%;
-  overflow: hidden; /* Lock viewport scrolling */
+  overflow: hidden; /* Prevent html scroll */
 }
 
 body {
@@ -20,25 +20,25 @@ body {
   color: white !important;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  overflow: hidden; /* Lock body scrolling */
+  overflow: hidden; /* Prevent body scroll */
   margin: 0;
   padding: 0;
-  height: 100%;
+  height: 100dvh; /* Locked dynamic viewport height */
   width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* Navbar stability */
+/* Header stability */
 .navbar {
   padding-top: env(safe-area-inset-top, 0px) !important;
-  z-index: 1040;
+  z-index: 1060;
   min-height: var(--header-height);
   flex-shrink: 0;
-  background-color: var(--f1-black);
+  background-color: var(--f1-black) !important;
 }
 
-/* THE PERMANENT SCROLL CONTAINER */
+/* THE SCROLLABLE MAIN CONTAINER */
 main {
   flex-grow: 1;
   overflow-y: auto;
@@ -50,17 +50,9 @@ main {
   /* Add safe area insets for side padding */
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
-  padding-top: 1rem; /* Breathing room at top */
 }
 
-
-/* Offline Banner stability */
-.offline-banner {
-  flex-shrink: 0;
-  z-index: 1035;
-}
-
-/* Ensure the transition container expands fully */
+/* Page Container - must expand to fit content */
 .page-transition-container {
   display: flex;
   flex-direction: column;
@@ -75,6 +67,7 @@ main {
   padding-bottom: 1.5rem;
   padding-top: 3rem;
   flex-shrink: 0;
+  width: 100%;
 }
 
 /* Spacer to prevent content clipping under the fixed bottom nav */
@@ -96,6 +89,7 @@ main {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   flex-shrink: 0;
   transform: translateZ(0); /* Hardware accelerate */
+  box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
 }
 
 /* Global Dark Bootstrap Overrides */
