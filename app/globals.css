@@ -3,6 +3,7 @@
   --f1-black: #15151e;
   --f1-dark-grey: #1f1f27;
   --f1-grey: #38383f;
+  --nav-height: 65px;
 }
 
 /* Force dark theme at the root level */
@@ -26,14 +27,15 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  /* Prevent horizontal jitter */
+  width: 100vw;
 }
 
 /* Sticky Navbar fix for safe area */
 .navbar.sticky-top {
-  /* When sticky-top is used, it will be at the very top of the screen (under status bar) */
-  /* We add extra padding to the navbar itself so its content is below the status bar */
   padding-top: env(safe-area-inset-top, 0px) !important;
   top: 0 !important;
+  z-index: 1040;
 }
 
 /* Let main grow to fill space and handle safe areas */
@@ -41,7 +43,7 @@ main {
   flex-grow: 1;
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
-  min-height: 50vh; /* Prevent total collapse during transitions */
+  min-height: 60vh;
 }
 
 /* Ensure the transition container maintains its size */
@@ -49,24 +51,34 @@ main {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  min-height: 100%;
+  width: 100%;
+  /* Use will-change to optimize animations and prevent jitter */
+  will-change: transform, opacity;
+}
+
+/* Informational Footer (Version, Bug Report) */
+.app-footer {
+  margin-top: auto;
+  padding-bottom: 1.5rem;
 }
 
 @media (max-width: 767.98px) {
-  main {
-    /* Precise height of bottom nav (65px) + safe area */
-    padding-bottom: 2rem !important;
+  /* On mobile, we need to ensure content is not hidden behind the fixed bottom nav */
+  .page-transition-container {
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
-/* App Footer spacing for mobile nav */
-@media (max-width: 767.98px) {
-  .app-footer {
-    /* We don't need additional margin-bottom here because main's padding handles the scroll space, 
-       but the footer ITSELF needs to be visible ABOVE the fixed nav if it's the last element.
-       Actually, putting it here is safer for the informational links. */
-    margin-bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
-  }
+/* Bottom Nav bar stability */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--f1-black);
+  z-index: 1050;
+  /* Use a transition for safe-area-inset to smooth out initialization jumps */
+  transition: padding-bottom 0.2s ease-out;
 }
 
 /* Global Dark Bootstrap Overrides */
