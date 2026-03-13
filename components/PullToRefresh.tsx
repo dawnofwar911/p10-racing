@@ -19,7 +19,10 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   const PULL_MAX = 120;
 
   const handlePan = useCallback((_: unknown, info: PanInfo) => {
-    if (isRefreshing || window.scrollY > 0) return;
+    const mainElement = document.querySelector('main');
+    const scrollTop = mainElement ? mainElement.scrollTop : 0;
+    
+    if (isRefreshing || scrollTop > 0) return;
     
     // Only handle downward pulls starting from the top
     if (info.offset.y > 0) {
@@ -36,7 +39,10 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   }, [isRefreshing, pullProgress, controls]);
 
   const handlePanEnd = useCallback(async (_: unknown, info: PanInfo) => {
-    if (isRefreshing || window.scrollY > 0) return;
+    const mainElement = document.querySelector('main');
+    const scrollTop = mainElement ? mainElement.scrollTop : 0;
+    
+    if (isRefreshing || scrollTop > 0) return;
 
     if (info.offset.y > PULL_THRESHOLD) {
       setIsRefreshing(true);
