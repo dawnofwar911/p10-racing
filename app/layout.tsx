@@ -45,8 +45,8 @@ export default function RootLayout({
               <Suspense fallback={<Loading />}>
                 {children}
               </Suspense>
+              <AppFooter />
             </main>
-            <AppFooter />
           </PageTransition>
           <MobileBottomNav />
         </NativeWrapper>
