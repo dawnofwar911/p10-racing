@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   backgroundColor: '#15151e',
   server: {
     androidScheme: 'https',
-    hostname: 'p10-racing.vercel.app'
+    hostname: 'p10racing.app'
   },
   plugins: {
     StatusBar: {
