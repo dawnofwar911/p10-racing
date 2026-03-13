@@ -46,8 +46,18 @@ main {
 
 @media (max-width: 767.98px) {
   main {
-    /* Height of bottom nav (approx 50px) + some buffer + safe area */
+    /* Precise height of bottom nav (65px) + safe area */
     padding-bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* App Footer spacing for mobile nav */
+@media (max-width: 767.98px) {
+  .app-footer {
+    /* We don't need additional margin-bottom here because main's padding handles the scroll space, 
+       but the footer ITSELF needs to be visible ABOVE the fixed nav if it's the last element.
+       Actually, putting it here is safer for the informational links. */
+    margin-bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

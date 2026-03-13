@@ -15,7 +15,7 @@ export default function AppFooter() {
   };
 
   return (
-    <footer className="mt-auto py-4 border-top border-secondary border-opacity-10 text-center">
+    <footer className="mt-auto py-4 border-top border-secondary border-opacity-10 text-center app-footer">
       <Container>
         <p className="text-white opacity-20 extra-small mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>
           © 2026 P10 RACING • v{packageInfo.version}
@@ -32,7 +32,7 @@ export default function AppFooter() {
           <span className="text-white opacity-10" style={{ fontSize: '0.6rem' }}>•</span>
           <button 
             onClick={() => { triggerHaptic(); setShowBugReport(true); }}
-            className="btn btn-link p-0 text-white extra-small text-decoration-none opacity-20 hover-opacity-100 fw-bold border-0" 
+            className={`btn btn-link p-0 text-white extra-small text-decoration-none opacity-20 hover-opacity-100 fw-bold border-0`}
             style={{ fontSize: '0.6rem', background: 'none', boxShadow: 'none' }}
           >
             REPORT A BUG
