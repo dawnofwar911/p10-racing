@@ -164,11 +164,9 @@ export default function AppNavbar() {
   return (
     <>
     <Navbar 
-      expanded={expanded} 
-      onToggle={setExpanded} 
       variant="dark" 
       expand="lg" 
-      className="px-3 sticky-top border-bottom border-secondary border-opacity-25" 
+      className="px-3 border-bottom border-secondary border-opacity-25" 
       style={{ backgroundColor: '#15151e' }}
     >
       <Link href="/" passHref legacyBehavior>

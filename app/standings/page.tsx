@@ -34,7 +34,7 @@ export default function StandingsPage() {
 
   return (
     <PullToRefresh onRefresh={load}>
-      <Container className="mt-4 pb-5">
+      <Container className="mt-4 mb-2">
         <h1 className="h2 mb-4 fw-bold text-uppercase letter-spacing-1">World Championship Standings</h1>
         
         {loading ? (

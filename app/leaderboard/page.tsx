@@ -128,7 +128,7 @@ export default function LeaderboardPage() {
 
   return (
     <PullToRefresh onRefresh={calculate}>
-      <Container className="mt-4 pb-5">
+      <Container className="mt-4 mb-2">
         <Row className="mb-4 align-items-center">
           <Col>
             <h1 className="h2 mb-1 text-uppercase fw-bold letter-spacing-1">Leaderboard</h1>
