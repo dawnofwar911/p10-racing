@@ -82,7 +82,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   }, [isRefreshing, onRefresh, controls]);
 
   return (
-    <div className="position-relative w-100 flex-grow-1 d-flex flex-column">
+    <div className="position-relative w-100">
       {/* Refresh Indicator */}
       <motion.div
         style={{
@@ -125,7 +125,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
         onPan={handlePan}
         onPanEnd={handlePanEnd}
         animate={controls}
-        className="w-100 flex-grow-1 d-flex flex-column"
+        className="w-100"
         style={{ touchAction: 'pan-y' }}
       >
         {children}
