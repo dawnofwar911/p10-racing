@@ -62,7 +62,23 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
           handleDeepLink(event.url);
         });
 
-        // Handle URL that launched the app
+        // 3. Handle Hardware Back Button (Android)
+        App.addListener('backButton', ({ canGoBack }) => {
+          const path = window.location.pathname;
+          
+          // If on a main tab or root, exit the app
+          const mainTabs = ['/', '/predict', '/leagues', '/leaderboard', '/standings', '/history'];
+          if (mainTabs.includes(path)) {
+            App.exitApp();
+          } else if (canGoBack) {
+            router.back();
+          } else {
+            // Fallback for safety
+            App.exitApp();
+          }
+        });
+
+        // 4. Handle URL that launched the app
         App.getLaunchUrl().then((launchUrl) => {
           if (launchUrl?.url) {
             handleDeepLink(launchUrl.url);

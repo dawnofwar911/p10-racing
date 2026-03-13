@@ -44,6 +44,13 @@ main {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+@media (max-width: 767.98px) {
+  main {
+    /* Height of bottom nav (approx 50px) + some buffer + safe area */
+    padding-bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 /* Global Dark Bootstrap Overrides */
 .table {
   --bs-table-bg: transparent !important;
@@ -101,6 +108,16 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--f1-red);
+}
+
+@media (max-width: 767.98px) {
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+  * {
+    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none;    /* Firefox */
+  }
 }
 
 /* Driver / Grid Components */

@@ -5,35 +5,36 @@ import { Container, Table, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON, Driver } from '@/lib/data';
 import { fetchDrivers } from '@/lib/api';
 import { getContrastColor } from '@/lib/utils/colors';
-// import AppNavbar from '@/components/AppNavbar'; // Removed
+import PullToRefresh from '@/components/PullToRefresh';
 
 export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      // 1. Load from cache first
-      const cached = localStorage.getItem('p10_cache_standings');
-      if (cached) {
-        setStandings(JSON.parse(cached));
-        setLoading(false);
-      }
+  async function load() {
+    setLoading(true);
+    // 2. Fetch fresh data
+    const data = await fetchDrivers(CURRENT_SEASON);
+    if (data.length > 0) {
+      setStandings(data);
+      localStorage.setItem('p10_cache_standings', JSON.stringify(data));
+    }
+    setLoading(false);
+  }
 
-      // 2. Fetch fresh data
-      const data = await fetchDrivers(CURRENT_SEASON);
-      if (data.length > 0) {
-        setStandings(data);
-        localStorage.setItem('p10_cache_standings', JSON.stringify(data));
-      }
+  useEffect(() => {
+    // 1. Load from cache first
+    const cached = localStorage.getItem('p10_cache_standings');
+    if (cached) {
+      setStandings(JSON.parse(cached));
       setLoading(false);
     }
     load();
   }, []);
 
   return (
-    <>
-      <Container className="mt-4">
+    <PullToRefresh onRefresh={load}>
+      <Container className="mt-4 pb-5">
         <h1 className="h2 mb-4 fw-bold text-uppercase letter-spacing-1">World Championship Standings</h1>
         
         {loading ? (
@@ -79,6 +80,6 @@ export default function StandingsPage() {
           </div>
         )}
       </Container>
-    </>
+    </PullToRefresh>
   );
 }
