@@ -6,7 +6,10 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 ---
 
 ## 🏗️ Phase 1: App Polish & Native Feel ✅ COMPLETE
-*   [x] **Native Navigation:** Implemented smooth sliding fade transitions using `framer-motion`.
+*   [x] **Native Navigation:** Implemented smooth sliding fade transitions and a dedicated mobile bottom tab bar.
+*   [x] **Hardware Back Button:** Added Android physical/gesture back button support.
+*   [x] **Pull-to-Refresh:** Developed a custom high-fidelity F1-styled refresh indicator with haptics.
+*   [x] **Mobile-First Layout:** Refined navbar and footer stability; hidden web scrollbars for an immersive look.
 *   [x] **Infrastructure:** Integrated `@capacitor/splash-screen`, `@capacitor/haptics`, and `@capacitor/status-bar`.
 *   [x] **Status Bar Management:** Configured native wrapper and CSS safe-area-insets to prevent UI overlap.
 *   [x] **Haptic Feedback:** Added tactile response for driver selection, navigation, and submission.

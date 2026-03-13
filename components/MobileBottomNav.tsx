@@ -6,14 +6,14 @@ import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { 
   Trophy, 
-  LayoutGrid, 
+  Home, 
   Users, 
   History, 
   BarChart3 
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Predict', href: '/predict', icon: LayoutGrid },
+  { label: 'Home', href: '/', icon: Home },
   { label: 'Leagues', href: '/leagues', icon: Users },
   { label: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { label: 'Standings', href: '/standings', icon: BarChart3 },
@@ -30,16 +30,19 @@ export default function MobileBottomNav() {
   // Only show on mobile
   return (
     <nav 
-      className="d-md-none fixed-bottom border-top border-secondary border-opacity-25"
+      className="d-md-none fixed-bottom border-top border-secondary border-opacity-25 shadow-lg"
       style={{ 
         backgroundColor: '#15151e', 
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        zIndex: 1030
+        zIndex: 1030,
+        height: 'calc(65px + env(safe-area-inset-bottom, 0px))'
       }}
     >
-      <div className="d-flex justify-content-around align-items-center py-2">
+      <div className="d-flex justify-content-around align-items-center h-100 py-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = item.href === '/' 
+            ? pathname === '/' 
+            : pathname.startsWith(item.href);
           const Icon = item.icon;
           
           return (
@@ -47,16 +50,19 @@ export default function MobileBottomNav() {
               key={item.href}
               href={item.href}
               onClick={triggerHaptic}
-              className="d-flex flex-column align-items-center text-decoration-none transition-all"
-              style={{ width: '20%' }}
+              className="d-flex flex-column align-items-center text-decoration-none"
+              style={{ flex: '1 1 0', minWidth: 0 }}
             >
-              <Icon 
-                size={20} 
-                className={`mb-1 ${isActive ? 'text-danger' : 'text-white opacity-50'}`} 
-              />
+              <div style={{ height: '24px', display: 'flex', alignItems: 'center' }}>
+                <Icon 
+                  size={20} 
+                  strokeWidth={isActive ? 2.5 : 2}
+                  className={`transition-all ${isActive ? 'text-danger' : 'text-white opacity-40'}`} 
+                />
+              </div>
               <span 
-                className={`extra-small fw-bold text-uppercase letter-spacing-1 ${isActive ? 'text-danger' : 'text-white opacity-50'}`}
-                style={{ fontSize: '0.6rem' }}
+                className={`extra-small fw-bold text-uppercase letter-spacing-1 mt-1 transition-all ${isActive ? 'text-danger' : 'text-white opacity-40'}`}
+                style={{ fontSize: '0.62rem', whiteSpace: 'nowrap' }}
               >
                 {item.label}
               </span>
