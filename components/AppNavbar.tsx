@@ -4,7 +4,7 @@ import { Navbar, Button, NavbarText, NavbarCollapse, NavbarToggle, Nav, Modal, S
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
@@ -17,7 +17,6 @@ export default function AppNavbar() {
   const [expanded, setExpanded] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
 
@@ -69,8 +68,18 @@ export default function AppNavbar() {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('p10_cache_username');
+        localStorage.removeItem('p10_cache_is_admin');
+        const localUser = localStorage.getItem('p10_current_user');
+        setCurrentUser(localUser);
+        setIsAdmin(false);
+        window.location.href = '/';
+        return;
+      }
+      
       if (!newSession) {
         localStorage.removeItem('p10_cache_username');
         localStorage.removeItem('p10_cache_is_admin');
@@ -112,11 +121,8 @@ export default function AppNavbar() {
       await supabase.auth.signOut();
     }
     
-    setSession(null);
-    setCurrentUser(null);
-    setIsAdmin(false);
-    setIsAuthReady(true);
-    router.push('/');
+    // Force a full page refresh to clear all React state globally
+    window.location.href = '/';
   };
 
   const handleDeleteAccount = async () => {
