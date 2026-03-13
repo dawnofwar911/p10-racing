@@ -96,14 +96,14 @@ export default function ResetPasswordPage() {
 
         if (hasHashToken || hasCodeParam) {
            console.log('Token or code present, suppressing error to allow more time');
-           // If we still have no session after 12 seconds total, THEN show error
+           // If we still have no session after 8 seconds total, THEN show error
            setTimeout(async () => {
              const { data: { session: lastTry } } = await supabase.auth.getSession();
              if (!lastTry) {
                setError('Invalid or expired reset link. Please request a new one.');
                setCheckingAuth(false);
              }
-           }, 8000);
+           }, 4000);
         } else {
           setError('Invalid or expired reset link. Please request a new one from the login page.');
           setCheckingAuth(false);
