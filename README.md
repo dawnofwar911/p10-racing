@@ -30,7 +30,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ### 3. Web & Privacy Policy Hosting (Vercel)
 The web version and privacy policy are hosted on Vercel. 
-- **Production URL:** `https://p10-racing.vercel.app`
+- **Production URL:** `https://p10racing.app`
 - **Privacy Policy:** `/privacy`
 - **Account Deletion:** `/delete-account`
 

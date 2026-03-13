@@ -276,16 +276,16 @@ function PredictContent() {
       await Share.share({
         title: 'P10 Racing Predictions',
         text: text,
-        url: 'https://p10-racing.vercel.app/predict',
+        url: 'https://p10racing.app/predict',
         dialogTitle: 'Share your Picks',
       });
     } catch (error) {
       console.error('Error sharing', error);
       // Fallback for non-native or failed share
       if (navigator.share) {
-        navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10-racing.vercel.app/predict' }).catch(console.error);
+        navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app/predict' }).catch(console.error);
       } else {
-        navigator.clipboard.writeText(text + '\n\nhttps://p10-racing.vercel.app/predict');
+        navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
         alert('Prediction copied to clipboard!');
       }
     }
