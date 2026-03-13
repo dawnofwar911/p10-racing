@@ -8,16 +8,16 @@ import {
   Trophy, 
   Home, 
   Users, 
-  History, 
+  LayoutGrid, 
   BarChart3 
 } from 'lucide-react';
 
 const navItems = [
   { label: 'Home', href: '/', icon: Home },
+  { label: 'Predict', href: '/predict', icon: LayoutGrid },
   { label: 'Leagues', href: '/leagues', icon: Users },
   { label: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { label: 'Standings', href: '/standings', icon: BarChart3 },
-  { label: 'History', href: '/history', icon: History },
 ];
 
 export default function MobileBottomNav() {
