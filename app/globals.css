@@ -39,15 +39,23 @@ body {
 /* Let main grow to fill space and handle safe areas */
 main {
   flex-grow: 1;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+  min-height: 50vh; /* Prevent total collapse during transitions */
+}
+
+/* Ensure the transition container maintains its size */
+.page-transition-container {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 100%;
 }
 
 @media (max-width: 767.98px) {
   main {
     /* Precise height of bottom nav (65px) + safe area */
-    padding-bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: 2rem !important;
   }
 }
 

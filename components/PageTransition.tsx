@@ -14,10 +14,11 @@ export default function PageTransition({ children }: { children: React.ReactNode
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -8 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        className="flex-grow-1"
-        style={{ minHeight: '100%' }}
+        className="page-transition-container"
       >
-        {children}
+        <div className="d-flex flex-column flex-grow-1" style={{ minHeight: '100%' }}>
+          {children}
+        </div>
       </motion.div>
     </AnimatePresence>
   );

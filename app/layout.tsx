@@ -46,8 +46,8 @@ export default function RootLayout({
                 {children}
               </Suspense>
             </main>
+            <AppFooter />
           </PageTransition>
-          <AppFooter />
           <MobileBottomNav />
         </NativeWrapper>
       </body>

@@ -35,10 +35,11 @@ export default function MobileBottomNav() {
         backgroundColor: '#15151e', 
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         zIndex: 1030,
-        height: 'calc(65px + env(safe-area-inset-bottom, 0px))'
+        minHeight: '65px',
+        height: 'auto'
       }}
     >
-      <div className="d-flex justify-content-around align-items-center h-100 py-2">
+      <div className="d-flex justify-content-around align-items-center py-2" style={{ height: '65px' }}>
         {navItems.map((item) => {
           const isActive = item.href === '/' 
             ? pathname === '/' 
