@@ -30,16 +30,13 @@ export default function MobileBottomNav() {
   // Only show on mobile
   return (
     <nav 
-      className="d-md-none fixed-bottom border-top border-secondary border-opacity-25 shadow-lg"
+      className="d-md-none mobile-bottom-nav border-top border-secondary border-opacity-25 shadow-lg"
       style={{ 
-        backgroundColor: '#15151e', 
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        zIndex: 1030,
-        minHeight: '65px',
-        height: 'auto'
+        minHeight: 'var(--nav-height)'
       }}
     >
-      <div className="d-flex justify-content-around align-items-center py-2" style={{ height: '65px' }}>
+      <div className="d-flex justify-content-around align-items-center py-2" style={{ height: 'var(--nav-height)' }}>
         {navItems.map((item) => {
           const isActive = item.href === '/' 
             ? pathname === '/' 
