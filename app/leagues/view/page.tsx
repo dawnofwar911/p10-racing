@@ -35,7 +35,7 @@ function LeagueDetailContent() {
       await Share.share({
         title: `Join my F1 League: ${leagueName}`,
         text: `Predict the midfield and compete in my P10 Racing league! Join "${leagueName}" using invite code: ${inviteCode}`,
-        url: `https://p10-racing.vercel.app/leagues?join=${inviteCode}`,
+        url: `https://p10racing.app/leagues?join=${inviteCode}`,
         dialogTitle: 'Invite Friends to League',
       });
     } catch (error) {
