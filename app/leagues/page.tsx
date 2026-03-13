@@ -257,38 +257,38 @@ function LeaguesContent() {
 
   return (
     <>
-      <Container className="mt-4 mb-5">
-        <h1 className="h2 fw-bold text-uppercase letter-spacing-1 mb-4 text-white">Your Leagues</h1>
+      <Container className="mt-3 mb-4">
+        <h1 className="h4 fw-bold text-uppercase letter-spacing-1 mb-3 text-white ps-1">Leagues</h1>
 
-        {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
-        {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)}>{success}</Alert>}
+        {error && <Alert variant="danger" dismissible onClose={() => setError(null)} className="py-2 small">{error}</Alert>}
+        {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)} className="py-2 small">{success}</Alert>}
 
-        <Row className="g-4">
+        <Row className="g-3">
           <Col lg={8}>
-            <Card className="border-secondary shadow-sm mb-4">
-              <Card.Header className="bg-dark border-secondary py-3">
-                <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Active Competitions</h3>
+            <Card className="border-secondary shadow-sm mb-3">
+              <Card.Header className="bg-dark border-secondary py-2">
+                <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-1" style={{ fontSize: '0.65rem' }}>Active Competitions</h3>
               </Card.Header>
               <Card.Body className="p-0">
                 {loading ? (
-                  <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+                  <div className="text-center py-4"><Spinner animation="border" variant="danger" /></div>
                 ) : leagues.length > 0 ? (
                   <Table variant="dark" hover responsive className="mb-0">
                     <thead>
-                      <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small">
-                        <th className="ps-4 py-3">League Name</th>
-                        <th className="py-3">Invite Code</th>
-                        <th className="text-end pe-4 py-3">Actions</th>
+                      <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
+                        <th className="ps-3 py-2">Name</th>
+                        <th className="py-2">Code</th>
+                        <th className="text-end pe-3 py-2">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {leagues.map(league => (
-                        <tr key={league.id} style={{ height: '60px', verticalAlign: 'middle' }}>
-                          <td className="ps-4 fw-bold text-white fs-5">{league.name}</td>
-                          <td><code className="text-danger fw-bold">{league.invite_code}</code></td>
-                          <td className="text-end pe-4">
+                        <tr key={league.id} style={{ height: '45px', verticalAlign: 'middle' }}>
+                          <td className="ps-3 fw-bold text-white small">{league.name}</td>
+                          <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
+                          <td className="text-end pe-3">
                             <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
-                              <Button variant="outline-light" size="sm" className="rounded-pill px-4 fw-bold">VIEW</Button>
+                              <Button variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</Button>
                             </Link>
                           </td>
                         </tr>
@@ -296,28 +296,26 @@ function LeaguesContent() {
                     </tbody>
                   </Table>
                 ) : (
-                  <div className="text-center py-5 text-muted">
-                    <p>You haven&apos;t joined any leagues yet.</p>
+                  <div className="text-center py-4 text-muted small">
+                    <p className="mb-0">No active leagues.</p>
                   </div>
                 )}
               </Card.Body>
             </Card>
 
             {session && localGuests.length > 0 && (
-              <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-10 mb-4">
-                <Card.Header className="bg-dark border-warning border-opacity-25 py-3">
-                  <h3 className="h6 mb-0 text-uppercase fw-bold text-warning letter-spacing-1">Import Local Data</h3>
-                </Card.Header>
-                <Card.Body className="p-4">
-                  <p className="small text-white opacity-75 mb-4">We found existing scores on this phone. Select a name to move those points into your new cloud account.</p>
-                  <div className="d-flex flex-wrap gap-3">
+              <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3">
+                <Card.Body className="p-3">
+                  <h3 className="extra-small mb-2 text-uppercase fw-bold text-warning letter-spacing-1" style={{ fontSize: '0.6rem' }}>Sync Local Data</h3>
+                  <div className="d-flex flex-wrap gap-2">
                     {localGuests.map(guest => (
-                      <div key={guest} className="d-flex align-items-center bg-dark p-2 rounded border border-secondary">
-                        <span className="fw-bold me-3 ps-2 text-white">{guest}</span>
+                      <div key={guest} className="d-flex align-items-center bg-dark p-1 px-2 rounded border border-secondary border-opacity-50">
+                        <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
                         <Button 
                           variant="warning" 
                           size="sm" 
-                          className="fw-bold" 
+                          className="fw-bold extra-small py-0" 
+                          style={{ fontSize: '0.6rem' }}
                           onClick={() => handleImport(guest)}
                           disabled={actionLoading}
                         >
@@ -332,39 +330,43 @@ function LeaguesContent() {
           </Col>
 
           <Col lg={4}>
-            <Card className="border-secondary mb-4 shadow-sm">
-              <Card.Header className="bg-dark border-secondary py-3">
-                <h3 className="h6 mb-0 text-uppercase fw-bold text-white letter-spacing-1">Create League</h3>
-              </Card.Header>
-              <Card.Body className="p-4">
-                <Form onSubmit={handleCreateLeague}>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="small text-muted text-uppercase fw-bold">League Name</Form.Label>
-                    <Form.Control type="text" placeholder="e.g. The Silverstone Club" value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} required className="bg-dark text-white border-secondary py-2" />
-                  </Form.Group>
-                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold" disabled={actionLoading}>
-                    {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
-                  </Button>
-                </Form>
-              </Card.Body>
-            </Card>
+            <div className="row g-3">
+              <Col xs={12} md={6} lg={12}>
+                <Card className="border-secondary shadow-sm">
+                  <Card.Header className="bg-dark border-secondary py-2">
+                    <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Create League</h3>
+                  </Card.Header>
+                  <Card.Body className="p-3">
+                    <Form onSubmit={handleCreateLeague}>
+                      <Form.Group className="mb-2">
+                        <Form.Control type="text" placeholder="League Name" value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} required className="bg-dark text-white border-secondary py-1 small" />
+                      </Form.Group>
+                      <Button type="submit" className="btn-f1 w-100 py-1 fw-bold small" disabled={actionLoading}>
+                        {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
+                      </Button>
+                    </Form>
+                  </Card.Body>
+                </Card>
+              </Col>
 
-            <Card className="border-danger border-opacity-50 shadow-sm">
-              <Card.Header className="bg-dark border-danger border-opacity-25 py-3">
-                <h3 className="h6 mb-0 text-uppercase fw-bold text-white letter-spacing-1">Join League</h3>
-              </Card.Header>
-              <Card.Body className="p-4">
-                <Form onSubmit={handleJoinLeague}>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="small text-muted text-uppercase fw-bold">Invite Code</Form.Label>
-                    <Form.Control type="text" placeholder="Enter 8-digit code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} required className="bg-dark text-white border-secondary py-2" />
-                  </Form.Group>
-                  <Button type="submit" variant="outline-danger" className="w-100 py-2 fw-bold" disabled={actionLoading}>
-                    {actionLoading ? <Spinner animation="border" size="sm" /> : 'JOIN'}
-                  </Button>
-                </Form>
-              </Card.Body>
-            </Card>
+              <Col xs={12} md={6} lg={12}>
+                <Card className="border-danger border-opacity-50 shadow-sm">
+                  <Card.Header className="bg-dark border-danger border-opacity-25 py-2">
+                    <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Join League</h3>
+                  </Card.Header>
+                  <Card.Body className="p-3">
+                    <Form onSubmit={handleJoinLeague}>
+                      <Form.Group className="mb-2">
+                        <Form.Control type="text" placeholder="Invite Code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} required className="bg-dark text-white border-secondary py-1 small" />
+                      </Form.Group>
+                      <Button type="submit" variant="outline-danger" className="w-100 py-1 fw-bold small" disabled={actionLoading}>
+                        {actionLoading ? <Spinner animation="border" size="sm" /> : 'JOIN'}
+                      </Button>
+                    </Form>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </div>
           </Col>
         </Row>
       </Container>
