@@ -52,7 +52,7 @@ export default function AuthPage() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
-      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://p10-racing.vercel.app';
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://p10racing.app';
       
       if (isResetPassword) {
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
