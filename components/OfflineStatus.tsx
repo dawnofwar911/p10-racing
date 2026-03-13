@@ -24,25 +24,23 @@ export default function OfflineStatus() {
   }, []);
 
   return (
-    <AnimatePresence>
-      {isOffline && (
-        <motion.div
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -50, opacity: 0 }}
-          style={{
-            position: 'fixed',
-            top: '70px',
-            left: '10px',
-            right: '10px',
-            zIndex: 9999
-          }}
-        >
-          <Alert variant="danger" className="border-danger shadow-lg py-2 text-center small fw-bold text-uppercase">
-            ⚠️ No internet connection. Data may be stale.
-          </Alert>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="offline-banner">
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pt-2">
+              <Alert variant="danger" className="border-danger shadow-sm py-2 mb-0 text-center small fw-bold text-uppercase">
+                ⚠️ No internet connection. Data may be stale.
+              </Alert>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

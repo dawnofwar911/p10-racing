@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { RefreshCw } from 'lucide-react';
@@ -14,20 +14,24 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   const [pullProgress, setPullProgress] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const controls = useAnimation();
+  const isDragging = useRef(false);
   
   const PULL_THRESHOLD = 80;
   const PULL_MAX = 120;
 
   const handlePan = useCallback((_: unknown, info: PanInfo) => {
+    if (isRefreshing) return;
+
+    // Get the scrollable container (main)
     const mainElement = document.querySelector('main');
     const scrollTop = mainElement ? mainElement.scrollTop : 0;
     
-    if (isRefreshing || scrollTop > 0) return;
-    
-    // Only handle downward pulls starting from the top
-    if (info.offset.y > 0) {
+    // ONLY allow pulling if we are at the very top
+    if (scrollTop <= 0 && info.offset.y > 0) {
+      isDragging.current = true;
       const progress = Math.min(info.offset.y / PULL_THRESHOLD, 1.5);
-      const actualY = Math.min(info.offset.y * 0.4, PULL_MAX); // Dampen the pull
+      const actualY = Math.min(info.offset.y * 0.4, PULL_MAX);
+      
       setPullProgress(progress);
       controls.set({ y: actualY });
       
@@ -35,20 +39,22 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
       if (progress >= 1 && pullProgress < 1) {
         Haptics.impact({ style: ImpactStyle.Light });
       }
+    } else if (isDragging.current) {
+      // If we were dragging but now scrolling up, reset
+      isDragging.current = false;
+      setPullProgress(0);
+      controls.start({ y: 0 });
     }
   }, [isRefreshing, pullProgress, controls]);
 
   const handlePanEnd = useCallback(async (_: unknown, info: PanInfo) => {
-    const mainElement = document.querySelector('main');
-    const scrollTop = mainElement ? mainElement.scrollTop : 0;
-    
-    if (isRefreshing || scrollTop > 0) return;
+    if (!isDragging.current || isRefreshing) return;
+    isDragging.current = false;
 
     if (info.offset.y > PULL_THRESHOLD) {
       setIsRefreshing(true);
       setPullProgress(1);
       
-      // Hold at refresh position
       await controls.start({ 
         y: 60,
         transition: { type: 'spring', stiffness: 300, damping: 30 } 
@@ -76,12 +82,12 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   }, [isRefreshing, onRefresh, controls]);
 
   return (
-    <div className="position-relative overflow-hidden" style={{ minHeight: '100%' }}>
+    <div className="position-relative w-100" style={{ minHeight: '100%' }}>
       {/* Refresh Indicator */}
       <motion.div
         style={{
           position: 'absolute',
-          top: -40,
+          top: -45,
           left: 0,
           right: 0,
           display: 'flex',
@@ -114,15 +120,13 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
         </div>
       </motion.div>
 
-      {/* Content Container */}
+      {/* Content Container - Native Scroll Compatible */}
       <motion.div
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.6}
         onPan={handlePan}
         onPanEnd={handlePanEnd}
         animate={controls}
         className="w-100 h-100"
+        style={{ touchAction: 'pan-y' }}
       >
         {children}
       </motion.div>
