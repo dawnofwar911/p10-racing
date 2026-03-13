@@ -56,6 +56,8 @@ export default function Home() {
 
       // Secondary check: if session exists but user came from recovery
       if (session && window.location.hash.includes('type=recovery')) {
+        console.log('Recovery bypass detected, signing out and forcing redirect');
+        await supabase.auth.signOut();
         router.replace('/auth/reset-password' + window.location.hash);
         return;
       }
