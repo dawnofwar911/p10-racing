@@ -125,8 +125,8 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
         onPan={handlePan}
         onPanEnd={handlePanEnd}
         animate={controls}
-        className="w-100 h-100"
-        style={{ touchAction: 'pan-y' }}
+        className="w-100"
+        style={{ touchAction: 'pan-y', minHeight: '100%' }}
       >
         {children}
       </motion.div>
