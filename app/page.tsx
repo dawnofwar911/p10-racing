@@ -42,18 +42,20 @@ export default function Home() {
   useEffect(() => {
     async function init() {
       // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
-      // We ONLY want to redirect to reset-password if it is a recovery type
-      const isRecovery = typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'));
-      const hasRecoveryCode = typeof window !== 'undefined' && window.location.search.includes('code=');
+      // We ONLY want to redirect to reset-password if it is explicitly a recovery type
+      const isRecovery = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+      const hasRecoveryParam = typeof window !== 'undefined' && window.location.search.includes('type=recovery');
 
-      if (isRecovery || hasRecoveryCode) {
-        // If it's a recovery code, we redirect to reset-password
-        console.log('Recovery token/code detected on home page, redirecting to reset-password');
+      // We only want to force redirect if it is EXPLICITLY recovery.      // Generic 'code' or 'access_token' are used for signups too.
+      if (isRecovery || hasRecoveryParam) {
+        console.log('Recovery token detected, redirecting to reset-password');
         const target = '/auth/reset-password' + window.location.search + window.location.hash;
         router.replace(target);
         return;
       }
 
+      // If it's a PKCE code but NOT a recovery type, we let it pass to getSession()
+      // Supabase will exchange it for a session automatically.
       const { data: { session } } = await supabase.auth.getSession();
 
       // Secondary check: if session exists but user came from recovery
