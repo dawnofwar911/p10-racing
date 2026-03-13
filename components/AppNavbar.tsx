@@ -189,10 +189,42 @@ export default function AppNavbar() {
       
       {!isOnResetPage && (
         <>
-          <NavbarToggle aria-controls="basic-navbar-nav" className="border-0 shadow-none p-0" onClick={triggerHaptic} />
+          <div className="d-flex align-items-center gap-3 ms-auto order-lg-last">
+            {(session || currentUser) ? (
+              <>
+                <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75 d-none d-sm-inline">
+                  Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
+                </NavbarText>
+                <div className="d-flex align-items-center gap-2">
+                  <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    SIGN OUT
+                  </Button>
+                  {session && (
+                    <button 
+                      onClick={() => setShowDeleteModal(true)} 
+                      className="btn btn-link text-danger p-0 border-0 ms-1 opacity-50" 
+                      style={{ fontSize: '0.6rem', textDecoration: 'none' }}
+                    >
+                      DELETE
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : isAuthReady ? (
+              <Link href="/auth" passHref legacyBehavior>
+                <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
+                  SIGN IN
+                </Button>
+              </Link>
+            ) : (
+              <div style={{ height: '31px', width: '80px' }}></div>
+            )}
+          </div>
+
+          <NavbarToggle aria-controls="basic-navbar-nav" className="d-none d-lg-block border-0 shadow-none p-0 ms-2" onClick={triggerHaptic} />
           
           <NavbarCollapse id="basic-navbar-nav">
-            <Nav className="me-auto mt-3 mt-lg-0 gap-lg-2">
+            <Nav className="me-auto mt-3 mt-lg-0 gap-lg-2 d-none d-lg-flex">
               <Link href="/predict" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/predict' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Predict</Link>
               <Link href="/leagues" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leagues' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leagues</Link>
               <Link href="/leaderboard" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leaderboard' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leaderboard</Link>
@@ -202,38 +234,6 @@ export default function AppNavbar() {
                 <Link href="/admin" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/admin' ? 'text-danger border-bottom border-danger border-2' : 'text-warning opacity-75'}`} style={{ fontSize: '0.75rem' }}>Admin</Link>
               )}
             </Nav>
-            
-            <div className="d-flex align-items-center gap-3 mt-4 mt-lg-0 pt-3 pt-lg-0 border-top border-secondary border-opacity-25 border-lg-0">
-              {(session || currentUser) ? (
-                <>
-                  <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75">
-                    Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
-                  </NavbarText>
-                  <div className="d-flex align-items-center gap-2">
-                    <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-                      SIGN OUT
-                    </Button>
-                    {session && (
-                      <button 
-                        onClick={() => setShowDeleteModal(true)} 
-                        className="btn btn-link text-danger p-0 border-0 ms-2 opacity-50" 
-                        style={{ fontSize: '0.6rem', textDecoration: 'none' }}
-                      >
-                        DELETE DATA
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : isAuthReady ? (
-                <Link href="/auth" passHref legacyBehavior>
-                  <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
-                    SIGN IN
-                  </Button>
-                </Link>
-              ) : (
-                <div style={{ height: '31px', width: '80px' }}></div> /* Placeholder to prevent layout shift */
-              )}
-            </div>
           </NavbarCollapse>
         </>
       )}

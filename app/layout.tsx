@@ -9,6 +9,7 @@ import PageTransition from '@/components/PageTransition';
 import OfflineStatus from '@/components/OfflineStatus';
 import AppNavbar from '@/components/AppNavbar';
 import AppFooter from '@/components/AppFooter';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import PushNotificationHandler from '@/components/PushNotificationHandler';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -47,6 +48,7 @@ export default function RootLayout({
             </main>
           </PageTransition>
           <AppFooter />
+          <MobileBottomNav />
         </NativeWrapper>
       </body>
     </html>

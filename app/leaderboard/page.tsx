@@ -6,6 +6,7 @@ import { LeaderboardEntry, CURRENT_SEASON, SimplifiedResults } from '@/lib/data'
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchCalendar, DbPrediction } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
+import PullToRefresh from '@/components/PullToRefresh';
 
 interface LeaderboardPlayer {
   username: string;
@@ -126,8 +127,8 @@ export default function LeaderboardPage() {
   }, [supabase, view, calculate]);
 
   return (
-    <>
-      <Container className="mt-4">
+    <PullToRefresh onRefresh={calculate}>
+      <Container className="mt-4 pb-5">
         <Row className="mb-4 align-items-center">
           <Col>
             <h1 className="h2 mb-1 text-uppercase fw-bold letter-spacing-1">Leaderboard</h1>
@@ -279,6 +280,6 @@ export default function LeaderboardPage() {
           </Col>
         </Row>
       </Container>
-    </>
+    </PullToRefresh>
   );
 }
