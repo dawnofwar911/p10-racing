@@ -1,21 +1,21 @@
 'use client';
 
-import { Navbar, Button, NavbarText, Nav, Modal, Spinner } from 'react-bootstrap';
+import { Navbar, Button, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
+import UserDrawer from './UserDrawer';
 
 export default function AppNavbar() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const pathname = usePathname();
   const supabase = createClient();
 
@@ -120,35 +120,6 @@ export default function AppNavbar() {
     window.location.href = '/';
   };
 
-  const handleDeleteAccount = async () => {
-    if (!session) return;
-    setIsDeleting(true);
-    Haptics.notification({ type: NotificationType.Warning });
-    
-    try {
-      // Supabase RLS and cascading deletes handle the data removal
-      // based on the schema (ON DELETE CASCADE)
-      const { error } = await supabase.rpc('delete_user_data');
-      
-      if (error) {
-        console.error('Error deleting account:', error);
-        alert('Failed to delete account. Please contact p10racing.app@gmail.com');
-        setIsDeleting(false);
-        return;
-      }
-
-      // Sign out after deletion
-      await handleLogout();
-      setShowDeleteModal(false);
-      setIsDeleting(false);
-      alert('Your account and data have been successfully deleted.');
-    } catch (err) {
-      console.error('Unexpected error:', err);
-      alert('An unexpected error occurred. Please try again.');
-      setIsDeleting(false);
-    }
-  };
-
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
   };
@@ -182,27 +153,20 @@ export default function AppNavbar() {
       
       {!isOnResetPage && (
         <>
-          <div className="d-flex align-items-center gap-3 ms-auto order-lg-last">
+          <div className="d-flex align-items-center ms-auto order-lg-last">
             {(session || currentUser) ? (
-              <>
-                <NavbarText className="text-light small text-uppercase letter-spacing-1 opacity-75 d-none d-sm-inline">
-                  Player: <span className="fw-bold text-white opacity-100">{currentUser}</span>
-                </NavbarText>
-                <div className="d-flex align-items-center gap-2">
-                  <Button variant="outline-light" size="sm" onClick={handleLogout} className="rounded-pill px-3 border-opacity-50" style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
-                    SIGN OUT
-                  </Button>
-                  {session && (
-                    <button 
-                      onClick={() => setShowDeleteModal(true)} 
-                      className="btn btn-link text-danger p-0 border-0 ms-1 opacity-50" 
-                      style={{ fontSize: '0.6rem', textDecoration: 'none' }}
-                    >
-                      DELETE
-                    </button>
-                  )}
+              <button 
+                onClick={() => { triggerHaptic(); setShowDrawer(true); }}
+                className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
+              >
+                <div className="d-flex flex-column align-items-end me-2 d-none d-sm-flex">
+                  <span className="text-light small text-uppercase letter-spacing-1 opacity-75" style={{ fontSize: '0.6rem', lineHeight: 1 }}>Player</span>
+                  <span className="fw-bold text-white text-uppercase" style={{ fontSize: '0.8rem', lineHeight: 1 }}>{currentUser}</span>
                 </div>
-              </>
+                <div className="bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center text-white fw-bold border border-secondary border-opacity-50" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
+                  {currentUser?.charAt(0).toUpperCase() || '?'}
+                </div>
+              </button>
             ) : isAuthReady ? (
               <Link href="/auth" passHref legacyBehavior>
                 <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
@@ -221,33 +185,19 @@ export default function AppNavbar() {
             <Link href="/leaderboard" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leaderboard' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leaderboard</Link>
             <Link href="/standings" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/standings' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Standings</Link>
             <Link href="/history" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/history' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>History</Link>
-            {isAdmin && (
-              <Link href="/admin" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/admin' ? 'text-danger border-bottom border-danger border-2' : 'text-warning opacity-75'}`} style={{ fontSize: '0.75rem' }}>Admin</Link>
-            )}
           </Nav>
         </>
       )}
     </Navbar>
 
-    <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="bg-dark border-secondary">
-      <Modal.Header closeButton closeVariant="white" className="border-secondary">
-        <Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Delete Account?</Modal.Title>
-      </Modal.Header>
-      <Modal.Body className="text-white opacity-75 py-4">
-        Are you sure you want to delete your account?
-        <div className="mt-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded small text-danger">
-          <strong>This action is permanent:</strong> All your predictions, league memberships, and scores will be removed forever.
-        </div>
-      </Modal.Body>
-      <Modal.Footer className="border-secondary">
-        <Button variant="outline-light" onClick={() => setShowDeleteModal(false)} disabled={isDeleting} className="rounded-pill px-4">
-          CANCEL
-        </Button>
-        <Button variant="danger" onClick={handleDeleteAccount} disabled={isDeleting} className="rounded-pill px-4 fw-bold">
-          {isDeleting ? <Spinner animation="border" size="sm" className="me-2" /> : 'DELETE PERMANENTLY'}
-        </Button>
-      </Modal.Footer>
-    </Modal>
+    <UserDrawer 
+      show={showDrawer} 
+      onHide={() => setShowDrawer(false)} 
+      currentUser={currentUser} 
+      session={session} 
+      isAdmin={isAdmin} 
+      onLogout={handleLogout} 
+    />
     </>
   );
 }

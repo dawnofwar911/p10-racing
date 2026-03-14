@@ -8,7 +8,6 @@ import NativeWrapper from '@/components/NativeWrapper';
 import PageTransition from '@/components/PageTransition';
 import OfflineStatus from '@/components/OfflineStatus';
 import AppNavbar from '@/components/AppNavbar';
-import AppFooter from '@/components/AppFooter';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import PushNotificationHandler from '@/components/PushNotificationHandler';
 
@@ -48,7 +47,6 @@ export default function RootLayout({
                 {children}
               </Suspense>
             </PageTransition>
-            <AppFooter />
             
             {/* SPACER FOR BOTTOM NAV */}
             <div className="mobile-nav-spacer"></div>
