@@ -27,10 +27,10 @@ export default function MobileBottomNav() {
     Haptics.impact({ style: ImpactStyle.Light });
   };
 
-  // Only show on mobile, foldable, and tablet portrait (up to lg)
+  // Only show on mobile, foldable, and tablet (up to xl)
   return (
     <nav 
-      className="d-lg-none mobile-bottom-nav border-top border-secondary border-opacity-25 shadow-lg"
+      className="d-xl-none mobile-bottom-nav border-top border-secondary border-opacity-25 shadow-lg"
       style={{ 
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         minHeight: 'var(--nav-height)'

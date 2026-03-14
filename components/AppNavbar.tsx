@@ -177,7 +177,7 @@ export default function AppNavbar() {
             )}
           </div>
 
-          <Nav className="me-auto ms-lg-4 d-none d-lg-flex gap-2">
+          <Nav className="me-auto ms-xl-4 d-none d-xl-flex gap-2">
             <Link href="/" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Home</Link>
             <Link href="/predict" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/predict' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Predict</Link>
             <Link href="/leagues" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leagues' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leagues</Link>
