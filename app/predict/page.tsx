@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult, DbPrediction } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult, DbPrediction, TEAM_COLORS } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
@@ -368,7 +368,52 @@ function PredictContent() {
           <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); }} className="rounded-pill">Switch Guest</Button>)}</Col>
         </Row>
         {startingGrid.length > 0 && !isLocked && (
-          <Row className="mb-4"><Col><Card className="border-secondary bg-dark bg-opacity-50 shadow-sm"><Card.Header className="bg-dark border-secondary py-2"><h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Current Grid Order</h3></Card.Header><Card.Body className="py-2"><div className="d-flex flex-wrap gap-2">{startingGrid.map((result) => (<div key={result.number} className="small border-end border-secondary pe-2"><span className="text-muted me-1">{result.position}.</span> <span className="text-white fw-bold">{result.Driver.code}</span></div>))}</div></Card.Body></Card></Col></Row>
+          <Row className="mb-4">
+            <Col>
+              <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm overflow-hidden">
+                <Card.Header className="bg-dark border-secondary py-2 d-flex justify-content-between align-items-center">
+                  <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Qualifying Grid</h3>
+                  <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
+                </Card.Header>
+                <Card.Body className="p-2">
+                  <div className="row g-2">
+                    {startingGrid.map((result) => {
+                      const teamId = result.Constructor.constructorId;
+                      const teamColor = TEAM_COLORS[teamId] || '#B6BABD';
+                      const isP10 = result.position === "10";
+                      
+                      return (
+                        <div key={result.Driver.driverId} className="col-6 col-sm-4 col-md-3 col-lg-2">
+                          <div 
+                            className={`d-flex align-items-center p-2 rounded bg-black bg-opacity-40 border ${isP10 ? 'border-danger' : 'border-secondary border-opacity-25'}`}
+                            style={{ 
+                              borderLeft: `3px solid ${teamColor} !important`,
+                              position: 'relative'
+                            }}
+                          >
+                            <span className={`fw-bold me-2 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', minWidth: '18px' }}>
+                              {result.position}
+                            </span>
+                            <span className="text-white fw-bold extra-small text-uppercase letter-spacing-1">
+                              {result.Driver.code}
+                            </span>
+                            {isP10 && (
+                              <div 
+                                className="position-absolute top-0 end-0 bg-danger text-black fw-bold px-1" 
+                                style={{ fontSize: '0.5rem', borderBottomLeftRadius: '4px' }}
+                              >
+                                TARGET
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
         )}
         {isLocked ? (
           <div className="text-center">
