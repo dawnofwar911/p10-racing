@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS, SimplifiedResults } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Share } from '@capacitor/share';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -205,6 +206,31 @@ export default function Home() {
     Haptics.impact({ style: ImpactStyle.Medium });
   };
 
+  const handleShare = async () => {
+    if (!userPrediction || !nextRace) return;
+    triggerHaptic();
+    const p10Name = allDrivers.find(d => d.id === userPrediction.p10)?.name || userPrediction.p10;
+    const dnfName = allDrivers.find(d => d.id === userPrediction.dnf)?.name || userPrediction.dnf;
+    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
+    
+    try {
+      await Share.share({
+        title: 'P10 Racing Predictions',
+        text: text,
+        url: 'https://p10racing.app',
+        dialogTitle: 'Share your Picks',
+      });
+    } catch (error) {
+      console.error('Error sharing', error);
+      if (navigator.share) {
+        navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app' }).catch(console.error);
+      } else {
+        navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
+        alert('Prediction copied to clipboard!');
+      }
+    }
+  };
+
   return (
     <>
       <Container className="mt-3 mt-md-4 flex-grow-1">
@@ -273,11 +299,34 @@ export default function Home() {
                 HOW IT WORKS →
               </Link>
             </div>
+
+            {!isSeasonFinished && userPrediction && nextRace && (
+              <div className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" style={{ maxWidth: '400px' }}>
+                <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>Your {nextRace.name} Picks</h3>
+                <div className="d-flex justify-content-center gap-4 mb-3">
+                  <div>
+                    <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                    <span className="fw-bold text-white h6 mb-0">
+                      {allDrivers.find(d => d.id === userPrediction.p10)?.name?.split(' ').pop() || (userPrediction.p10?.split('_').pop()?.toUpperCase())}
+                    </span>
+                  </div>
+                  <div className="border-start border-secondary border-opacity-25 ps-4">
+                    <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                    <span className="fw-bold text-danger h6 mb-0">
+                      {allDrivers.find(d => d.id === userPrediction.dnf)?.name?.split(' ').pop() || (userPrediction.dnf?.split('_').pop()?.toUpperCase())}
+                    </span>
+                  </div>
+                </div>
+                <Button variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
+                  SHARE PICKS ↗
+                </Button>
+              </div>
+            )}
           </Col>
         </Row>
 
         <Row className="mt-2 g-3 px-1">
-          <Col md={4}>
+          <Col md={6}>
             <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm">
               <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
               {loading ? (
@@ -294,7 +343,7 @@ export default function Home() {
             </div>
           </Col>
 
-          <Col md={currentUser ? 4 : 4}>
+          <Col md={6}>
             <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm d-flex flex-column justify-content-between">
               <div>
                 <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
@@ -305,37 +354,6 @@ export default function Home() {
               </Link>
             </div>
           </Col>
-          
-          {currentUser && (
-            <Col md={4}>
-              <div className="p-3 border border-danger border-opacity-20 rounded h-100 bg-danger bg-opacity-5 shadow-sm">
-                <h3 className="text-uppercase text-white fw-bold letter-spacing-1 mb-2" style={{ fontSize: '0.65rem', opacity: 0.6 }}>Your Prediction</h3>
-                {userPrediction ? (
-                  <Row className="mt-1 g-2">
-                    <Col xs={6}>
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-                      <span className="fw-bold text-white small">
-                        {allDrivers.find(d => d.id === userPrediction.p10)?.name?.split(' ').pop() || (userPrediction.p10?.split('_').pop()?.toUpperCase())}
-                      </span>
-                    </Col>
-                    <Col xs={6}>
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-                      <span className="fw-bold text-danger small">
-                        {allDrivers.find(d => d.id === userPrediction.dnf)?.name?.split(' ').pop() || (userPrediction.dnf?.split('_').pop()?.toUpperCase())}
-                      </span>
-                    </Col>
-                  </Row>
-                ) : !loading ? (
-                  <div>
-                    <p className="extra-small text-white opacity-50 mb-2" style={{ fontSize: '0.7rem' }}>No prediction yet.</p>
-                    <Link href="/predict" className="btn btn-sm btn-outline-danger px-3 rounded-pill fw-bold" style={{ fontSize: '0.65rem' }} onClick={triggerHaptic}>Predict Now →</Link>
-                  </div>
-                ) : (
-                  <div className="py-2"><Spinner animation="border" size="sm" variant="danger" /></div>
-                )}
-              </div>
-            </Col>
-          )}
         </Row>
 
         {!loading && !hasSession && !currentUser && (
