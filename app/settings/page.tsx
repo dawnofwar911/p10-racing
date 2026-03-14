@@ -65,18 +65,18 @@ export default function SettingsPage() {
         <h1 className="h4 fw-bold text-uppercase letter-spacing-1 mb-4 text-white ps-1">Settings & Info</h1>
 
         {isAdmin && (
-          <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-4">
+          <Card className="border-secondary border-opacity-25 shadow-sm bg-dark mb-4">
             <Link href="/admin" passHref legacyBehavior>
               <a className="text-decoration-none" onClick={triggerHaptic}>
                 <Card.Body className="p-3 d-flex align-items-center justify-content-between cursor-pointer">
                   <div className="d-flex align-items-center">
-                    <ShieldAlert size={20} className="text-warning me-3" />
+                    <ShieldAlert size={20} className="text-warning opacity-75 me-3" />
                     <div>
-                      <h3 className="h6 mb-0 fw-bold text-warning text-uppercase letter-spacing-1">System Admin</h3>
-                      <p className="small text-muted mb-0">Manage race results</p>
+                      <h3 className="h6 mb-0 fw-bold text-white text-uppercase letter-spacing-1">System Admin</h3>
+                      <p className="extra-small text-muted mb-0">Race Results & Verification</p>
                     </div>
                   </div>
-                  <ChevronRight size={20} className="text-warning opacity-50" />
+                  <ChevronRight size={18} className="text-white opacity-25" />
                 </Card.Body>
               </a>
             </Link>

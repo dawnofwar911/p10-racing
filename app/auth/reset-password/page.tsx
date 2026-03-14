@@ -14,12 +14,19 @@ export default function ResetPasswordPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isProfileUpdate, setIsProfileUpdate] = useState(false);
   
   const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
-    console.log('ResetPasswordPage mounted. Hash length:', window.location.hash.length);
+    // Check if we are in profile update mode (from settings)
+    const isRecovery = window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery');
+    if (!isRecovery) {
+      setIsProfileUpdate(true);
+    }
+
+    console.log('ResetPasswordPage mounted. Profile Update:', !isRecovery);
     
     const handleSession = async () => {
       // 1. Check if we already have a session
@@ -166,10 +173,14 @@ export default function ResetPasswordPage() {
   };
 
   const handleCancel = async () => {
-    setLoading(true);
-    Haptics.impact({ style: ImpactStyle.Light });
-    await supabase.auth.signOut();
-    router.push('/auth');
+    if (isProfileUpdate) {
+      router.push('/settings');
+    } else {
+      setLoading(true);
+      Haptics.impact({ style: ImpactStyle.Light });
+      await supabase.auth.signOut();
+      router.push('/auth');
+    }
   };
 
   if (checkingAuth) {
@@ -181,16 +192,20 @@ export default function ResetPasswordPage() {
       <Row className="justify-content-center">
         <Col md={6} lg={5}>
           <Card className="border-secondary shadow-lg overflow-hidden">
-            <div className="bg-danger py-2 px-4 text-white fw-bold text-uppercase letter-spacing-1 small">
-              Set New Password
+            <div className={`py-2 px-4 text-white fw-bold text-uppercase letter-spacing-1 small ${isProfileUpdate ? 'bg-secondary bg-opacity-50' : 'bg-danger'}`}>
+              {isProfileUpdate ? 'Change Password' : 'Set New Password'}
             </div>
             <Card.Body className="p-4 p-md-5">
               <div className="text-center mb-4">
                 <h1 className="h3 fw-bold text-white mb-2">P10 RACING</h1>
-                <p className="text-muted small">Account verified via recovery link.</p>
-                <div className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-2 rounded-pill small fw-bold">
-                  ACTION REQUIRED: SET NEW PASSWORD
-                </div>
+                <p className="text-muted small">
+                  {isProfileUpdate ? 'Update your account security.' : 'Account verified via recovery link.'}
+                </p>
+                {!isProfileUpdate && (
+                  <div className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-2 rounded-pill small fw-bold">
+                    ACTION REQUIRED: SET NEW PASSWORD
+                  </div>
+                )}
               </div>
 
               {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
@@ -227,7 +242,7 @@ export default function ResetPasswordPage() {
                     className="btn-f1 w-100 py-3 fw-bold mb-3" 
                     disabled={loading || !!error}
                   >
-                    {loading ? <Spinner animation="border" size="sm" /> : 'UPDATE PASSWORD'}
+                    {loading ? <Spinner animation="border" size="sm" /> : isProfileUpdate ? 'CHANGE PASSWORD' : 'UPDATE PASSWORD'}
                   </Button>
 
                   <div className="text-center mt-3 pt-3 border-top border-secondary border-opacity-25">
@@ -237,7 +252,7 @@ export default function ResetPasswordPage() {
                       onClick={handleCancel}
                       disabled={loading}
                     >
-                      CANCEL & RETURN TO LOGIN
+                      {isProfileUpdate ? 'CANCEL' : 'CANCEL & RETURN TO LOGIN'}
                     </button>
                   </div>
                 </Form>
