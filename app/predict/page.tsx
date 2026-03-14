@@ -12,6 +12,7 @@ import { Share } from '@capacitor/share';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
+import { useNotification } from '@/components/Notification';
 
 interface PredictRace {
   id: string;
@@ -28,10 +29,12 @@ interface CommunityPrediction {
   dnf: string;
 }
 
-function PredictContent() {
+function PredictPage() {
   const [username, setUsername] = useState('');
   const [session, setSession] = useState<Session | null>(null);
+  const { showNotification } = useNotification();
   const [p10Driver, setP10Driver] = useState('');
+
   const [dnfDriver, setDnfDriver] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [nextRace, setNextRace] = useState<PredictRace>(RACES[0] as unknown as PredictRace);
@@ -244,7 +247,7 @@ function PredictContent() {
           }, { onConflict: 'user_id, race_id' });
         
         if (error) {
-          alert('Error saving prediction: ' + error.message);
+          showNotification('Error saving prediction: ' + error.message, 'error');
           return;
         }
 
@@ -298,7 +301,7 @@ function PredictContent() {
         navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app/predict' }).catch(console.error);
       } else {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
-        alert('Prediction copied to clipboard!');
+        showNotification('Picks copied to clipboard!', 'success');
       }
     }
   };

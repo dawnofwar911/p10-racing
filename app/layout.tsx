@@ -10,6 +10,7 @@ import OfflineStatus from '@/components/OfflineStatus';
 import AppNavbar from '@/components/AppNavbar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import PushNotificationHandler from '@/components/PushNotificationHandler';
+import { NotificationProvider } from '@/components/Notification';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -35,22 +36,24 @@ export default function RootLayout({
   return (
     <html lang="en" data-bs-theme="dark">
       <body className={inter.className}>
-        <NativeWrapper>
-          <PushNotificationHandler />
-          <AppNavbar />
-          <OfflineStatus />
-          
-          {/* THE PERMANENT SCROLL CONTAINER */}
-          <main id="main-scroll-container">
-            <Suspense fallback={<Loading />}>
-              <PageTransition>
-                {children}
-              </PageTransition>
-            </Suspense>
-          </main>
+        <NotificationProvider>
+          <NativeWrapper>
+            <PushNotificationHandler />
+            <AppNavbar />
+            <OfflineStatus />
+            
+            {/* THE PERMANENT SCROLL CONTAINER */}
+            <main id="main-scroll-container">
+              <Suspense fallback={<Loading />}>
+                <PageTransition>
+                  {children}
+                </PageTransition>
+              </Suspense>
+            </main>
 
-          <MobileBottomNav />
-        </NativeWrapper>
+            <MobileBottomNav />
+          </NativeWrapper>
+        </NotificationProvider>
       </body>
     </html>
   );
