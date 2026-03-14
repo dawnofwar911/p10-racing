@@ -3,7 +3,7 @@ run-name: ${{ github.event.head_commit.message || github.workflow }}
 
 on:
   push:
-    branches: [ main, feature/* ]
+    branches: [ main, stable, feature/* ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -90,7 +90,7 @@ jobs:
   release-android:
     name: Android Release Build
     needs: validate
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -143,3 +143,23 @@ jobs:
         with:
           name: p10-racing-release-aab
           path: ${{steps.sign_aab.outputs.signedReleaseFile}}
+
+      - name: Upload to Google Play (Internal Testing)
+        if: github.ref == 'refs/heads/main'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonRaw: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
+          packageName: com.p10racing.app
+          releaseFiles: ${{steps.sign_aab.outputs.signedReleaseFile}}
+          track: internal
+          status: completed
+
+      - name: Upload to Google Play (Closed Testing)
+        if: github.ref == 'refs/heads/stable'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonRaw: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
+          packageName: com.p10racing.app
+          releaseFiles: ${{steps.sign_aab.outputs.signedReleaseFile}}
+          track: alpha
+          status: completed

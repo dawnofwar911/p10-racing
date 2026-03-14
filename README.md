@@ -105,9 +105,25 @@ The project uses **Vitest** for a fast, modern testing experience, combined with
 Run all tests: `npm test`
 New tests should use the `.vitest.test.ts` extension.
 
+## 🚀 CI/CD & Release Strategy
+
+To ensure consistency across web, Android, and the App Store, we use a dual-track automated release process:
+
+### 1. Staging (Active Development)
+- **Branch:** `main`
+- **Web:** Automatically deployed to Vercel (Staging environment).
+- **Android:** GitHub Actions builds the AAB and **automatically uploads** it to the **Internal Testing** track in the Google Play Console.
+- **Goal:** Immediate testing on personal devices.
+
+### 2. Production (Stable Release)
+- **Branch:** `stable`
+- **Web:** Automatically deployed to the production URL (`p10racing.app`).
+- **Android:** GitHub Actions builds the AAB and **automatically uploads** it to the **Closed Testing** track in the Google Play Console for beta testers.
+- **Goal:** Public-facing updates and broader testing.
+
 ## 📦 Versioning & Releases
 
-To ensure consistency across web, Android, and the App Store, we use a single source of truth for versioning:
+We use a single source of truth for versioning:
 
 1.  **Source of Truth:** The `version` field in `package.json`.
 2.  **Automatic Sync:**
@@ -116,6 +132,7 @@ To ensure consistency across web, Android, and the App Store, we use a single so
 3.  **Process:**
     -   Increment the version in `package.json` after **every** bug fix (patch) or new feature (minor/major).
     -   The `versionCode` for Android is automatically incremented by the GitHub Actions pipeline using `${{ github.run_number }}` to ensure uniqueness for the Play Store.
+    -   **Deploying:** Merging `main` into `stable` triggers the production web deploy and the Closed Testing mobile release.
 
 ## 📄 License
 This project is for personal and community use. F1 and related marks are trademarks of Formula One Licensing BV.
