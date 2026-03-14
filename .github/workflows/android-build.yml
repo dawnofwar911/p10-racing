@@ -148,7 +148,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonRaw: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
           packageName: com.p10racing.app
           releaseFiles: ${{steps.sign_aab.outputs.signedReleaseFile}}
           track: internal
@@ -158,7 +158,7 @@ jobs:
         if: github.ref == 'refs/heads/stable'
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonRaw: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
           packageName: com.p10racing.app
           releaseFiles: ${{steps.sign_aab.outputs.signedReleaseFile}}
           track: alpha
