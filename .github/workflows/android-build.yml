@@ -144,6 +144,12 @@ jobs:
           name: p10-racing-release-aab
           path: ${{steps.sign_aab.outputs.signedReleaseFile}}
 
+      - name: Generate Release Notes
+        run: |
+          mkdir -p distribution/whatsnew
+          # Capture the latest commit message, limit to 500 chars (Play Store limit)
+          git log -1 --pretty=%B | head -c 500 > distribution/whatsnew/whatsnew-en-GB
+
       - name: Upload to Google Play (Internal Testing)
         uses: r0adkll/upload-google-play@v1
         with:
@@ -152,3 +158,4 @@ jobs:
           releaseFiles: ${{steps.sign_aab.outputs.signedReleaseFile}}
           track: internal
           status: completed
+          whatsNewDirectory: distribution/whatsnew
