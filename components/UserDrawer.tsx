@@ -31,7 +31,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
       show={show} 
       onHide={onHide} 
       placement="end" 
-      className="bg-dark border-start border-secondary text-white"
+      className="bg-dark border-start border-secondary text-white user-drawer-offcanvas"
       style={{ width: '300px' }}
     >
       <Offcanvas.Header closeButton closeVariant="white" className="border-bottom border-secondary border-opacity-50 pb-3">

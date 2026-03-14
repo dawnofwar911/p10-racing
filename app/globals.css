@@ -127,6 +127,33 @@ main {
   padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
+/* User Drawer Alignment */
+.offcanvas.user-drawer-offcanvas {
+  top: var(--header-height) !important;
+  z-index: 1045 !important; /* Below the navbars (1060 and 1050) */
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+  height: calc(100% - var(--header-height) - var(--nav-height) - env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Backdrop should also be between the navbars to look aligned */
+.offcanvas-backdrop.show {
+  top: var(--header-height) !important;
+  height: calc(100% - var(--header-height) - var(--nav-height) - env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 1040 !important;
+}
+
+@media (min-width: 1200px) {
+  .offcanvas.user-drawer-offcanvas {
+    bottom: 0 !important;
+    height: calc(100% - var(--header-height)) !important;
+  }
+  .offcanvas-backdrop.show {
+    height: calc(100% - var(--header-height)) !important;
+  }
+}
+
 
 /* Fixed Bottom Nav bar stability */
 .mobile-bottom-nav {
