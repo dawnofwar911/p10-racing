@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
-import { motion, useAnimation, PanInfo } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, useAnimation } from 'framer-motion';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { RefreshCw } from 'lucide-react';
@@ -15,95 +15,101 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   const [pullProgress, setPullProgress] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const controls = useAnimation();
-  const isDragging = useRef(false);
-  const hasTriggeredHaptic = useRef(false);
   
+  const containerRef = useRef<HTMLDivElement>(null);
+  const startY = useRef(0);
+  const currentY = useRef(0);
+  const isPulling = useRef(false);
+  const hasTriggeredHaptic = useRef(false);
+
   const PULL_THRESHOLD = 70;
-  const PULL_MAX = 110;
+  const PULL_MAX = 100;
 
-  const handlePan = useCallback((_: unknown, info: PanInfo) => {
-    if (isRefreshing) return;
+  useEffect(() => {
+    const el = document.getElementById('main-scroll-container');
+    if (!el) return;
 
-    // 1. Get the scrollable container specifically by ID
-    const mainElement = document.getElementById('main-scroll-container');
-    const scrollTop = mainElement ? mainElement.scrollTop : 0;
-    
-    // 2. DIRECTIONAL LOCK: Only ignore if it's a very clear horizontal swipe
-    if (!isDragging.current && Math.abs(info.offset.x) > Math.abs(info.offset.y) * 1.5) {
-      return;
-    }
-
-    // 3. ONLY allow pulling if we are at the very top and pulling DOWN
-    // We allow a small 2px buffer for scrollTop due to sub-pixel rendering on some browsers
-    if (scrollTop <= 2 && info.offset.y > 0) {
-      // Small dead-zone to ensure it's a deliberate pull
-      if (info.offset.y < 5 && !isDragging.current) return;
-
-      isDragging.current = true;
-      const progress = Math.min(info.offset.y / PULL_THRESHOLD, 1.5);
-      const actualY = Math.min(info.offset.y * 0.5, PULL_MAX);
-      
-      setPullProgress(progress);
-      controls.set({ y: actualY });
-      
-      // Haptic feedback precisely once when threshold reached (Native only)
-      if (progress >= 1 && !hasTriggeredHaptic.current) {
-        if (Capacitor.isNativePlatform()) {
-          Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
-        }
-        hasTriggeredHaptic.current = true;
-      } else if (progress < 1) {
-        hasTriggeredHaptic.current = false;
-      }
-    } else if (isDragging.current) {
-      // If we were dragging but now scrolling up or away, reset
-      isDragging.current = false;
-      setPullProgress(0);
+    const handleTouchStart = (e: TouchEvent) => {
+      if (isRefreshing || el.scrollTop > 5) return;
+      startY.current = e.touches[0].pageY;
+      isPulling.current = false;
       hasTriggeredHaptic.current = false;
-      controls.start({ y: 0 });
-    }
-  }, [isRefreshing, controls]);
+    };
 
-  const handlePanEnd = useCallback(async (_: unknown, info: PanInfo) => {
-    const wasDragging = isDragging.current;
-    isDragging.current = false;
-    hasTriggeredHaptic.current = false;
-
-    if (!wasDragging || isRefreshing) return;
-
-    if (info.offset.y > PULL_THRESHOLD) {
-      setIsRefreshing(true);
-      setPullProgress(1);
+    const handleTouchMove = (e: TouchEvent) => {
+      if (isRefreshing || el.scrollTop > 5) return;
       
-      // Animate to refresh position
-      await controls.start({ 
-        y: 60,
-        transition: { type: 'spring', stiffness: 400, damping: 30 } 
-      });
+      currentY.current = e.touches[0].pageY;
+      const diff = currentY.current - startY.current;
 
-      try {
-        await onRefresh();
-      } catch (err) {
-        console.error('Refresh failed:', err);
-      } finally {
-        setIsRefreshing(false);
-        setPullProgress(0);
-        controls.start({ 
-          y: 0,
+      if (diff > 0) {
+        // If we are at the top and pulling down, take control
+        isPulling.current = true;
+        
+        // Prevent browser default pull-to-refresh if possible
+        if (e.cancelable) e.preventDefault();
+
+        // Apply resistance (logarithmic-ish feel)
+        const y = Math.min(diff * 0.5, PULL_MAX);
+        const progress = Math.min(y / PULL_THRESHOLD, 1.2);
+        
+        setPullProgress(progress);
+        controls.set({ y });
+
+        if (progress >= 1 && !hasTriggeredHaptic.current) {
+          if (Capacitor.isNativePlatform()) {
+            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+          }
+          hasTriggeredHaptic.current = true;
+        } else if (progress < 1) {
+          hasTriggeredHaptic.current = false;
+        }
+      }
+    };
+
+    const handleTouchEnd = async () => {
+      if (!isPulling.current || isRefreshing) return;
+      
+      const diff = currentY.current - startY.current;
+      isPulling.current = false;
+
+      if (diff * 0.5 > PULL_THRESHOLD) {
+        setIsRefreshing(true);
+        setPullProgress(1);
+        
+        await controls.start({ 
+          y: 60,
           transition: { type: 'spring', stiffness: 400, damping: 30 } 
         });
+
+        try {
+          await onRefresh();
+        } catch (err) {
+          console.error('Refresh failed:', err);
+        } finally {
+          setIsRefreshing(false);
+          setPullProgress(0);
+          controls.start({ y: 0, transition: { type: 'spring', stiffness: 400, damping: 30 } });
+        }
+      } else {
+        setPullProgress(0);
+        controls.start({ y: 0, transition: { type: 'spring', stiffness: 400, damping: 30 } });
       }
-    } else {
-      setPullProgress(0);
-      controls.start({ 
-        y: 0, 
-        transition: { type: 'spring', stiffness: 400, damping: 30 } 
-      });
-    }
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
   }, [isRefreshing, onRefresh, controls]);
 
   return (
-    <div className="position-relative w-100 flex-grow-1 d-flex flex-column">
+    <div ref={containerRef} className="position-relative w-100 flex-grow-1 d-flex flex-column">
       {/* Refresh Indicator */}
       <motion.div
         style={{
@@ -114,7 +120,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          zIndex: 1100, // Ensure it's above everything including headers if needed
+          zIndex: 1100,
           pointerEvents: 'none',
         }}
         animate={controls}
@@ -141,16 +147,11 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
         </div>
       </motion.div>
 
-      {/* Content Container - Native Scroll Optimized */}
+      {/* Content Container */}
       <motion.div
-        onPan={handlePan}
-        onPanEnd={handlePanEnd}
         animate={controls}
         className="w-100 flex-grow-1 d-flex flex-column"
-        style={{ 
-          touchAction: 'pan-x pan-y', 
-          minHeight: '100%' 
-        }}
+        style={{ minHeight: '100%' }}
       >
         {children}
       </motion.div>
