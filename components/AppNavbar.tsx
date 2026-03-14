@@ -147,7 +147,6 @@ export default function AppNavbar() {
           <span className="d-none d-sm-inline letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>RACING</span></span>
           <span className="d-inline d-sm-none letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>R</span></span>
           {isOnAdminPage && <span className="ms-2 badge bg-danger" style={{ fontSize: '0.6rem' }}>ADMIN</span>}
-          {isOnResetPage && <span className="ms-2 badge bg-warning text-dark" style={{ fontSize: '0.6rem' }}>RECOVERY MODE</span>}
         </Navbar.Brand>
       </Link>
       
