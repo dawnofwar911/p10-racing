@@ -110,7 +110,10 @@ export const TEAM_COLORS: { [id: string]: string } = {
   alpine: '#0093CC',
   williams: '#64C4FF',
   rb: '#6692FF',
+  vcarb: '#6692FF',
+  alphatauri: '#6692FF',
   audi: '#ffffff',
+  sauber: '#ffffff',
   haas: '#B6BABD',
   cadillac: '#FFD700'
 };
