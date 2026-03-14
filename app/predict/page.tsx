@@ -577,10 +577,11 @@ function PredictPage() {
   );
 }
 
-export default function PredictPage() {
+export default function PredictPageWrapper() {
   return (
     <Suspense fallback={<LoadingView />}>
-      <PredictContent />
+      <PredictPage />
     </Suspense>
   );
 }
+
