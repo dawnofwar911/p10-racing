@@ -377,59 +377,54 @@ function PredictContent() {
                   </div>
                   <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
                 </Card.Header>
-                <Card.Body className="p-3 bg-black bg-opacity-40" style={{ 
-                  backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 10px)',
+                <Card.Body className="p-2 bg-black bg-opacity-40" style={{ 
+                  backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 1px, transparent 1px, transparent 10px)',
                 }}>
-                  <div className="position-relative py-3">
-                    {/* The Track Line */}
-                    <div className="position-absolute start-50 top-0 bottom-0 border-start border-secondary border-opacity-25 d-none d-sm-block" style={{ transform: 'translateX(-50%)', borderStyle: 'dashed !important' }}></div>
+                  <div className="position-relative py-2 px-1">
+                    {/* Compact Track Line */}
+                    <div className="position-absolute start-50 top-0 bottom-0 border-start border-secondary border-opacity-20 d-none d-sm-block" style={{ transform: 'translateX(-50%)', borderStyle: 'dashed !important' }}></div>
                     
-                    <div className="row g-3">
+                    <div className="row g-2">
                       {startingGrid.map((result) => {
                         const pos = parseInt(result.position);
                         const isLeft = pos % 2 !== 0; // P1, P3, P5 are left
                         const isP10 = result.position === "10";
                         
-                        // Get color directly from the drivers state we already have
                         const driverInfo = drivers.find(d => d.id === result.Driver.driverId);
                         const teamColor = driverInfo?.color || '#B6BABD';
                         
                         return (
-                          <div key={result.Driver.driverId} className="col-12">
-                            <div className={`d-flex ${isLeft ? 'justify-content-start' : 'justify-content-end'}`}>
-                              <div 
-                                className={`position-relative p-0 rounded overflow-hidden shadow-lg ${isP10 ? 'ring-2 ring-danger' : ''}`}
-                                style={{ 
-                                  width: '45%', 
-                                  minWidth: '140px',
-                                  backgroundColor: '#1a1a1a',
-                                  border: isP10 ? '2px solid #e10600' : '1px solid rgba(255,255,255,0.1)',
-                                  // Stagger effect: P1 is further forward than P2
-                                  marginTop: isLeft ? '0' : '20px',
-                                  marginBottom: isLeft ? '20px' : '0'
-                                }}
-                              >
-                                {/* Team Color Accent Bar */}
-                                <div style={{ height: '4px', backgroundColor: teamColor }}></div>
-                                
-                                <div className="p-2 d-flex align-items-center">
-                                  <div className={`fw-bold me-2 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.9rem', width: '24px' }}>
-                                    {result.position}
-                                  </div>
-                                  <div className="flex-grow-1">
-                                    <div className="text-white fw-bold text-uppercase letter-spacing-1" style={{ fontSize: '0.8rem' }}>
-                                      {result.Driver.code}
-                                    </div>
-                                    <div className="text-muted extra-small text-uppercase fw-semibold" style={{ fontSize: '0.55rem' }}>
-                                      {driverInfo?.team || result.Constructor.name}
-                                    </div>
-                                  </div>
-                                  {isP10 && (
-                                    <div className="ms-2 animate-pulse">
-                                      <span className="badge bg-danger p-1 rounded-circle">🎯</span>
-                                    </div>
-                                  )}
+                          <div key={result.Driver.driverId} className="col-6 mb-1">
+                            <div 
+                              className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`}
+                              style={{ 
+                                backgroundColor: '#1a1a1a',
+                                border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)',
+                                // Subtle stagger: Right column is shifted down slightly
+                                transform: !isLeft ? 'translateY(12px)' : 'none',
+                                zIndex: isP10 ? 10 : 1
+                              }}
+                            >
+                              {/* Thin Team Color Accent Bar */}
+                              <div style={{ height: '3px', backgroundColor: teamColor }}></div>
+                              
+                              <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
+                                <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>
+                                  {result.position}
                                 </div>
+                                <div className="flex-grow-1 overflow-hidden">
+                                  <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>
+                                    {result.Driver.code}
+                                  </div>
+                                  <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.5rem', opacity: 0.7 }}>
+                                    {driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}
+                                  </div>
+                                </div>
+                                {isP10 && (
+                                  <div className="ms-1">
+                                    <span style={{ fontSize: '0.6rem' }}>🎯</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -437,11 +432,9 @@ function PredictContent() {
                       })}
                     </div>
                     
-                    {/* Finish Line Look */}
-                    <div className="mt-4 pt-4 border-top border-secondary border-opacity-50 text-center">
-                      <div className="d-inline-block px-3 py-1 bg-secondary bg-opacity-10 rounded-pill border border-secondary border-opacity-20">
-                        <span className="extra-small fw-bold text-muted text-uppercase letter-spacing-2">START / FINISH</span>
-                      </div>
+                    {/* Finish Line Look - More compact */}
+                    <div className="mt-4 pt-2 border-top border-secondary border-opacity-50 text-center">
+                      <span className="extra-small fw-bold text-muted text-uppercase letter-spacing-2" style={{ fontSize: '0.55rem' }}>START / FINISH</span>
                     </div>
                   </div>
                 </Card.Body>
