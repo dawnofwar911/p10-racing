@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 import { RefreshCw } from 'lucide-react';
 
 interface PullToRefreshProps {
@@ -23,20 +24,20 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   const handlePan = useCallback((_: unknown, info: PanInfo) => {
     if (isRefreshing) return;
 
-    // 1. Get the scrollable container (main)
-    const mainElement = document.querySelector('main');
+    // 1. Get the scrollable container specifically by ID
+    const mainElement = document.getElementById('main-scroll-container');
     const scrollTop = mainElement ? mainElement.scrollTop : 0;
     
-    // 2. DIRECTIONAL LOCK: If the swipe is more horizontal than vertical, ignore it.
-    // This prevents interference with horizontal table scrolling.
-    if (!isDragging.current && Math.abs(info.offset.x) > Math.abs(info.offset.y)) {
+    // 2. DIRECTIONAL LOCK: Only ignore if it's a very clear horizontal swipe
+    if (!isDragging.current && Math.abs(info.offset.x) > Math.abs(info.offset.y) * 1.5) {
       return;
     }
 
     // 3. ONLY allow pulling if we are at the very top and pulling DOWN
-    if (scrollTop <= 0 && info.offset.y > 0) {
+    // We allow a small 2px buffer for scrollTop due to sub-pixel rendering on some browsers
+    if (scrollTop <= 2 && info.offset.y > 0) {
       // Small dead-zone to ensure it's a deliberate pull
-      if (info.offset.y < 10 && !isDragging.current) return;
+      if (info.offset.y < 5 && !isDragging.current) return;
 
       isDragging.current = true;
       const progress = Math.min(info.offset.y / PULL_THRESHOLD, 1.5);
@@ -45,15 +46,17 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
       setPullProgress(progress);
       controls.set({ y: actualY });
       
-      // Haptic feedback precisely once when threshold reached
+      // Haptic feedback precisely once when threshold reached (Native only)
       if (progress >= 1 && !hasTriggeredHaptic.current) {
-        Haptics.impact({ style: ImpactStyle.Light });
+        if (Capacitor.isNativePlatform()) {
+          Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+        }
         hasTriggeredHaptic.current = true;
       } else if (progress < 1) {
         hasTriggeredHaptic.current = false;
       }
     } else if (isDragging.current) {
-      // If we were dragging but now scrolling up, reset immediately
+      // If we were dragging but now scrolling up or away, reset
       isDragging.current = false;
       setPullProgress(0);
       hasTriggeredHaptic.current = false;
@@ -111,7 +114,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          zIndex: 1020,
+          zIndex: 1100, // Ensure it's above everything including headers if needed
           pointerEvents: 'none',
         }}
         animate={controls}
@@ -145,7 +148,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
         animate={controls}
         className="w-100 flex-grow-1 d-flex flex-column"
         style={{ 
-          touchAction: 'pan-x pan-y', // Allow native scrolling in both directions
+          touchAction: 'pan-x pan-y', 
           minHeight: '100%' 
         }}
       >
