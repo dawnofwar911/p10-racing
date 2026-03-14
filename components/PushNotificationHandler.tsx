@@ -4,8 +4,9 @@ import { useEffect } from 'react';
 import { PushNotifications, Token } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Device } from '@capacitor/device';
+import { Capacitor } from '@capacitor/core';
 import { createClient } from '@/lib/supabase/client';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 declare global {
   interface Window {
@@ -16,6 +17,7 @@ declare global {
 export default function PushNotificationHandler() {
   const supabase = createClient();
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     // Only run on mobile (Capacitor)
@@ -23,6 +25,11 @@ export default function PushNotificationHandler() {
 
     const setupPushNotifications = async () => {
       try {
+        // Clear any existing notifications from the tray when the app is opened
+        if (Capacitor.isNativePlatform()) {
+          await PushNotifications.removeAllDeliveredNotifications();
+        }
+
         let permStatus = await PushNotifications.checkPermissions();
 
         if (permStatus.receive === 'prompt') {
@@ -88,7 +95,9 @@ export default function PushNotificationHandler() {
            console.log('Local notification action performed', notification);
            const data = notification.notification.extra;
            if (data && data.url) {
-             window.location.href = data.url;
+             router.push(data.url);
+           } else if (data && data.p_url) {
+             router.push(data.p_url);
            }
         });
 
@@ -98,7 +107,9 @@ export default function PushNotificationHandler() {
           // Redirect to a specific page based on notification data
           const data = notification.notification.data;
           if (data && data.url) {
-            window.location.href = data.url;
+            router.push(data.url);
+          } else if (data && data.p_url) {
+            router.push(data.p_url);
           }
         });
 
@@ -113,7 +124,7 @@ export default function PushNotificationHandler() {
     return () => {
       PushNotifications.removeAllListeners();
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
   // Handle token update when user logs in/out
   useEffect(() => {
