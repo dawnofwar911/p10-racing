@@ -72,6 +72,12 @@ main {
   width: 100%;
 }
 
+@media (min-width: 992px) {
+  .mobile-nav-spacer {
+    display: none;
+  }
+}
+
 
 /* Fixed Bottom Nav bar stability */
 .mobile-bottom-nav {
