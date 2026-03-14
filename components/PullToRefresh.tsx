@@ -16,8 +16,8 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   const controls = useAnimation();
   const isDragging = useRef(false);
   
-  const PULL_THRESHOLD = 80;
-  const PULL_MAX = 120;
+  const PULL_THRESHOLD = 65;
+  const PULL_MAX = 100;
 
   const handlePan = useCallback((_: unknown, info: PanInfo) => {
     if (isRefreshing) return;
@@ -25,21 +25,22 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
     // Get the scrollable container (main)
     const mainElement = document.querySelector('main');
     const scrollTop = mainElement ? mainElement.scrollTop : 0;
-    
+
     // ONLY allow pulling if we are at the very top
     if (scrollTop <= 0 && info.offset.y > 0) {
       isDragging.current = true;
       const progress = Math.min(info.offset.y / PULL_THRESHOLD, 1.5);
-      const actualY = Math.min(info.offset.y * 0.4, PULL_MAX);
-      
+      const actualY = Math.min(info.offset.y * 0.6, PULL_MAX); // Increased from 0.4 for better responsiveness
+
       setPullProgress(progress);
       controls.set({ y: actualY });
-      
+
       // Haptic feedback when threshold reached
       if (progress >= 1 && pullProgress < 1) {
         Haptics.impact({ style: ImpactStyle.Light });
       }
-    } else if (isDragging.current) {
+    }
+ else if (isDragging.current) {
       // If we were dragging but now scrolling up, reset
       isDragging.current = false;
       setPullProgress(0);
