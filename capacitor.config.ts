@@ -8,11 +8,6 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     hostname: 'p10racing.app'
-  },
-  plugins: {
-    StatusBar: {
-      overlaysWebView: true
-    }
   }
 };
 

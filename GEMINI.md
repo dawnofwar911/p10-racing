@@ -105,7 +105,10 @@ To ensure the web and mobile versions stay in sync, we use a dual-track release 
 *   **Versioning Mandates:**
 *   **Source of Truth:** Always use `package.json` version for all release-related versioning.
 *   **Sync:** Do not hardcode versions in `android/app/build.gradle` or the UI footer; they are automated.
-*   **Android API Mandate:** You MUST NOT use deprecated Android APIs or parameters (e.g., `setStatusBarColor`, `setNavigationBarColor`) that conflict with Android 15's default edge-to-edge enforcement. Use version-specific resource overrides (e.g., `values-v35/styles.xml`) where necessary and proactively investigate console deprecation warnings. Rely on CSS `safe-area-insets` and modern Capacitor configuration for layout.
+*   **Android API Mandate:** You MUST NOT use deprecated Android APIs or parameters (e.g., `setStatusBarColor`, `setNavigationBarColor`) that conflict with Android 15's default edge-to-edge enforcement.
+    *   **Libraries:** Use `com.google.android.material:material:1.13.0` or newer for proper API 35+ support.
+    *   **Native Configuration:** Rely on `androidx.activity.EdgeToEdge.enable` in `MainActivity.java` for system bar transparency and style. Do NOT use `StatusBar` plugin configurations in `capacitor.config.ts` or JS calls (like `setStyle` or `setOverlaysWebView`) on Android 15+.
+    *   **Layout:** Rely on CSS `safe-area-insets` and modern Capacitor configuration for layout. Proactively investigate console deprecation warnings.
 *   **Increment Policy:** You **MUST** increment the version in `package.json` before finishing any task that includes a bug fix or new feature.
     *   **Patch (x.x.1):** Bug fixes, small tweaks.
     *   **Minor (x.1.x):** New features, significant UI changes.
