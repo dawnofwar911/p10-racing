@@ -295,11 +295,11 @@ function PredictPage() {
         dialogTitle: 'Share your Picks',
       });
     } catch (error) {
-      console.error('Error sharing', error);
-      // Fallback for non-native or failed share
-      if (navigator.share) {
-        navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app/predict' }).catch(console.error);
-      } else {
+      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web)
+      // Dismissing the share dialog on some platforms triggers an error, which we should ignore.
+      console.log('Share dismissed or failed:', error);
+      
+      if (!navigator.share && !window.location.protocol.includes('https')) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
         showNotification('Picks copied to clipboard!', 'success');
       }
