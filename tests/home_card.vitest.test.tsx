@@ -33,6 +33,16 @@ vi.mock('@/lib/api', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: vi.fn(),
+    push: vi.fn(),
+    back: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+// Mock useNotification
+vi.mock('@/components/Notification', () => ({
+  useNotification: () => ({
+    showNotification: vi.fn(),
   }),
 }));
 
