@@ -44,16 +44,21 @@ main {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  display: block; /* Standard block layout inside the scroll context */
+  display: flex;
+  flex-direction: column;
   position: relative;
+  /* Add safe area insets for side padding */
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Page Container */
 .page-transition-container {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
   width: 100%;
+  min-height: 100%;
 }
 
 /* Informational Footer (Version, Bug Report) */
