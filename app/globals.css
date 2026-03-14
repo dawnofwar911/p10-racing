@@ -72,10 +72,15 @@ main {
   width: 100%;
 }
 
-@media (min-width: 992px) {
+@media (min-width: 1200px) {
   .mobile-nav-spacer {
     display: none;
   }
+}
+
+/* Offcanvas Safe Area handling for Native App */
+.offcanvas {
+  padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
 
