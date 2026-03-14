@@ -220,10 +220,19 @@ function PredictContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (p10Driver && dnfDriver) {
+    if (p10Driver && dnfDriver && nextRace) {
       Haptics.impact({ style: ImpactStyle.Heavy });
       
+      const prediction = { 
+        username: username || 'User', 
+        p10: p10Driver, 
+        dnf: dnfDriver, 
+        raceId: nextRace.id, 
+        season: CURRENT_SEASON 
+      };
+
       if (session) {
+        // 1. Save to Cloud (Supabase)
         const { error } = await supabase
           .from('predictions')
           .upsert({
@@ -238,8 +247,11 @@ function PredictContent() {
           alert('Error saving prediction: ' + error.message);
           return;
         }
+
+        // 2. Mirror to LocalStorage for instant UI & offline support
+        localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
       } else {
-        const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id, season: CURRENT_SEASON };
+        // Guest mode - LocalStorage only
         localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
         const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
         if (!players.includes(username)) {
