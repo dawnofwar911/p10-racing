@@ -35,7 +35,6 @@ export default function Home() {
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -70,15 +69,6 @@ export default function Home() {
       
       const user = localStorage.getItem('p10_current_user');
       setCurrentUser(user);
-
-      if (session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) setIsAdmin(!!profile.is_admin);
-      }
 
       // Load from cache first
       const cachedRace = localStorage.getItem('p10_cache_next_race');
@@ -304,7 +294,7 @@ export default function Home() {
             </div>
           </Col>
 
-          <Col md={currentUser ? 3 : 4}>
+          <Col md={currentUser ? 4 : 4}>
             <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm d-flex flex-column justify-content-between">
               <div>
                 <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
@@ -315,20 +305,6 @@ export default function Home() {
               </Link>
             </div>
           </Col>
-          
-          {isAdmin && (
-            <Col md={3}>
-              <div className="p-3 border border-warning border-opacity-25 rounded h-100 bg-warning bg-opacity-5 shadow-sm d-flex flex-column justify-content-between">
-                <div>
-                  <h3 className="text-uppercase fw-bold text-warning letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>System Admin</h3>
-                  <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Results Control</p>
-                </div>
-                <Link href="/admin" className="btn btn-warning btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start text-dark" style={{ fontSize: '0.65rem' }} onClick={triggerHaptic}>
-                  Admin Panel →
-                </Link>
-              </div>
-            </Col>
-          )}
           
           {currentUser && (
             <Col md={4}>
