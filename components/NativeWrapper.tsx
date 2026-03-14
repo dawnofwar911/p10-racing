@@ -29,9 +29,11 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         // 2. We use Dark style because the app theme is dark (#15151e),
         // so we want light icons (white) on the status bar.
         // Style.Dark = Light text for dark backgrounds.
-        // On Android 15+, this might still trigger a deprecation warning in the plugin,
-        // but it is currently the only way to set the icon color through Capacitor.
-        await StatusBar.setStyle({ style: Style.Dark });
+        // On Android 15+, we skip this as it's handled by MainActivity.java's EdgeToEdge
+        // to avoid deprecation warnings.
+        if (platform !== 'android' || osVersion < 15) {
+          await StatusBar.setStyle({ style: Style.Dark });
+        }
         
         // 2. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
