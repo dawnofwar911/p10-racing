@@ -164,7 +164,21 @@ export default function Home() {
         setNextRace(raceObj);
         localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
 
-        if (user) {
+        if (session) {
+          const { data: pred } = await supabase
+            .from('predictions')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
+            .single();
+          
+          if (pred) {
+            setUserPrediction({
+              p10: pred.p10_driver_id,
+              dnf: pred.dnf_driver_id
+            });
+          }
+        } else if (user) {
           const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${user}_${raceObj.id}`);
           if (predStr) setUserPrediction(JSON.parse(predStr));
         }
