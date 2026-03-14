@@ -42,11 +42,11 @@ export default function RootLayout({
           
           {/* THE PERMANENT SCROLL CONTAINER */}
           <main id="main-scroll-container">
-            <PageTransition>
-              <Suspense fallback={<Loading />}>
+            <Suspense fallback={<Loading />}>
+              <PageTransition>
                 {children}
-              </Suspense>
-            </PageTransition>
+              </PageTransition>
+            </Suspense>
             
             {/* SPACER FOR BOTTOM NAV */}
             <div className="mobile-nav-spacer"></div>
