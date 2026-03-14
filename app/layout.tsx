@@ -47,9 +47,6 @@ export default function RootLayout({
                 {children}
               </PageTransition>
             </Suspense>
-            
-            {/* SPACER FOR BOTTOM NAV */}
-            <div className="mobile-nav-spacer"></div>
           </main>
 
           <MobileBottomNav />

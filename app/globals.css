@@ -38,28 +38,32 @@ body {
   background-color: var(--f1-black) !important;
 }
 
-/* THE PERMANENT SCROLL CONTAINER */
+/* THE SCROLLABLE MAIN CONTAINER */
 main {
   flex-grow: 1;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  display: flex;
-  flex-direction: column;
+  display: block; /* Standard block layout for natural scroll height */
   position: relative;
   /* Add safe area insets for side padding */
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+@media (max-width: 1199.98px) {
+  main {
+    /* Reserve space for fixed bottom nav + buffer */
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 30px) !important;
+  }
+}
+
 /* Page Container */
 .page-transition-container {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
+  display: block;
   width: 100%;
-  min-height: 100%;
 }
+
 
 /* Informational Footer (Version, Bug Report) */
 .app-footer {

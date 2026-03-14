@@ -24,9 +24,6 @@ export default function PageTransition({ children }: { children: React.ReactNode
       className="page-transition-container"
       style={{
         width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        flexGrow: 1,
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
         transform: 'translate3d(0,0,0)'
