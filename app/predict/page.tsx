@@ -381,6 +381,11 @@ function PredictContent() {
                   backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 1px, transparent 1px, transparent 10px)',
                 }}>
                   <div className="position-relative py-2 px-1">
+                    {/* Finish Line Look - Top-aligned */}
+                    <div className="mb-3 pb-2 border-bottom border-secondary border-opacity-50 text-center">
+                      <span className="extra-small fw-bold text-muted text-uppercase letter-spacing-2" style={{ fontSize: '0.55rem' }}>START / FINISH LINE</span>
+                    </div>
+
                     {/* Compact Track Line */}
                     <div className="position-absolute start-50 top-0 bottom-0 border-start border-secondary border-opacity-20 d-none d-sm-block" style={{ transform: 'translateX(-50%)', borderStyle: 'dashed !important' }}></div>
                     
@@ -430,11 +435,6 @@ function PredictContent() {
                           </div>
                         );
                       })}
-                    </div>
-                    
-                    {/* Finish Line Look - More compact */}
-                    <div className="mt-4 pt-2 border-top border-secondary border-opacity-50 text-center">
-                      <span className="extra-small fw-bold text-muted text-uppercase letter-spacing-2" style={{ fontSize: '0.55rem' }}>START / FINISH</span>
                     </div>
                   </div>
                 </Card.Body>
