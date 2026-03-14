@@ -113,6 +113,8 @@ To ensure consistency across web, Android, and the App Store, we use a dual-trac
 - **Branch:** `main`
 - **Web:** Automatically deployed to Vercel (Staging environment).
 - **Android:** GitHub Actions builds the AAB and **automatically uploads** it to the **Internal Testing** track in the Google Play Console.
+- **Release Notes:** The latest **commit message** is automatically used as the **Play Store "What's New" text** (en-GB).
+- **Guidelines:** Write descriptive, user-facing commit messages (e.g., `feat: add driver avatars to leaderboard` instead of `feat: add images`).
 - **Goal:** Immediate testing on personal devices.
 
 ### 2. Production (Stable Release)

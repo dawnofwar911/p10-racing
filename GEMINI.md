@@ -73,16 +73,18 @@ To ensure the web and mobile versions stay in sync, we use a dual-track release 
 *   **Goal:** Public-facing updates and tester feedback.
 
 ### 🛠️ How to Release
-1.  **Develop & Test:** Push all changes to `main`. Verify on your phone via the Play Store "Internal Testing" update.
-2.  **Increment Version:** Update the `version` in `package.json` before merging to `stable`.
-3.  **Promote to Stable:** Merge `main` into `stable`.
+1.  **Develop & Test:** Push all changes to `main`.
+    *   **Note:** Your commit message is automatically used as the **Play Store Release Note** (en-GB). Ensure it is clear and user-friendly (e.g., `fix: resolve crash on driver selection` instead of `fix: bug`).
+2.  **Verify:** Confirm on your phone via the Play Store "Internal Testing" update.
+3.  **Increment Version:** Update the `version` in `package.json` before merging to `stable`.
+4.  **Promote to Stable:** Merge `main` into `stable`.
     ```bash
     git checkout stable
     git merge main
     git push origin stable
     git checkout main
     ```
-4.  **Verification:** Confirm that both the website and the Play Store "Closed Testing" track are updated.
+5.  **Manual Promotion:** In the Google Play Console, manually promote the successful Internal Testing build to **Closed Testing** or **Production**.
 
 ---
 
