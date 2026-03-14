@@ -57,6 +57,35 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 
 ---
 
+## 🚀 CI/CD & Release Strategy
+To ensure the web and mobile versions stay in sync, we use a dual-track release process:
+
+### 1. Staging (Active Development)
+*   **Branch:** `main`
+*   **Web:** Deploys automatically to Vercel (recommended: set up a staging domain).
+*   **Android:** GitHub Actions builds and **automatically uploads** to the **Internal Testing** track on Google Play.
+*   **Goal:** Immediate testing on your own device.
+
+### 2. Production (Stable Release)
+*   **Branch:** `stable`
+*   **Web:** Deploys to the production URL (`p10-racing.com`).
+*   **Android:** GitHub Actions builds and **automatically uploads** to the **Closed Testing** track for beta testers.
+*   **Goal:** Public-facing updates and tester feedback.
+
+### 🛠️ How to Release
+1.  **Develop & Test:** Push all changes to `main`. Verify on your phone via the Play Store "Internal Testing" update.
+2.  **Increment Version:** Update the `version` in `package.json` before merging to `stable`.
+3.  **Promote to Stable:** Merge `main` into `stable`.
+    ```bash
+    git checkout stable
+    git merge main
+    git push origin stable
+    git checkout main
+    ```
+4.  **Verification:** Confirm that both the website and the Play Store "Closed Testing" track are updated.
+
+---
+
 ## 🛠️ Current Tech Stack
 *   **Frontend:** Next.js 15 (React 19), Bootstrap 5, TypeScript, Framer Motion.
 *   **Backend:** Supabase (Auth, PostgreSQL, RLS).
