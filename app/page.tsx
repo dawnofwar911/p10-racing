@@ -10,6 +10,7 @@ import { Share } from '@capacitor/share';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { useNotification } from '@/components/Notification';
 
 interface HomeRace {
   id: string;
@@ -39,6 +40,7 @@ export default function Home() {
 
   const supabase = createClient();
   const router = useRouter();
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     async function init() {
@@ -240,7 +242,7 @@ export default function Home() {
         navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app' }).catch(console.error);
       } else {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
-        alert('Prediction copied to clipboard!');
+        showNotification('Picks copied to clipboard!', 'success');
       }
     }
   };

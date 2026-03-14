@@ -9,6 +9,7 @@ import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight } from 'luci
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
+import { useNotification } from '@/components/Notification';
 
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -16,6 +17,7 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const { showNotification } = useNotification();
   
   const supabase = createClient();
 
@@ -54,7 +56,7 @@ export default function SettingsPage() {
       window.location.href = '/';
     } catch (err) {
       console.error('Error deleting account:', err);
-      alert('Failed to delete account. Please try again or contact support.');
+      showNotification('Failed to delete account. Please try again.', 'error');
       setIsDeleting(false);
     }
   };
