@@ -51,7 +51,7 @@ export default function RootLayout({
             <AppFooter />
             
             {/* SPACER FOR BOTTOM NAV */}
-            <div className="mobile-nav-spacer d-md-none"></div>
+            <div className="mobile-nav-spacer"></div>
           </main>
 
           <MobileBottomNav />
