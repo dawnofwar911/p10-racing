@@ -68,15 +68,16 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         App.addListener('backButton', ({ canGoBack }) => {
           const path = window.location.pathname;
           
-          // If on a main tab or root, exit the app
-          const mainTabs = ['/', '/predict', '/leagues', '/leaderboard', '/standings', '/history'];
-          if (mainTabs.includes(path)) {
+          // Only exit the app if we are on the root home page
+          if (path === '/') {
             App.exitApp();
           } else if (canGoBack) {
+            // If we have history (e.g. went from Home -> Predict), go back
             router.back();
           } else {
-            // Fallback for safety
-            App.exitApp();
+            // If we are on a deep page but have no history (e.g. app launched to that page),
+            // navigate to home instead of exiting
+            router.push('/');
           }
         });
 
