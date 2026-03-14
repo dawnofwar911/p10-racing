@@ -387,7 +387,9 @@ function PredictContent() {
                           <div 
                             className={`d-flex align-items-center p-2 rounded bg-black bg-opacity-40 border ${isP10 ? 'border-danger' : 'border-secondary border-opacity-25'}`}
                             style={{ 
-                              borderLeft: `3px solid ${teamColor} !important`,
+                              borderLeftWidth: '4px',
+                              borderLeftStyle: 'solid',
+                              borderLeftColor: teamColor,
                               position: 'relative'
                             }}
                           >
