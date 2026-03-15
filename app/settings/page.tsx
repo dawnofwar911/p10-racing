@@ -5,7 +5,7 @@ import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight } from 'lucide-react';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
@@ -114,6 +114,21 @@ export default function SettingsPage() {
                 Settings are limited while playing as a Guest. <Link href="/auth" className="text-danger fw-bold text-decoration-none">Sign in</Link> to unlock all features.
               </div>
             )}
+          </div>
+        </Card>
+
+        <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Season</h2>
+        <Card className="border-secondary shadow-sm mb-4">
+          <div className="list-group list-group-flush bg-dark rounded">
+            <Link href="/history" passHref legacyBehavior>
+              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between border-0" onClick={triggerHaptic}>
+                <div className="d-flex align-items-center">
+                  <History size={18} className="me-3 opacity-75" />
+                  <span className="fw-bold">Season History</span>
+                </div>
+                <ChevronRight size={18} className="opacity-50" />
+              </a>
+            </Link>
           </div>
         </Card>
 
