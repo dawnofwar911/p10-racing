@@ -99,7 +99,7 @@ describe('Home Page Prediction Card Visibility', () => {
     expect(screen.getByText(/SHARE PICKS/i)).toBeDefined();
   });
 
-  it('removes the prediction card once the race has started (and next race is fetched)', async () => {
+  it('keeps the prediction card visible and shows locked status within 4 hours of race start', async () => {
     const race1 = {
       round: '1',
       raceName: 'Australian Grand Prix',
@@ -117,23 +117,56 @@ describe('Home Page Prediction Card Visibility', () => {
     (api.fetchCalendar as any).mockResolvedValue([race1, race2]);
     
     localStorage.setItem('p10_current_user', 'testuser');
-    // Prediction only for Race 1
+    // Prediction for Race 1
     localStorage.setItem('final_pred_2026_testuser_1', JSON.stringify({ p10: 'max_verstappen', dnf: 'leclerc' }));
 
-    // Mock date to AFTER Race 1 has started (next race should be Race 2)
+    // Mock date to 1 HOUR AFTER Race 1 start (still within 4 hour window)
     vi.setSystemTime(new Date('2026-03-15T06:00:00Z'));
 
     render(<Home />);
 
     await waitFor(() => {
-      // Should show Next Race: Chinese Grand Prix in the "Next Race" section
+      // Should STILL show Australian Grand Prix Picks
+      expect(screen.getByText(/Your Australian Grand Prix Picks/i)).toBeDefined();
+      // Should show the lock icon
+      expect(screen.getByText(/🔒/i)).toBeDefined();
+      // Should show Race In Progress
+      expect(screen.getByText(/Race In Progress/i)).toBeDefined();
+    }, { timeout: 2000 });
+  });
+
+  it('removes the prediction card and switches to next race after 4 hours', async () => {
+    const race1 = {
+      round: '1',
+      raceName: 'Australian Grand Prix',
+      Circuit: { circuitName: 'Albert Park' },
+      date: '2026-03-15',
+      time: '05:00:00Z'
+    };
+    const race2 = {
+      round: '2',
+      raceName: 'Chinese Grand Prix',
+      Circuit: { circuitName: 'Shanghai' },
+      date: '2026-03-22',
+      time: '07:00:00Z'
+    };
+    (api.fetchCalendar as any).mockResolvedValue([race1, race2]);
+    
+    localStorage.setItem('p10_current_user', 'testuser');
+    localStorage.setItem('final_pred_2026_testuser_1', JSON.stringify({ p10: 'max_verstappen', dnf: 'leclerc' }));
+
+    // Mock date to 5 HOURS AFTER Race 1 start (past 4 hour window)
+    vi.setSystemTime(new Date('2026-03-15T10:00:00Z'));
+
+    render(<Home />);
+
+    await waitFor(() => {
+      // Should now show Next Race: Chinese Grand Prix
       const nextRaceSection = screen.getByText(/Next Race/i).closest('div');
       expect(nextRaceSection?.textContent).toContain('Chinese Grand Prix');
     }, { timeout: 2000 });
 
     // Should NOT show the prediction card for Australian Grand Prix anymore
     expect(screen.queryByText(/Your Australian Grand Prix Picks/i)).toBeNull();
-    // And should NOT show a card for Chinese GP because no prediction exists yet
-    expect(screen.queryByText(/Your Chinese Grand Prix Picks/i)).toBeNull();
   });
 });
