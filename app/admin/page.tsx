@@ -51,8 +51,8 @@ export default function AdminPage() {
         .maybeSingle();
       
       if (data?.data) {
-        const d = data.data as any;
-        const p10Id = Object.entries(d.positions).find(([_, pos]) => pos === 10)?.[0] || 'Unknown';
+        const d = data.data as { positions: { [key: string]: number }, firstDnf: string };
+        const p10Id = Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown';
         setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
       } else {
         setExistingResult(null);
@@ -201,7 +201,7 @@ export default function AdminPage() {
         setStatus({ message: `Results published! Leaderboard updated GLOBALLY for Round ${selectedRace}.`, variant: 'success' });
         Haptics.notification({ type: NotificationType.Success });
         // Refresh existing check logic for UI update
-        const p10Id = Object.entries(results).find(([_, pos]) => pos === 10)?.[0] || 'Unknown';
+        const p10Id = Object.entries(results).find(([, pos]) => pos === 10)?.[0] || 'Unknown';
         setExistingResult({ p10: p10Id, dnf: firstDnf || 'None' });
       }
     }
