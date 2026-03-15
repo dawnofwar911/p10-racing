@@ -10,9 +10,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Enable edge-to-edge display for Android 15 (SDK 35+) support.
-        // This satisfies the Google Play Console requirement.
-        // We force Dark style to ensure light icons on a dark/transparent background.
-        EdgeToEdge.enable(this, SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT));
+        // On Android 15+, the system ignores specific bar style parameters to enforce transparency.
+        // We use the simpler enable(this) which avoids deprecated API calls on SDK 35.
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         
         // Ensure any residual native ActionBar is killed
