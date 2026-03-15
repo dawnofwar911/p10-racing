@@ -20,21 +20,16 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         const platform = info.platform;
         const osVersion = parseInt(info.osVersion || '0', 10);
 
-        // 1. Ensure the status bar overlaps the webview so CSS safe-area-insets work
         // Note: Android 15+ (API 35+) enforces edge-to-edge by default.
+        // We avoid calling Capacitor StatusBar methods on Android 15+ to eliminate 
+        // deprecation warnings for getStatusBarColor/setStatusBarColor/etc.
         if (platform === 'android' && osVersion < 15) {
           await StatusBar.setOverlaysWebView({ overlay: true });
-        }
-        
-        // 2. We use Dark style because the app theme is dark (#15151e),
-        // so we want light icons (white) on the status bar.
-        // Style.Dark = Light text for dark backgrounds.
-        // On Android 15+, we skip this as it's handled by MainActivity.java's EdgeToEdge
-        // to avoid deprecation warnings.
-        if (platform !== 'android' || osVersion < 15) {
+          await StatusBar.setStyle({ style: Style.Dark });
+        } else if (platform !== 'android') {
+          // Keep normal behavior for iOS
           await StatusBar.setStyle({ style: Style.Dark });
         }
-        
         // 2. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
           try {
