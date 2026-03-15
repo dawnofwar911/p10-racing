@@ -199,11 +199,16 @@ function PredictPage() {
           .select('user_id, p10_driver_id, dnf_driver_id, profiles(username)')
           .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
 
-        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? (dbCommunityPreds as unknown as DbPrediction[]).map((p) => ({
-          username: p.profiles?.username || 'Unknown',
+        console.log('DB Community Preds RAW:', dbCommunityPreds);
+
+        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? (dbCommunityPreds as any[]).map((p) => ({
+          username: (Array.isArray(p.profiles) ? p.profiles[0]?.username : p.profiles?.username) || 'Unknown',
           p10: p.p10_driver_id,
           dnf: p.dnf_driver_id
         })) : [];
+
+        console.log('Formatted DB Preds:', formattedDbPreds);
+        console.log('Current User filtering with:', currentUsername);
 
         const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
 
