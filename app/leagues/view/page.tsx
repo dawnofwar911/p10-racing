@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
 import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
+import { isTestAccount } from '@/lib/utils/profiles';
 import LoadingView from '@/components/LoadingView';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -126,8 +127,7 @@ function LeagueDetailContent() {
     const currentUserId = session?.user?.id;
 
     const members = (profilesData || []).filter(p => {
-      const isTestAccount = p.username.toLowerCase().includes('tester') || p.username.toLowerCase().includes('reviewer');
-      return !isTestAccount || p.id === currentUserId;
+      return !isTestAccount(p.username) || p.id === currentUserId;
     });
 
     // Fetch predictions for those members
