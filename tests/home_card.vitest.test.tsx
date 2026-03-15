@@ -27,6 +27,8 @@ vi.mock('@/lib/supabase/client', () => ({
 vi.mock('@/lib/api', () => ({
   fetchCalendar: vi.fn(),
   fetchDrivers: vi.fn(),
+  fetchRaceResults: vi.fn(),
+  getFirstDnfDriver: vi.fn(),
 }));
 
 // Mock useRouter
