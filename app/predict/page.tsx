@@ -30,11 +30,10 @@ interface CommunityPrediction {
   dnf: string;
 }
 
-interface DbCommunityPrediction {
+interface CommunityPredictionData {
   user_id: string;
   p10_driver_id: string;
   dnf_driver_id: string;
-  profiles: { username: string } | { username: string }[] | null;
 }
 
 function PredictPage() {
@@ -201,21 +200,38 @@ function PredictPage() {
           }
         }
 
-        const { data: dbCommunityPreds } = await supabase
+        // 3. Fetch Community Predictions
+        // We fetch predictions and profiles separately to ensure reliability with RLS and joins
+        const { data: dbPreds, error: predsError } = await supabase
           .from('predictions')
-          .select('user_id, p10_driver_id, dnf_driver_id, profiles(username)')
+          .select('user_id, p10_driver_id, dnf_driver_id')
           .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
 
-        console.log('DB Community Preds RAW:', dbCommunityPreds);
+        if (predsError) {
+          console.error('Error fetching community predictions:', predsError);
+        }
 
-        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? (dbCommunityPreds as unknown as DbCommunityPrediction[]).map((p) => ({
-          username: (Array.isArray(p.profiles) ? p.profiles[0]?.username : p.profiles?.username) || 'Unknown',
-          p10: p.p10_driver_id,
-          dnf: p.dnf_driver_id
-        })) : [];
+        const { data: allProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username');
 
-        console.log('Formatted DB Preds:', formattedDbPreds);
-        console.log('Current User filtering with:', currentUsername);
+        if (profilesError) {
+          console.error('Error fetching profiles for community mapping:', profilesError);
+        }
+
+        console.log(`Found ${dbPreds?.length || 0} predictions in DB for race ${CURRENT_SEASON}_${currentRace.id}`);
+
+        const formattedDbPreds: CommunityPrediction[] = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => {
+          const profile = allProfiles?.find(pr => pr.id === p.user_id);
+          return {
+            username: profile?.username || 'Unknown',
+            p10: p.p10_driver_id,
+            dnf: p.dnf_driver_id
+          };
+        });
+
+        console.log('Final Formatted DB Preds:', formattedDbPreds);
+        console.log('Current User for filtering:', currentUsername);
 
         const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
 
