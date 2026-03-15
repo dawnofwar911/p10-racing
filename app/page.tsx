@@ -35,6 +35,8 @@ export default function Home() {
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
   const [showCountdown, setShowCountdown] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isRaceInProgress, setIsRaceInProgress] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
@@ -93,10 +95,18 @@ export default function Home() {
 
       if (races.length > 0) {
         const now = new Date();
-        const upcoming = races.find((r: ApiCalendarRace) => {
+        // Find the "active" race using the same 4-hour window logic as the predict page
+        let activeIndex = races.findIndex((r: ApiCalendarRace) => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
-          return raceTime > now;
+          const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
+          return fourHoursLater > now;
         });
+
+        if (activeIndex === -1) {
+          activeIndex = races.length - 1;
+        }
+
+        const upcoming = races[activeIndex];
 
         // Calculate if ALL races in the calendar have results in localStorage
         let resultsCount = 0;
@@ -107,7 +117,8 @@ export default function Home() {
         });
         const allRacesHaveResults = resultsCount > 0 && resultsCount === races.length;
 
-        if (!upcoming && allRacesHaveResults) {
+        // Season is finished if activeIndex is at the end and all races have results
+        if (activeIndex === races.length - 1 && allRacesHaveResults) {
           setIsSeasonFinished(true);
           // Fetch leaderboard to find champion
           const { data: profiles } = await supabase.from('profiles').select('id, username');
@@ -154,18 +165,21 @@ export default function Home() {
           }
         }
 
-        const raceToShow = upcoming || races[races.length - 1]; // Use last race if season finished
-
         const raceObj: HomeRace = {
-          id: raceToShow.round,
-          name: raceToShow.raceName,
-          circuit: raceToShow.Circuit.circuitName,
-          date: raceToShow.date,
-          time: raceToShow.time || '00:00:00Z',
-          round: parseInt(raceToShow.round)
+          id: upcoming.round,
+          name: upcoming.raceName,
+          circuit: upcoming.Circuit.circuitName,
+          date: upcoming.date,
+          time: upcoming.time || '00:00:00Z',
+          round: parseInt(upcoming.round)
         };
         setNextRace(raceObj);
         localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
+
+        // Calculate locking based on start time
+        const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
+        const lockTime = new Date(raceStartTime.getTime() + 120000);
+        setIsLocked(now > lockTime);
 
         if (session) {
           const { data: pred } = await supabase
@@ -204,11 +218,14 @@ export default function Home() {
       const targetStr = `${nextRace.date}T${nextRace.time}`;
       const target = new Date(targetStr).getTime();
       const distance = target - now;
+      const fourHoursLater = target + 4 * 60 * 60 * 1000;
 
       if (distance < 0) {
         setShowCountdown(false);
+        setIsRaceInProgress(now < fourHoursLater);
       } else {
         setShowCountdown(true);
+        setIsRaceInProgress(false);
         setCountdown({
           d: Math.floor(distance / (1000 * 60 * 60 * 24)),
           h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -276,30 +293,41 @@ export default function Home() {
               </div>
             )}
 
-            {nextRace && !loading && !isSeasonFinished && showCountdown && (
-              <div className="mb-4">
-                <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
-                  {[
-                    { label: 'D', val: countdown.d },
-                    { label: 'H', val: countdown.h },
-                    { label: 'M', val: countdown.m },
-                    { label: 'S', val: countdown.s }
-                  ].map(item => (
-                    <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
-                      <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
-                      <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
+            {nextRace && !loading && !isSeasonFinished && (
+              <>
+                {showCountdown ? (
+                  <div className="mb-4">
+                    <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
+                    <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
+                      {[
+                        { label: 'D', val: countdown.d },
+                        { label: 'H', val: countdown.h },
+                        { label: 'M', val: countdown.m },
+                        { label: 'S', val: countdown.s }
+                      ].map(item => (
+                        <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
+                          <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
+                          <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                ) : isRaceInProgress ? (
+                  <div className="mb-4">
+                    <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
+                    <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
+                  </div>
+                ) : null}
+              </>
             )}
 
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
               {!isSeasonFinished ? (
                 <Link href="/predict" passHref legacyBehavior>
                   <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
-                    {userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION'}
+                    {isLocked 
+                      ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
+                      : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
                   </Button>
                 </Link>
               ) : (
@@ -324,7 +352,9 @@ export default function Home() {
 
             {!isSeasonFinished && userPrediction && nextRace && (
               <div className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" style={{ maxWidth: '400px' }}>
-                <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>Your {nextRace.name} Picks</h3>
+                <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
+                  Your {nextRace.name} Picks {isLocked && '🔒'}
+                </h3>
                 <div className="d-flex justify-content-center gap-4 mb-3">
                   <div>
                     <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
@@ -344,6 +374,7 @@ export default function Home() {
                 </Button>
               </div>
             )}
+
           </Col>
         </Row>
 
