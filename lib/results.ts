@@ -15,8 +15,11 @@ export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: En
   const races = await fetchCalendar(CURRENT_SEASON);
   const raceResultsMap: { [round: string]: EnhancedSimplifiedResults } = {};
   
-  // 1. Fetch all "Gold Standard" verified results from Supabase
-  const { data: verifiedData } = await supabase.from('verified_results').select('*');
+  // 1. Fetch all "Gold Standard" verified results from Supabase (filtered by current season)
+  const { data: verifiedData } = await supabase
+    .from('verified_results')
+    .select('*')
+    .like('id', `${CURRENT_SEASON}_%`);
   
   await Promise.all(races.map(async (race: ApiCalendarRace) => {
     const round = race.round;
@@ -28,7 +31,9 @@ export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: En
       raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
     } else {
       // Priority 2: localStorage (Cached results from previous API fetches)
-      const cachedData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
+      const isClient = typeof window !== 'undefined';
+      const cachedData = isClient ? localStorage.getItem(`results_${CURRENT_SEASON}_${round}`) : null;
+      
       if (cachedData) {
         raceResultsMap[round] = { ...JSON.parse(cachedData), date: raceDate };
       } else {
@@ -47,7 +52,9 @@ export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: En
           raceResultsMap[round] = { ...simplified, date: raceDate };
           
           // Cache for performance and offline support
-          localStorage.setItem(`results_${CURRENT_SEASON}_${round}`, JSON.stringify(simplified));
+          if (isClient) {
+            localStorage.setItem(`results_${CURRENT_SEASON}_${round}`, JSON.stringify(simplified));
+          }
         }
       }
     }

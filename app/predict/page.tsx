@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult } from '@/lib/api';
+import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
@@ -99,6 +100,7 @@ function PredictPage() {
 
       // 2. Get Race Data
       const races = await fetchCalendar(CURRENT_SEASON);
+      const raceResultsMap = await fetchAllSimplifiedResults();
       let currentRace: PredictRace = RACES[0] as unknown as PredictRace;
       if (races.length > 0) {
         const now = new Date();
@@ -117,8 +119,7 @@ function PredictPage() {
         // We should advance to the following round, even if we're within the 4-hour post-race window.
         if (!isSeasonFinished) {
           const currentCandidate = races[activeIndex];
-          const candidateResults = await fetchRaceResults(CURRENT_SEASON, parseInt(currentCandidate.round));
-          if (candidateResults && candidateResults.Results && candidateResults.Results.length > 0) {
+          if (raceResultsMap[currentCandidate.round]) {
             if (activeIndex < races.length - 1) {
               activeIndex++;
             } else {
@@ -129,9 +130,13 @@ function PredictPage() {
 
         if (activeIndex > 0 && !isSeasonFinished) {
           const prevRace = races[activeIndex - 1];
-          const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
-          if (!results) {
-            activeIndex--;
+          if (!raceResultsMap[prevRace.round]) {
+            // Check if results are available via direct API as a safety fallback 
+            // though fetchAllSimplifiedResults should have handled it.
+            const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
+            if (!results) {
+              activeIndex--;
+            }
           }
         }
 
