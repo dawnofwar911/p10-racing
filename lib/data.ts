@@ -1,13 +1,4 @@
-export interface Driver {
-  id: string;
-  name: string;
-  team: string;
-  teamId: string;
-  code: string;
-  number: number;
-  color: string;
-  points: number;
-}
+import { Driver, Race } from '@/lib/types';
 
 export const DRIVERS: Driver[] = [
   // Red Bull Racing
@@ -55,15 +46,6 @@ export const DRIVERS: Driver[] = [
   { id: 'bottas', name: 'Valtteri Bottas', team: 'Cadillac', teamId: 'cadillac', code: 'BOT', number: 77, color: '#FFD700', points: 0 },
 ];
 
-export interface Race {
-  id: string;
-  name: string;
-  circuit: string;
-  date: string;
-  time?: string;
-  round: number;
-}
-
 export const RACES: Race[] = [
   { id: '1', name: 'Australian Grand Prix', circuit: 'Albert Park Circuit', date: '2026-03-15', round: 1 },
 ];
@@ -88,18 +70,6 @@ export interface LeaderboardEntry {
     p10Pos: number, 
     dnfCorrect: boolean 
   }[];
-}
-
-export interface SimplifiedResults {
-  positions: { [driverId: string]: number };
-  firstDnf: string | null;
-}
-
-export interface UserPrediction {
-  username: string;
-  p10: string;
-  dnf: string;
-  raceId: string;
 }
 
 export const getSystemSeason = () => new Date().getFullYear();

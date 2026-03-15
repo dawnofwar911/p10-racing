@@ -4,21 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { 
-  Trophy, 
-  Home, 
-  Users, 
-  LayoutGrid, 
-  BarChart3 
-} from 'lucide-react';
-
-const navItems = [
-  { label: 'Home', href: '/', icon: Home },
-  { label: 'Predict', href: '/predict', icon: LayoutGrid },
-  { label: 'Leagues', href: '/leagues', icon: Users },
-  { label: 'Leaderboard', href: '/leaderboard', icon: Trophy },
-  { label: 'Standings', href: '/standings', icon: BarChart3 },
-];
+import { NAV_ITEMS } from '@/lib/navigation';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -27,7 +13,8 @@ export default function MobileBottomNav() {
     Haptics.impact({ style: ImpactStyle.Light });
   };
 
-  // Only show on mobile, foldable, and tablet (up to xl)
+  // On mobile, we show all navigation items.
+  // The CSS 'd-xl-none' handles showing it only on mobile.
   return (
     <nav 
       className="d-xl-none mobile-bottom-nav border-top border-secondary border-opacity-25 shadow-lg"
@@ -36,8 +23,8 @@ export default function MobileBottomNav() {
         minHeight: 'var(--nav-height)'
       }}
     >
-      <div className="d-flex justify-content-around align-items-center py-2" style={{ height: 'var(--nav-height)' }}>
-        {navItems.map((item) => {
+      <div className="d-flex justify-content-around align-items-center py-2 px-1" style={{ height: 'var(--nav-height)' }}>
+        {NAV_ITEMS.map((item) => {
           const isActive = item.href === '/' 
             ? pathname === '/' 
             : pathname.startsWith(item.href);

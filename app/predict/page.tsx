@@ -2,8 +2,9 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
-import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult } from '@/lib/api';
+import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, ApiResult } from '@/lib/api';
+import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
@@ -154,7 +155,7 @@ function PredictPage() {
 
         const apiDrivers = await fetchDrivers(CURRENT_SEASON);
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        finalDriverList.sort((a: AppDriver, b: AppDriver) => a.team.localeCompare(b.team));
+        finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
 
         let finalGrid: ApiResult[] = [];
@@ -341,8 +342,8 @@ function PredictPage() {
   };
 
   const handleShare = async () => {
-    const p10Name = getDriverDisplayName(p10Driver, drivers as AppDriver[]);
-    const dnfName = getDriverDisplayName(dnfDriver, drivers as AppDriver[]);
+    const p10Name = getDriverDisplayName(p10Driver, drivers as Driver[]);
+    const dnfName = getDriverDisplayName(dnfDriver, drivers as Driver[]);
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
     
     try {

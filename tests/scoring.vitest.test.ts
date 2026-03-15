@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateP10Points, calculateDnfPoints, calculateTotalPoints, calculateSeasonPoints } from '@/lib/scoring';
-import { SimplifiedResults } from '@/lib/data';
+import { SimplifiedResults } from '@/lib/types';
 
 describe('Scoring Logic Tests', () => {
   describe('P10 Calculation', () => {

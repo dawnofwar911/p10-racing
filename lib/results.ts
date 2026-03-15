@@ -1,6 +1,7 @@
 import { createClient } from './supabase/client';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from './api';
-import { CURRENT_SEASON, SimplifiedResults } from './data';
+import { CURRENT_SEASON } from './data';
+import { SimplifiedResults } from './types';
 
 export interface EnhancedSimplifiedResults extends SimplifiedResults {
   date: Date;

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Container, Table, Spinner } from 'react-bootstrap';
-import { CURRENT_SEASON, Driver } from '@/lib/data';
+import { CURRENT_SEASON } from '@/lib/data';
+import { Driver } from '@/lib/types';
 import { fetchDrivers } from '@/lib/api';
 import { getContrastColor } from '@/lib/utils/colors';
 import PullToRefresh from '@/components/PullToRefresh';

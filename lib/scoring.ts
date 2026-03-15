@@ -1,4 +1,4 @@
-import { SimplifiedResults } from './data';
+import { SimplifiedResults } from './types';
 
 export function calculateP10Points(actualPosition: number): number {
   const distance = Math.abs(actualPosition - 10);

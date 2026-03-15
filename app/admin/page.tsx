@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS, AppDriver, ApiCalendarRace } from '@/lib/api';
+import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCalendarRace } from '@/lib/api';
+import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 
@@ -103,7 +104,7 @@ export default function AdminPage() {
       const d = await fetchDrivers(season);
       if (d.length > 0) {
         setDrivers(d);
-        setResults(Object.fromEntries(d.map((driver: AppDriver, i: number) => [driver.id, i + 1])));
+        setResults(Object.fromEntries(d.map((driver: Driver, i: number) => [driver.id, i + 1])));
       } else {
         setDrivers(FALLBACK_DRIVERS);
         setResults(Object.fromEntries(FALLBACK_DRIVERS.map((driver, i) => [driver.id, i + 1])));

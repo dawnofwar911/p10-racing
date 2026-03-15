@@ -1,3 +1,5 @@
+import { Driver, TEAM_COLORS } from '@/lib/types';
+
 export interface ApiDriver {
   driverId: string;
   permanentNumber: string;
@@ -43,30 +45,6 @@ export interface ApiCalendarRace {
   time?: string;
 }
 
-export interface AppDriver {
-  id: string;
-  name: string;
-  team: string;
-  teamId: string;
-  code: string;
-  number: number;
-  color: string;
-  points: number; // Added points
-}
-
-export interface DbPrediction {
-  id: string;
-  user_id: string;
-  race_id: string;
-  p10_driver_id: string;
-  dnf_driver_id: string;
-  created_at: string;
-  updated_at: string;
-  profiles?: {
-    username: string;
-  };
-}
-
 const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
 
 export async function fetchRaceResults(season: number, round: number): Promise<ApiRace | null> {
@@ -101,29 +79,10 @@ export async function fetchCalendar(season: number): Promise<ApiCalendarRace[]> 
   }
 }
 
-export const TEAM_COLORS: { [id: string]: string } = {
-  red_bull: '#3671C6',
-  ferrari: '#E80020',
-  mclaren: '#FF8000',
-  mercedes: '#27F4D2',
-  aston_martin: '#229971',
-  alpine: '#0093CC',
-  williams: '#64C4FF',
-  rb: '#6692FF',
-  vcarb: '#6692FF',
-  racing_bulls: '#6692FF',
-  alphatauri: '#6692FF',
-  audi: '#ffffff',
-  sauber: '#ffffff',
-  haas: '#B6BABD',
-  haas_f1_team: '#B6BABD',
-  cadillac: '#FFD700'
-};
-
-export async function fetchDrivers(season: number): Promise<AppDriver[]> {
+export async function fetchDrivers(season: number): Promise<Driver[]> {
   try {
     const response = await fetch(`${BASE_URL}/${season}/driverStandings.json`);
-    const apiDrivers: AppDriver[] = [];
+    const apiDrivers: Driver[] = [];
     if (response.ok) {
       const data = await response.json();
       const standings = data.MRData.StandingsTable.StandingsLists[0];
@@ -180,7 +139,7 @@ export async function fetchDrivers(season: number): Promise<AppDriver[]> {
   }
 }
 
-export async function fetchDriversFromOpenF1(sessionKey: number): Promise<AppDriver[]> {
+export async function fetchDriversFromOpenF1(sessionKey: number): Promise<Driver[]> {
   const ACRONYM_TO_ID: { [key: string]: string } = {
     'ALB': 'albon', 'ALO': 'alonso', 'ANT': 'antonelli', 'BEA': 'bearman',
     'BOR': 'bortoleto', 'BOT': 'bottas', 'COL': 'colapinto', 'GAS': 'gasly',
