@@ -122,7 +122,13 @@ function LeagueDetailContent() {
       .select('id, username')
       .in('id', memberIds);
 
-    const members = profilesData || [];
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+
+    const members = (profilesData || []).filter(p => {
+      const isTestAccount = p.username.toLowerCase().includes('tester') || p.username.toLowerCase().includes('reviewer');
+      return !isTestAccount || p.id === currentUserId;
+    });
 
     // Fetch predictions for those members
     const { data: predictionsData } = await supabase

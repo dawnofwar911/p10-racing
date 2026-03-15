@@ -48,16 +48,25 @@ export default function LeaderboardPage() {
     let playersData: LeaderboardPlayer[] = [];
 
     if (view === 'global') {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+
       const { data: profiles } = await supabase.from('profiles').select('id, username');
       const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
 
       if (profiles) {
-        playersData = profiles.map(p => ({ 
-          username: p.username, 
-          userId: p.id, 
-          isLocal: false,
-          dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
-        }));
+        playersData = profiles
+          .filter(p => {
+            const isTestAccount = p.username.toLowerCase().includes('tester') || p.username.toLowerCase().includes('reviewer');
+            // Show if NOT a test account OR if it IS the current user's account
+            return !isTestAccount || p.id === currentUserId;
+          })
+          .map(p => ({ 
+            username: p.username, 
+            userId: p.id, 
+            isLocal: false,
+            dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+          }));
       }
     } else {
       const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
