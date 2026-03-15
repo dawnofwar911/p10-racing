@@ -7,6 +7,7 @@ import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchCalendar, DbPrediction } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
+import { isTestAccount } from '@/lib/utils/profiles';
 
 interface LeaderboardPlayer {
   username: string;
@@ -57,9 +58,8 @@ export default function LeaderboardPage() {
       if (profiles) {
         playersData = profiles
           .filter(p => {
-            const isTestAccount = p.username.toLowerCase().includes('tester') || p.username.toLowerCase().includes('reviewer');
             // Show if NOT a test account OR if it IS the current user's account
-            return !isTestAccount || p.id === currentUserId;
+            return !isTestAccount(p.username) || p.id === currentUserId;
           })
           .map(p => ({ 
             username: p.username, 
