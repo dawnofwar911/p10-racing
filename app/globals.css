@@ -5,6 +5,10 @@
   --f1-grey: #38383f;
   --nav-height: 65px;
   --header-height: 56px;
+  --z-index-offcanvas-backdrop: 1040;
+  --z-index-offcanvas: 1045;
+  --z-index-bottom-nav: 1050;
+  --z-index-navbar: 1060;
 }
 
 /* Force dark theme at the root level */
@@ -32,7 +36,7 @@ body {
 /* Header stability */
 .navbar {
   padding-top: env(safe-area-inset-top, 0px) !important;
-  z-index: 1060;
+  z-index: var(--z-index-navbar);
   min-height: var(--header-height);
   flex-shrink: 0;
   background-color: var(--f1-black) !important;
@@ -130,7 +134,7 @@ main {
 /* User Drawer Alignment */
 .offcanvas.user-drawer-offcanvas {
   top: var(--header-height) !important;
-  z-index: 1045 !important; /* Below the navbars (1060 and 1050) */
+  z-index: var(--z-index-offcanvas) !important; /* Below the navbars */
   border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: -5px 0 15px rgba(0,0,0,0.5);
   height: calc(100% - var(--header-height) - var(--nav-height) - env(safe-area-inset-bottom, 0px)) !important;
@@ -141,7 +145,7 @@ main {
 .offcanvas-backdrop.show {
   top: var(--header-height) !important;
   height: calc(100% - var(--header-height) - var(--nav-height) - env(safe-area-inset-bottom, 0px)) !important;
-  z-index: 1040 !important;
+  z-index: var(--z-index-offcanvas-backdrop) !important;
 }
 
 @media (min-width: 1200px) {
@@ -162,7 +166,7 @@ main {
   left: 0;
   right: 0;
   background-color: var(--f1-black);
-  z-index: 1050;
+  z-index: var(--z-index-bottom-nav);
   height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   flex-shrink: 0;

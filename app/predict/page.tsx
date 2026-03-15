@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
+import { getDriverDisplayName } from '@/lib/utils/drivers';
 
 interface PredictRace {
   id: string;
@@ -75,7 +76,7 @@ function PredictPage() {
           .from('profiles')
           .select('username')
           .eq('id', currentSession.user.id)
-          .single();
+          .maybeSingle();
         if (profile) {
           currentUsername = profile.username;
           setUsername(profile.username);
@@ -169,11 +170,20 @@ function PredictPage() {
             .select('*')
             .eq('user_id', currentSession.user.id)
             .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
-            .single();
+            .maybeSingle();
           
           if (dbPred) {
             setP10Driver(dbPred.p10_driver_id);
             setDnfDriver(dbPred.dnf_driver_id);
+          } else {
+            // Offline/Cache fallback for auth users
+            const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
+            const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace.id}`);
+            if (finalized) {
+              const parsed = JSON.parse(finalized);
+              setP10Driver(parsed.p10);
+              setDnfDriver(parsed.dnf);
+            }
           }
         } else if (currentUsername) {
           const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUsername}_${currentRace.id}`);
@@ -252,7 +262,8 @@ function PredictPage() {
         }
 
         // 2. Mirror to LocalStorage for instant UI & offline support
-        localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
+        const storageUser = username || session.user.id;
+        localStorage.setItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${nextRace.id}`, JSON.stringify(prediction));
       } else {
         // Guest mode - LocalStorage only
         localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
@@ -283,8 +294,8 @@ function PredictPage() {
   };
 
   const handleShare = async () => {
-    const p10Name = drivers.find(d => d.id === p10Driver)?.name || p10Driver;
-    const dnfName = drivers.find(d => d.id === dnfDriver)?.name || dnfDriver;
+    const p10Name = getDriverDisplayName(p10Driver, drivers as AppDriver[]);
+    const dnfName = getDriverDisplayName(dnfDriver, drivers as AppDriver[]);
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
     
     try {
@@ -295,11 +306,10 @@ function PredictPage() {
         dialogTitle: 'Share your Picks',
       });
     } catch (error) {
-      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web)
-      // Dismissing the share dialog on some platforms triggers an error, which we should ignore.
+      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web or unsupported browser)
       console.log('Share dismissed or failed:', error);
       
-      if (!navigator.share && !window.location.protocol.includes('https')) {
+      if (!navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
         showNotification('Picks copied to clipboard!', 'success');
       }
