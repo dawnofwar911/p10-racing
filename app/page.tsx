@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
-import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS, SimplifiedResults } from '@/lib/data';
+import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
+import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Share } from '@capacitor/share';
 import { calculateSeasonPoints } from '@/lib/scoring';
@@ -95,6 +96,8 @@ export default function Home() {
 
       if (races.length > 0) {
         const now = new Date();
+        const raceResultsMap = await fetchAllSimplifiedResults();
+        
         // Find the "active" race using the same 4-hour window logic as the predict page
         let activeIndex = races.findIndex((r: ApiCalendarRace) => {
           const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
@@ -106,33 +109,29 @@ export default function Home() {
           activeIndex = races.length - 1;
         }
 
+        // SMART UNLOCK: If the identified "active" race already has results, advance to the next race early.
+        if (activeIndex >= 0 && activeIndex < races.length) {
+          const currentCandidate = races[activeIndex];
+          if (raceResultsMap[currentCandidate.round]) {
+            if (activeIndex < races.length - 1) {
+              activeIndex++;
+            }
+          }
+        }
+
         const upcoming = races[activeIndex];
 
-        // Calculate if ALL races in the calendar have results in localStorage
-        let resultsCount = 0;
-        races.forEach((r: ApiCalendarRace) => {
-          if (localStorage.getItem(`results_${CURRENT_SEASON}_${r.round}`)) {
-            resultsCount++;
-          }
-        });
-        const allRacesHaveResults = resultsCount > 0 && resultsCount === races.length;
+        // Calculate if ALL races in the calendar have results
+        const resultsFoundCount = Object.keys(raceResultsMap).length;
+        const allRacesHaveResults = resultsFoundCount > 0 && resultsFoundCount === races.length;
 
         // Season is finished if activeIndex is at the end and all races have results
         if (activeIndex === races.length - 1 && allRacesHaveResults) {
           setIsSeasonFinished(true);
-          // Fetch leaderboard to find champion
+          // Fetch profiles and predictions for champion calculation
           const { data: profiles } = await supabase.from('profiles').select('id, username');
           const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
-          const { data: dbResults } = await supabase.from('verified_results').select('*');
 
-          const raceResultsMap: { [round: string]: SimplifiedResults } = {};
-          if (dbResults) {
-            dbResults.forEach(res => {
-              const round = res.id.split('_')[1];
-              raceResultsMap[round] = res.data as unknown as SimplifiedResults;
-            });
-          }
-          
           if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
             const players = profiles.map(p => ({ 
               username: p.username, 

@@ -113,6 +113,20 @@ function PredictPage() {
           setIsSeasonFinished(true);
         }
 
+        // If the identified "active" race already has results, it's no longer the "next" race.
+        // We should advance to the following round, even if we're within the 4-hour post-race window.
+        if (!isSeasonFinished) {
+          const currentCandidate = races[activeIndex];
+          const candidateResults = await fetchRaceResults(CURRENT_SEASON, parseInt(currentCandidate.round));
+          if (candidateResults && candidateResults.Results && candidateResults.Results.length > 0) {
+            if (activeIndex < races.length - 1) {
+              activeIndex++;
+            } else {
+              setIsSeasonFinished(true);
+            }
+          }
+        }
+
         if (activeIndex > 0 && !isSeasonFinished) {
           const prevRace = races[activeIndex - 1];
           const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));

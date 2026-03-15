@@ -30,13 +30,49 @@ Deno.serve(async () => {
 
     if (!races || races.length === 0) return new Response('No races found');
 
-    // Find the first race that hasn't happened yet or happened recently
-    const upcomingRace = races.find((r: { date: string }) => new Date(r.date) >= now) || races[races.length - 1];
-    const round = upcomingRace.round;
+    // Find the latest finished race that doesn't have results yet
+    let roundToProcess = null;
+    let raceToProcess = null;
+
+    // Check races in reverse to find the most recent one that *should* have results
+    for (let i = races.length - 1; i >= 0; i--) {
+      const r = races[i];
+      const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
+      
+      // If the race started more than 2 hours ago, it's a candidate for results check
+      if (now.getTime() > raceTime.getTime() + (2 * 60 * 60 * 1000)) {
+        const { data: verified } = await supabase
+          .from('verified_results')
+          .select('id')
+          .eq('id', `${season}_${r.round}`)
+          .maybeSingle();
+        
+        if (!verified) {
+          roundToProcess = r.round;
+          raceToProcess = r;
+          // We found the most recent finished race without results. 
+          // Stop here to process it.
+          break;
+        }
+      }
+    }
+
+    // If we didn't find any finished race needing results, 
+    // default to the "active" race for qualifying checks etc.
+    let activeIndex = races.findIndex((r: { date: string, time?: string }) => {
+      const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
+      const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
+      return fourHoursLater > now;
+    });
+
+    if (activeIndex === -1) activeIndex = races.length - 1;
+
+    const round = roundToProcess || races[activeIndex].round;
+    const upcomingRace = raceToProcess || races[activeIndex];
 
     // --- NEW: Sync Calendar ---
     // Every time we check, let's sync the next few races to the DB to ensure locking works
-    const racesToSync = races.filter((r: { date: string }) => new Date(r.date) >= now).slice(0, 3);
+    const racesToSync = races.slice(activeIndex, activeIndex + 3);
     for (const r of (racesToSync.length > 0 ? racesToSync : [races[races.length - 1]])) {
       const raceId = `${season}_${r.round}`;
       const raceStartTime = `${r.date}T${r.time || '00:00:00Z'}`;

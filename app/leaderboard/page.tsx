@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
-import { LeaderboardEntry, CURRENT_SEASON, SimplifiedResults } from '@/lib/data';
+import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchCalendar, DbPrediction } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
+import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 
 interface LeaderboardPlayer {
@@ -28,18 +29,8 @@ export default function LeaderboardPage() {
   const calculate = useCallback(async () => {
     setLoading(true);
     
-    // 1. Fetch all verified results from Supabase
-    const { data: dbResults } = await supabase
-      .from('verified_results')
-      .select('*');
-
-    const raceResultsMap: { [round: string]: SimplifiedResults } = {};
-    if (dbResults) {
-      dbResults.forEach(res => {
-        const round = res.id.split('_')[1];
-        raceResultsMap[round] = res.data as unknown as SimplifiedResults;
-      });
-    }
+    // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
+    const raceResultsMap = await fetchAllSimplifiedResults();
 
     // 2. Fetch Calendar to check if season is complete
     const races = await fetchCalendar(CURRENT_SEASON);
