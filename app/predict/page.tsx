@@ -422,16 +422,16 @@ function PredictPage() {
       <Container className="mt-4 mb-3">
         <Row className="mb-4 align-items-center">
           <Col>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-3">
               <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1>
               <Button 
-                variant="outline-secondary" 
+                variant="outline-danger" 
                 size="sm" 
-                className="rounded-circle p-0 d-flex align-items-center justify-content-center opacity-50" 
-                style={{ width: '22px', height: '22px', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px' }}
+                className="rounded-pill px-3 py-1 d-flex align-items-center justify-content-center border-opacity-50" 
+                style={{ fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '1px' }}
                 onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setShowHowToPlay(true); }}
               >
-                ?
+                <span className="me-1">?</span> HOW TO PLAY
               </Button>
             </div>
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
