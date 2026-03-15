@@ -178,7 +178,7 @@ export default function Home() {
 
         // Calculate locking based on start time
         const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
-        const lockTime = new Date(raceStartTime.getTime() + 120000);
+        const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
         setIsLocked(now > lockTime);
 
         if (session) {

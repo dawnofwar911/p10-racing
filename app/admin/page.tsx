@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS, AppDriver, ApiCalendarRace } from '@/lib/api';
@@ -41,25 +41,26 @@ export default function AdminPage() {
     }
   }, [status]);
 
-  useEffect(() => {
+  const checkExistingResults = useCallback(async () => {
     if (!isAdmin || !selectedRace) return;
-    async function checkExisting() {
-      const { data } = await supabase
-        .from('verified_results')
-        .select('data')
-        .eq('id', `${season}_${selectedRace}`)
-        .maybeSingle();
-      
-      if (data?.data) {
-        const d = data.data as { positions: { [key: string]: number }, firstDnf: string };
-        const p10Id = Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown';
-        setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
-      } else {
-        setExistingResult(null);
-      }
+    const { data } = await supabase
+      .from('verified_results')
+      .select('data')
+      .eq('id', `${season}_${selectedRace}`)
+      .maybeSingle();
+    
+    if (data?.data) {
+      const d = data.data as { positions: { [key: string]: number }, firstDnf: string };
+      const p10Id = d.positions ? Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown' : 'Unknown';
+      setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
+    } else {
+      setExistingResult(null);
     }
-    checkExisting();
   }, [isAdmin, season, selectedRace, supabase]);
+
+  useEffect(() => {
+    checkExistingResults();
+  }, [checkExistingResults]);
 
   useEffect(() => {
     async function checkAdmin() {
@@ -201,8 +202,7 @@ export default function AdminPage() {
         setStatus({ message: `Results published! Leaderboard updated GLOBALLY for Round ${selectedRace}.`, variant: 'success' });
         Haptics.notification({ type: NotificationType.Success });
         // Refresh existing check logic for UI update
-        const p10Id = Object.entries(results).find(([, pos]) => pos === 10)?.[0] || 'Unknown';
-        setExistingResult({ p10: p10Id, dnf: firstDnf || 'None' });
+        checkExistingResults();
       }
     }
   };
