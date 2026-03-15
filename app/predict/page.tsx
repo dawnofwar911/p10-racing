@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult, DbPrediction } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult } from '@/lib/api';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
@@ -28,6 +28,13 @@ interface CommunityPrediction {
   username: string;
   p10: string;
   dnf: string;
+}
+
+interface DbCommunityPrediction {
+  user_id: string;
+  p10_driver_id: string;
+  dnf_driver_id: string;
+  profiles: { username: string } | { username: string }[] | null;
 }
 
 function PredictPage() {
@@ -201,7 +208,7 @@ function PredictPage() {
 
         console.log('DB Community Preds RAW:', dbCommunityPreds);
 
-        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? (dbCommunityPreds as any[]).map((p) => ({
+        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? (dbCommunityPreds as unknown as DbCommunityPrediction[]).map((p) => ({
           username: (Array.isArray(p.profiles) ? p.profiles[0]?.username : p.profiles?.username) || 'Unknown',
           p10: p.p10_driver_id,
           dnf: p.dnf_driver_id
