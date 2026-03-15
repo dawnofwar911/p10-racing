@@ -10,6 +10,7 @@ import OfflineStatus from '@/components/OfflineStatus';
 import AppNavbar from '@/components/AppNavbar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import PushNotificationHandler from '@/components/PushNotificationHandler';
+import PWAInstallHint from '@/components/PWAInstallHint';
 import { NotificationProvider } from '@/components/Notification';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -51,6 +52,7 @@ export default function RootLayout({
               </Suspense>
             </main>
 
+            <PWAInstallHint />
             <MobileBottomNav />
           </NativeWrapper>
         </NotificationProvider>

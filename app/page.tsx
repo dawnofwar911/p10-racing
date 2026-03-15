@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, ApiCalendarRace, AppDriver, DbPrediction } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, ApiCalendarRace } from '@/lib/api';
+import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Share } from '@capacitor/share';
@@ -14,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import HowToPlayButton from '@/components/HowToPlayButton';
+import PullToRefresh from '@/components/PullToRefresh';
 
 interface HomeRace {
   id: string;
@@ -39,7 +41,7 @@ export default function Home() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [isRaceInProgress, setIsRaceInProgress] = useState(false);
-  const [allDrivers, setAllDrivers] = useState<AppDriver[]>(FALLBACK_DRIVERS as unknown as AppDriver[]);
+  const [allDrivers, setAllDrivers] = useState<Driver[]>(FALLBACK_DRIVERS as unknown as Driver[]);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
@@ -47,28 +49,33 @@ export default function Home() {
   const router = useRouter();
   const { showNotification } = useNotification();
 
-  useEffect(() => {
-    async function init() {
-      // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
-      // We ONLY want to redirect to reset-password if it is explicitly a recovery type
-      const isRecovery = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
-      const hasRecoveryParam = typeof window !== 'undefined' && window.location.search.includes('type=recovery');
+  const init = useCallback(async () => {
+    // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
+    const isRecovery = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+    const hasRecoveryParam = typeof window !== 'undefined' && window.location.search.includes('type=recovery');
 
-      // We only want to force redirect if it is EXPLICITLY recovery.      // Generic 'code' or 'access_token' are used for signups too.
-      if (isRecovery || hasRecoveryParam) {
-        console.log('Recovery token detected, redirecting to reset-password');
-        const target = '/auth/reset-password' + window.location.search + window.location.hash;
-        router.replace(target);
-        return;
-      }
+    if (isRecovery || hasRecoveryParam) {
+      const target = '/auth/reset-password' + window.location.search + window.location.hash;
+      router.replace(target);
+      return;
+    }
 
-      // If it's a PKCE code but NOT a recovery type, we let it pass to getSession()
-      // Supabase will exchange it for a session automatically.
+    // Load from cache first to avoid layout shift
+    const cachedRace = localStorage.getItem('p10_cache_next_race');
+    const cachedDrivers = localStorage.getItem('p10_cache_drivers');
+    if (cachedRace) setNextRace(JSON.parse(cachedRace));
+    if (cachedDrivers) setAllDrivers(JSON.parse(cachedDrivers));
+
+    // Only show full-screen loading if we have NO cached data
+    if (!cachedRace) {
+      setLoading(true);
+    }
+
+    try {
       const { data: { session } } = await supabase.auth.getSession();
 
       // Secondary check: if session exists but user came from recovery
       if (session && window.location.hash.includes('type=recovery')) {
-        console.log('Recovery bypass detected, signing out and forcing redirect');
         await supabase.auth.signOut();
         router.replace('/auth/reset-password' + window.location.hash);
         return;
@@ -78,14 +85,7 @@ export default function Home() {
       const user = localStorage.getItem('p10_current_user');
       setCurrentUser(user);
 
-      // Load from cache first
-      const cachedRace = localStorage.getItem('p10_cache_next_race');
-      const cachedDrivers = localStorage.getItem('p10_cache_drivers');
-      if (cachedRace) setNextRace(JSON.parse(cachedRace));
-      if (cachedDrivers) setAllDrivers(JSON.parse(cachedDrivers));
-      if (cachedRace || cachedDrivers) setLoading(false);
-
-        const [races, drivers] = await Promise.all([
+      const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
         fetchDrivers(CURRENT_SEASON)
       ]);
@@ -205,10 +205,17 @@ export default function Home() {
           if (predStr) setUserPrediction(JSON.parse(predStr));
         }
       }
+    } catch (error) {
+      console.error('Init error:', error);
+    } finally {
       setLoading(false);
     }
-    init();
   }, [supabase, router]);
+
+  useEffect(() => {
+    init();
+  }, [init]);
+
 
   useEffect(() => {
     if (!nextRace) return;
@@ -271,7 +278,7 @@ export default function Home() {
   };
 
   return (
-    <>
+    <PullToRefresh onRefresh={init}>
       <Container className="mt-3 mt-md-4 flex-grow-1">
         <Row className="justify-content-center text-center">
           <Col md={8} className="mb-2">
@@ -423,6 +430,6 @@ export default function Home() {
           </Row>
         )}
       </Container>
-    </>
+    </PullToRefresh>
   );
 }
