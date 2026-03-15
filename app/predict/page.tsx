@@ -15,6 +15,7 @@ import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
+import HowToPlayButton from '@/components/HowToPlayButton';
 
 interface PredictRace {
   id: string;
@@ -424,15 +425,9 @@ function PredictPage() {
           <Col>
             <div className="d-flex align-items-center gap-3">
               <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1>
-              <Button 
-                variant="outline-danger" 
-                size="sm" 
-                className="rounded-pill px-3 py-1 d-flex align-items-center justify-content-center border-opacity-50" 
-                style={{ fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '1px' }}
+              <HowToPlayButton 
                 onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setShowHowToPlay(true); }}
-              >
-                <span className="me-1">?</span> HOW TO PLAY
-              </Button>
+              />
             </div>
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>

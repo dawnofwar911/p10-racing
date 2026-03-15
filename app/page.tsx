@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
+import HowToPlayButton from '@/components/HowToPlayButton';
 
 interface HomeRace {
   id: string;
@@ -344,17 +345,9 @@ export default function Home() {
             </div>
             
             <div className="mb-4">
-              <Link href="/predict?howto=true" passHref legacyBehavior>
-                <Button 
-                  variant="outline-danger" 
-                  size="sm" 
-                  className="rounded-pill px-3 py-1 d-inline-flex align-items-center justify-content-center border-opacity-50" 
-                  style={{ fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '1px' }}
-                  onClick={triggerHaptic}
-                >
-                  <span className="me-1">?</span> HOW TO PLAY
-                </Button>
-              </Link>
+              <HowToPlayButton 
+                onClick={() => { triggerHaptic(); router.push('/predict?howto=true'); }}
+              />
             </div>
 
             {!isSeasonFinished && userPrediction && nextRace && (
