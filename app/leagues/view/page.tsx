@@ -4,18 +4,14 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { Container, Row, Col, Table, Card, Spinner, Badge, Button } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
+import { fetchCalendar, DbPrediction } from '@/lib/api';
 import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
+import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 import LoadingView from '@/components/LoadingView';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-
-interface SimplifiedResults {
-  positions: { [driverId: string]: number };
-  firstDnf: string | null;
-}
 
 function LeagueDetailContent() {
   const searchParams = useSearchParams();
@@ -65,43 +61,9 @@ function LeagueDetailContent() {
     const leagueCreatedAt = new Date(league.created_at);
 
     // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
+    const raceResultsMap = await fetchAllSimplifiedResults();
     const races = await fetchCalendar(CURRENT_SEASON);
-    const raceResultsMap: { [round: string]: SimplifiedResults & { date: Date } } = {};
-    
-    const { data: verifiedData } = await supabase.from('verified_results').select('*');
-    
-    let resultsFoundCount = 0;
-    await Promise.all(races.map(async (race: ApiCalendarRace) => {
-      const round = race.round;
-      const raceDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
-      const verifiedMatch = verifiedData?.find(v => v.id === `${CURRENT_SEASON}_${round}`);
-      
-      if (verifiedMatch) {
-        raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
-        resultsFoundCount++;
-      } else {
-        const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
-        if (resultsData) {
-          raceResultsMap[round] = { ...JSON.parse(resultsData), date: raceDate };
-          resultsFoundCount++;
-        } else {
-          const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
-          if (apiResults) {
-            const firstDnfDriver = getFirstDnfDriver(apiResults);
-            const simplified = {
-              positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
-                acc[r.Driver.driverId] = parseInt(r.position);
-                return acc;
-              }, {}),
-              firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null,
-              date: raceDate
-            };
-            raceResultsMap[round] = simplified;
-            resultsFoundCount++;
-          }
-        }
-      }
-    }));
+    const resultsFoundCount = Object.keys(raceResultsMap).length;
 
     setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
