@@ -4,7 +4,7 @@ import React from 'react';
 import { Offcanvas, Button } from 'react-bootstrap';
 import Link from 'next/link';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { Settings, LogOut, ShieldAlert } from 'lucide-react';
+import { Settings, LogOut, ShieldAlert, History, LogIn, User } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 
 interface UserDrawerProps {
@@ -46,7 +46,11 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
           <p className="text-muted small text-uppercase letter-spacing-1 mb-1">Signed in as</p>
           <div className="d-flex align-items-center">
             <div className="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center fw-bold me-3" style={{ width: '45px', height: '45px', fontSize: '1.2rem' }}>
-              {currentUser?.charAt(0).toUpperCase() || '?'}
+              {currentUser ? (
+                currentUser.charAt(0).toUpperCase()
+              ) : (
+                <User size={24} />
+              )}
             </div>
             <div>
               <h4 className="mb-0 fw-bold">{currentUser || 'Guest'}</h4>
@@ -71,6 +75,17 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
               </Link>
             )}
 
+            <Link href="/history" passHref legacyBehavior>
+              <Button 
+                variant="outline-light" 
+                className="w-100 text-start d-flex align-items-center border-0 p-3 rounded opacity-75 hover-opacity-100"
+                onClick={handleLinkClick}
+              >
+                <History size={20} className="me-3" />
+                <span className="fw-bold letter-spacing-1 text-uppercase small">Season History</span>
+              </Button>
+            </Link>
+
             <Link href="/settings" passHref legacyBehavior>
               <Button 
                 variant="outline-light" 
@@ -86,7 +101,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
 
         {/* Footer Actions */}
         <div className="p-4 border-top border-secondary border-opacity-25 mt-auto">
-          {(session || currentUser) && (
+          {session ? (
             <Button 
               variant="danger" 
               className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center"
@@ -98,6 +113,17 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
               <LogOut size={18} className="me-2" />
               SIGN OUT
             </Button>
+          ) : (
+            <Link href="/auth" passHref legacyBehavior>
+              <Button 
+                variant="primary" 
+                className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center rounded-pill"
+                onClick={handleLinkClick}
+              >
+                <LogIn size={18} className="me-2" />
+                SIGN IN
+              </Button>
+            </Link>
           )}
         </div>
       </Offcanvas.Body>
