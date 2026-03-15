@@ -211,27 +211,26 @@ function PredictPage() {
           console.error('Error fetching community predictions:', predsError);
         }
 
-        const { data: allProfiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username');
+        let formattedDbPreds: CommunityPrediction[] = [];
+        const userIds = (dbPreds as unknown as CommunityPredictionData[] || []).map(p => p.user_id);
 
-        if (profilesError) {
-          console.error('Error fetching profiles for community mapping:', profilesError);
-        }
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', userIds);
 
-        console.log(`Found ${dbPreds?.length || 0} predictions in DB for race ${CURRENT_SEASON}_${currentRace.id}`);
+          if (profilesError) {
+            console.error('Error fetching profiles for community mapping:', profilesError);
+          }
 
-        const formattedDbPreds: CommunityPrediction[] = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => {
-          const profile = allProfiles?.find(pr => pr.id === p.user_id);
-          return {
-            username: profile?.username || 'Unknown',
+          const profilesMap = new Map(profiles?.map(p => [p.id, p.username]));
+          formattedDbPreds = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => ({
+            username: profilesMap.get(p.user_id) || 'Unknown',
             p10: p.p10_driver_id,
             dnf: p.dnf_driver_id
-          };
-        });
-
-        console.log('Final Formatted DB Preds:', formattedDbPreds);
-        console.log('Current User for filtering:', currentUsername);
+          }));
+        }
 
         const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
 
