@@ -17,6 +17,12 @@ vi.mock('@/lib/supabase/client', () => ({
             single: vi.fn(() => Promise.resolve({ data: null, error: null })),
           })),
         })),
+        like: vi.fn(() => ({
+          select: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          // Add support for further chaining if needed
+          eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        })),
         single: vi.fn(() => Promise.resolve({ data: null, error: null })),
       })),
     })),

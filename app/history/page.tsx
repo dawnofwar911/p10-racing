@@ -29,10 +29,11 @@ export default function HistoryPage() {
     async function loadHistory() {
       const supabase = createClient();
       
-      // 1. Fetch all verified results from Supabase
+      // 1. Fetch all verified results from Supabase (filtered by current season)
       const { data: dbResults } = await supabase
         .from('verified_results')
-        .select('*');
+        .select('*')
+        .like('id', `${CURRENT_SEASON}_%`);
 
       if (!dbResults || dbResults.length === 0) {
         setLoading(false);
