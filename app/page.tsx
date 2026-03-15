@@ -11,6 +11,7 @@ import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useNotification } from '@/components/Notification';
+import { getDriverDisplayName } from '@/lib/utils/drivers';
 
 interface HomeRace {
   id: string;
@@ -172,13 +173,18 @@ export default function Home() {
             .select('*')
             .eq('user_id', session.user.id)
             .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
-            .single();
+            .maybeSingle();
           
           if (pred) {
             setUserPrediction({
               p10: pred.p10_driver_id,
               dnf: pred.dnf_driver_id
             });
+          } else {
+            // Offline/Cache fallback for auth users
+            const storageUser = localStorage.getItem('p10_cache_username') || session.user.id;
+            const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
+            if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
           }
         } else if (user) {
           const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${user}_${raceObj.id}`);
@@ -225,8 +231,8 @@ export default function Home() {
   const handleShare = async () => {
     if (!userPrediction || !nextRace) return;
     triggerHaptic();
-    const p10Name = allDrivers.find(d => d.id === userPrediction.p10)?.name || userPrediction.p10;
-    const dnfName = allDrivers.find(d => d.id === userPrediction.dnf)?.name || userPrediction.dnf;
+    const p10Name = getDriverDisplayName(userPrediction.p10, allDrivers);
+    const dnfName = getDriverDisplayName(userPrediction.dnf, allDrivers);
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
     
     try {
@@ -237,11 +243,10 @@ export default function Home() {
         dialogTitle: 'Share your Picks',
       });
     } catch (error) {
-      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web)
-      // Dismissing the share dialog on some platforms triggers an error, which we should ignore.
+      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web or unsupported browser)
       console.log('Share dismissed or failed:', error);
       
-      if (!navigator.share && !window.location.protocol.includes('https')) {
+      if (!navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
         showNotification('Picks copied to clipboard!', 'success');
       }
@@ -324,13 +329,13 @@ export default function Home() {
                   <div>
                     <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
                     <span className="fw-bold text-white h6 mb-0">
-                      {allDrivers.find(d => d.id === userPrediction.p10)?.name?.split(' ').pop() || (userPrediction.p10?.split('_').pop()?.toUpperCase())}
+                      {getDriverDisplayName(userPrediction.p10, allDrivers)}
                     </span>
                   </div>
                   <div className="border-start border-secondary border-opacity-25 ps-4">
                     <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
                     <span className="fw-bold text-danger h6 mb-0">
-                      {allDrivers.find(d => d.id === userPrediction.dnf)?.name?.split(' ').pop() || (userPrediction.dnf?.split('_').pop()?.toUpperCase())}
+                      {getDriverDisplayName(userPrediction.dnf, allDrivers)}
                     </span>
                   </div>
                 </div>
