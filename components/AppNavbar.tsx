@@ -33,6 +33,9 @@ export default function AppNavbar() {
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
       }
+      
+      // 2. Set isAuthReady true immediately if we have ANY data to show
+      setIsAuthReady(true);
 
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
@@ -60,7 +63,6 @@ export default function AppNavbar() {
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
       }
-      setIsAuthReady(true);
     }
 
     getSession();
