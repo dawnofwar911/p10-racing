@@ -3,7 +3,7 @@
 import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { User } from 'lucide-react';
@@ -21,47 +21,59 @@ export default function AppNavbar() {
   const pathname = usePathname();
   const supabase = createClient();
 
+  const resetToGuestState = useCallback(() => {
+    localStorage.removeItem('p10_cache_username');
+    localStorage.removeItem('p10_cache_is_admin');
+    const localUser = localStorage.getItem('p10_current_user');
+    setCurrentUser(localUser);
+    setIsAdmin(false);
+  }, []);
+
   useEffect(() => {
     async function getSession() {
-      // 1. Load from cache immediately for instant UI
+      // 1. Load from cache immediately for instant UI if data exists
       const cachedUser = localStorage.getItem('p10_cache_username');
       const cachedIsAdmin = localStorage.getItem('p10_cache_is_admin') === 'true';
+      
       if (cachedUser) {
         setCurrentUser(cachedUser);
         setIsAdmin(cachedIsAdmin);
+        setIsAuthReady(true); // Only ready immediately if we have cache to show
       } else {
         const localUser = localStorage.getItem('p10_current_user');
         setCurrentUser(localUser);
+        // Do NOT set isAuthReady yet to avoid "Guest" flash for slow connections
       }
-      
-      // 2. Set isAuthReady true immediately if we have ANY data to show
-      setIsAuthReady(true);
 
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        setSession(currentSession);
 
-      if (currentSession) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, is_admin')
-          .eq('id', currentSession.user.id)
-          .single();
-        
-        if (profile) {
-          setCurrentUser(profile.username);
-          setIsAdmin(!!profile.is_admin);
-          localStorage.setItem('p10_cache_username', profile.username);
-          localStorage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
+        if (currentSession) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, is_admin')
+            .eq('id', currentSession.user.id)
+            .single();
+          
+          if (profile) {
+            setCurrentUser(profile.username);
+            setIsAdmin(!!profile.is_admin);
+            localStorage.setItem('p10_cache_username', profile.username);
+            localStorage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
+          } else {
+            const fallback = currentSession.user.email?.split('@')[0] || 'User';
+            setCurrentUser(fallback);
+            localStorage.setItem('p10_cache_username', fallback);
+          }
         } else {
-          const fallback = currentSession.user.email?.split('@')[0] || 'User';
-          setCurrentUser(fallback);
-          localStorage.setItem('p10_cache_username', fallback);
+          resetToGuestState();
         }
-      } else {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
-        setCurrentUser(localUser);
+      } catch (error) {
+        console.error('Session fetch error:', error);
+        resetToGuestState();
+      } finally {
+        setIsAuthReady(true); // Always ready after network check
       }
     }
 
@@ -70,21 +82,13 @@ export default function AppNavbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
-        setCurrentUser(localUser);
-        setIsAdmin(false);
+        resetToGuestState();
         window.location.href = '/';
         return;
       }
       
       if (!newSession) {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
-        setCurrentUser(localUser);
-        setIsAdmin(false);
+        resetToGuestState();
       } else {
         supabase
           .from('profiles')
@@ -107,14 +111,14 @@ export default function AppNavbar() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, resetToGuestState]);
 
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
-    // Clear all session-related cache immediately
-    localStorage.removeItem('p10_cache_username');
-    localStorage.removeItem('p10_cache_is_admin');
+    
+    // Clear additional guest-only data
     localStorage.removeItem('p10_current_user');
+    resetToGuestState();
     
     if (session) {
       await supabase.auth.signOut();
