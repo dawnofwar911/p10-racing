@@ -1,10 +1,10 @@
 import { createServerClient } from './supabase/client';
-import { fetchRaceResults, getFirstDnfDriver, getP10DriverId } from './api';
+import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, getP10DriverId } from './api';
 import { CURRENT_SEASON } from './data';
 import { SimplifiedResults } from './types';
 import { storage } from './storage';
 
-export type EnhancedSimplifiedResults = SimplifiedResults & { date?: Date };
+export type EnhancedSimplifiedResults = SimplifiedResults & { date: Date };
 
 /**
  * Fetches all verified results for the given season.
@@ -17,6 +17,12 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
   
   // To avoid window is not defined errors in SSR
   const isClient = typeof window !== 'undefined';
+
+  // 0. Fetch calendar at the start to ensure we have dates for all rounds
+  const races = await fetchCalendar(season);
+  const raceDates = new Map<string, Date>(
+    races.map(r => [r.round, new Date(`${r.date}T${r.time || '00:00:00Z'}`)])
+  );
 
   try {
     // Priority 1: Supabase Verified Results
@@ -31,11 +37,12 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
       for (const row of verifiedData) {
         const round = row.id.split('_')[1];
         const data = row.data as { positions: { [driverId: string]: number }, firstDnf: string | null };
+        const raceDate = raceDates.get(round) || new Date(row.created_at);
         
         resultsMap[round] = {
           firstDnf: data.firstDnf || null,
           positions: data.positions,
-          date: new Date(row.created_at)
+          date: raceDate
         };
         
         // Cache these verified results locally for fast offline access
@@ -52,14 +59,18 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
   // FALLBACK STRATEGY (If Supabase fails or is empty for this season)
   console.log(`Falling back to API/Cache for season ${season} results...`);
   
-  // We don't know exactly how many races there are, so we check up to a reasonable max (e.g., 25)
-  // But we stop as soon as we hit an unrun race.
   for (let round = 1; round <= 25; round++) {
+    const roundStr = round.toString();
     try {
       // Priority 2: Cache (Cached results from previous API fetches)
-      const cachedData = isClient ? await storage.getItem(`results_${season}_${round}`) : null;
+      const cachedData = isClient ? await storage.getItem(`results_${season}_${roundStr}`) : null;
       if (cachedData) {
-        resultsMap[round.toString()] = JSON.parse(cachedData);
+        const parsed = JSON.parse(cachedData);
+        // Ensure the date is correctly re-hydrated if it was stored as string
+        resultsMap[roundStr] = {
+          ...parsed,
+          date: new Date(parsed.date || raceDates.get(roundStr) || new Date())
+        };
         continue; // Go to next round
       }
 
@@ -75,14 +86,16 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
         });
 
         if (p10DriverId) {
-          const simplified: SimplifiedResults = {
+          const raceDate = raceDates.get(roundStr) || new Date();
+          const simplified: EnhancedSimplifiedResults = {
             firstDnf: dnfDriver ? dnfDriver.driverId : null,
-            positions
+            positions,
+            date: raceDate
           };
-          resultsMap[round.toString()] = simplified;
+          resultsMap[roundStr] = simplified;
           
           if (isClient) {
-            await storage.setItem(`results_${season}_${round}`, JSON.stringify(simplified));
+            await storage.setItem(`results_${season}_${roundStr}`, JSON.stringify(simplified));
           }
         }
       } else {

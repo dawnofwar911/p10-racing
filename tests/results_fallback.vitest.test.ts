@@ -30,6 +30,7 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
     vi.clearAllMocks();
     (createClient as any).mockReturnValue(mockSupabase);
     (createServerClient as any).mockReturnValue(mockSupabase);
+    (fetchCalendar as any).mockResolvedValue([]);
     window.localStorage.clear();
   });
 
