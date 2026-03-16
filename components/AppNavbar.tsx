@@ -77,37 +77,55 @@ export default function AppNavbar() {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      setSession(newSession);
-      sessionRef.current = newSession;
+      try {
+        setSession(newSession);
+        sessionRef.current = newSession;
 
-      if (event === 'SIGNED_OUT') {
-        await resetToGuestState();
-        window.location.href = '/';
-        return;
-      }
-      
-      if (newSession) {
-        setIsSyncPending(hasPendingPrediction(newSession.user.id));
-        triggerSync(newSession);
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, is_admin')
-          .eq('id', newSession.user.id)
-          .single();
-        
-        if (profile) {
-          setCurrentUser(profile.username);
-          setIsAdmin(!!profile.is_admin);
-          await storage.setItem('p10_cache_username', profile.username);
-          await storage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
-        } else {
-          const fallback = newSession.user.email?.split('@')[0] || 'User';
-          setCurrentUser(fallback);
-          await storage.setItem('p10_cache_username', fallback);
+        if (event === 'SIGNED_OUT') {
+          await resetToGuestState();
+          window.location.href = '/';
+          return;
         }
-      } else if (event !== 'INITIAL_SESSION') {
-        await resetToGuestState();
+        
+        if (newSession) {
+          setIsSyncPending(hasPendingPrediction(newSession.user.id));
+          triggerSync(newSession);
+
+          // Get profile with timeout to prevent hanging on resume
+          const profilePromise = supabase
+            .from('profiles')
+            .select('username, is_admin')
+            .eq('id', newSession.user.id)
+            .maybeSingle();
+          
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Profile fetch timeout')), 5000));
+          
+          try {
+            const result = await Promise.race([profilePromise, timeoutPromise]) as { data: { username: string, is_admin: boolean } | null };
+            const { data: profile } = result;
+            
+            if (profile) {
+              setCurrentUser(profile.username);
+              setIsAdmin(!!profile.is_admin);
+              await storage.setItem('p10_cache_username', profile.username);
+              await storage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
+            } else {
+              const fallback = newSession.user.email?.split('@')[0] || 'User';
+              setCurrentUser(fallback);
+              await storage.setItem('p10_cache_username', fallback);
+            }
+          } catch (profileErr) {
+             console.warn('Auth state profile fetch failed:', profileErr);
+             // Fallback to email if profile fetch fails (e.g. offline)
+             const fallback = newSession.user.email?.split('@')[0] || 'User';
+             setCurrentUser(fallback);
+          }
+        } else if (event !== 'INITIAL_SESSION' && event !== 'TOKEN_REFRESHED') {
+          // Selective reset: only if it's not a background refresh event
+          await resetToGuestState();
+        }
+      } catch (err) {
+        console.error('onAuthStateChange error:', err);
       }
     });
 
@@ -119,8 +137,21 @@ export default function AppNavbar() {
 
     let appStateListener: Promise<PluginListenerHandle> | undefined;
     if (Capacitor.isNativePlatform()) {
-      appStateListener = App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive && sessionRef.current) triggerSync(sessionRef.current);
+      appStateListener = App.addListener('appStateChange', async ({ isActive }) => {
+        if (isActive) {
+          console.log('App resumed, re-verifying session...');
+          try {
+            // Force a session refresh check when app is resumed
+            const { data: { session: resumedSession } } = await supabase.auth.getSession();
+            if (resumedSession) {
+              setSession(resumedSession);
+              sessionRef.current = resumedSession;
+              triggerSync(resumedSession);
+            }
+          } catch (err) {
+            console.error('Session re-verify error:', err);
+          }
+        }
       });
     }
 
