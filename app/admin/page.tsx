@@ -6,6 +6,7 @@ import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCalendarRace } from '@/lib/api';
 import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
+import { Session } from '@supabase/supabase-js';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import { storage } from '@/lib/storage';
 
@@ -45,18 +46,26 @@ export default function AdminPage() {
 
   const checkExistingResults = useCallback(async () => {
     if (!isAdmin || !selectedRace) return;
-    const { data } = await supabase
-      .from('verified_results')
-      .select('data')
-      .eq('id', `${season}_${selectedRace}`)
-      .maybeSingle();
-    
-    if (data?.data) {
-      const d = data.data as { positions: { [key: string]: number }, firstDnf: string };
-      const p10Id = d.positions ? Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown' : 'Unknown';
-      setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
-    } else {
-      setExistingResult(null);
+    try {
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Admin results timeout')), 5000));
+      const supabasePromise = supabase
+        .from('verified_results')
+        .select('data')
+        .eq('id', `${season}_${selectedRace}`)
+        .maybeSingle();
+
+      const result = await Promise.race([supabasePromise, timeoutPromise]) as { data: { data: { positions: { [key: string]: number }, firstDnf: string } } | null, error: Error | null };
+      const { data } = result;
+      
+      if (data?.data) {
+        const d = data.data as { positions: { [key: string]: number }, firstDnf: string };
+        const p10Id = d.positions ? Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown' : 'Unknown';
+        setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
+      } else {
+        setExistingResult(null);
+      }
+    } catch (e) {
+      console.warn('Could not check existing results (non-fatal):', e);
     }
   }, [isAdmin, season, selectedRace, supabase]);
 
@@ -68,7 +77,12 @@ export default function AdminPage() {
     let isMounted = true;
     async function checkAdmin() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Admin auth timeout')), 8000));
+        const sessionPromise = supabase.auth.getSession();
+        
+        const sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as { data: { session: Session | null } };
+        const { data: { session } } = sessionResult;
+        
         if (!isMounted) return;
         
         if (!session) {
@@ -76,11 +90,14 @@ export default function AdminPage() {
           return;
         }
 
-        const { data: profile } = await supabase
+        const profilePromise = supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', session.user.id)
           .maybeSingle();
+
+        const profileResult = await Promise.race([profilePromise, timeoutPromise]) as { data: { is_admin: boolean } | null };
+        const { data: profile } = profileResult;
 
         if (!isMounted) return;
 
@@ -92,6 +109,8 @@ export default function AdminPage() {
         setIsAdmin(true);
       } catch (err) {
         console.error('Admin check error:', err);
+        // Fallback to home if auth check fails completely
+        if (isMounted) router.push('/');
       } finally {
         if (isMounted) setLoading(false);
       }
