@@ -62,36 +62,44 @@ function LeaguesContent() {
   }, [supabase]);
 
   useEffect(() => {
+    let isMounted = true;
     async function init() {
-      // 1. Load from cache first
-      const cached = storage.getItemSync('p10_cache_leagues');
-      let hasCache = false;
-      if (cached) {
-        setLeagues(JSON.parse(cached));
-        setLoading(false);
-        hasCache = true;
-      }
+      try {
+        // 1. Load from cache first
+        const cached = storage.getItemSync('p10_cache_leagues');
+        let hasCache = false;
+        if (cached && isMounted) {
+          setLeagues(JSON.parse(cached));
+          setLoading(false);
+          hasCache = true;
+        }
 
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      
-      // Load local guests for migration
-      const guests = JSON.parse(storage.getItemSync('p10_players') || '[]');
-      setLocalGuests(guests);
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setSession(currentSession);
+        
+        // Load local guests for migration
+        const guests = JSON.parse(storage.getItemSync('p10_players') || '[]');
+        if (isMounted) setLocalGuests(guests);
 
-      if (currentSession) {
-        fetchLeagues(hasCache);
-      } else {
-        setLoading(false);
-      }
+        if (currentSession) {
+          fetchLeagues(hasCache);
+        } else {
+          if (isMounted) setLoading(false);
+        }
 
-      // Check for join parameter
-      const joinCode = searchParams.get('join');
-      if (joinCode) {
-        setInviteCode(joinCode);
+        // Check for join parameter
+        const joinCode = searchParams.get('join');
+        if (joinCode && isMounted) {
+          setInviteCode(joinCode);
+        }
+      } catch (err) {
+        console.error('Leagues init error:', err);
+        if (isMounted) setLoading(false);
       }
     }
     init();
+    return () => { isMounted = false; };
   }, [supabase, fetchLeagues, searchParams]);
 
   const handleImport = async (guestName: string) => {

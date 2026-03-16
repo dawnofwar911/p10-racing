@@ -65,28 +65,39 @@ export default function AdminPage() {
   }, [checkExistingResults]);
 
   useEffect(() => {
+    let isMounted = true;
     async function checkAdmin() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/auth');
-        return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        
+        if (!session) {
+          router.push('/auth');
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (!isMounted) return;
+
+        if (!profile?.is_admin) {
+          router.push('/');
+          return;
+        }
+
+        setIsAdmin(true);
+      } catch (err) {
+        console.error('Admin check error:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-
-      if (!profile?.is_admin) {
-        router.push('/');
-        return;
-      }
-
-      setIsAdmin(true);
-      setLoading(false);
     }
     checkAdmin();
+    return () => { isMounted = false; };
   }, [supabase, router]);
 
   const fallbackRaces = useMemo(() => RACES.map(r => ({

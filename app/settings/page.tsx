@@ -24,20 +24,32 @@ export default function SettingsPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let isMounted = true;
     async function init() {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setSession(currentSession);
 
-      if (currentSession) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', currentSession.user.id)
-          .single();
-        if (profile) setIsAdmin(!!profile.is_admin);
+        if (currentSession) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', currentSession.user.id)
+            .maybeSingle();
+          
+          if (isMounted) {
+            setIsAdmin(!!profile?.is_admin);
+            // Sync cache for consistency
+            await storage.setItem('p10_cache_is_admin', String(!!profile?.is_admin));
+          }
+        }
+      } catch (err) {
+        console.error('Settings init error:', err);
       }
     }
     init();
+    return () => { isMounted = false; };
   }, [supabase]);
 
   const triggerHaptic = () => {
