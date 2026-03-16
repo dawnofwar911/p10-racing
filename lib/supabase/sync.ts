@@ -7,7 +7,7 @@ import { storage } from '../storage';
  * Syncs the session and pending status to Preferences so the native 
  * BackgroundRunner can access them.
  */
-async function mirrorToPreferences(session: Session | null, pendingData?: any) {
+async function mirrorToPreferences(session: Session | null, pendingData?: { race_id: string, p10_driver_id: string, dnf_driver_id: string }) {
   if (!Capacitor.isNativePlatform()) return;
 
   if (session) {

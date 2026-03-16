@@ -70,7 +70,7 @@ function PredictPage() {
   const triggerSync = useCallback(async (currentSession: Session | null) => {
     if (!currentSession || isSyncing) return;
     setIsSyncing(true);
-    const success = await syncPendingPredictions(currentSession);
+    await syncPendingPredictions(currentSession);
     const stillPending = hasPendingPrediction(currentSession.user.id);
     setHasPending(stillPending);
     setIsSyncing(false);
@@ -276,7 +276,7 @@ function PredictPage() {
           
         const localPreds = (await Promise.all(localPredsPromises)).filter(p => p !== null);
         
-        const formattedLocalPreds: CommunityPrediction[] = localPreds.map((p: any) => ({
+        const formattedLocalPreds: CommunityPrediction[] = localPreds.map((p) => ({
           username: p.username,
           p10: p.p10,
           dnf: p.dnf
@@ -336,7 +336,7 @@ function PredictPage() {
             await syncPendingPredictions(session);
             setHasPending(false);
           }
-        } catch (e) {
+        } catch {
           // Fallback to pending on throw (network)
           await savePendingPrediction(session, `${CURRENT_SEASON}_${nextRace.id}`, p10Driver, dnfDriver);
           setHasPending(true);

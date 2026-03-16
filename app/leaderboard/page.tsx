@@ -47,7 +47,7 @@ export default function LeaderboardPage() {
         const currentUserId = session?.user?.id;
 
         const { data: profiles, error: profilesError } = await supabase.from('profiles').select('id, username');
-        const { data: predictions, error: predsError } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null, error: any };
+        const { data: predictions, error: predsError } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null, error: unknown };
 
         if (profilesError || predsError) throw new Error('Network error fetching leaderboard data');
 

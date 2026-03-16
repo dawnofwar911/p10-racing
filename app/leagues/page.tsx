@@ -46,11 +46,11 @@ function LeaguesContent() {
       setLeagues(data || []);
       await storage.setItem('p10_cache_leagues', JSON.stringify(data || []));
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch leagues error:', err);
       // We don't set error if we have cached data to show
       if (leagues.length === 0) {
-        setError(err.message || 'Failed to fetch leagues');
+        setError(err instanceof Error ? err.message : 'Failed to fetch leagues');
       }
     } finally {
       setLoading(false);

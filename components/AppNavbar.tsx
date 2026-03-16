@@ -12,7 +12,7 @@ import { Session } from '@supabase/supabase-js';
 import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
 import { App } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, PluginListenerHandle } from '@capacitor/core';
 import { syncPendingPredictions, hasPendingPrediction } from '@/lib/supabase/sync';
 import { storage } from '@/lib/storage';
 
@@ -90,10 +90,10 @@ export default function AppNavbar() {
           // Explicitly no session, clear cache
           await resetToGuestState();
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Session fetch error:', error);
         // Only reset if it's NOT a network error. 
-        const isNetworkError = error?.message?.includes('fetch') || error?.code === 'PGRST301' || (typeof window !== 'undefined' && !window.navigator.onLine);
+        const isNetworkError = error instanceof Error && (error.message.includes('fetch') || ('code' in error && error.code === 'PGRST301')) || (typeof window !== 'undefined' && !window.navigator.onLine);
         if (!isNetworkError) {
           await resetToGuestState();
         }
@@ -144,7 +144,7 @@ export default function AppNavbar() {
     // ---------------------------------------------------------
     
     // 1. Sync when app returns to foreground (Native only)
-    let appStateListener: any;
+    let appStateListener: Promise<PluginListenerHandle> | undefined;
     if (Capacitor.isNativePlatform()) {
       appStateListener = App.addListener('appStateChange', ({ isActive }) => {
         if (isActive && session) {
@@ -165,7 +165,9 @@ export default function AppNavbar() {
 
     return () => {
       subscription.unsubscribe();
-      if (appStateListener) appStateListener.remove();
+      if (appStateListener) {
+        appStateListener.then(listener => listener.remove());
+      }
       window.removeEventListener('online', handleOnline);
     };
   }, [supabase, resetToGuestState, triggerSync, session]);
@@ -226,7 +228,7 @@ export default function AppNavbar() {
                 <div className="d-flex flex-column align-items-end me-2 d-none d-sm-flex">
                   <span className="text-light small text-uppercase letter-spacing-1 opacity-75 d-flex align-items-center" style={{ fontSize: '0.6rem', lineHeight: 1 }}>
                     {(session || currentUser) ? 'Player' : 'Guest'}
-                    {isSyncPending && <CloudOff size={10} className="ms-1 text-warning" title="Sync Pending" />}
+                    {isSyncPending && <span title="Sync Pending"><CloudOff size={10} className="ms-1 text-warning" /></span>}
                   </span>
                   <span className="fw-bold text-white text-uppercase" style={{ fontSize: '0.8rem', lineHeight: 1 }}>
                     {currentUser || 'Profile'}

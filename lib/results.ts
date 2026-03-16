@@ -4,14 +4,16 @@ import { CURRENT_SEASON } from './data';
 import { SimplifiedResults } from './types';
 import { storage } from './storage';
 
+export type EnhancedSimplifiedResults = SimplifiedResults & { date?: Date };
+
 /**
  * Fetches all verified results for the given season.
  * It prioritizes the official `verified_results` table in Supabase 
  * (The Gold Standard). If not available, it falls back to API fetching and LocalStorage caching.
  */
-export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON): Promise<{ [round: string]: SimplifiedResults & { date?: Date } }> {
+export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON): Promise<{ [round: string]: EnhancedSimplifiedResults }> {
   const supabase = createServerClient();
-  const resultsMap: { [round: string]: SimplifiedResults & { date?: Date } } = {};
+  const resultsMap: { [round: string]: EnhancedSimplifiedResults } = {};
   
   // To avoid window is not defined errors in SSR
   const isClient = typeof window !== 'undefined';
@@ -27,8 +29,7 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
       // We have official results!
       verifiedData.forEach(row => {
         resultsMap[row.round.toString()] = {
-          p10Driver: row.p10_driver_id,
-          firstDnf: row.dnf_driver_id,
+          firstDnf: row.dnf_driver_id || null,
           positions: row.positions as { [driverId: string]: number },
           date: new Date(row.created_at) // Approximate race date based on entry creation
         };
@@ -65,14 +66,13 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
         const p10DriverId = getP10DriverId(raceData);
         
         const positions: { [driverId: string]: number } = {};
-        raceData.Results.forEach((r: any) => {
+        raceData.Results.forEach((r: { Driver: { driverId: string }, position: string }) => {
           positions[r.Driver.driverId] = parseInt(r.position);
         });
 
         if (p10DriverId) {
           const simplified: SimplifiedResults = {
-            p10Driver: p10DriverId,
-            firstDnf: dnfDriver ? dnfDriver.driverId : undefined,
+            firstDnf: dnfDriver ? dnfDriver.driverId : null,
             positions
           };
           resultsMap[round.toString()] = simplified;
