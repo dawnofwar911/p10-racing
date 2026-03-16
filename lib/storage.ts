@@ -1,15 +1,18 @@
 import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 
 /**
  * Universal storage utility that handles localStorage (Web) 
  * and mirrors to Preferences (Native) for persistence and background use.
  */
 
-// Helper to get Preferences plugin only when on native
-const getPreferences = async () => {
-  if (Capacitor.isNativePlatform()) {
-    const { Preferences } = await import('@capacitor/preferences');
-    return Preferences;
+// Helper to check if we are on a native platform
+const isNative = Capacitor.isNativePlatform();
+
+// Defensive check for localStorage
+const getLocalStorage = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage;
   }
   return null;
 };
@@ -19,11 +22,21 @@ export const storage = {
    * Sets a value in both localStorage and Preferences (if native)
    */
   async setItem(key: string, value: string): Promise<void> {
-    localStorage.setItem(key, value);
+    const local = getLocalStorage();
+    if (local) {
+      try {
+        local.setItem(key, value);
+      } catch (e) {
+        console.warn('localStorage.setItem failed:', e);
+      }
+    }
     
-    const Preferences = await getPreferences();
-    if (Preferences) {
-      await Preferences.set({ key, value });
+    if (isNative) {
+      try {
+        await Preferences.set({ key, value });
+      } catch (e) {
+        console.error('Preferences.set failed:', e);
+      }
     }
   },
 
@@ -31,16 +44,27 @@ export const storage = {
    * Gets a value. Tries localStorage first (fast), then Preferences if native.
    */
   async getItem(key: string): Promise<string | null> {
-    const local = localStorage.getItem(key);
-    if (local !== null) return local;
+    const local = getLocalStorage();
+    const localValue = local ? local.getItem(key) : null;
+    
+    if (localValue !== null) return localValue;
 
-    const Preferences = await getPreferences();
-    if (Preferences) {
-      const { value } = await Preferences.get({ key });
-      if (value !== null) {
-        // Heal localStorage if Preferences has it but local doesn't
-        localStorage.setItem(key, value);
-        return value;
+    if (isNative) {
+      try {
+        const { value } = await Preferences.get({ key });
+        if (value !== null) {
+          // Heal localStorage if Preferences has it but local doesn't
+          if (local) {
+            try {
+              local.setItem(key, value);
+            } catch (e) {
+              console.warn('localStorage healing failed:', e);
+            }
+          }
+          return value;
+        }
+      } catch (e) {
+        console.error('Preferences.get failed:', e);
       }
     }
     return null;
@@ -51,17 +75,29 @@ export const storage = {
    * Use this for initial render to avoid flashes, then use getItem for background healing.
    */
   getItemSync(key: string): string | null {
-    return localStorage.getItem(key);
+    const local = getLocalStorage();
+    return local ? local.getItem(key) : null;
   },
 
   /**
    * Removes item from both.
    */
   async removeItem(key: string): Promise<void> {
-    localStorage.removeItem(key);
-    const Preferences = await getPreferences();
-    if (Preferences) {
-      await Preferences.remove({ key });
+    const local = getLocalStorage();
+    if (local) {
+      try {
+        local.removeItem(key);
+      } catch (e) {
+        console.warn('localStorage.removeItem failed:', e);
+      }
+    }
+
+    if (isNative) {
+      try {
+        await Preferences.remove({ key });
+      } catch (e) {
+        console.error('Preferences.remove failed:', e);
+      }
     }
   },
 
@@ -69,10 +105,21 @@ export const storage = {
    * Clears all.
    */
   async clear(): Promise<void> {
-    localStorage.clear();
-    const Preferences = await getPreferences();
-    if (Preferences) {
-      await Preferences.clear();
+    const local = getLocalStorage();
+    if (local) {
+      try {
+        local.clear();
+      } catch (e) {
+        console.warn('localStorage.clear failed:', e);
+      }
+    }
+
+    if (isNative) {
+      try {
+        await Preferences.clear();
+      } catch (e) {
+        console.error('Preferences.clear failed:', e);
+      }
     }
   },
 
@@ -80,12 +127,17 @@ export const storage = {
    * Retrieves all known keys.
    */
   async keys(): Promise<string[]> {
-    const Preferences = await getPreferences();
-    if (Preferences) {
-      const { keys } = await Preferences.keys();
-      return keys;
+    if (isNative) {
+      try {
+        const { keys } = await Preferences.keys();
+        return keys;
+      } catch (e) {
+        console.error('Preferences.keys failed:', e);
+      }
     }
-    // Fallback for web
-    return Object.keys(localStorage);
+    
+    // Fallback for web or if native fails
+    const local = getLocalStorage();
+    return local ? Object.keys(local) : [];
   }
 };

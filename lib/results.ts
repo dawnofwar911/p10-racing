@@ -26,11 +26,17 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
 
   try {
     // Priority 1: Supabase Verified Results
-    // Schema uses "id" as "season_round" (e.g., "2026_1") and "data" as JSONB
-    const { data: verifiedData, error: verifiedError } = await supabase
+    // We add a race condition with a timeout to prevent hanging on slow networks
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase timeout')), 5000));
+    const supabasePromise = supabase
       .from('verified_results')
       .select('*')
       .like('id', `${season}_%`);
+
+    const { data: verifiedData, error: verifiedError } = await Promise.race([
+      supabasePromise,
+      timeoutPromise
+    ]) as { data: { id: string, data: { positions: { [driverId: string]: number }, firstDnf: string | null }, created_at: string }[] | null, error: Error | null };
       
     if (!verifiedError && verifiedData && verifiedData.length > 0) {
       // We have official results!
@@ -53,7 +59,7 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
       return resultsMap;
     }
   } catch (e) {
-    console.error('Error fetching verified results from Supabase:', e);
+    console.warn('Error fetching verified results from Supabase (skipping to fallback):', e);
   }
 
   // FALLBACK STRATEGY (If Supabase fails or is empty for this season)
