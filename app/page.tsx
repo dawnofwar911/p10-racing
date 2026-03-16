@@ -420,9 +420,9 @@ export default function Home() {
 
         <Row className="mt-2 g-3 px-1">
           <Col md={6}>
-            <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm">
+            <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm" style={{ minHeight: '110px' }}>
               <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
-              {loading ? (
+              {loading && !nextRace ? (
                 <Spinner animation="border" size="sm" variant="danger" />
               ) : (
                 <>
