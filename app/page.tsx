@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, ApiCalendarRace } from '@/lib/api';
+import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -130,6 +130,8 @@ export default function Home() {
         
         const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
         setIsSeasonFinished(finished);
+
+        const upcoming = races[activeIndex];
 
         // Season is finished if activeIndex is at the end and all races have results
         if (finished) {

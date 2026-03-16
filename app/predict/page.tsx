@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, ApiResult } from '@/lib/api';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
