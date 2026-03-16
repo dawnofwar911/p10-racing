@@ -96,7 +96,7 @@ export default function AdminPage() {
           .eq('id', session.user.id)
           .maybeSingle();
 
-        const profileResult = await Promise.race([profilePromise, timeoutPromise]) as { data: { is_admin: boolean } | null };
+        const profileResult = await Promise.race([profilePromise, new Promise((_, reject) => setTimeout(() => reject(new Error('Admin profile timeout')), 8000))]) as { data: { is_admin: boolean } | null };
         const { data: profile } = profileResult;
 
         if (!isMounted) return;
