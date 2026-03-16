@@ -50,6 +50,38 @@ export default function Home() {
   const { showNotification } = useNotification();
 
   const init = useCallback(async () => {
+    // 1. Load from cache first to avoid layout shift - move to TOP
+    const cachedRace = localStorage.getItem('p10_cache_next_race');
+    const cachedDrivers = localStorage.getItem('p10_cache_drivers');
+    
+    if (cachedRace) {
+      const raceData = JSON.parse(cachedRace);
+      setNextRace(raceData);
+      
+      // Perform initial synchronous calculation for countdown
+      const now = new Date().getTime();
+      const targetStr = `${raceData.date}T${raceData.time}`;
+      const target = new Date(targetStr).getTime();
+      const distance = target - now;
+      const fourHoursLater = target + 4 * 60 * 60 * 1000;
+
+      if (distance < 0) {
+        setShowCountdown(false);
+        setIsRaceInProgress(now < fourHoursLater);
+      } else {
+        setShowCountdown(true);
+        setIsRaceInProgress(false);
+        setCountdown({
+          d: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          s: Math.floor((distance % (1000 * 60)) / 1000)
+        });
+      }
+    }
+    
+    if (cachedDrivers) setAllDrivers(JSON.parse(cachedDrivers));
+
     // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
     const isRecovery = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
     const hasRecoveryParam = typeof window !== 'undefined' && window.location.search.includes('type=recovery');
@@ -59,12 +91,6 @@ export default function Home() {
       router.replace(target);
       return;
     }
-
-    // Load from cache first to avoid layout shift
-    const cachedRace = localStorage.getItem('p10_cache_next_race');
-    const cachedDrivers = localStorage.getItem('p10_cache_drivers');
-    if (cachedRace) setNextRace(JSON.parse(cachedRace));
-    if (cachedDrivers) setAllDrivers(JSON.parse(cachedDrivers));
 
     // Only show full-screen loading if we have NO cached data
     if (!cachedRace) {
@@ -300,32 +326,39 @@ export default function Home() {
               </div>
             )}
 
-            {nextRace && !loading && !isSeasonFinished && (
-              <>
-                {showCountdown ? (
-                  <div className="mb-4">
-                    <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                    <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
-                      {[
-                        { label: 'D', val: countdown.d },
-                        { label: 'H', val: countdown.h },
-                        { label: 'M', val: countdown.m },
-                        { label: 'S', val: countdown.s }
-                      ].map(item => (
-                        <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
-                          <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
-                          <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
+            {!isSeasonFinished && (
+              <div style={{ minHeight: "115px" }} className="d-flex flex-column align-items-center justify-content-center mb-4">
+                {nextRace && (
+                  <>
+                    {showCountdown ? (
+                      <div>
+                        <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
+                        <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
+                          {[
+                            { label: 'D', val: countdown.d },
+                            { label: 'H', val: countdown.h },
+                            { label: 'M', val: countdown.m },
+                            { label: 'S', val: countdown.s }
+                          ].map(item => (
+                            <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
+                              <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
+                              <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : isRaceInProgress ? (
-                  <div className="mb-4">
-                    <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
-                    <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
-                  </div>
-                ) : null}
-              </>
+                      </div>
+                    ) : isRaceInProgress ? (
+                      <div>
+                        <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
+                        <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
+                      </div>
+                    ) : (
+                      /* If nextRace exists but not showing countdown or progress, it might be loading or transitional */
+                      <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
