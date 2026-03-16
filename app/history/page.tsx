@@ -32,14 +32,20 @@ export default function HistoryPage() {
         const supabase = createClient();
         
         // 1. Fetch all verified results from Supabase (filtered by current season)
-        const { data: dbResults } = await supabase
+        // We use a timeout to prevent infinite spinners on poor connections
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase timeout')), 8000));
+        const supabasePromise = supabase
           .from('verified_results')
           .select('*')
           .like('id', `${CURRENT_SEASON}_%`);
 
+        const result = await Promise.race([supabasePromise, timeoutPromise]) as { data: { id: string, data: { positions: { [id: string]: number }, firstDnf: string | null } }[] | null, error: Error | null };
+        const { data: dbResults, error: dbError } = result;
+
         if (!isMounted) return;
 
-        if (!dbResults || dbResults.length === 0) {
+        if (dbError || !dbResults || dbResults.length === 0) {
+          if (dbError) console.warn('History fetch warning:', dbError);
           setLoading(false);
           return;
         }
