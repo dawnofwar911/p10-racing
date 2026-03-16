@@ -46,11 +46,14 @@ export default function AppNavbar() {
       }
 
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) throw sessionError;
+        
         setSession(currentSession);
 
         if (currentSession) {
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('username, is_admin')
             .eq('id', currentSession.user.id)
@@ -61,17 +64,25 @@ export default function AppNavbar() {
             setIsAdmin(!!profile.is_admin);
             localStorage.setItem('p10_cache_username', profile.username);
             localStorage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
-          } else {
+          } else if (!profileError) {
+            // Profile explicitly doesn't exist (not a network error)
             const fallback = currentSession.user.email?.split('@')[0] || 'User';
             setCurrentUser(fallback);
             localStorage.setItem('p10_cache_username', fallback);
           }
+          // If profileError exists (likely network), we keep the cached values we already loaded
         } else {
+          // Explicitly no session, clear cache
           resetToGuestState();
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Session fetch error:', error);
-        resetToGuestState();
+        // Only reset if it's NOT a network error. 
+        // If we are offline, we want to keep the cached identity.
+        const isNetworkError = error?.message?.includes('fetch') || error?.code === 'PGRST301' || !window.navigator.onLine;
+        if (!isNetworkError) {
+          resetToGuestState();
+        }
       } finally {
         setIsAuthReady(true); // Always ready after network check
       }
@@ -87,21 +98,22 @@ export default function AppNavbar() {
         return;
       }
       
-      if (!newSession) {
+      if (!newSession && event !== 'INITIAL_SESSION') {
+        // Only reset if explicitly null after an event that isn't just the initial load
         resetToGuestState();
-      } else {
+      } else if (newSession) {
         supabase
           .from('profiles')
           .select('username, is_admin')
           .eq('id', newSession.user.id)
           .single()
-          .then(({ data }) => {
+          .then(({ data, error }) => {
             if (data) {
               setCurrentUser(data.username);
               setIsAdmin(!!data.is_admin);
               localStorage.setItem('p10_cache_username', data.username);
               localStorage.setItem('p10_cache_is_admin', String(!!data.is_admin));
-            } else {
+            } else if (newSession && !error) {
               const fallback = newSession.user.email?.split('@')[0] || 'User';
               setCurrentUser(fallback);
               localStorage.setItem('p10_cache_username', fallback);
