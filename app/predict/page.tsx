@@ -16,6 +16,7 @@ import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
+import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 
 interface PredictRace {
@@ -123,41 +124,8 @@ function PredictPage() {
       let currentRace: PredictRace | null = null;
       if (races.length > 0) {
         const now = new Date();
-        let activeIndex = races.findIndex((r: ApiCalendarRace) => {
-          const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
-          const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
-          return fourHoursLater > now;
-        });
-
-        if (activeIndex === -1) {
-          activeIndex = races.length - 1;
-          setIsSeasonFinished(true);
-        }
-
-        // If the identified "active" race already has results, it's no longer the "next" race.
-        // We should advance to the following round, even if we're within the 4-hour post-race window.
-        if (!isSeasonFinished) {
-          const currentCandidate = races[activeIndex];
-          if (raceResultsMap[currentCandidate.round]) {
-            if (activeIndex < races.length - 1) {
-              activeIndex++;
-            } else {
-              setIsSeasonFinished(true);
-            }
-          }
-        }
-
-        if (activeIndex > 0 && !isSeasonFinished) {
-          const prevRace = races[activeIndex - 1];
-          if (!raceResultsMap[prevRace.round]) {
-            // Check if results are available via direct API as a safety fallback 
-            // though fetchAllSimplifiedResults should have handled it.
-            const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
-            if (!results) {
-              activeIndex--;
-            }
-          }
-        }
+        const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+        setIsSeasonFinished(finished);
 
         const upcoming = races[activeIndex];
         currentRace = {
@@ -173,6 +141,7 @@ function PredictPage() {
 
         const apiDrivers = await fetchDrivers(CURRENT_SEASON);
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
+        // Ensure consistent sorting by team (matching Home page)
         finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
         localStorage.setItem('p10_cache_drivers', JSON.stringify(finalDriverList));

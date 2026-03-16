@@ -12,8 +12,8 @@ export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
-    setLoading(true);
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true);
     // 2. Fetch fresh data
     const data = await fetchDrivers(CURRENT_SEASON);
     if (data.length > 0) {
@@ -26,15 +26,17 @@ export default function StandingsPage() {
   useEffect(() => {
     // 1. Load from cache first
     const cached = localStorage.getItem('p10_cache_standings');
+    let hasCache = false;
     if (cached) {
       setStandings(JSON.parse(cached));
       setLoading(false);
+      hasCache = true;
     }
-    load();
+    load(hasCache); // If we have cache, do a 'quiet' background refresh
   }, []);
 
   return (
-    <PullToRefresh onRefresh={load}>
+    <PullToRefresh onRefresh={() => load(false)}>
       <Container className="mt-4 mb-2">
         <h1 className="h2 mb-4 fw-bold text-uppercase letter-spacing-1">World Championship Standings</h1>
         
@@ -57,21 +59,21 @@ export default function StandingsPage() {
               <tbody>
                 {standings.map((d, i) => (
                   <tr key={d.id} style={{ height: '60px', verticalAlign: 'middle' }}>
-                    <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                    <td className="fw-bold text-white fs-5">{d.name}</td>
+                    <td className="ps-4 fw-bold text-muted small">{i + 1}</td>
+                    <td className="fw-bold text-white h6 mb-0">{d.name}</td>
                     <td>
                       <span className="team-pill" style={{ 
                         backgroundColor: d.color, 
                         color: getContrastColor(d.color),
-                        fontSize: '0.7rem' 
+                        fontSize: '0.6rem' 
                       }}>
                         {d.team}
                       </span>
                     </td>
-                    <td className="text-end fw-bold fs-5 text-white">
+                    <td className="text-end fw-bold h6 mb-0 text-white">
                       {d.points}
                     </td>
-                    <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>
+                    <td className="text-end pe-4 driver-number h5 mb-0" style={{ color: d.color, opacity: 0.8 }}>
                       {d.number}
                     </td>
                   </tr>
