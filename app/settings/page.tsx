@@ -11,6 +11,7 @@ import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
+import { storage } from '@/lib/storage';
 
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -53,7 +54,7 @@ export default function SettingsPage() {
       if (error) throw error;
 
       await supabase.auth.signOut();
-      localStorage.clear();
+      await storage.clear();
       window.location.href = '/';
     } catch (err) {
       console.error('Error deleting account:', err);

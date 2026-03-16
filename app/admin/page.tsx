@@ -7,6 +7,7 @@ import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCa
 import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { Haptics, NotificationType } from '@capacitor/haptics';
+import { storage } from '@/lib/storage';
 
 interface AdminDriver {
   id: string;
@@ -183,7 +184,7 @@ export default function AdminPage() {
     };
 
     if (target === 'local') {
-      localStorage.setItem(`results_${season}_${selectedRace}`, JSON.stringify(simplifiedResults));
+      await storage.setItem(`results_${season}_${selectedRace}`, JSON.stringify(simplifiedResults));
       setStatus({ message: `Results for Round ${selectedRace} saved locally!`, variant: 'info' });
     } else {
       setLoading(true);

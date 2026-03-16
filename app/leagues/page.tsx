@@ -97,12 +97,12 @@ function LeaguesContent() {
     Haptics.impact({ style: ImpactStyle.Heavy });
 
     try {
-      // Find all predictions for this guest in localStorage
+      // Find all predictions for this guest in storage
       let count = 0;
       const keysToRemove: string[] = [];
+      const allKeys = await storage.keys();
       
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+      for (const key of allKeys) {
         if (!key) continue;
 
         let season = CURRENT_SEASON;

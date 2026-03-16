@@ -74,5 +74,18 @@ export const storage = {
     if (Preferences) {
       await Preferences.clear();
     }
+  },
+
+  /**
+   * Retrieves all known keys.
+   */
+  async keys(): Promise<string[]> {
+    const Preferences = await getPreferences();
+    if (Preferences) {
+      const { keys } = await Preferences.keys();
+      return keys;
+    }
+    // Fallback for web
+    return Object.keys(localStorage);
   }
 };
