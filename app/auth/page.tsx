@@ -65,7 +65,7 @@ export default function AuthPage() {
       }
 
       if (isSignUp) {
-        console.log('Attempting sign up with email:', email);
+        console.log('Attempting new player sign up');
         // 1. Sign up the user
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
@@ -106,7 +106,7 @@ export default function AuthPage() {
         setPassword('');
       } else {
         // Login
-        console.log('Attempting login with email:', email);
+        console.log('Attempting player sign in');
         const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password,

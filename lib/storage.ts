@@ -11,8 +11,14 @@ const isNative = Capacitor.isNativePlatform();
 
 // Defensive check for localStorage
 const getLocalStorage = () => {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    return window.localStorage;
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.localStorage) {
+        return window.localStorage;
+      }
+    } catch (e) {
+      console.warn('localStorage access denied:', e);
+    }
   }
   return null;
 };
