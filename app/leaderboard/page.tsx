@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
+import { storage } from '@/lib/storage';
 
 interface LeaderboardPlayer {
   username: string;
@@ -64,17 +65,18 @@ export default function LeaderboardPage() {
             }));
         }
       } else {
-        const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-        playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
+        const localPlayers: string[] = JSON.parse(await storage.getItem('p10_players') || '[]');
+        playersData = localPlayers.map((p: string) => ({ username: p, isLocal: true }));
       }
 
-      const entries: LeaderboardEntry[] = playersData.map((player) => {
+      // Resolve all async predictions for local players
+      const entriesPromises = playersData.map(async (player) => {
         const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
 
         // Prepare predictions for calculateSeasonPoints
-        Object.keys(raceResultsMap).forEach(round => {
+        await Promise.all(Object.keys(raceResultsMap).map(async round => {
           if (player.isLocal) {
-            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
+            const predStr = await storage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
             if (predStr) playerPredictions[round] = JSON.parse(predStr);
           } else if (player.dbPredictions) {
             const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
@@ -82,7 +84,7 @@ export default function LeaderboardPage() {
               playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
             }
           }
-        });
+        }));
 
         const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
 
@@ -96,12 +98,14 @@ export default function LeaderboardPage() {
         };
       });
 
+      const entries = await Promise.all(entriesPromises);
+
       const sorted = entries.sort((a, b) => b.points - a.points);
       const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
       
       setLeaderboard(ranked);
       if (view === 'global') {
-        localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
+        await storage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
       }
     } catch (err) {
       console.error('Leaderboard calculation error:', err);
@@ -114,7 +118,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     // 1. Load from cache first for immediate UI
     if (view === 'global') {
-      const cached = localStorage.getItem('p10_cache_leaderboard');
+      const cached = storage.getItemSync('p10_cache_leaderboard');
       if (cached) {
         setLeaderboard(JSON.parse(cached));
         setLoading(false);

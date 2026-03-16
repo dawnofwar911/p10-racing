@@ -1,6 +1,7 @@
 import { createClient } from './client';
 import { Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
+import { storage } from '../storage';
 
 /**
  * Syncs the session and pending status to Preferences so the native 
@@ -9,36 +10,28 @@ import { Capacitor } from '@capacitor/core';
 async function mirrorToPreferences(session: Session | null, pendingData?: any) {
   if (!Capacitor.isNativePlatform()) return;
 
-  // Import Preferences dynamically to avoid SSR/non-native issues
-  const { Preferences } = await import('@capacitor/preferences');
-
   if (session) {
-    // We store the essential bits for the background fetch
-    await Preferences.set({
-      key: 'p10_bg_session',
-      value: JSON.stringify({
-        access_token: session.access_token,
-        user: { id: session.user.id },
-        supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        supabase_key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      })
-    });
+    // We store the essential bits for the background fetch in a dedicated key
+    // that the background worker knows to look for.
+    await storage.setItem('p10_bg_session', JSON.stringify({
+      access_token: session.access_token,
+      user: { id: session.user.id },
+      supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabase_key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    }));
 
     const pendingKey = `pending_pred_${session.user.id}`;
     if (pendingData) {
-      await Preferences.set({
-        key: pendingKey,
-        value: JSON.stringify(pendingData)
-      });
+      await storage.setItem(pendingKey, JSON.stringify(pendingData));
     } else {
-      // Check if it was cleared in localStorage and mirror that
-      const localPending = localStorage.getItem(pendingKey);
+      // Logic handled in storage.removeItem if needed, but here we check existence
+      const localPending = storage.getItemSync(pendingKey);
       if (!localPending) {
-        await Preferences.remove({ key: pendingKey });
+        await storage.removeItem(pendingKey);
       }
     }
   } else {
-    await Preferences.remove({ key: 'p10_bg_session' });
+    await storage.removeItem('p10_bg_session');
   }
 }
 
@@ -51,7 +44,7 @@ export async function syncPendingPredictions(session: Session | null): Promise<b
   if (!session) return true;
   
   const pendingKey = `pending_pred_${session.user.id}`;
-  const pendingData = localStorage.getItem(pendingKey);
+  const pendingData = await storage.getItem(pendingKey);
   
   // Always mirror the current state to Preferences for background worker
   await mirrorToPreferences(session);
@@ -72,11 +65,7 @@ export async function syncPendingPredictions(session: Session | null): Promise<b
       }, { onConflict: 'user_id, race_id' });
     
     if (!error) {
-      localStorage.removeItem(pendingKey);
-      if (Capacitor.isNativePlatform()) {
-        const { Preferences } = await import('@capacitor/preferences');
-        await Preferences.remove({ key: pendingKey });
-      }
+      await storage.removeItem(pendingKey);
       console.log('Sync complete: Pending prediction uploaded to cloud.');
       return true;
     } else {
@@ -94,7 +83,7 @@ export async function syncPendingPredictions(session: Session | null): Promise<b
  */
 export function hasPendingPrediction(userId: string | undefined): boolean {
   if (!userId) return false;
-  return !!localStorage.getItem(`pending_pred_${userId}`);
+  return !!storage.getItemSync(`pending_pred_${userId}`);
 }
 
 /**
@@ -108,6 +97,6 @@ export async function savePendingPrediction(session: Session, raceId: string, p1
     dnf_driver_id: dnfId
   };
   
-  localStorage.setItem(pendingKey, JSON.stringify(data));
+  await storage.setItem(pendingKey, JSON.stringify(data));
   await mirrorToPreferences(session, data);
 }

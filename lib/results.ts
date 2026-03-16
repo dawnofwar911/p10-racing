@@ -1,65 +1,95 @@
-import { createClient } from './supabase/client';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from './api';
+import { createServerClient } from './supabase/client';
+import { fetchRaceResults, getFirstDnfDriver, getP10DriverId } from './api';
 import { CURRENT_SEASON } from './data';
 import { SimplifiedResults } from './types';
-
-export interface EnhancedSimplifiedResults extends SimplifiedResults {
-  date: Date;
-}
+import { storage } from './storage';
 
 /**
- * Fetches all race results for the current season, prioritizing Supabase verified_results
+ * Fetches all verified results for the given season.
+ * It prioritizes the official `verified_results` table in Supabase 
  * (The Gold Standard). If not available, it falls back to API fetching and LocalStorage caching.
  */
-export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: EnhancedSimplifiedResults }> {
-  const supabase = createClient();
-  const races = await fetchCalendar(CURRENT_SEASON);
-  const raceResultsMap: { [round: string]: EnhancedSimplifiedResults } = {};
+export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON): Promise<{ [round: string]: SimplifiedResults & { date?: Date } }> {
+  const supabase = createServerClient();
+  const resultsMap: { [round: string]: SimplifiedResults & { date?: Date } } = {};
   
-  // 1. Fetch all "Gold Standard" verified results from Supabase (filtered by current season)
-  const { data: verifiedData } = await supabase
-    .from('verified_results')
-    .select('*')
-    .like('id', `${CURRENT_SEASON}_%`);
-  
-  await Promise.all(races.map(async (race: ApiCalendarRace) => {
-    const round = race.round;
-    const raceDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
-    const verifiedMatch = verifiedData?.find(v => v.id === `${CURRENT_SEASON}_${round}`);
-    
-    if (verifiedMatch) {
-      // Priority 1: Supabase Verified Results
-      raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
-    } else {
-      // Priority 2: localStorage (Cached results from previous API fetches)
-      const isClient = typeof window !== 'undefined';
-      const cachedData = isClient ? localStorage.getItem(`results_${CURRENT_SEASON}_${round}`) : null;
+  // To avoid window is not defined errors in SSR
+  const isClient = typeof window !== 'undefined';
+
+  try {
+    // Priority 1: Supabase Verified Results
+    const { data: verifiedData, error: verifiedError } = await supabase
+      .from('verified_results')
+      .select('*')
+      .eq('season', season);
       
+    if (!verifiedError && verifiedData && verifiedData.length > 0) {
+      // We have official results!
+      verifiedData.forEach(row => {
+        resultsMap[row.round.toString()] = {
+          p10Driver: row.p10_driver_id,
+          firstDnf: row.dnf_driver_id,
+          positions: row.positions as { [driverId: string]: number },
+          date: new Date(row.created_at) // Approximate race date based on entry creation
+        };
+        
+        // Cache these verified results locally for fast offline access
+        if (isClient) {
+          storage.setItem(`results_${season}_${row.round}`, JSON.stringify(resultsMap[row.round.toString()]));
+        }
+      });
+      return resultsMap;
+    }
+  } catch (e) {
+    console.error('Error fetching verified results from Supabase:', e);
+  }
+
+  // FALLBACK STRATEGY (If Supabase fails or is empty for this season)
+  console.log(`Falling back to API/Cache for season ${season} results...`);
+  
+  // We don't know exactly how many races there are, so we check up to a reasonable max (e.g., 25)
+  // But we stop as soon as we hit an unrun race.
+  for (let round = 1; round <= 25; round++) {
+    try {
+      // Priority 2: Cache (Cached results from previous API fetches)
+      const cachedData = isClient ? await storage.getItem(`results_${season}_${round}`) : null;
       if (cachedData) {
-        raceResultsMap[round] = { ...JSON.parse(cachedData), date: raceDate };
-      } else {
-        // Priority 3: Direct API fetch (Live fallback)
-        const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
-        if (apiResults && apiResults.Results && apiResults.Results.length > 0) {
-          const firstDnfDriver = getFirstDnfDriver(apiResults);
+        resultsMap[round.toString()] = JSON.parse(cachedData);
+        continue; // Go to next round
+      }
+
+      // Priority 3: Ergast API Fetch
+      const raceData = await fetchRaceResults(season, round);
+      if (raceData && raceData.Results && raceData.Results.length > 0) {
+        const dnfDriver = getFirstDnfDriver(raceData);
+        const p10DriverId = getP10DriverId(raceData);
+        
+        const positions: { [driverId: string]: number } = {};
+        raceData.Results.forEach((r: any) => {
+          positions[r.Driver.driverId] = parseInt(r.position);
+        });
+
+        if (p10DriverId) {
           const simplified: SimplifiedResults = {
-            positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
-              acc[r.Driver.driverId] = parseInt(r.position);
-              return acc;
-            }, {}),
-            firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null
+            p10Driver: p10DriverId,
+            firstDnf: dnfDriver ? dnfDriver.driverId : undefined,
+            positions
           };
+          resultsMap[round.toString()] = simplified;
           
-          raceResultsMap[round] = { ...simplified, date: raceDate };
-          
-          // Cache for performance and offline support
           if (isClient) {
-            localStorage.setItem(`results_${CURRENT_SEASON}_${round}`, JSON.stringify(simplified));
+            await storage.setItem(`results_${season}_${round}`, JSON.stringify(simplified));
           }
         }
+      } else {
+        // If we hit a round with no results, the season (so far) is over
+        break; 
       }
+    } catch (e) {
+      console.error(`Failed to fetch fallback results for round ${round}:`, e);
+      break;
     }
-  }));
+  }
 
-  return raceResultsMap;
+  return resultsMap;
 }

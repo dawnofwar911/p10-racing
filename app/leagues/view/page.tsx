@@ -13,6 +13,7 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import LoadingView from '@/components/LoadingView';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { storage } from '@/lib/storage';
 
 function LeagueDetailContent() {
   const searchParams = useSearchParams();
@@ -133,7 +134,7 @@ function LeagueDetailContent() {
       setLeaderboard(ranked);
       
       // Cache the full state for this league
-      localStorage.setItem(`p10_cache_league_${leagueId}`, JSON.stringify({
+      await storage.setItem(`p10_cache_league_${leagueId}`, JSON.stringify({
         name: league.name,
         inviteCode: league.invite_code,
         leaderboard: ranked
@@ -149,7 +150,7 @@ function LeagueDetailContent() {
     if (!leagueId) return;
     
     // Load from cache first
-    const cached = localStorage.getItem(`p10_cache_league_${leagueId}`);
+    const cached = storage.getItemSync(`p10_cache_league_${leagueId}`);
     if (cached) {
       const data = JSON.parse(cached);
       setLeagueName(data.name);
