@@ -1,13 +1,12 @@
-import { createBrowserClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { storage } from '../storage'
 
-// Custom storage adapter for Supabase to use our universal storage
+/**
+ * Custom storage adapter for Supabase to use our universal storage utility.
+ * This ensures the session is mirrored to Native Preferences on Android/iOS.
+ */
 const supabaseStorage = {
   getItem: (key: string) => {
-    // Supabase expect a string or null synchronously for its internal state
-    // but can handle async storage if provided. However, our getItem is async.
-    // We use a trick: we return the promise, and Supabase handles it if it's an async storage.
     return storage.getItem(key);
   },
   setItem: (key: string, value: string) => {
@@ -24,29 +23,33 @@ const getSupabaseEnv = () => {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
   if (!url || !anonKey) {
-    console.error('CRITICAL: Supabase environment variables are missing!', {
-      url: !!url,
-      anonKey: !!anonKey
-    });
+    console.error('CRITICAL: Supabase environment variables are missing!');
   }
   
   return { url: url || '', anonKey: anonKey || '' };
 };
 
-// Browser-safe client for Next.js components
+/**
+ * Browser-safe client for Next.js components.
+ * Configured with persistent storage for Capacitor.
+ */
 export function createClient() {
   const { url, anonKey } = getSupabaseEnv();
-  return createBrowserClient(url, anonKey, {
+  return createSupabaseClient(url, anonKey, {
     auth: {
       storage: supabaseStorage,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      flowType: 'pkce'
     }
   });
 }
 
-// Standard client for Node.js scripts / tests
+/**
+ * Standard client for Node.js scripts / tests.
+ * Uses the same storage to maintain consistency in local environments.
+ */
 export function createServerClient() {
   const { url, anonKey } = getSupabaseEnv();
   return createSupabaseClient(url, anonKey, {
@@ -54,7 +57,8 @@ export function createServerClient() {
       storage: supabaseStorage,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      flowType: 'pkce'
     }
   });
 }
