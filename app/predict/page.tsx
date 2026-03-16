@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
-import { Container, Row, Col, Form, Button, Card, Modal, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Card, Modal, Spinner, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -18,6 +18,7 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
+import { syncPendingPredictions, hasPendingPrediction } from '@/lib/supabase/sync';
 
 interface PredictRace {
   id: string;
@@ -65,38 +66,19 @@ function PredictPage() {
   const searchParams = useSearchParams();
 
   // Sync Logic
-  const syncPendingPredictions = useCallback(async (currentSession: Session | null) => {
+  const triggerSync = useCallback(async (currentSession: Session | null) => {
     if (!currentSession || isSyncing) return;
+    setIsSyncing(true);
+    const success = await syncPendingPredictions(currentSession);
+    const stillPending = hasPendingPrediction(currentSession.user.id);
+    setHasPending(stillPending);
+    setIsSyncing(false);
     
-    const pendingKey = `pending_pred_${currentSession.user.id}`;
-    const pendingData = localStorage.getItem(pendingKey);
-    
-    if (pendingData) {
-      setIsSyncing(true);
-      try {
-        const pending = JSON.parse(pendingData);
-        const { error } = await supabase
-          .from('predictions')
-          .upsert({
-            user_id: currentSession.user.id,
-            race_id: pending.race_id,
-            p10_driver_id: pending.p10_driver_id,
-            dnf_driver_id: pending.dnf_driver_id,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id, race_id' });
-        
-        if (!error) {
-          localStorage.removeItem(pendingKey);
-          setHasPending(false);
-          showNotification('Sync complete! Your offline prediction is now saved to the cloud.', 'success');
-        }
-      } catch (e) {
-        console.error('Sync failed:', e);
-      } finally {
-        setIsSyncing(false);
-      }
+    if (success && !stillPending && localStorage.getItem(`pending_pred_${currentSession.user.id}`) === null) {
+      // Re-fetch community to show own updated prediction
+      // (Simplified: in a real app we might just refresh the whole init)
     }
-  }, [supabase, isSyncing, showNotification]);
+  }, [isSyncing]);
 
   useEffect(() => {
     if (searchParams.get('howto') === 'true') {
@@ -153,10 +135,9 @@ function PredictPage() {
         }
 
         // Check for pending
-        if (localStorage.getItem(`pending_pred_${currentSession.user.id}`)) {
-          setHasPending(true);
-          syncPendingPredictions(currentSession);
-        }
+        const pending = hasPendingPrediction(currentSession.user.id);
+        setHasPending(pending);
+        if (pending) triggerSync(currentSession);
       }
       setLoadingSession(false);
 
@@ -311,7 +292,7 @@ function PredictPage() {
       setExistingPlayers(existingPlayersList);
     }
     init();
-  }, [supabase, isSeasonFinished, syncPendingPredictions]);
+  }, [supabase, isSeasonFinished, triggerSync]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,6 +335,10 @@ function PredictPage() {
               showNotification('Error saving prediction: ' + error.message, 'error');
               return;
             }
+          } else {
+            // Success - clear any existing pending
+            localStorage.removeItem(`pending_pred_${session.user.id}`);
+            setHasPending(false);
           }
         } catch (e) {
           // Fallback to pending on throw (network)

@@ -6,11 +6,14 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { User } from 'lucide-react';
+import { User, CloudOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
+import { syncPendingPredictions, hasPendingPrediction } from '@/lib/supabase/sync';
 
 export default function AppNavbar() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -18,6 +21,7 @@ export default function AppNavbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [isSyncPending, setIsSyncPending] = useState(false);
   const pathname = usePathname();
   const supabase = createClient();
 
@@ -27,6 +31,13 @@ export default function AppNavbar() {
     const localUser = localStorage.getItem('p10_current_user');
     setCurrentUser(localUser);
     setIsAdmin(false);
+  }, []);
+
+  const triggerSync = useCallback(async (currentSession: Session | null) => {
+    if (!currentSession) return;
+    const success = await syncPendingPredictions(currentSession);
+    setIsSyncPending(hasPendingPrediction(currentSession.user.id));
+    return success;
   }, []);
 
   useEffect(() => {
@@ -53,6 +64,10 @@ export default function AppNavbar() {
         setSession(currentSession);
 
         if (currentSession) {
+          // Check for pending sync on load
+          setIsSyncPending(hasPendingPrediction(currentSession.user.id));
+          triggerSync(currentSession);
+
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('username, is_admin')
@@ -70,7 +85,6 @@ export default function AppNavbar() {
             setCurrentUser(fallback);
             localStorage.setItem('p10_cache_username', fallback);
           }
-          // If profileError exists (likely network), we keep the cached values we already loaded
         } else {
           // Explicitly no session, clear cache
           resetToGuestState();
@@ -78,8 +92,7 @@ export default function AppNavbar() {
       } catch (error: any) {
         console.error('Session fetch error:', error);
         // Only reset if it's NOT a network error. 
-        // If we are offline, we want to keep the cached identity.
-        const isNetworkError = error?.message?.includes('fetch') || error?.code === 'PGRST301' || !window.navigator.onLine;
+        const isNetworkError = error?.message?.includes('fetch') || error?.code === 'PGRST301' || (typeof window !== 'undefined' && !window.navigator.onLine);
         if (!isNetworkError) {
           resetToGuestState();
         }
@@ -99,9 +112,11 @@ export default function AppNavbar() {
       }
       
       if (!newSession && event !== 'INITIAL_SESSION') {
-        // Only reset if explicitly null after an event that isn't just the initial load
         resetToGuestState();
       } else if (newSession) {
+        setIsSyncPending(hasPendingPrediction(newSession.user.id));
+        triggerSync(newSession);
+
         supabase
           .from('profiles')
           .select('username, is_admin')
@@ -122,8 +137,36 @@ export default function AppNavbar() {
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [supabase, resetToGuestState]);
+    // ---------------------------------------------------------
+    // Background Sync & Network Listeners
+    // ---------------------------------------------------------
+    
+    // 1. Sync when app returns to foreground (Native only)
+    let appStateListener: any;
+    if (Capacitor.isNativePlatform()) {
+      appStateListener = App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive && session) {
+          console.log('App returned to foreground, triggering sync...');
+          triggerSync(session);
+        }
+      });
+    }
+
+    // 2. Sync when browser/app comes back online
+    const handleOnline = () => {
+      if (session) {
+        console.log('Network restored, triggering sync...');
+        triggerSync(session);
+      }
+    };
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      subscription.unsubscribe();
+      if (appStateListener) appStateListener.remove();
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [supabase, resetToGuestState, triggerSync, session]);
 
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
@@ -179,14 +222,15 @@ export default function AppNavbar() {
                 className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
               >
                 <div className="d-flex flex-column align-items-end me-2 d-none d-sm-flex">
-                  <span className="text-light small text-uppercase letter-spacing-1 opacity-75" style={{ fontSize: '0.6rem', lineHeight: 1 }}>
+                  <span className="text-light small text-uppercase letter-spacing-1 opacity-75 d-flex align-items-center" style={{ fontSize: '0.6rem', lineHeight: 1 }}>
                     {(session || currentUser) ? 'Player' : 'Guest'}
+                    {isSyncPending && <CloudOff size={10} className="ms-1 text-warning" title="Sync Pending" />}
                   </span>
                   <span className="fw-bold text-white text-uppercase" style={{ fontSize: '0.8rem', lineHeight: 1 }}>
                     {currentUser || 'Profile'}
                   </span>
                 </div>
-                <div className="bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center text-white fw-bold border border-secondary border-opacity-50" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
+                <div className={`bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center text-white fw-bold border ${isSyncPending ? 'border-warning' : 'border-secondary border-opacity-50'}`} style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
                   {(session || currentUser) ? (currentUser?.charAt(0).toUpperCase() || '?') : <User size={18} />}
                 </div>
               </button>
