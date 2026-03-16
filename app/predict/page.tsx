@@ -44,6 +44,7 @@ interface CommunityPredictionData {
 
 function PredictPage() {
   const [username, setUsername] = useState('');
+  const [guestInput, setGuestInput] = useState('');
   const [session, setSession] = useState<Session | null>(null);
   const { showNotification } = useNotification();
   const [p10Driver, setP10Driver] = useState('');
@@ -427,9 +428,18 @@ function PredictPage() {
                     <hr className="border-secondary mt-4" />
                   </div>
                 )}
-                <Form onSubmit={(e) => { e.preventDefault(); if (username.trim()) selectUser(username); }}>
-                  <Form.Group className="mb-3"><Form.Label>Guest Name</Form.Label><Form.Control type="text" placeholder="Enter name" value={username} onChange={(e) => setUsername(e.target.value)} className="bg-dark text-white border-secondary py-2" /></Form.Group>
-                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">CONTINUE AS GUEST</Button>
+                <Form onSubmit={(e) => { e.preventDefault(); if (guestInput.trim()) selectUser(guestInput); }}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Guest Name</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Enter name" 
+                      value={guestInput} 
+                      onChange={(e) => setGuestInput(e.target.value)} 
+                      className="bg-dark text-white border-secondary py-2" 
+                    />
+                  </Form.Group>
+                  <Button type="submit" className="btn-f1 w-100 py-2 fw-bold" disabled={!guestInput.trim()}>CONTINUE AS GUEST</Button>
                 </Form>
               </Card>
             </Col>
