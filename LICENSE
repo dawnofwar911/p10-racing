@@ -1,0 +1,30 @@
+Copyright (c) 2026 P10 Racing. All Rights Reserved.
+
+This software and its documentation are the proprietary property of P10 Racing.
+The source code is provided in this public repository for the sole purpose of 
+automated builds, continuous integration, and personal review.
+
+PERMISSIONS:
+- Personal, non-commercial viewing and study of the source code is permitted.
+- Running the software for personal, non-commercial use is permitted.
+
+RESTRICTIONS:
+- NO REDISTRIBUTION: You may not distribute, sub-license, or sell the software 
+  or any modified versions of it.
+- NO COMMERCIAL USE: You may not use this software for any commercial purpose 
+  without express written permission from the copyright holder.
+- NO MODIFICATION FOR DISTRIBUTION: You may not modify the software for the 
+  purpose of distributing it as a separate product.
+
+DATA ATTRIBUTION:
+This application uses data provided by the Jolpica F1 API (https://api.jolpi.ca), 
+which is licensed under the Apache License 2.0. The data provided by Jolpica F1 
+is not affiliated with the Formula 1 companies.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+SOFTWARE.

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
@@ -162,8 +163,11 @@ export default function SettingsPage() {
           <p className="text-white opacity-25 small fw-bold letter-spacing-1 mb-1">
             P10 RACING
           </p>
-          <p className="text-white opacity-25 extra-small">
+          <p className="text-white opacity-25 extra-small mb-1">
             Version {packageInfo.version}
+          </p>
+          <p className="text-white opacity-10 extra-small">
+            Data provided by <a href="https://api.jolpi.ca" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
           </p>
         </div>
       </Container>
@@ -193,6 +197,3 @@ export default function SettingsPage() {
     </>
   );
 }
-
-// Ensure the Image component is imported
-import Image from 'next/image';

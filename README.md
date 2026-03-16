@@ -4,12 +4,16 @@ Predict the Midfield. Compete with Friends. Master the Grid.
 
 P10 Racing is a multiplayer mobile application for F1 fans who love the midfield battle. Predict exactly who will finish in P10 and who will be the first DNF of every Grand Prix to earn points and climb the global leaderboard.
 
-## 🚀 Features
+## 🏎️ Features
 - **Global & Private Leagues**: Create your own competitions or compete with the world.
-- **Real-Time Data**: Live driver standings and race results via the Jolpica F1 API.
+- **Real-Time Data**: Live driver standings and race results via the [Jolpica F1 API](https://api.jolpi.ca).
 - **Native Experience**: Smooth transitions, haptic feedback, and offline support.
 - **Cloud Sync**: Secure authentication and prediction backup via Supabase.
 - **Migration Tool**: Easily move your local guest scores to your cloud account.
+
+## 📊 Data Attribution
+This application uses data provided by the **Jolpica F1 API**. We are not affiliated with the Formula 1 companies. F1, Formula 1, and related marks are trademarks of Formula One Licensing B.V.
+
 
 ## 🛠️ Setup Instructions
 

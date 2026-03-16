@@ -1,7 +1,8 @@
 {
   "name": "p10-racing",
-  "version": "1.17.5",
-  "private": true,
+  "version": "1.17.6",
+  "private": false,
+  "license": "UNLICENSED",
 
   "scripts": {
     "dev": "next dev",
