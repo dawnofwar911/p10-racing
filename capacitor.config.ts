@@ -8,7 +8,17 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     hostname: 'p10racing.app'
-  }
+  },
+  plugins: {
+    BackgroundRunner: {
+      label: 'com.p10racing.app.background',
+      src: 'background.js',
+      event: 'syncTask',
+      repeat: true,
+      interval: 15, // minutes (minimum for Android)
+      autoStart: true,
+    },
+  },
 };
 
 export default config;

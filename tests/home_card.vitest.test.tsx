@@ -5,28 +5,31 @@ import { createClient } from '@/lib/supabase/client';
 import * as api from '@/lib/api';
 
 // Mock Supabase
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: vi.fn(() => ({
-    auth: {
-      getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
-    },
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
+const mockSupabaseClient = {
+  auth: {
+    getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+  },
+  from: vi.fn(() => ({
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
         eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn(() => Promise.resolve({ data: null, error: null })),
-          })),
-        })),
-        like: vi.fn(() => ({
-          select: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          // Add support for further chaining if needed
-          eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
           single: vi.fn(() => Promise.resolve({ data: null, error: null })),
         })),
+      })),
+      like: vi.fn(() => ({
+        select: vi.fn(() => Promise.resolve({ data: [], error: null })),
+        // Add support for further chaining if needed
+        eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
         single: vi.fn(() => Promise.resolve({ data: null, error: null })),
       })),
+      single: vi.fn(() => Promise.resolve({ data: null, error: null })),
     })),
   })),
+};
+
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: vi.fn(() => mockSupabaseClient),
+  createServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
 // Mock API

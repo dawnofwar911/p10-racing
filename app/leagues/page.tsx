@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
+import { storage } from '@/lib/storage';
 
 interface League {
   id: string;
@@ -42,10 +43,19 @@ function LeaguesContent() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLeagues(data || []);
-      localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
+      const newLeagues = data || [];
+      setLeagues(newLeagues);
+      await storage.setItem('p10_cache_leagues', JSON.stringify(newLeagues));
+      setError(null);
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+      console.error('Fetch leagues error:', err);
+      // We only set the visible error if we have no leagues (from cache or previous fetch)
+      setLeagues(current => {
+        if (current.length === 0) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch leagues');
+        }
+        return current;
+      });
     } finally {
       setLoading(false);
     }
@@ -54,7 +64,7 @@ function LeaguesContent() {
   useEffect(() => {
     async function init() {
       // 1. Load from cache first
-      const cached = localStorage.getItem('p10_cache_leagues');
+      const cached = storage.getItemSync('p10_cache_leagues');
       let hasCache = false;
       if (cached) {
         setLeagues(JSON.parse(cached));
@@ -66,7 +76,7 @@ function LeaguesContent() {
       setSession(currentSession);
       
       // Load local guests for migration
-      const guests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guests = JSON.parse(storage.getItemSync('p10_players') || '[]');
       setLocalGuests(guests);
 
       if (currentSession) {
@@ -91,10 +101,12 @@ function LeaguesContent() {
     Haptics.impact({ style: ImpactStyle.Heavy });
 
     try {
-      // Find all predictions for this guest in localStorage
+      // Find all predictions for this guest in storage
       let count = 0;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+      const keysToRemove: string[] = [];
+      const allKeys = await storage.keys();
+      
+      for (const key of allKeys) {
         if (!key) continue;
 
         let season = CURRENT_SEASON;
@@ -118,7 +130,7 @@ function LeaguesContent() {
         }
 
         if (match) {
-          const predStr = localStorage.getItem(key);
+          const predStr = await storage.getItem(key);
           if (!predStr) continue;
           const pred = JSON.parse(predStr);
           
@@ -133,24 +145,24 @@ function LeaguesContent() {
                 updated_at: new Date().toISOString()
               }, { onConflict: 'user_id, race_id' });
             
-            if (!upsertError) count++;
+            if (!upsertError) {
+              count++;
+              keysToRemove.push(key);
+            }
           }
         }
       }
       setSuccess(`Successfully imported ${count} predictions to your cloud account!`);
       
       // Post-migration cleanup
-      const currentGuests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const currentGuests = JSON.parse(await storage.getItem('p10_players') || '[]');
       const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
-      localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
+      await storage.setItem('p10_players', JSON.stringify(filteredGuests));
       setLocalGuests(filteredGuests);
       
       // Cleanup the actual prediction keys
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && (key.includes(`_final_pred_${guestName}_`) || key.startsWith(`final_pred_${guestName}_`) || (key.startsWith('final_pred_') && key.includes(`_${guestName}_`)))) {
-          localStorage.removeItem(key);
-        }
+      for (const key of keysToRemove) {
+        await storage.removeItem(key);
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -302,7 +314,7 @@ function LeaguesContent() {
                       </Table>
                     ) : (
                       <div className="text-center py-4 text-muted small">
-                        <p className="mb-0">No active leagues.</p>
+                        {loading ? <Spinner animation="border" variant="danger" /> : <p className="mb-0">No active leagues.</p>}
                       </div>
                     )}
                   </Card.Body>
