@@ -239,7 +239,7 @@ function LeagueDetailContent() {
                                 <div className="p-3 p-md-4 m-2 m-md-3 bg-dark rounded border border-secondary shadow-sm">
                                   {entry.breakdown && (
                                     <div className="row g-3 text-white mb-4 border-bottom border-secondary pb-4">
-                                      <div className="col-md-6 border-end-md border-secondary">
+                                  <div className="col-md-6 border-md-end border-secondary">
                                         <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: P10 Result</small>
                                         <div className="d-flex justify-content-between align-items-center">
                                           <span className="fw-bold fs-5 text-uppercase">{entry.breakdown.p10Driver.replace('_', ' ')}</span>

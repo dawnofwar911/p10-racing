@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, ApiCalendarRace } from '@/lib/api';
+import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
+import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import PullToRefresh from '@/components/PullToRefresh';
 
@@ -117,44 +118,23 @@ export default function Home() {
       ]);
 
       if (drivers.length > 0) {
-        setAllDrivers(drivers);
-        localStorage.setItem('p10_cache_drivers', JSON.stringify(drivers));
+        // Sort consistently by team to match other pages
+        const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
+        setAllDrivers(sortedDrivers);
+        localStorage.setItem('p10_cache_drivers', JSON.stringify(sortedDrivers));
       }
 
       if (races.length > 0) {
         const now = new Date();
         const raceResultsMap = await fetchAllSimplifiedResults();
         
-        // Find the "active" race using the same 4-hour window logic as the predict page
-        let activeIndex = races.findIndex((r: ApiCalendarRace) => {
-          const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
-          const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
-          return fourHoursLater > now;
-        });
-
-        if (activeIndex === -1) {
-          activeIndex = races.length - 1;
-        }
-
-        // SMART UNLOCK: If the identified "active" race already has results, advance to the next race early.
-        if (activeIndex >= 0 && activeIndex < races.length) {
-          const currentCandidate = races[activeIndex];
-          if (raceResultsMap[currentCandidate.round]) {
-            if (activeIndex < races.length - 1) {
-              activeIndex++;
-            }
-          }
-        }
+        const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+        setIsSeasonFinished(finished);
 
         const upcoming = races[activeIndex];
 
-        // Calculate if ALL races in the calendar have results
-        const resultsFoundCount = Object.keys(raceResultsMap).length;
-        const allRacesHaveResults = resultsFoundCount > 0 && resultsFoundCount === races.length;
-
         // Season is finished if activeIndex is at the end and all races have results
-        if (activeIndex === races.length - 1 && allRacesHaveResults) {
-          setIsSeasonFinished(true);
+        if (finished) {
           // Fetch profiles and predictions for champion calculation
           const { data: profiles } = await supabase.from('profiles').select('id, username');
           const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };

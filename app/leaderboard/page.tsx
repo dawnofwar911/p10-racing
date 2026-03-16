@@ -27,8 +27,8 @@ export default function LeaderboardPage() {
 
   const supabase = createClient();
 
-  const calculate = useCallback(async () => {
-    setLoading(true);
+  const calculate = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     
     // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
     const raceResultsMap = await fetchAllSimplifiedResults();
@@ -97,12 +97,25 @@ export default function LeaderboardPage() {
     const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
     
     setLeaderboard(ranked);
+    if (view === 'global') {
+      localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
+    }
     setLoading(false);
   }, [supabase, view]);
 
   useEffect(() => {
+    // Cache loading logic
+    if (view === 'global') {
+      const cached = localStorage.getItem('p10_cache_leaderboard');
+      if (cached) {
+        setLeaderboard(JSON.parse(cached));
+        setLoading(false);
+        calculate(true); // Quiet update
+        return;
+      }
+    }
     calculate();
-  }, [calculate]);
+  }, [calculate, view]);
 
   // Real-time subscription
   useEffect(() => {
@@ -201,7 +214,7 @@ export default function LeaderboardPage() {
                             <div className="p-3 p-md-4 m-2 m-md-3 bg-dark rounded border border-secondary shadow-sm">
                               {entry.breakdown && (
                                 <div className="row g-3 text-white mb-4 border-bottom border-secondary pb-4">
-                                  <div className="col-md-6 border-end-md border-secondary">
+                                  <div className="col-md-6 border-md-end border-secondary">
                                     <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: P10 Result</small>
                                     <div className="d-flex justify-content-between align-items-center">
                                       <span className="fw-bold fs-5 text-uppercase">{entry.breakdown.p10Driver.replace('_', ' ')}</span>
