@@ -3,9 +3,9 @@ run-name: ${{ github.event.head_commit.message || github.workflow }}
 
 on:
   push:
-    branches: [ main, feature/* ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ '**' ]
   workflow_dispatch:
 
 env:
