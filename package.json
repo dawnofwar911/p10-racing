@@ -3,7 +3,6 @@
   "version": "1.19.1",
   "private": false,
   "license": "UNLICENSED",
-
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -17,11 +16,13 @@
   "dependencies": {
     "@capacitor/android": "^8.0.2",
     "@capacitor/app": "^8.0.1",
+    "@capacitor/background-runner": "^3.0.0",
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
     "@capacitor/device": "^8.0.1",
     "@capacitor/haptics": "^8.0.1",
     "@capacitor/local-notifications": "^8.0.2",
+    "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.0.2",
     "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",

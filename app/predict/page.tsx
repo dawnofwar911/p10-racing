@@ -18,7 +18,7 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { syncPendingPredictions, hasPendingPrediction } from '@/lib/supabase/sync';
+import { syncPendingPredictions, hasPendingPrediction, savePendingPrediction } from '@/lib/supabase/sync';
 
 interface PredictRace {
   id: string;
@@ -73,11 +73,6 @@ function PredictPage() {
     const stillPending = hasPendingPrediction(currentSession.user.id);
     setHasPending(stillPending);
     setIsSyncing(false);
-    
-    if (success && !stillPending && localStorage.getItem(`pending_pred_${currentSession.user.id}`) === null) {
-      // Re-fetch community to show own updated prediction
-      // (Simplified: in a real app we might just refresh the whole init)
-    }
   }, [isSyncing]);
 
   useEffect(() => {
@@ -324,11 +319,7 @@ function PredictPage() {
             // Handle as pending if it's likely a network error
             const isNetwork = error.message.includes('fetch') || !window.navigator.onLine;
             if (isNetwork) {
-              localStorage.setItem(`pending_pred_${session.user.id}`, JSON.stringify({
-                race_id: `${CURRENT_SEASON}_${nextRace.id}`,
-                p10_driver_id: p10Driver,
-                dnf_driver_id: dnfDriver
-              }));
+              await savePendingPrediction(session, `${CURRENT_SEASON}_${nextRace.id}`, p10Driver, dnfDriver);
               setHasPending(true);
               showNotification('Offline: Prediction saved locally and will sync when online.', 'info');
             } else {
@@ -336,17 +327,13 @@ function PredictPage() {
               return;
             }
           } else {
-            // Success - clear any existing pending
-            localStorage.removeItem(`pending_pred_${session.user.id}`);
+            // Success - ensure pending is cleared globally
+            await syncPendingPredictions(session);
             setHasPending(false);
           }
         } catch (e) {
           // Fallback to pending on throw (network)
-          localStorage.setItem(`pending_pred_${session.user.id}`, JSON.stringify({
-            race_id: `${CURRENT_SEASON}_${nextRace.id}`,
-            p10_driver_id: p10Driver,
-            dnf_driver_id: dnfDriver
-          }));
+          await savePendingPrediction(session, `${CURRENT_SEASON}_${nextRace.id}`, p10Driver, dnfDriver);
           setHasPending(true);
           showNotification('Offline: Prediction saved locally.', 'info');
         }
