@@ -34,16 +34,14 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
   });
 
   it('should prioritize Supabase verified_results (Gold Standard)', async () => {
-    const mockRaces = [{ round: '1', date: '2026-03-15', time: '05:00:00Z', raceName: 'Australia', Circuit: { circuitName: 'Albert Park' } }];
-    (fetchCalendar as any).mockResolvedValue(mockRaces);
-    
-    // Supabase returns verified results
-    (mockSupabase.eq as any).mockResolvedValue({
+    // Supabase returns verified results in the new format
+    (mockSupabase.like as any).mockResolvedValue({
       data: [{
-        round: 1,
-        dnf_driver_id: 'sainz',
-        p10_driver_id: 'verstappen',
-        positions: { 'verstappen': 1 },
+        id: '2026_1',
+        data: {
+          positions: { 'verstappen': 1 },
+          firstDnf: 'sainz'
+        },
         created_at: '2026-03-16T00:00:00.000Z'
       }]
     });
@@ -57,11 +55,8 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
   });
 
   it('should fall back to localStorage if Supabase results are missing', async () => {
-    const mockRaces = [{ round: '1', date: '2026-03-15', time: '05:00:00Z', raceName: 'Australia', Circuit: { circuitName: 'Albert Park' } }];
-    (fetchCalendar as any).mockResolvedValue(mockRaces);
-    
     // Supabase returns empty
-    (mockSupabase.eq as any).mockResolvedValue({ data: [] });
+    (mockSupabase.like as any).mockResolvedValue({ data: [] });
 
     // localStorage has results
     const cachedData = { positions: { 'leclerc': 1 }, firstDnf: 'russell' };
@@ -76,11 +71,8 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
   });
 
   it('should fall back to API fetch if both Supabase and localStorage are missing', async () => {
-    const mockRaces = [{ round: '1', date: '2026-03-15', time: '05:00:00Z', raceName: 'Australia', Circuit: { circuitName: 'Albert Park' } }];
-    (fetchCalendar as any).mockResolvedValue(mockRaces);
-    
     // Supabase returns empty
-    (mockSupabase.eq as any).mockResolvedValue({ data: [] });
+    (mockSupabase.like as any).mockResolvedValue({ data: [] });
 
     // API returns results
     const apiResult = {

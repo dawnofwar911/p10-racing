@@ -43,19 +43,23 @@ function LeaguesContent() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLeagues(data || []);
-      await storage.setItem('p10_cache_leagues', JSON.stringify(data || []));
+      const newLeagues = data || [];
+      setLeagues(newLeagues);
+      await storage.setItem('p10_cache_leagues', JSON.stringify(newLeagues));
       setError(null);
     } catch (err: unknown) {
       console.error('Fetch leagues error:', err);
-      // We don't set error if we have cached data to show
-      if (leagues.length === 0) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch leagues');
-      }
+      // We only set the visible error if we have no leagues (from cache or previous fetch)
+      setLeagues(current => {
+        if (current.length === 0) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch leagues');
+        }
+        return current;
+      });
     } finally {
       setLoading(false);
     }
-  }, [supabase, leagues.length]);
+  }, [supabase]);
 
   useEffect(() => {
     async function init() {

@@ -3,7 +3,7 @@
 import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { User, CloudOff } from 'lucide-react';
@@ -29,8 +29,8 @@ export default function AppNavbar() {
   const resetToGuestState = useCallback(async () => {
     await storage.removeItem('p10_cache_username');
     await storage.removeItem('p10_cache_is_admin');
-    const localUser = await storage.getItem('p10_current_user');
-    setCurrentUser(localUser);
+    await storage.removeItem('p10_current_user');
+    setCurrentUser(null);
     setIsAdmin(false);
   }, []);
 
@@ -41,150 +41,113 @@ export default function AppNavbar() {
     return success;
   }, []);
 
+  const sessionRef = useRef<Session | null>(null);
+
   useEffect(() => {
-    async function getSession() {
-      // 1. Load from cache immediately for instant UI if data exists
+    async function initializeAuth() {
+      // 1. Initial UI from cache
       const cachedUser = storage.getItemSync('p10_cache_username');
       const cachedIsAdmin = storage.getItemSync('p10_cache_is_admin') === 'true';
       
       if (cachedUser) {
         setCurrentUser(cachedUser);
         setIsAdmin(cachedIsAdmin);
-        setIsAuthReady(true); // Only ready immediately if we have cache to show
+        setIsAuthReady(true);
       } else {
         const localUser = storage.getItemSync('p10_current_user');
         setCurrentUser(localUser);
-        // Do NOT set isAuthReady yet to avoid "Guest" flash for slow connections
       }
 
+      // 2. Network check
       try {
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) throw sessionError;
-        
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         setSession(currentSession);
-
-        if (currentSession) {
-          // Check for pending sync on load
-          setIsSyncPending(hasPendingPrediction(currentSession.user.id));
-          triggerSync(currentSession);
-
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('username, is_admin')
-            .eq('id', currentSession.user.id)
-            .single();
-          
-          if (profile) {
-            setCurrentUser(profile.username);
-            setIsAdmin(!!profile.is_admin);
-            await storage.setItem('p10_cache_username', profile.username);
-            await storage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
-          } else if (!profileError) {
-            // Profile explicitly doesn't exist (not a network error)
-            const fallback = currentSession.user.email?.split('@')[0] || 'User';
-            setCurrentUser(fallback);
-            await storage.setItem('p10_cache_username', fallback);
-          }
-        } else {
-          // Explicitly no session, clear cache
+        sessionRef.current = currentSession;
+        
+        if (!currentSession) {
           await resetToGuestState();
         }
-      } catch (error: unknown) {
+      } catch (error) {
         console.error('Session fetch error:', error);
-        // Only reset if it's NOT a network error. 
-        const isNetworkError = error instanceof Error && (error.message.includes('fetch') || ('code' in error && error.code === 'PGRST301')) || (typeof window !== 'undefined' && !window.navigator.onLine);
-        if (!isNetworkError) {
-          await resetToGuestState();
-        }
       } finally {
-        setIsAuthReady(true); // Always ready after network check
+        setIsAuthReady(true);
       }
     }
 
-    getSession();
+    initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       setSession(newSession);
+      sessionRef.current = newSession;
+
       if (event === 'SIGNED_OUT') {
-        resetToGuestState().then(() => {
-          window.location.href = '/';
-        });
+        await resetToGuestState();
+        window.location.href = '/';
         return;
       }
       
-      if (!newSession && event !== 'INITIAL_SESSION') {
-        resetToGuestState();
-      } else if (newSession) {
+      if (newSession) {
         setIsSyncPending(hasPendingPrediction(newSession.user.id));
         triggerSync(newSession);
 
-        supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('username, is_admin')
           .eq('id', newSession.user.id)
-          .single()
-          .then(async ({ data, error }) => {
-            if (data) {
-              setCurrentUser(data.username);
-              setIsAdmin(!!data.is_admin);
-              await storage.setItem('p10_cache_username', data.username);
-              await storage.setItem('p10_cache_is_admin', String(!!data.is_admin));
-            } else if (newSession && !error) {
-              const fallback = newSession.user.email?.split('@')[0] || 'User';
-              setCurrentUser(fallback);
-              await storage.setItem('p10_cache_username', fallback);
-            }
-          });
+          .single();
+        
+        if (profile) {
+          setCurrentUser(profile.username);
+          setIsAdmin(!!profile.is_admin);
+          await storage.setItem('p10_cache_username', profile.username);
+          await storage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
+        } else {
+          const fallback = newSession.user.email?.split('@')[0] || 'User';
+          setCurrentUser(fallback);
+          await storage.setItem('p10_cache_username', fallback);
+        }
+      } else if (event !== 'INITIAL_SESSION') {
+        await resetToGuestState();
       }
     });
 
-    // ---------------------------------------------------------
-    // Background Sync & Network Listeners
-    // ---------------------------------------------------------
-    
-    // 1. Sync when app returns to foreground (Native only)
-    let appStateListener: Promise<PluginListenerHandle> | undefined;
-    if (Capacitor.isNativePlatform()) {
-      appStateListener = App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive && session) {
-          console.log('App returned to foreground, triggering sync...');
-          triggerSync(session);
-        }
-      });
-    }
-
-    // 2. Sync when browser/app comes back online
+    // Background listeners
     const handleOnline = () => {
-      if (session) {
-        console.log('Network restored, triggering sync...');
-        triggerSync(session);
-      }
+      if (sessionRef.current) triggerSync(sessionRef.current);
     };
     window.addEventListener('online', handleOnline);
 
+    let appStateListener: Promise<PluginListenerHandle> | undefined;
+    if (Capacitor.isNativePlatform()) {
+      appStateListener = App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive && sessionRef.current) triggerSync(sessionRef.current);
+      });
+    }
+
     return () => {
       subscription.unsubscribe();
-      if (appStateListener) {
-        appStateListener.then(listener => listener.remove());
-      }
       window.removeEventListener('online', handleOnline);
+      if (appStateListener) {
+        appStateListener.then(l => l.remove());
+      }
     };
-  }, [supabase, resetToGuestState, triggerSync, session]);
+  }, [supabase, resetToGuestState, triggerSync]);
 
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
     
-    // Clear additional guest-only data
-    await storage.removeItem('p10_current_user');
+    // 1. Fully clear all user identities (Cloud & Guest)
     await resetToGuestState();
     
+    // 2. Perform the actual Supabase logout
     if (session) {
       await supabase.auth.signOut();
+    } else {
+      // If there's no session, we still want to refresh to clear any stale state
+      window.location.href = '/';
     }
     
-    // Force a full page refresh to clear all React state globally
-    window.location.href = '/';
+    // Note: If session exists, onAuthStateChange ('SIGNED_OUT') will trigger the refresh.
   };
 
   const triggerHaptic = () => {

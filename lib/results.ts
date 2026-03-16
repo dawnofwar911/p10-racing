@@ -20,25 +20,29 @@ export async function fetchAllSimplifiedResults(season: number = CURRENT_SEASON)
 
   try {
     // Priority 1: Supabase Verified Results
+    // Schema uses "id" as "season_round" (e.g., "2026_1") and "data" as JSONB
     const { data: verifiedData, error: verifiedError } = await supabase
       .from('verified_results')
       .select('*')
-      .eq('season', season);
+      .like('id', `${season}_%`);
       
     if (!verifiedError && verifiedData && verifiedData.length > 0) {
       // We have official results!
-      verifiedData.forEach(row => {
-        resultsMap[row.round.toString()] = {
-          firstDnf: row.dnf_driver_id || null,
-          positions: row.positions as { [driverId: string]: number },
-          date: new Date(row.created_at) // Approximate race date based on entry creation
+      for (const row of verifiedData) {
+        const round = row.id.split('_')[1];
+        const data = row.data as { positions: { [driverId: string]: number }, firstDnf: string | null };
+        
+        resultsMap[round] = {
+          firstDnf: data.firstDnf || null,
+          positions: data.positions,
+          date: new Date(row.created_at)
         };
         
         // Cache these verified results locally for fast offline access
         if (isClient) {
-          storage.setItem(`results_${season}_${row.round}`, JSON.stringify(resultsMap[row.round.toString()]));
+          await storage.setItem(`results_${season}_${round}`, JSON.stringify(resultsMap[round]));
         }
-      });
+      }
       return resultsMap;
     }
   } catch (e) {
