@@ -95,12 +95,6 @@ jobs:
           keyStorePassword: ${{ secrets.PLAYSTORE_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.PLAYSTORE_KEY_PASSWORD }}
 
-      - name: Upload Release AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: p10-racing-release-aab
-          path: ${{steps.sign_aab.outputs.signedReleaseFile}}
-
       - name: Generate Release Notes
         run: |
           mkdir -p distribution/whatsnew
