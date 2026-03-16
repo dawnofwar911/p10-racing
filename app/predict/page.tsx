@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal, Spinner, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
@@ -61,7 +61,7 @@ function PredictPage() {
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const isSyncingRef = useRef(false);
   const [hasPending, setHasPending] = useState(false);
   
   const supabase = createClient();
@@ -69,8 +69,8 @@ function PredictPage() {
 
   // Sync Logic
   const triggerSync = useCallback(async (currentSession: Session | null) => {
-    if (!currentSession || isSyncing) return;
-    setIsSyncing(true);
+    if (!currentSession || isSyncingRef.current) return;
+    isSyncingRef.current = true;
     try {
       await syncPendingPredictions(currentSession);
       const stillPending = hasPendingPrediction(currentSession.user.id);
@@ -78,9 +78,9 @@ function PredictPage() {
     } catch (e) {
       console.error('Sync error:', e);
     } finally {
-      setIsSyncing(false);
+      isSyncingRef.current = false;
     }
-  }, [isSyncing]);
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('howto') === 'true') {

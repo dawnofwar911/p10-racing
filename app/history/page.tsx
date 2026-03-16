@@ -26,51 +26,64 @@ export default function HistoryPage() {
   };
 
   useEffect(() => {
+    let isMounted = true;
     async function loadHistory() {
-      const supabase = createClient();
-      
-      // 1. Fetch all verified results from Supabase (filtered by current season)
-      const { data: dbResults } = await supabase
-        .from('verified_results')
-        .select('*')
-        .like('id', `${CURRENT_SEASON}_%`);
+      try {
+        const supabase = createClient();
+        
+        // 1. Fetch all verified results from Supabase (filtered by current season)
+        const { data: dbResults } = await supabase
+          .from('verified_results')
+          .select('*')
+          .like('id', `${CURRENT_SEASON}_%`);
 
-      if (!dbResults || dbResults.length === 0) {
-        setLoading(false);
-        return;
+        if (!isMounted) return;
+
+        if (!dbResults || dbResults.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fetch Drivers and Calendar to map names
+        const [drivers, races] = await Promise.all([
+          fetchDrivers(CURRENT_SEASON),
+          fetchCalendar(CURRENT_SEASON)
+        ]);
+
+        if (!isMounted) return;
+
+        const historyData: HistoryEntry[] = dbResults.map(res => {
+          const round = res.id.split('_')[1];
+          const raceInfo = races.find(r => r.round === round);
+          const data = res.data as { positions: { [id: string]: number }, firstDnf: string | null };
+
+          const p10Id = Object.entries(data.positions).find(([, pos]) => pos === 10)?.[0];
+          const winnerId = Object.entries(data.positions).find(([, pos]) => pos === 1)?.[0];
+
+          const p10Driver = drivers.find(d => d.id === p10Id);
+          const dnfDriver = drivers.find(d => d.id === data.firstDnf);
+          const winnerDriver = drivers.find(d => d.id === winnerId);
+
+          return {
+            round: round,
+            name: raceInfo?.raceName || `Round ${round}`,
+            p10: p10Driver ? p10Driver.name : 'Unknown',
+            dnf: dnfDriver ? dnfDriver.name : (data.firstDnf === 'None' ? 'None' : 'None'),
+            winner: winnerDriver ? winnerDriver.name : 'Unknown'
+          };
+        });
+
+        if (isMounted) {
+          setHistory(historyData.sort((a, b) => parseInt(b.round) - parseInt(a.round)));
+        }
+      } catch (err) {
+        console.error('History load error:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      // 2. Fetch Drivers and Calendar to map names
-      const [drivers, races] = await Promise.all([
-        fetchDrivers(CURRENT_SEASON),
-        fetchCalendar(CURRENT_SEASON)
-      ]);
-
-      const historyData: HistoryEntry[] = dbResults.map(res => {
-        const round = res.id.split('_')[1];
-        const raceInfo = races.find(r => r.round === round);
-        const data = res.data as { positions: { [id: string]: number }, firstDnf: string | null };
-
-        const p10Id = Object.entries(data.positions).find(([, pos]) => pos === 10)?.[0];
-        const winnerId = Object.entries(data.positions).find(([, pos]) => pos === 1)?.[0];
-
-        const p10Driver = drivers.find(d => d.id === p10Id);
-        const dnfDriver = drivers.find(d => d.id === data.firstDnf);
-        const winnerDriver = drivers.find(d => d.id === winnerId);
-
-        return {
-          round: round,
-          name: raceInfo?.raceName || `Round ${round}`,
-          p10: p10Driver ? p10Driver.name : 'Unknown',
-          dnf: dnfDriver ? dnfDriver.name : (data.firstDnf === 'None' ? 'None' : 'None'),
-          winner: winnerDriver ? winnerDriver.name : 'Unknown'
-        };
-      });
-
-      setHistory(historyData.sort((a, b) => parseInt(b.round) - parseInt(a.round)));
-      setLoading(false);
     }
     loadHistory();
+    return () => { isMounted = false; };
   }, []);
 
   return (
