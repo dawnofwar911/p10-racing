@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
+import { useState, useEffect, Suspense, useCallback } from 'react';
+import { Container, Row, Col, Form, Button, Card, Modal, Spinner } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -58,9 +58,45 @@ function PredictPage() {
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [hasPending, setHasPending] = useState(false);
   
   const supabase = createClient();
   const searchParams = useSearchParams();
+
+  // Sync Logic
+  const syncPendingPredictions = useCallback(async (currentSession: Session | null) => {
+    if (!currentSession || isSyncing) return;
+    
+    const pendingKey = `pending_pred_${currentSession.user.id}`;
+    const pendingData = localStorage.getItem(pendingKey);
+    
+    if (pendingData) {
+      setIsSyncing(true);
+      try {
+        const pending = JSON.parse(pendingData);
+        const { error } = await supabase
+          .from('predictions')
+          .upsert({
+            user_id: currentSession.user.id,
+            race_id: pending.race_id,
+            p10_driver_id: pending.p10_driver_id,
+            dnf_driver_id: pending.dnf_driver_id,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id, race_id' });
+        
+        if (!error) {
+          localStorage.removeItem(pendingKey);
+          setHasPending(false);
+          showNotification('Sync complete! Your offline prediction is now saved to the cloud.', 'success');
+        }
+      } catch (e) {
+        console.error('Sync failed:', e);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  }, [supabase, isSyncing, showNotification]);
 
   useEffect(() => {
     if (searchParams.get('howto') === 'true') {
@@ -114,6 +150,12 @@ function PredictPage() {
           currentUsername = profile.username;
           setUsername(profile.username);
           localStorage.setItem('p10_cache_username', profile.username);
+        }
+
+        // Check for pending
+        if (localStorage.getItem(`pending_pred_${currentSession.user.id}`)) {
+          setHasPending(true);
+          syncPendingPredictions(currentSession);
         }
       }
       setLoadingSession(false);
@@ -269,7 +311,7 @@ function PredictPage() {
       setExistingPlayers(existingPlayersList);
     }
     init();
-  }, [supabase, isSeasonFinished]);
+  }, [supabase, isSeasonFinished, syncPendingPredictions]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,23 +327,46 @@ function PredictPage() {
       };
 
       if (session) {
-        // 1. Save to Cloud (Supabase)
-        const { error } = await supabase
-          .from('predictions')
-          .upsert({
-            user_id: session.user.id,
+        // 1. Attempt Cloud Save
+        try {
+          const { error } = await supabase
+            .from('predictions')
+            .upsert({
+              user_id: session.user.id,
+              race_id: `${CURRENT_SEASON}_${nextRace.id}`,
+              p10_driver_id: p10Driver,
+              dnf_driver_id: dnfDriver,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id, race_id' });
+          
+          if (error) {
+            // Handle as pending if it's likely a network error
+            const isNetwork = error.message.includes('fetch') || !window.navigator.onLine;
+            if (isNetwork) {
+              localStorage.setItem(`pending_pred_${session.user.id}`, JSON.stringify({
+                race_id: `${CURRENT_SEASON}_${nextRace.id}`,
+                p10_driver_id: p10Driver,
+                dnf_driver_id: dnfDriver
+              }));
+              setHasPending(true);
+              showNotification('Offline: Prediction saved locally and will sync when online.', 'info');
+            } else {
+              showNotification('Error saving prediction: ' + error.message, 'error');
+              return;
+            }
+          }
+        } catch (e) {
+          // Fallback to pending on throw (network)
+          localStorage.setItem(`pending_pred_${session.user.id}`, JSON.stringify({
             race_id: `${CURRENT_SEASON}_${nextRace.id}`,
             p10_driver_id: p10Driver,
-            dnf_driver_id: dnfDriver,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id, race_id' });
-        
-        if (error) {
-          showNotification('Error saving prediction: ' + error.message, 'error');
-          return;
+            dnf_driver_id: dnfDriver
+          }));
+          setHasPending(true);
+          showNotification('Offline: Prediction saved locally.', 'info');
         }
 
-        // 2. Mirror to LocalStorage for instant UI & offline support
+        // 2. Mirror to LocalStorage for instant UI
         const storageUser = username || session.user.id;
         localStorage.setItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${nextRace.id}`, JSON.stringify(prediction));
       } else {
@@ -404,6 +469,14 @@ function PredictPage() {
           <div className="mb-4 display-1">🏁</div>
           <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
           <p className="lead mb-5 text-muted">Good luck for the {nextRace?.name}, <span className="text-white fw-bold">{username}</span>.</p>
+          {hasPending && (
+            <Alert variant="info" className="mb-4 border-info bg-info bg-opacity-10 text-white small mx-auto" style={{ maxWidth: '400px' }}>
+              <div className="d-flex align-items-center justify-content-center gap-2">
+                <Spinner animation="border" size="sm" variant="info" />
+                <span>Syncing with cloud...</span>
+              </div>
+            </Alert>
+          )}
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
             <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
             <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Home</Button></Link>
@@ -631,4 +704,3 @@ export default function PredictPageWrapper() {
     </Suspense>
   );
 }
-

@@ -41,102 +41,126 @@ function LeagueDetailContent() {
     }
   };
 
-  const loadLeague = useCallback(async () => {
+  const loadLeague = useCallback(async (quiet = false) => {
     if (!leagueId) return;
-    setLoading(true);
+    if (!quiet) setLoading(true);
     
-    // 1. Fetch League Info
-    const { data: league, error: leagueError } = await supabase
-      .from('leagues')
-      .select('name, invite_code, created_at')
-      .eq('id', leagueId)
-      .single();
+    try {
+      // 1. Fetch League Info
+      const { data: league, error: leagueError } = await supabase
+        .from('leagues')
+        .select('name, invite_code, created_at')
+        .eq('id', leagueId)
+        .single();
 
-    if (leagueError) {
-      console.error(leagueError);
-      setLoading(false);
-      return;
-    }
-    setLeagueName(league.name);
-    setInviteCode(league.invite_code);
-    const leagueCreatedAt = new Date(league.created_at);
-
-    // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
-    const raceResultsMap = await fetchAllSimplifiedResults();
-    const races = await fetchCalendar(CURRENT_SEASON);
-    const resultsFoundCount = Object.keys(raceResultsMap).length;
-
-    setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
-
-    // 3. Fetch League Members and their profiles
-    const { data: membersListData, error: membersError } = await supabase
-      .from('league_members')
-      .select('user_id')
-      .eq('league_id', leagueId);
-    
-    if (membersError) {
-      console.error('Error fetching members list:', membersError);
-    }
-
-    const memberIds = membersListData?.map(m => m.user_id) || [];
-    
-    // Fetch Profiles for those members
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', memberIds);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    const currentUserId = session?.user?.id;
-
-    const members = (profilesData || []).filter(p => {
-      return !isTestAccount(p.username) || p.id === currentUserId;
-    });
-
-    // Fetch predictions for those members
-    const { data: predictionsData } = await supabase
-      .from('predictions')
-      .select('*')
-      .in('user_id', memberIds);
-    
-    const predictions = predictionsData as DbPrediction[];
-
-    // 4. Calculate Scores
-    const entries: LeaderboardEntry[] = members.map((user) => {
-      const userPreds = predictions?.filter(p => p.user_id === user.id) || [];
-      const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
+      if (leagueError) throw leagueError;
       
-      userPreds.forEach(p => {
-        const round = p.race_id.split('_')[1];
-        playerPredictions[round] = { p10: p.p10_driver_id, dnf: p.dnf_driver_id };
+      setLeagueName(league.name);
+      setInviteCode(league.invite_code);
+      const leagueCreatedAt = new Date(league.created_at);
+
+      // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
+      const raceResultsMap = await fetchAllSimplifiedResults();
+      const races = await fetchCalendar(CURRENT_SEASON);
+      const resultsFoundCount = Object.keys(raceResultsMap).length;
+
+      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
+
+      // 3. Fetch League Members and their profiles
+      const { data: membersListData, error: membersError } = await supabase
+        .from('league_members')
+        .select('user_id')
+        .eq('league_id', leagueId);
+      
+      if (membersError) throw membersError;
+
+      const memberIds = membersListData?.map(m => m.user_id) || [];
+      
+      // Fetch Profiles for those members
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', memberIds);
+      
+      if (profilesError) throw profilesError;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+
+      const members = (profilesData || []).filter(p => {
+        return !isTestAccount(p.username) || p.id === currentUserId;
       });
 
-      const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(
-        playerPredictions,
-        raceResultsMap,
-        leagueCreatedAt
-      );
+      // Fetch predictions for those members
+      const { data: predictionsData, error: predsError } = await supabase
+        .from('predictions')
+        .select('*')
+        .in('user_id', memberIds);
+      
+      if (predsError) throw predsError;
 
-      return {
-        rank: 0,
-        player: user.username,
-        points: totalPoints,
-        lastRacePoints: lastRacePoints,
-        breakdown: latestBreakdown,
-        history: history
-      };
-    });
+      const predictions = predictionsData as DbPrediction[];
 
-    const sorted = entries.sort((a, b) => b.points - a.points);
-    const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
-    
-    setLeaderboard(ranked);
-    setLoading(false);
+      // 4. Calculate Scores
+      const entries: LeaderboardEntry[] = members.map((user) => {
+        const userPreds = predictions?.filter(p => p.user_id === user.id) || [];
+        const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
+        
+        userPreds.forEach(p => {
+          const round = p.race_id.split('_')[1];
+          playerPredictions[round] = { p10: p.p10_driver_id, dnf: p.dnf_driver_id };
+        });
+
+        const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(
+          playerPredictions,
+          raceResultsMap,
+          leagueCreatedAt
+        );
+
+        return {
+          rank: 0,
+          player: user.username,
+          points: totalPoints,
+          lastRacePoints: lastRacePoints,
+          breakdown: latestBreakdown,
+          history: history
+        };
+      });
+
+      const sorted = entries.sort((a, b) => b.points - a.points);
+      const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
+      
+      setLeaderboard(ranked);
+      
+      // Cache the full state for this league
+      localStorage.setItem(`p10_cache_league_${leagueId}`, JSON.stringify({
+        name: league.name,
+        inviteCode: league.invite_code,
+        leaderboard: ranked
+      }));
+    } catch (err) {
+      console.error('League load error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [supabase, leagueId]);
 
   useEffect(() => {
-    loadLeague();
-  }, [loadLeague]);
+    if (!leagueId) return;
+    
+    // Load from cache first
+    const cached = localStorage.getItem(`p10_cache_league_${leagueId}`);
+    if (cached) {
+      const data = JSON.parse(cached);
+      setLeagueName(data.name);
+      setInviteCode(data.inviteCode);
+      setLeaderboard(data.leaderboard);
+      setLoading(false);
+      loadLeague(true); // Quiet update
+    } else {
+      loadLeague();
+    }
+  }, [loadLeague, leagueId]);
 
   // Real-time subscription
   useEffect(() => {
@@ -147,17 +171,17 @@ function LeagueDetailContent() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'verified_results' },
-        () => loadLeague()
+        () => loadLeague(true)
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'predictions' },
-        () => loadLeague()
+        () => loadLeague(true)
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'league_members', filter: `league_id=eq.${leagueId}` },
-        () => loadLeague()
+        () => loadLeague(true)
       )
       .subscribe();
 
@@ -172,7 +196,7 @@ function LeagueDetailContent() {
 
   return (
     <Container className="mt-4 mb-5">
-      {loading ? (
+      {loading && leaderboard.length === 0 ? (
         <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
       ) : (
         <>

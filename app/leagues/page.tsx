@@ -44,12 +44,17 @@ function LeaguesContent() {
       if (error) throw error;
       setLeagues(data || []);
       localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
-    } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+      setError(null);
+    } catch (err: any) {
+      console.error('Fetch leagues error:', err);
+      // We don't set error if we have cached data to show
+      if (leagues.length === 0) {
+        setError(err.message || 'Failed to fetch leagues');
+      }
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, leagues.length]);
 
   useEffect(() => {
     async function init() {
@@ -302,7 +307,7 @@ function LeaguesContent() {
                       </Table>
                     ) : (
                       <div className="text-center py-4 text-muted small">
-                        <p className="mb-0">No active leagues.</p>
+                        {loading ? <Spinner animation="border" variant="danger" /> : <p className="mb-0">No active leagues.</p>}
                       </div>
                     )}
                   </Card.Body>
