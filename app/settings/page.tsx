@@ -11,6 +11,7 @@ import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useAuth } from '@/components/AuthProvider';
 import LoadingView from '@/components/LoadingView';
+import { useNotification } from '@/components/Notification';
 
 const supabase = createClient();
 
@@ -19,6 +20,7 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const { showNotification } = useNotification();
   
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
@@ -38,6 +40,7 @@ export default function SettingsPage() {
       window.location.href = '/';
     } catch (err) {
       console.error('Error deleting account:', err);
+      showNotification('Failed to delete account. Please try again.', 'error');
       setIsDeleting(false);
     }
   };

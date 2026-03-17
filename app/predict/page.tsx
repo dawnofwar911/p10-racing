@@ -11,7 +11,9 @@ import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Share } from '@capacitor/share';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
+import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
@@ -44,6 +46,7 @@ function PredictPage() {
   const { session, isLoading: authLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [tempUsername, setTempUsername] = useState('');
+  const { showNotification } = useNotification();
   const [p10Driver, setP10Driver] = useState('');
 
   const [dnfDriver, setDnfDriver] = useState('');
@@ -58,6 +61,14 @@ function PredictPage() {
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('howto') === 'true') {
+      setShowHowToPlay(true);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     async function init() {
       // 1. READ CACHE FIRST
@@ -283,7 +294,7 @@ function PredictPage() {
           }, { onConflict: 'user_id, race_id' });
         
         if (error) {
-          console.error('Error saving prediction:', error.message);
+          showNotification('Error saving prediction: ' + error.message, 'error');
           return;
         }
 
@@ -327,7 +338,7 @@ function PredictPage() {
     if (cleanName.length >= 3) {
       selectUser(cleanName);
     } else {
-      console.error('Name must be at least 3 characters.');
+      showNotification('Name must be at least 3 characters.', 'error');
     }
   };
 
@@ -357,6 +368,7 @@ function PredictPage() {
       
       if (!navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
+        showNotification('Picks copied to clipboard!', 'success');
       }
     }
   };
