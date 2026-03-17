@@ -4,16 +4,17 @@ import { useState, useEffect } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
+import { useAuth } from '@/components/AuthProvider';
+import LoadingView from '@/components/LoadingView';
 
 export default function SettingsPage() {
-  const [session, setSession] = useState<Session | null>(null);
+  const { session, isLoading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -24,20 +25,17 @@ export default function SettingsPage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-
-      if (currentSession) {
+      if (session) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('is_admin')
-          .eq('id', currentSession.user.id)
+          .eq('id', session.user.id)
           .single();
         if (profile) setIsAdmin(!!profile.is_admin);
       }
     }
     init();
-  }, [supabase]);
+  }, [session, supabase]);
 
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
@@ -61,6 +59,10 @@ export default function SettingsPage() {
       setIsDeleting(false);
     }
   };
+
+  if (authLoading) {
+    return <LoadingView />;
+  }
 
   return (
     <>

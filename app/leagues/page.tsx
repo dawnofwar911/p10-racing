@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
+import { useAuth } from '@/components/AuthProvider';
 
 interface League {
   id: string;
@@ -19,8 +19,8 @@ interface League {
 }
 
 function LeaguesContent() {
+  const { session, isLoading: authLoading } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,18 +61,15 @@ function LeaguesContent() {
         setLoading(false);
         hasCache = true;
       }
-
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
       
       // Load local guests for migration
       const guestsData = JSON.parse(localStorage.getItem('p10_players') || '[]');
       const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
       setLocalGuests(guests);
 
-      if (currentSession) {
+      if (session) {
         fetchLeagues(hasCache);
-      } else {
+      } else if (!authLoading) {
         setLoading(false);
       }
 
@@ -83,7 +80,7 @@ function LeaguesContent() {
       }
     }
     init();
-  }, [supabase, fetchLeagues, searchParams]);
+  }, [session, authLoading, fetchLeagues, searchParams]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;
@@ -250,12 +247,16 @@ function LeaguesContent() {
     }
   };
 
+  if (authLoading) {
+    return <LoadingView />;
+  }
+
   return (
     <PullToRefresh onRefresh={() => fetchLeagues(false)}>
       <Container className="mt-3 mb-4">
         <h1 className="h4 fw-bold text-uppercase letter-spacing-1 mb-3 text-white ps-1">Leagues</h1>
 
-        {!session && !loading ? (
+        {!session ? (
           <div className="text-center py-5 bg-dark bg-opacity-25 rounded border border-secondary border-opacity-25 shadow-sm">
             <div className="display-6 mb-3">🏆</div>
             <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
