@@ -66,7 +66,8 @@ function LeaguesContent() {
       setSession(currentSession);
       
       // Load local guests for migration
-      const guests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guestsData = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
       setLocalGuests(guests);
 
       if (currentSession) {
