@@ -16,6 +16,8 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
 });
 
+const supabase = createClient();
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -23,19 +25,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Try to synchronously read standard local storage if possible to prevent initial flash
   const [isLoading, setIsLoading] = useState(() => {
     if (typeof window !== 'undefined') {
-       // If we firmly know they have a session, we start as 'loading' to prevent flash of unauth
-       // If they don't, we can maybe still start as loading just to be safe, 
-       // but typically we want to be fast. Let's start as true by default.
-       return true; 
+       // Only start as loading if we're fairly sure they have a session to prevent flash.
+       // If they're a guest (no p10_has_session), we show the guest UI immediately.
+       return localStorage.getItem('p10_has_session') === 'true';
     }
     return true;
   });
 
   useEffect(() => {
-    const supabase = createClient();
     let mounted = true;
     
-    // Initial fetch
+    // Always fetch latest session to be sure, regardless of optimistic state.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (mounted) {
         setSession(session);

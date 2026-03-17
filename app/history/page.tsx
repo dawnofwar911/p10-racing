@@ -17,6 +17,8 @@ interface HistoryEntry {
   winner: string;
 }
 
+const supabase = createClient();
+
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,8 +29,6 @@ export default function HistoryPage() {
 
   useEffect(() => {
     async function loadHistory() {
-      const supabase = createClient();
-      
       // 1. Fetch all verified results from Supabase (filtered by current season)
       const { data: dbResults } = await supabase
         .from('verified_results')

@@ -17,6 +17,8 @@ interface AdminDriver {
 
 import { useRouter } from 'next/navigation';
 
+const supabase = createClient();
+
 export default function AdminPage() {
   const [drivers, setDrivers] = useState<AdminDriver[]>(FALLBACK_DRIVERS);
   const [results, setResults] = useState<{ [driverId: string]: number }>({});
@@ -32,7 +34,6 @@ export default function AdminPage() {
   const [showConfirmPublish, setShowConfirmPublish] = useState(false);
   const [existingResult, setExistingResult] = useState<{p10: string, dnf: string} | null>(null);
   
-  const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function AdminPage() {
     } else {
       setExistingResult(null);
     }
-  }, [isAdmin, season, selectedRace, supabase]);
+  }, [isAdmin, season, selectedRace]);
 
   useEffect(() => {
     checkExistingResults();
@@ -86,7 +87,7 @@ export default function AdminPage() {
       setLoading(false);
     }
     checkAdmin();
-  }, [supabase, router]);
+  }, [router]);
 
   const fallbackRaces = useMemo(() => RACES.map(r => ({
     round: r.id,

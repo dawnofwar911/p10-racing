@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import { useAuth } from '@/components/AuthProvider';
@@ -17,6 +16,8 @@ interface League {
   invite_code: string;
   created_at: string;
 }
+
+const supabase = createClient();
 
 function LeaguesContent() {
   const { session, isLoading: authLoading } = useAuth();
@@ -29,9 +30,6 @@ function LeaguesContent() {
   const [newLeagueName, setNewLeagueName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [localGuests, setLocalGuests] = useState<string[]>([]);
-
-  const supabase = createClient();
-  const searchParams = useSearchParams();
 
   const fetchLeagues = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -49,7 +47,7 @@ function LeaguesContent() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -72,15 +70,9 @@ function LeaguesContent() {
       } else if (!authLoading) {
         setLoading(false);
       }
-
-      // Check for join parameter
-      const joinCode = searchParams.get('join');
-      if (joinCode) {
-        setInviteCode(joinCode);
-      }
     }
     init();
-  }, [session, authLoading, fetchLeagues, searchParams]);
+  }, [session, authLoading, fetchLeagues]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;
@@ -174,7 +166,7 @@ function LeaguesContent() {
 
     try {
       // 1. Insert league
-      const { data: leagues, error: leagueError } = await supabase
+      const { data: leaguesData, error: leagueError } = await supabase
         .from('leagues')
         .insert([{ 
           name: newLeagueName.trim(), 
@@ -184,11 +176,11 @@ function LeaguesContent() {
 
       if (leagueError) throw leagueError;
 
-      if (!leagues || leagues.length === 0) {
+      if (!leaguesData || leaguesData.length === 0) {
         throw new Error('League created but no data returned.');
       }
 
-      const league = leagues[0];
+      const league = leaguesData[0];
 
       // 2. Add creator as first member
       const { error: memberError } = await supabase
@@ -229,15 +221,15 @@ function LeaguesContent() {
       const code = inviteCode.trim().toLowerCase();
       
       // Use the RPC to join. It returns {id, name} on success or throws an error.
-      const { data, error } = await supabase
+      const { data: joinData, error: joinError } = await supabase
         .rpc('join_league_by_code', { code });
 
-      if (error) {
-        console.error('Join error:', error);
-        throw new Error(error.message || 'Failed to join league. Check code.');
+      if (joinError) {
+        console.error('Join error:', joinError);
+        throw new Error(joinError.message || 'Failed to join league. Check code.');
       }
 
-      setSuccess(`Joined league "${data.name}"!`);
+      setSuccess(`Joined league "${joinData.name}"!`);
       setInviteCode('');
       if (session?.user?.id) fetchLeagues();
     } catch (err: unknown) {

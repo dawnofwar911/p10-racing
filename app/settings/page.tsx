@@ -9,9 +9,10 @@ import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } f
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
-import { useNotification } from '@/components/Notification';
 import { useAuth } from '@/components/AuthProvider';
 import LoadingView from '@/components/LoadingView';
+
+const supabase = createClient();
 
 export default function SettingsPage() {
   const { session, isLoading: authLoading } = useAuth();
@@ -19,10 +20,7 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
-  const { showNotification } = useNotification();
   
-  const supabase = createClient();
-
   useEffect(() => {
     async function init() {
       if (session) {
@@ -35,7 +33,7 @@ export default function SettingsPage() {
       }
     }
     init();
-  }, [session, supabase]);
+  }, [session]);
 
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
@@ -55,7 +53,6 @@ export default function SettingsPage() {
       window.location.href = '/';
     } catch (err) {
       console.error('Error deleting account:', err);
-      showNotification('Failed to delete account. Please try again.', 'error');
       setIsDeleting(false);
     }
   };
