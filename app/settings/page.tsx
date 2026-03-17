@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
@@ -15,26 +15,11 @@ import LoadingView from '@/components/LoadingView';
 const supabase = createClient();
 
 export default function SettingsPage() {
-  const { session, isLoading: authLoading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { session, profile, isLoading: authLoading } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   
-  useEffect(() => {
-    async function init() {
-      if (session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) setIsAdmin(!!profile.is_admin);
-      }
-    }
-    init();
-  }, [session]);
-
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
   };
@@ -60,6 +45,8 @@ export default function SettingsPage() {
   if (authLoading) {
     return <LoadingView />;
   }
+
+  const isAdmin = !!profile?.is_admin;
 
   return (
     <>

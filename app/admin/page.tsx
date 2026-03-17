@@ -7,6 +7,8 @@ import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCa
 import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { Haptics, NotificationType } from '@capacitor/haptics';
+import { useAuth } from '@/components/AuthProvider';
+import { useRouter } from 'next/navigation';
 
 interface AdminDriver {
   id: string;
@@ -15,11 +17,10 @@ interface AdminDriver {
   color: string;
 }
 
-import { useRouter } from 'next/navigation';
-
 const supabase = createClient();
 
 export default function AdminPage() {
+  const { profile, isLoading: authLoading } = useAuth();
   const [drivers, setDrivers] = useState<AdminDriver[]>(FALLBACK_DRIVERS);
   const [results, setResults] = useState<{ [driverId: string]: number }>({});
   const [firstDnf, setFirstDnf] = useState('');
@@ -28,13 +29,14 @@ export default function AdminPage() {
   const [season, setSeason] = useState(CURRENT_SEASON);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [status, setStatus] = useState<{message: string, variant: string} | null>(null);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [showConfirmPublish, setShowConfirmPublish] = useState(false);
   const [existingResult, setExistingResult] = useState<{p10: string, dnf: string} | null>(null);
   
   const router = useRouter();
+
+  const isAdmin = !!profile?.is_admin;
 
   useEffect(() => {
     if (status) {
@@ -65,36 +67,18 @@ export default function AdminPage() {
   }, [checkExistingResults]);
 
   useEffect(() => {
-    async function checkAdmin() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/auth');
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-
-      if (!profile?.is_admin) {
-        router.push('/');
-        return;
-      }
-
-      setIsAdmin(true);
-      setLoading(false);
+    if (!authLoading && !isAdmin) {
+      router.push('/');
     }
-    checkAdmin();
-  }, [router]);
+  }, [authLoading, isAdmin, router]);
 
   const fallbackRaces = useMemo(() => RACES.map(r => ({
     round: r.id,
     raceName: r.name,
     Circuit: { circuitName: r.circuit },
     date: r.date,
-    season: CURRENT_SEASON.toString()
+    season: CURRENT_SEASON.toString(),
+    time: '00:00:00Z'
   })), []);
 
   useEffect(() => {
@@ -119,6 +103,7 @@ export default function AdminPage() {
         setAvailableRaces(fallbackRaces);
         setSelectedRace(fallbackRaces[0].round);
       }
+      setLoading(false);
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,7 +234,7 @@ export default function AdminPage() {
   };
 
 
-  if (!isAdmin || (loading && drivers.length === 0)) {
+  if (authLoading || !isAdmin || (loading && drivers.length === 0)) {
     return (
       <Container className="vh-100 d-flex align-items-center justify-content-center">
         <Spinner animation="border" variant="danger" />

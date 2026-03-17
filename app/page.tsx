@@ -17,6 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import PullToRefresh from '@/components/PullToRefresh';
+import { useAuth } from '@/components/AuthProvider';
 
 interface HomeRace {
   id: string;
@@ -32,10 +33,12 @@ interface HomePrediction {
   dnf: string;
 }
 
+const supabase = createClient();
+
 export default function Home() {
+  const { session, isLoading: authLoading } = useAuth();
   const [nextRace, setNextRace] = useState<HomeRace | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasSession, setHasSession] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
@@ -46,7 +49,6 @@ export default function Home() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
-  const supabase = createClient();
   const router = useRouter();
   const { showNotification } = useNotification();
 
@@ -99,16 +101,6 @@ export default function Home() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      // Secondary check: if session exists but user came from recovery
-      if (session && window.location.hash.includes('type=recovery')) {
-        await supabase.auth.signOut();
-        router.replace('/auth/reset-password' + window.location.hash);
-        return;
-      }
-      setHasSession(!!session);
-      
       const user = localStorage.getItem('p10_current_user');
       setCurrentUser(user);
 
@@ -216,7 +208,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, router]);
+  }, [session, router]);
 
   useEffect(() => {
     init();
@@ -429,7 +421,7 @@ export default function Home() {
           </Col>
         </Row>
 
-        {!loading && !hasSession && !currentUser && (
+        {!loading && !authLoading && !session && !currentUser && (
           <Row className="mt-4 justify-content-center">
             <Col md={6}>
               <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
