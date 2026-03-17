@@ -10,7 +10,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
-import { storage } from '@/lib/storage';
 
 interface League {
   id: string;
@@ -43,63 +42,46 @@ function LeaguesContent() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      const newLeagues = data || [];
-      setLeagues(newLeagues);
-      await storage.setItem('p10_cache_leagues', JSON.stringify(newLeagues));
-      setError(null);
+      setLeagues(data || []);
+      localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
     } catch (err: unknown) {
-      console.error('Fetch leagues error:', err);
-      // We only set the visible error if we have no leagues (from cache or previous fetch)
-      setLeagues(current => {
-        if (current.length === 0) {
-          setError(err instanceof Error ? err.message : 'Failed to fetch leagues');
-        }
-        return current;
-      });
+      if (err instanceof Error) setError(err.message);
     } finally {
       setLoading(false);
     }
   }, [supabase]);
 
   useEffect(() => {
-    let isMounted = true;
     async function init() {
-      try {
-        // 1. Load from cache first
-        const cached = storage.getItemSync('p10_cache_leagues');
-        let hasCache = false;
-        if (cached && isMounted) {
-          setLeagues(JSON.parse(cached));
-          setLoading(false);
-          hasCache = true;
-        }
+      // 1. Load from cache first
+      const cached = localStorage.getItem('p10_cache_leagues');
+      let hasCache = false;
+      if (cached) {
+        setLeagues(JSON.parse(cached));
+        setLoading(false);
+        hasCache = true;
+      }
 
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!isMounted) return;
-        setSession(currentSession);
-        
-        // Load local guests for migration
-        const guests = JSON.parse(storage.getItemSync('p10_players') || '[]');
-        if (isMounted) setLocalGuests(guests);
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      
+      // Load local guests for migration
+      const guests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      setLocalGuests(guests);
 
-        if (currentSession) {
-          fetchLeagues(hasCache);
-        } else {
-          if (isMounted) setLoading(false);
-        }
+      if (currentSession) {
+        fetchLeagues(hasCache);
+      } else {
+        setLoading(false);
+      }
 
-        // Check for join parameter
-        const joinCode = searchParams.get('join');
-        if (joinCode && isMounted) {
-          setInviteCode(joinCode);
-        }
-      } catch (err) {
-        console.error('Leagues init error:', err);
-        if (isMounted) setLoading(false);
+      // Check for join parameter
+      const joinCode = searchParams.get('join');
+      if (joinCode) {
+        setInviteCode(joinCode);
       }
     }
     init();
-    return () => { isMounted = false; };
   }, [supabase, fetchLeagues, searchParams]);
 
   const handleImport = async (guestName: string) => {
@@ -109,12 +91,10 @@ function LeaguesContent() {
     Haptics.impact({ style: ImpactStyle.Heavy });
 
     try {
-      // Find all predictions for this guest in storage
+      // Find all predictions for this guest in localStorage
       let count = 0;
-      const keysToRemove: string[] = [];
-      const allKeys = await storage.keys();
-      
-      for (const key of allKeys) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
         if (!key) continue;
 
         let season = CURRENT_SEASON;
@@ -138,7 +118,7 @@ function LeaguesContent() {
         }
 
         if (match) {
-          const predStr = await storage.getItem(key);
+          const predStr = localStorage.getItem(key);
           if (!predStr) continue;
           const pred = JSON.parse(predStr);
           
@@ -153,24 +133,24 @@ function LeaguesContent() {
                 updated_at: new Date().toISOString()
               }, { onConflict: 'user_id, race_id' });
             
-            if (!upsertError) {
-              count++;
-              keysToRemove.push(key);
-            }
+            if (!upsertError) count++;
           }
         }
       }
       setSuccess(`Successfully imported ${count} predictions to your cloud account!`);
       
       // Post-migration cleanup
-      const currentGuests = JSON.parse(await storage.getItem('p10_players') || '[]');
+      const currentGuests = JSON.parse(localStorage.getItem('p10_players') || '[]');
       const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
-      await storage.setItem('p10_players', JSON.stringify(filteredGuests));
+      localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
       setLocalGuests(filteredGuests);
       
       // Cleanup the actual prediction keys
-      for (const key of keysToRemove) {
-        await storage.removeItem(key);
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && (key.includes(`_final_pred_${guestName}_`) || key.startsWith(`final_pred_${guestName}_`) || (key.startsWith('final_pred_') && key.includes(`_${guestName}_`)))) {
+          localStorage.removeItem(key);
+        }
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -322,7 +302,7 @@ function LeaguesContent() {
                       </Table>
                     ) : (
                       <div className="text-center py-4 text-muted small">
-                        {loading ? <Spinner animation="border" variant="danger" /> : <p className="mb-0">No active leagues.</p>}
+                        <p className="mb-0">No active leagues.</p>
                       </div>
                     )}
                   </Card.Body>

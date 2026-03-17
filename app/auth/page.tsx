@@ -65,7 +65,6 @@ export default function AuthPage() {
       }
 
       if (isSignUp) {
-        console.log('Attempting new player sign up');
         // 1. Sign up the user
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
@@ -78,17 +77,11 @@ export default function AuthPage() {
           }
         });
 
-        if (authError) {
-          console.error('Sign up error:', authError);
-          throw authError;
-        }
-
-        console.log('Sign up successful, user ID:', authData.user?.id);
+        if (authError) throw authError;
 
         if (authData.user) {
           // 2. Try to create the public profile (might fail if email confirmation is required)
           try {
-            console.log('Attempting profile creation for:', username);
             await supabase
               .from('profiles')
               .upsert([
@@ -106,31 +99,20 @@ export default function AuthPage() {
         setPassword('');
       } else {
         // Login
-        console.log('Attempting player sign in');
         const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (loginError) {
-          console.error('Login error:', loginError);
-          throw loginError;
-        }
-
-        console.log('Login successful, user ID:', loginData.user?.id);
+        if (loginError) throw loginError;
 
         // PROFILE REPAIR: Ensure profile exists on login
         if (loginData.user) {
-          console.log('Checking for existing profile...');
-          const { data: existingProfile, error: profileCheckError } = await supabase
+          const { data: existingProfile } = await supabase
             .from('profiles')
             .select('username')
             .eq('id', loginData.user.id)
             .maybeSingle();
-          
-          if (profileCheckError) {
-             console.warn('Profile check error (non-fatal):', profileCheckError);
-          }
           
           if (!existingProfile) {
             // Check metadata first (from signup), then fallback to email prefix
@@ -150,7 +132,6 @@ export default function AuthPage() {
           }
         }
         
-        console.log('Auth complete, redirecting to home...');
         router.push('/');
         router.refresh();
       }

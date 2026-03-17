@@ -17,7 +17,6 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import PullToRefresh from '@/components/PullToRefresh';
-import { storage } from '@/lib/storage';
 
 interface HomeRace {
   id: string;
@@ -52,9 +51,9 @@ export default function Home() {
   const { showNotification } = useNotification();
 
   const init = useCallback(async () => {
-    // 1. Load from cache first to avoid layout shift (Sync for immediate UI)
-    const cachedRace = storage.getItemSync('p10_cache_next_race');
-    const cachedDrivers = storage.getItemSync('p10_cache_drivers');
+    // 1. Load from cache first to avoid layout shift - move to TOP
+    const cachedRace = localStorage.getItem('p10_cache_next_race');
+    const cachedDrivers = localStorage.getItem('p10_cache_drivers');
     
     if (cachedRace) {
       const raceData = JSON.parse(cachedRace);
@@ -110,7 +109,7 @@ export default function Home() {
       }
       setHasSession(!!session);
       
-      const user = await storage.getItem('p10_current_user');
+      const user = localStorage.getItem('p10_current_user');
       setCurrentUser(user);
 
       const [races, drivers] = await Promise.all([
@@ -122,7 +121,7 @@ export default function Home() {
         // Sort consistently by team to match other pages
         const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
         setAllDrivers(sortedDrivers);
-        await storage.setItem('p10_cache_drivers', JSON.stringify(sortedDrivers));
+        localStorage.setItem('p10_cache_drivers', JSON.stringify(sortedDrivers));
       }
 
       if (races.length > 0) {
@@ -153,18 +152,15 @@ export default function Home() {
             }));
 
             // Include local players for a complete champion search
-            const localPlayersStr = storage.getItemSync('p10_players');
-            const localPlayers: string[] = JSON.parse(localPlayersStr || '[]');
-            
-            // Wait for all local player predictions to load
-            await Promise.all(localPlayers.map(async lp => {
+            const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+            localPlayers.forEach(lp => {
               const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
-              await Promise.all(Object.keys(raceResultsMap).map(async round => {
-                const predStr = await storage.getItem(`final_pred_${CURRENT_SEASON}_${lp}_${round}`);
+              Object.keys(raceResultsMap).forEach(round => {
+                const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${lp}_${round}`);
                 if (predStr) lpPreds[round] = JSON.parse(predStr);
-              }));
+              });
               players.push({ username: lp, predictions: lpPreds });
-            }));
+            });
 
             const ranked = players.map(player => ({
               username: player.username,
@@ -184,7 +180,7 @@ export default function Home() {
           round: parseInt(upcoming.round)
         };
         setNextRace(raceObj);
-        await storage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
+        localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
 
         // Calculate locking based on start time
         const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
@@ -206,12 +202,12 @@ export default function Home() {
             });
           } else {
             // Offline/Cache fallback for auth users
-            const storageUser = storage.getItemSync('p10_cache_username') || session.user.id;
-            const cachedPred = await storage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
+            const storageUser = localStorage.getItem('p10_cache_username') || session.user.id;
+            const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
             if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
           }
         } else if (user) {
-          const predStr = await storage.getItem(`final_pred_${CURRENT_SEASON}_${user}_${raceObj.id}`);
+          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${user}_${raceObj.id}`);
           if (predStr) setUserPrediction(JSON.parse(predStr));
         }
       }
