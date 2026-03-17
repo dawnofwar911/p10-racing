@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Card, Modal, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -51,10 +51,12 @@ function PredictPage() {
 
   const [dnfDriver, setDnfDriver] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isPendingSync, setIsPendingSync] = useState(false);
   const [nextRace, setNextRace] = useState<PredictRace | null>(null);
   const [loadingRace, setLoadingRace] = useState(true);
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS);
   const [isLocked, setIsLocked] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
@@ -62,6 +64,20 @@ function PredictPage() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    function handleOnline() { setIsOffline(false); }
+    function handleOffline() { setIsOffline(true); }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    if (!navigator.onLine) setIsOffline(true);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('howto') === 'true') {
@@ -282,20 +298,26 @@ function PredictPage() {
       };
 
       if (session) {
-        // 1. Save to Cloud (Supabase)
-        const { error } = await supabase
-          .from('predictions')
-          .upsert({
-            user_id: session.user.id,
-            race_id: `${CURRENT_SEASON}_${nextRace.id}`,
-            p10_driver_id: p10Driver,
-            dnf_driver_id: dnfDriver,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id, race_id' });
-        
-        if (error) {
-          showNotification('Error saving prediction: ' + error.message, 'error');
-          return;
+        const payload = {
+          user_id: session.user.id,
+          race_id: `${CURRENT_SEASON}_${nextRace.id}`,
+          p10_driver_id: p10Driver,
+          dnf_driver_id: dnfDriver,
+          updated_at: new Date().toISOString()
+        };
+
+        if (navigator.onLine) {
+          // 1. Save to Cloud (Supabase)
+          const { error } = await supabase
+            .from('predictions')
+            .upsert(payload, { onConflict: 'user_id, race_id' });
+          
+          if (error) {
+            console.error('Supabase error, falling back to local queue', error);
+            await queueOfflinePrediction(payload);
+          }
+        } else {
+          await queueOfflinePrediction(payload);
         }
 
         // 2. Mirror to LocalStorage for instant UI & offline support
@@ -312,6 +334,41 @@ function PredictPage() {
       }
 
       setSubmitted(true);
+    }
+  };
+
+  const queueOfflinePrediction = async (payload: { user_id: string; race_id: string; p10_driver_id: string; dnf_driver_id: string; updated_at: string }) => {
+    const queueRaw = localStorage.getItem('p10_sync_queue');
+    const queue = queueRaw ? JSON.parse(queueRaw) : {};
+    queue[payload.race_id] = payload;
+    localStorage.setItem('p10_sync_queue', JSON.stringify(queue));
+    setIsPendingSync(true);
+
+    try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const hasPermission = await LocalNotifications.checkPermissions();
+      
+      // Request permission if not determined
+      if (hasPermission.display === 'prompt') {
+        await LocalNotifications.requestPermissions();
+      }
+      
+      const updatedPermission = await LocalNotifications.checkPermissions();
+      if (updatedPermission.display === 'granted') {
+        const notificationId = parseInt(payload.race_id.replace(/[^0-9]/g, '')) || Math.floor(Math.random() * 100000);
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title: 'Unsynced Prediction!',
+              body: 'You have a pending offline prediction. Open P10 Racing while connected to the internet to sync it before the race!',
+              id: notificationId,
+              schedule: { at: new Date(Date.now() + 1000 * 60 * 15) }
+            }
+          ]
+        });
+      }
+    } catch (err) {
+      console.log('Local Notifications not available', err);
     }
   };
 
@@ -417,7 +474,12 @@ function PredictPage() {
       <>
         <Container className="mt-5 text-center">
           <div className="mb-4 display-1">🏁</div>
-          <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
+          <h2 className="display-6 mb-4 fw-bold">{isPendingSync ? 'Locked and Loaded (Offline)!' : 'Locked and Loaded!'}</h2>
+          {isPendingSync && (
+            <Alert variant="warning" className="mb-4 border-warning shadow-sm">
+              <span className="fw-bold">⏳ Saved locally.</span> Waiting for connection to sync before the race.
+            </Alert>
+          )}
           <p className="lead mb-5 text-muted">Good luck for the {nextRace?.name}, <span className="text-white fw-bold">{username}</span>.</p>
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
             <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
@@ -578,7 +640,7 @@ function PredictPage() {
 <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}><div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div><div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>{dnfDriver === driver.id && <div className="text-danger">●</div>}</div>))}</div></Card.Body></Card>
               </Col>
             </Row>
-            <div className="d-grid gap-2 mt-4"><Button type="submit" size="lg" className="btn-f1 py-3 fw-bold" disabled={!p10Driver || !dnfDriver}>LOCK IN PREDICTION</Button></div>
+            <div className="d-grid gap-2 mt-4"><Button type="submit" size="lg" className="btn-f1 py-3 fw-bold" disabled={!p10Driver || !dnfDriver}>{isOffline ? 'SAVE OFFLINE' : 'LOCK IN PREDICTION'}</Button></div>
           </Form>
         )}
       </Container>
