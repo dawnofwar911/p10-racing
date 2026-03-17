@@ -42,6 +42,7 @@ interface CommunityPredictionData {
 
 function PredictPage() {
   const [username, setUsername] = useState('');
+  const [tempUsername, setTempUsername] = useState('');
   const [session, setSession] = useState<Session | null>(null);
   const { showNotification } = useNotification();
   const [p10Driver, setP10Driver] = useState('');
@@ -265,7 +266,7 @@ function PredictPage() {
       }
       setLoadingRace(false);
 
-      const existingPlayersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const existingPlayersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]').filter((p: string) => p.trim().length >= 3);
       setExistingPlayers(existingPlayersList);
     }
     init();
@@ -385,8 +386,16 @@ function PredictPage() {
                     <hr className="border-secondary mt-4" />
                   </div>
                 )}
-                <Form onSubmit={(e) => { e.preventDefault(); if (username.trim()) selectUser(username); }}>
-                  <Form.Group className="mb-3"><Form.Label>Guest Name</Form.Label><Form.Control type="text" placeholder="Enter name" value={username} onChange={(e) => setUsername(e.target.value)} className="bg-dark text-white border-secondary py-2" /></Form.Group>
+                <Form onSubmit={(e) => { 
+                  e.preventDefault(); 
+                  const cleanName = tempUsername.trim();
+                  if (cleanName.length >= 3) {
+                    selectUser(cleanName); 
+                  } else {
+                    showNotification('Name must be at least 3 characters.', 'error');
+                  }
+                }}>
+                  <Form.Group className="mb-3"><Form.Label>Guest Name</Form.Label><Form.Control type="text" placeholder="Enter name" value={tempUsername} onChange={(e) => setTempUsername(e.target.value)} minLength={3} required className="bg-dark text-white border-secondary py-2" /></Form.Group>
                   <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">CONTINUE AS GUEST</Button>
                 </Form>
               </Card>
@@ -426,7 +435,7 @@ function PredictPage() {
             </div>
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
-          <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); }} className="rounded-pill">Switch Guest</Button>)}</Col>
+          <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); setTempUsername(''); }} className="rounded-pill">Switch Guest</Button>)}</Col>
         </Row>
         {startingGrid.length > 0 && !isLocked && (
           <Row className="mb-4">

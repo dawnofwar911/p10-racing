@@ -52,6 +52,10 @@ export default function AuthPage() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
+      if (isSignUp && username.trim().length < 3) {
+        throw new Error('Username must be at least 3 characters.');
+      }
+
       const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://p10racing.app';
       
       if (isResetPassword) {
@@ -181,6 +185,7 @@ export default function AuthPage() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
+                        minLength={3}
                         className="bg-dark text-white border-secondary py-2"
                       />
                     </Form.Group>
