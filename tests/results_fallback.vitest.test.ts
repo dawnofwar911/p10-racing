@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { fetchCalendar, fetchRaceResults } from '@/lib/api';
-import { createClient, createServerClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { CURRENT_SEASON } from '@/lib/data';
 
 // Mock dependencies
@@ -9,42 +9,33 @@ vi.mock('@/lib/api', () => ({
   fetchCalendar: vi.fn(),
   fetchRaceResults: vi.fn(),
   getFirstDnfDriver: vi.fn(),
-  getP10DriverId: vi.fn(),
   CURRENT_SEASON: 2026,
 }));
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
-  createServerClient: vi.fn(),
 }));
 
 describe('fetchAllSimplifiedResults fallback logic', () => {
   const mockSupabase = {
     from: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
     like: vi.fn().mockReturnThis(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     (createClient as any).mockReturnValue(mockSupabase);
-    (createServerClient as any).mockReturnValue(mockSupabase);
-    (fetchCalendar as any).mockResolvedValue([]);
     window.localStorage.clear();
   });
 
   it('should prioritize Supabase verified_results (Gold Standard)', async () => {
-    // Supabase returns verified results in the new format
+    const mockRaces = [{ round: '1', date: '2026-03-15', time: '05:00:00Z', raceName: 'Australia', Circuit: { circuitName: 'Albert Park' } }];
+    (fetchCalendar as any).mockResolvedValue(mockRaces);
+    
+    // Supabase returns verified results
     (mockSupabase.like as any).mockResolvedValue({
-      data: [{
-        id: '2026_1',
-        data: {
-          positions: { 'verstappen': 1 },
-          firstDnf: 'sainz'
-        },
-        created_at: '2026-03-16T00:00:00.000Z'
-      }]
+      data: [{ id: '2026_1', data: { positions: { 'verstappen': 1 }, firstDnf: 'sainz' } }]
     });
 
     const results = await fetchAllSimplifiedResults();
@@ -56,6 +47,9 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
   });
 
   it('should fall back to localStorage if Supabase results are missing', async () => {
+    const mockRaces = [{ round: '1', date: '2026-03-15', time: '05:00:00Z', raceName: 'Australia', Circuit: { circuitName: 'Albert Park' } }];
+    (fetchCalendar as any).mockResolvedValue(mockRaces);
+    
     // Supabase returns empty
     (mockSupabase.like as any).mockResolvedValue({ data: [] });
 
@@ -68,10 +62,13 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
     expect(results['1']).toBeDefined();
     expect(results['1'].positions['leclerc']).toBe(1);
     expect(results['1'].firstDnf).toBe('russell');
-    expect(fetchRaceResults).not.toHaveBeenCalledWith(CURRENT_SEASON, 1);
+    expect(fetchRaceResults).not.toHaveBeenCalled();
   });
 
   it('should fall back to API fetch if both Supabase and localStorage are missing', async () => {
+    const mockRaces = [{ round: '1', date: '2026-03-15', time: '05:00:00Z', raceName: 'Australia', Circuit: { circuitName: 'Albert Park' } }];
+    (fetchCalendar as any).mockResolvedValue(mockRaces);
+    
     // Supabase returns empty
     (mockSupabase.like as any).mockResolvedValue({ data: [] });
 
@@ -82,9 +79,8 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
     (fetchRaceResults as any).mockResolvedValue(apiResult);
     
     // Mock getFirstDnfDriver return value
-    const { getFirstDnfDriver, getP10DriverId } = await import('@/lib/api');
+    const { getFirstDnfDriver } = await import('@/lib/api');
     (getFirstDnfDriver as any).mockReturnValue({ driverId: 'perez' });
-    (getP10DriverId as any).mockReturnValue('norris');
 
     const results = await fetchAllSimplifiedResults();
     

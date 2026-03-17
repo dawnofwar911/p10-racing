@@ -11,7 +11,6 @@ import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
-import { storage } from '@/lib/storage';
 
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -24,32 +23,20 @@ export default function SettingsPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    let isMounted = true;
     async function init() {
-      try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!isMounted) return;
-        setSession(currentSession);
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
 
-        if (currentSession) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', currentSession.user.id)
-            .maybeSingle();
-          
-          if (isMounted) {
-            setIsAdmin(!!profile?.is_admin);
-            // Sync cache for consistency
-            await storage.setItem('p10_cache_is_admin', String(!!profile?.is_admin));
-          }
-        }
-      } catch (err) {
-        console.error('Settings init error:', err);
+      if (currentSession) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', currentSession.user.id)
+          .single();
+        if (profile) setIsAdmin(!!profile.is_admin);
       }
     }
     init();
-    return () => { isMounted = false; };
   }, [supabase]);
 
   const triggerHaptic = () => {
@@ -66,7 +53,7 @@ export default function SettingsPage() {
       if (error) throw error;
 
       await supabase.auth.signOut();
-      await storage.clear();
+      localStorage.clear();
       window.location.href = '/';
     } catch (err) {
       console.error('Error deleting account:', err);

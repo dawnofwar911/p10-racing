@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
-import { storage } from '@/lib/storage';
 
 interface LeaderboardPlayer {
   username: string;
@@ -31,98 +30,87 @@ export default function LeaderboardPage() {
   const calculate = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     
-    try {
-      // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
-      const raceResultsMap = await fetchAllSimplifiedResults();
+    // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
+    const raceResultsMap = await fetchAllSimplifiedResults();
 
-      // 2. Fetch Calendar to check if season is complete
-      const races = await fetchCalendar(CURRENT_SEASON);
-      const resultsFoundCount = Object.keys(raceResultsMap).length;
-      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
+    // 2. Fetch Calendar to check if season is complete
+    const races = await fetchCalendar(CURRENT_SEASON);
+    const resultsFoundCount = Object.keys(raceResultsMap).length;
+    setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
-      let playersData: LeaderboardPlayer[] = [];
+    let playersData: LeaderboardPlayer[] = [];
 
-      if (view === 'global') {
-        const { data: { session } } = await supabase.auth.getSession();
-        const currentUserId = session?.user?.id;
+    if (view === 'global') {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
 
-        const { data: profiles, error: profilesError } = await supabase.from('profiles').select('id, username');
-        const { data: predictions, error: predsError } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null, error: unknown };
+      const { data: profiles } = await supabase.from('profiles').select('id, username');
+      const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
 
-        if (profilesError || predsError) throw new Error('Network error fetching leaderboard data');
-
-        if (profiles) {
-          playersData = profiles
-            .filter(p => {
-              // Show if NOT a test account OR if it IS the current user's account
-              return !isTestAccount(p.username) || p.id === currentUserId;
-            })
-            .map(p => ({ 
-              username: p.username, 
-              userId: p.id, 
-              isLocal: false,
-              dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
-            }));
-        }
-      } else {
-        const localPlayers: string[] = JSON.parse(await storage.getItem('p10_players') || '[]');
-        playersData = localPlayers.map((p: string) => ({ username: p, isLocal: true }));
+      if (profiles) {
+        playersData = profiles
+          .filter(p => {
+            // Show if NOT a test account OR if it IS the current user's account
+            return !isTestAccount(p.username) || p.id === currentUserId;
+          })
+          .map(p => ({ 
+            username: p.username, 
+            userId: p.id, 
+            isLocal: false,
+            dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+          }));
       }
+    } else {
+      const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
+    }
 
-      // Resolve all async predictions for local players
-      const entriesPromises = playersData.map(async (player) => {
-        const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
+    const entries: LeaderboardEntry[] = playersData.map((player) => {
+      const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
 
-        // Prepare predictions for calculateSeasonPoints
-        await Promise.all(Object.keys(raceResultsMap).map(async round => {
-          if (player.isLocal) {
-            const predStr = await storage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
-            if (predStr) playerPredictions[round] = JSON.parse(predStr);
-          } else if (player.dbPredictions) {
-            const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
-            if (dbMatch) {
-              playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
-            }
+      // Prepare predictions for calculateSeasonPoints
+      Object.keys(raceResultsMap).forEach(round => {
+        if (player.isLocal) {
+          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
+          if (predStr) playerPredictions[round] = JSON.parse(predStr);
+        } else if (player.dbPredictions) {
+          const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
+          if (dbMatch) {
+            playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
           }
-        }));
-
-        const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
-
-        return {
-          rank: 0,
-          player: player.username,
-          points: totalPoints,
-          lastRacePoints: lastRacePoints,
-          breakdown: latestBreakdown,
-          history: history
-        };
+        }
       });
 
-      const entries = await Promise.all(entriesPromises);
+      const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
 
-      const sorted = entries.sort((a, b) => b.points - a.points);
-      const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
-      
-      setLeaderboard(ranked);
-      if (view === 'global') {
-        await storage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
-      }
-    } catch (err) {
-      console.error('Leaderboard calculation error:', err);
-      // If error occurs, we rely on the cache already loaded in useEffect
-    } finally {
-      setLoading(false);
+      return {
+        rank: 0,
+        player: player.username,
+        points: totalPoints,
+        lastRacePoints: lastRacePoints,
+        breakdown: latestBreakdown,
+        history: history
+      };
+    });
+
+    const sorted = entries.sort((a, b) => b.points - a.points);
+    const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
+    
+    setLeaderboard(ranked);
+    if (view === 'global') {
+      localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
     }
+    setLoading(false);
   }, [supabase, view]);
 
   useEffect(() => {
-    // 1. Load from cache first for immediate UI
+    // Cache loading logic
     if (view === 'global') {
-      const cached = storage.getItemSync('p10_cache_leaderboard');
+      const cached = localStorage.getItem('p10_cache_leaderboard');
       if (cached) {
         setLeaderboard(JSON.parse(cached));
         setLoading(false);
-        calculate(true); // Quiet update in background
+        calculate(true); // Quiet update
         return;
       }
     }
@@ -138,12 +126,12 @@ export default function LeaderboardPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'verified_results' },
-        () => calculate(true)
+        () => calculate()
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'predictions' },
-        () => calculate(true)
+        () => calculate()
       )
       .subscribe();
 
@@ -195,7 +183,7 @@ export default function LeaderboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading && leaderboard.length === 0 ? (
+                  {loading ? (
                     <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="danger" /></td></tr>
                   ) : leaderboard.length > 0 ? leaderboard.map((entry) => (
                     <React.Fragment key={entry.player}>
@@ -296,7 +284,7 @@ export default function LeaderboardPage() {
                   )) : (
                     <tr>
                       <td colSpan={4} className="text-center py-5 text-muted">
-                        {loading ? <Spinner animation="border" variant="danger" /> : 'No predictions found for this view.'}
+                        No predictions found for this view.
                       </td>
                     </tr>
                   )}
