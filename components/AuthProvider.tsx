@@ -30,7 +30,21 @@ const supabase = createClient();
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  
+  // 1. Synchronously initialize profile from cache if available
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('p10_cached_profile');
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch (e) {
+          console.error('Error parsing cached profile:', e);
+        }
+      }
+    }
+    return null;
+  });
   
   // Try to synchronously read standard local storage if possible to prevent initial flash
   const [isLoading, setIsLoading] = useState(() => {
@@ -50,11 +64,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .maybeSingle();
     
     if (data) {
-      setProfile(data as Profile);
-      localStorage.setItem('p10_is_admin', data.is_admin ? 'true' : 'false');
+      const profileData = data as Profile;
+      setProfile(profileData);
+      localStorage.setItem('p10_is_admin', profileData.is_admin ? 'true' : 'false');
+      localStorage.setItem('p10_cached_profile', JSON.stringify(profileData));
     } else {
       setProfile(null);
       localStorage.removeItem('p10_is_admin');
+      localStorage.removeItem('p10_cached_profile');
     }
   }, []);
 
@@ -73,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           localStorage.removeItem('p10_has_session');
           localStorage.removeItem('p10_is_admin');
+          localStorage.removeItem('p10_cached_profile');
           setProfile(null);
         }
         setIsLoading(false);
@@ -92,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             localStorage.removeItem('p10_has_session');
             localStorage.removeItem('p10_is_admin');
+            localStorage.removeItem('p10_cached_profile');
             setProfile(null);
           }
           setIsLoading(false);
