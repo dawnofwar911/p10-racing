@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TEAM_COLORS } from '@/lib/api';
+import { TEAM_COLORS } from '@/lib/types';
 
 describe('Data Integrity Tests', () => {
   const KNOWN_2026_TEAMS = [

@@ -109,7 +109,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   }, [isRefreshing, onRefresh, controls]);
 
   return (
-    <div ref={containerRef} className="position-relative w-100 flex-grow-1 d-flex flex-column">
+    <div ref={containerRef} className="ptr-container">
       {/* Refresh Indicator */}
       <motion.div
         style={{
@@ -150,8 +150,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
       {/* Content Container */}
       <motion.div
         animate={controls}
-        className="w-100 flex-grow-1 d-flex flex-column"
-        style={{ minHeight: '100%' }}
+        className="ptr-content"
       >
         {children}
       </motion.div>

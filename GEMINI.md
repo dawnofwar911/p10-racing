@@ -58,31 +58,33 @@ To evolve P10 Racing from a locally-stored web prototype into a fully polished, 
 ---
 
 ## 🚀 CI/CD & Release Strategy
-To ensure the web and mobile versions stay in sync, we use a dual-track release process:
+To ensure the web and mobile versions stay in sync, we use a dual-track release process with **Branch Protection** enforced on `main` and `stable`.
 
 ### 1. Staging (Active Development)
 *   **Branch:** `main`
+*   **Workflow:** **Feature Branch -> Pull Request -> Merge**. Direct pushes to `main` are blocked.
 *   **Web:** Deploys automatically to Vercel (recommended: set up a staging domain).
 *   **Android:** GitHub Actions builds and **automatically uploads** to the **Internal Testing** track on Google Play.
 *   **Goal:** Immediate testing on your own device.
 
 ### 2. Production (Stable Release)
 *   **Branch:** `stable`
+*   **Workflow:** **Pull Request from `main`**. Direct pushes are blocked.
 *   **Web:** Deploys to the production URL (`p10-racing.com`).
 *   **Android:** GitHub Actions builds and **automatically uploads** to the **Closed Testing** track for beta testers.
 *   **Goal:** Public-facing updates and tester feedback.
 
-### 🛠️ How to Release
-1.  **Develop & Test:** Push all changes to `main`. Verify on your phone via the Play Store "Internal Testing" update.
-2.  **Increment Version:** Update the `version` in `package.json` before merging to `stable`.
-3.  **Promote to Stable:** Merge `main` into `stable`.
-    ```bash
-    git checkout stable
-    git merge main
-    git push origin stable
-    git checkout main
-    ```
-4.  **Verification:** Confirm that both the website and the Play Store "Closed Testing" track are updated.
+### 🛠️ How to Develop & Release
+1.  **Create a Feature Branch:** `git checkout -b feat/your-feature-name`.
+2.  **Develop & Test:** Commit changes to your branch.
+3.  **Open a Pull Request:** Submit your branch for merge into `main`.
+    *   **Note:** Your PR title or commit message is used as the **Play Store Release Note** (en-GB). Ensure it is clear and user-friendly.
+4.  **Verify CI:** Ensure all "Code Quality & Tests" status checks pass in the PR.
+5.  **Merge PR:** Once verified, merge the PR into `main`.
+6.  **Verify on Device:** Confirm on your phone via the Play Store "Internal Testing" update.
+7.  **Release to Production:** Create a Pull Request from `main` to `stable`.
+8.  **Increment Version:** Update the `version` in `package.json` as part of the `main` -> `stable` PR.
+9.  **Manual Promotion:** In the Google Play Console, manually promote the successful Internal Testing build to **Closed Testing** or **Production**.
 
 ---
 
@@ -97,13 +99,20 @@ To ensure the web and mobile versions stay in sync, we use a dual-track release 
 ---
 
 *   **Testing:** New tests MUST use the `.vitest.test.ts` extension and leverage MSW for cloud service mocking to ensure CI/CD performance and isolation.
+*   **Branch Protection Mandate:**
+    *   **Main & Stable:** Direct pushes are strictly prohibited. All changes must be made via Pull Request.
+    *   **Status Checks:** GitHub Actions (Lint, Type Check, Vitest) MUST pass before a PR can be merged.
+    *   **Linear History:** All PRs should be merged using "Squash and merge" to keep a clean, readable history.
 *   **Architectural Mandates:**
     *   **Automated Ingestion:** The `verified_results` table is automatically populated by a Supabase Edge Function polling the Jolpica F1 API. Manual entry is a fallback only.
     *   **Client-Side Scoring:** Point calculation (predictions vs. verified results) MUST happen on the frontend using `lib/scoring.ts` to support both guest and authenticated users consistently.
 *   **Versioning Mandates:**
 *   **Source of Truth:** Always use `package.json` version for all release-related versioning.
 *   **Sync:** Do not hardcode versions in `android/app/build.gradle` or the UI footer; they are automated.
-*   **Android API Mandate:** You MUST NOT use deprecated Android APIs or parameters (e.g., `setStatusBarColor`, `setNavigationBarColor`) that conflict with Android 15's default edge-to-edge enforcement. Use version-specific resource overrides (e.g., `values-v35/styles.xml`) where necessary and proactively investigate console deprecation warnings. Rely on CSS `safe-area-insets` and modern Capacitor configuration for layout.
+*   **Android API Mandate:** You MUST NOT use deprecated Android APIs or parameters (e.g., `setStatusBarColor`, `setNavigationBarColor`) that conflict with Android 15's default edge-to-edge enforcement.
+    *   **Libraries:** Use `com.google.android.material:material:1.13.0` or newer for proper API 35+ support.
+    *   **Native Configuration:** Rely on `androidx.activity.EdgeToEdge.enable` in `MainActivity.java` for system bar transparency and style. Do NOT use `StatusBar` plugin configurations in `capacitor.config.ts` or JS calls (like `setStyle` or `setOverlaysWebView`) on Android 15+.
+    *   **Layout:** Rely on CSS `safe-area-insets` and modern Capacitor configuration for layout. Proactively investigate console deprecation warnings.
 *   **Increment Policy:** You **MUST** increment the version in `package.json` before finishing any task that includes a bug fix or new feature.
     *   **Patch (x.x.1):** Bug fixes, small tweaks.
     *   **Minor (x.1.x):** New features, significant UI changes.

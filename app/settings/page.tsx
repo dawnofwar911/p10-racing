@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight } from 'lucide-react';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
+import { useNotification } from '@/components/Notification';
 
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -16,6 +18,7 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const { showNotification } = useNotification();
   
   const supabase = createClient();
 
@@ -54,7 +57,7 @@ export default function SettingsPage() {
       window.location.href = '/';
     } catch (err) {
       console.error('Error deleting account:', err);
-      alert('Failed to delete account. Please try again or contact support.');
+      showNotification('Failed to delete account. Please try again.', 'error');
       setIsDeleting(false);
     }
   };
@@ -115,6 +118,21 @@ export default function SettingsPage() {
           </div>
         </Card>
 
+        <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Season</h2>
+        <Card className="border-secondary shadow-sm mb-4">
+          <div className="list-group list-group-flush bg-dark rounded">
+            <Link href="/history" passHref legacyBehavior>
+              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between border-0" onClick={triggerHaptic}>
+                <div className="d-flex align-items-center">
+                  <History size={18} className="me-3 opacity-75" />
+                  <span className="fw-bold">Season History</span>
+                </div>
+                <ChevronRight size={18} className="opacity-50" />
+              </a>
+            </Link>
+          </div>
+        </Card>
+
         <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Support & Legal</h2>
         <Card className="border-secondary shadow-sm mb-4">
           <div className="list-group list-group-flush bg-dark rounded">
@@ -145,8 +163,11 @@ export default function SettingsPage() {
           <p className="text-white opacity-25 small fw-bold letter-spacing-1 mb-1">
             P10 RACING
           </p>
-          <p className="text-white opacity-25 extra-small">
+          <p className="text-white opacity-25 extra-small mb-1">
             Version {packageInfo.version}
+          </p>
+          <p className="text-white opacity-10 extra-small">
+            Data provided by <a href="https://api.jolpi.ca" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
           </p>
         </div>
       </Container>
@@ -176,6 +197,3 @@ export default function SettingsPage() {
     </>
   );
 }
-
-// Ensure the Image component is imported
-import Image from 'next/image';

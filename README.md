@@ -4,12 +4,16 @@ Predict the Midfield. Compete with Friends. Master the Grid.
 
 P10 Racing is a multiplayer mobile application for F1 fans who love the midfield battle. Predict exactly who will finish in P10 and who will be the first DNF of every Grand Prix to earn points and climb the global leaderboard.
 
-## 🚀 Features
+## 🏎️ Features
 - **Global & Private Leagues**: Create your own competitions or compete with the world.
-- **Real-Time Data**: Live driver standings and race results via the Jolpica F1 API.
+- **Real-Time Data**: Live driver standings and race results via the [Jolpica F1 API](https://api.jolpi.ca).
 - **Native Experience**: Smooth transitions, haptic feedback, and offline support.
 - **Cloud Sync**: Secure authentication and prediction backup via Supabase.
 - **Migration Tool**: Easily move your local guest scores to your cloud account.
+
+## 📊 Data Attribution
+This application uses data provided by the **Jolpica F1 API**. We are not affiliated with the Formula 1 companies. F1, Formula 1, and related marks are trademarks of Formula One Licensing B.V.
+
 
 ## 🛠️ Setup Instructions
 
@@ -113,6 +117,8 @@ To ensure consistency across web, Android, and the App Store, we use a dual-trac
 - **Branch:** `main`
 - **Web:** Automatically deployed to Vercel (Staging environment).
 - **Android:** GitHub Actions builds the AAB and **automatically uploads** it to the **Internal Testing** track in the Google Play Console.
+- **Release Notes:** The latest **commit message** is automatically used as the **Play Store "What's New" text** (en-GB).
+- **Guidelines:** Write descriptive, user-facing commit messages (e.g., `feat: add driver avatars to leaderboard` instead of `feat: add images`).
 - **Goal:** Immediate testing on personal devices.
 
 ### 2. Production (Stable Release)
@@ -135,4 +141,6 @@ We use a single source of truth for versioning:
     -   **Deploying:** Merging `main` into `stable` triggers the production web deploy and the Closed Testing mobile release.
 
 ## 📄 License
-This project is for personal and community use. F1 and related marks are trademarks of Formula One Licensing BV.
+Copyright (c) 2026 P10 Racing. All Rights Reserved. This software is proprietary. See the [LICENSE](./LICENSE) file for full details.
+
+F1, Formula 1, FIA Formula One World Championship, and related marks are trademarks of Formula One Licensing B.V. This application is not affiliated with the Formula 1 companies.

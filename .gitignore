@@ -23,10 +23,12 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-!debug.keystore
 
 # local env files
 .env*.local
+
+# Android Secrets
+google-services.json
 
 # vercel
 .vercel

@@ -4,17 +4,15 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { Container, Row, Col, Table, Card, Spinner, Badge, Button } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace, DbPrediction } from '@/lib/api';
+import { fetchCalendar } from '@/lib/api';
+import { DbPrediction } from '@/lib/types';
 import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
+import { fetchAllSimplifiedResults } from '@/lib/results';
+import { isTestAccount } from '@/lib/utils/profiles';
 import LoadingView from '@/components/LoadingView';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-
-interface SimplifiedResults {
-  positions: { [driverId: string]: number };
-  firstDnf: string | null;
-}
 
 function LeagueDetailContent() {
   const searchParams = useSearchParams();
@@ -64,43 +62,9 @@ function LeagueDetailContent() {
     const leagueCreatedAt = new Date(league.created_at);
 
     // 2. Fetch Race Results (Official Supabase -> API/Cache Fallback)
+    const raceResultsMap = await fetchAllSimplifiedResults();
     const races = await fetchCalendar(CURRENT_SEASON);
-    const raceResultsMap: { [round: string]: SimplifiedResults & { date: Date } } = {};
-    
-    const { data: verifiedData } = await supabase.from('verified_results').select('*');
-    
-    let resultsFoundCount = 0;
-    await Promise.all(races.map(async (race: ApiCalendarRace) => {
-      const round = race.round;
-      const raceDate = new Date(`${race.date}T${race.time || '00:00:00Z'}`);
-      const verifiedMatch = verifiedData?.find(v => v.id === `${CURRENT_SEASON}_${round}`);
-      
-      if (verifiedMatch) {
-        raceResultsMap[round] = { ...(verifiedMatch.data as SimplifiedResults), date: raceDate };
-        resultsFoundCount++;
-      } else {
-        const resultsData = localStorage.getItem(`results_${CURRENT_SEASON}_${round}`);
-        if (resultsData) {
-          raceResultsMap[round] = { ...JSON.parse(resultsData), date: raceDate };
-          resultsFoundCount++;
-        } else {
-          const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
-          if (apiResults) {
-            const firstDnfDriver = getFirstDnfDriver(apiResults);
-            const simplified = {
-              positions: apiResults.Results.reduce((acc: { [key: string]: number }, r) => {
-                acc[r.Driver.driverId] = parseInt(r.position);
-                return acc;
-              }, {}),
-              firstDnf: firstDnfDriver ? firstDnfDriver.driverId : null,
-              date: raceDate
-            };
-            raceResultsMap[round] = simplified;
-            resultsFoundCount++;
-          }
-        }
-      }
-    }));
+    const resultsFoundCount = Object.keys(raceResultsMap).length;
 
     setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
@@ -122,7 +86,12 @@ function LeagueDetailContent() {
       .select('id, username')
       .in('id', memberIds);
 
-    const members = profilesData || [];
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+
+    const members = (profilesData || []).filter(p => {
+      return !isTestAccount(p.username) || p.id === currentUserId;
+    });
 
     // Fetch predictions for those members
     const { data: predictionsData } = await supabase
@@ -270,7 +239,7 @@ function LeagueDetailContent() {
                                 <div className="p-3 p-md-4 m-2 m-md-3 bg-dark rounded border border-secondary shadow-sm">
                                   {entry.breakdown && (
                                     <div className="row g-3 text-white mb-4 border-bottom border-secondary pb-4">
-                                      <div className="col-md-6 border-end-md border-secondary">
+                                  <div className="col-md-6 border-md-end border-secondary">
                                         <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: P10 Result</small>
                                         <div className="d-flex justify-content-between align-items-center">
                                           <span className="fw-bold fs-5 text-uppercase">{entry.breakdown.p10Driver.replace('_', ' ')}</span>

@@ -2,8 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
-import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON, Driver } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiCalendarRace, AppDriver, ApiResult, DbPrediction } from '@/lib/api';
+import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
+import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
+import { Driver } from '@/lib/types';
+import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
@@ -12,6 +14,10 @@ import { Share } from '@capacitor/share';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
+import { useNotification } from '@/components/Notification';
+import { getDriverDisplayName } from '@/lib/utils/drivers';
+import { getActiveRaceIndex } from '@/lib/utils/races';
+import HowToPlayButton from '@/components/HowToPlayButton';
 
 interface PredictRace {
   id: string;
@@ -28,13 +34,22 @@ interface CommunityPrediction {
   dnf: string;
 }
 
-function PredictContent() {
+interface CommunityPredictionData {
+  user_id: string;
+  p10_driver_id: string;
+  dnf_driver_id: string;
+}
+
+function PredictPage() {
   const [username, setUsername] = useState('');
+  const [tempUsername, setTempUsername] = useState('');
   const [session, setSession] = useState<Session | null>(null);
+  const { showNotification } = useNotification();
   const [p10Driver, setP10Driver] = useState('');
+
   const [dnfDriver, setDnfDriver] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [nextRace, setNextRace] = useState<PredictRace>(RACES[0] as unknown as PredictRace);
+  const [nextRace, setNextRace] = useState<PredictRace | null>(null);
   const [loadingRace, setLoadingRace] = useState(true);
   const [loadingSession, setLoadingSession] = useState(true); 
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS);
@@ -56,60 +71,62 @@ function PredictContent() {
 
   useEffect(() => {
     async function init() {
-      // 1. Handle Session
+      // 1. READ CACHE FIRST
+      const cachedNextRace = localStorage.getItem('p10_cache_next_race');
+      const cachedDrivers = localStorage.getItem('p10_cache_drivers');
+      const cachedUsername = localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user');
+
+      if (cachedNextRace && cachedDrivers) {
+        try {
+          const parsedRace = JSON.parse(cachedNextRace);
+          const parsedDrivers = JSON.parse(cachedDrivers);
+          setNextRace(parsedRace);
+          setDrivers(parsedDrivers);
+          setLoadingRace(false);
+          if (cachedUsername) setLoadingSession(false);
+
+          // Load grid and community from cache if available (keyed by race_id)
+          const cachedGrid = localStorage.getItem(`p10_cache_grid_${parsedRace.round}`);
+          if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
+
+          const cachedCommunity = localStorage.getItem(`p10_cache_community_${parsedRace.round}`);
+          if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
+        } catch (e) {
+          console.error('Error parsing cache:', e);
+        }
+      }
+
+      if (cachedUsername) {
+        setUsername(cachedUsername);
+      }
+
+      // 2. Background Async Fetches
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       
-      let currentUsername = '';
+      let currentUsername = cachedUsername || '';
       if (currentSession) {
-        const cachedUser = localStorage.getItem('p10_cache_username');
-        if (cachedUser) {
-          setUsername(cachedUser);
-          currentUsername = cachedUser;
-        }
-
         const { data: profile } = await supabase
           .from('profiles')
           .select('username')
           .eq('id', currentSession.user.id)
-          .single();
+          .maybeSingle();
         if (profile) {
           currentUsername = profile.username;
           setUsername(profile.username);
           localStorage.setItem('p10_cache_username', profile.username);
         }
-      } else {
-        const savedUser = localStorage.getItem('p10_current_user');
-        if (savedUser) {
-          currentUsername = savedUser;
-          setUsername(savedUser);
-        }
       }
       setLoadingSession(false);
 
-      // 2. Get Race Data
+      // 3. Get Race Data (Refresh)
       const races = await fetchCalendar(CURRENT_SEASON);
-      let currentRace: PredictRace = RACES[0] as unknown as PredictRace;
+      const raceResultsMap = await fetchAllSimplifiedResults();
+      let currentRace: PredictRace | null = null;
       if (races.length > 0) {
         const now = new Date();
-        let activeIndex = races.findIndex((r: ApiCalendarRace) => {
-          const raceTime = new Date(`${r.date}T${r.time || '00:00:00Z'}`);
-          const fourHoursLater = new Date(raceTime.getTime() + 4 * 60 * 60 * 1000);
-          return fourHoursLater > now;
-        });
-
-        if (activeIndex === -1) {
-          activeIndex = races.length - 1;
-          setIsSeasonFinished(true);
-        }
-
-        if (activeIndex > 0 && !isSeasonFinished) {
-          const prevRace = races[activeIndex - 1];
-          const results = await fetchRaceResults(CURRENT_SEASON, parseInt(prevRace.round));
-          if (!results) {
-            activeIndex--;
-          }
-        }
+        const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+        setIsSeasonFinished(finished);
 
         const upcoming = races[activeIndex];
         currentRace = {
@@ -121,11 +138,14 @@ function PredictContent() {
           round: parseInt(upcoming.round)
         };
         setNextRace(currentRace);
+        localStorage.setItem('p10_cache_next_race', JSON.stringify(currentRace));
 
         const apiDrivers = await fetchDrivers(CURRENT_SEASON);
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        finalDriverList.sort((a: AppDriver, b: AppDriver) => a.team.localeCompare(b.team));
+        // Ensure consistent sorting by team (matching Home page)
+        finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
+        localStorage.setItem('p10_cache_drivers', JSON.stringify(finalDriverList));
 
         let finalGrid: ApiResult[] = [];
         const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
@@ -153,6 +173,7 @@ function PredictContent() {
           }
         }
         setStartingGrid(finalGrid);
+        localStorage.setItem(`p10_cache_grid_${currentRace.round}`, JSON.stringify(finalGrid));
 
         const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
         const lockTime = new Date(raceStartTime.getTime() + 120000);
@@ -166,11 +187,20 @@ function PredictContent() {
             .select('*')
             .eq('user_id', currentSession.user.id)
             .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
-            .single();
+            .maybeSingle();
           
           if (dbPred) {
             setP10Driver(dbPred.p10_driver_id);
             setDnfDriver(dbPred.dnf_driver_id);
+          } else {
+            // Offline/Cache fallback for auth users
+            const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
+            const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace.id}`);
+            if (finalized) {
+              const parsed = JSON.parse(finalized);
+              setP10Driver(parsed.p10);
+              setDnfDriver(parsed.dnf);
+            }
           }
         } else if (currentUsername) {
           const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUsername}_${currentRace.id}`);
@@ -181,16 +211,37 @@ function PredictContent() {
           }
         }
 
-        const { data: dbCommunityPreds } = await supabase
+        // 4. Fetch Community Predictions
+        // We fetch predictions and profiles separately to ensure reliability with RLS and joins
+        const { data: dbPreds, error: predsError } = await supabase
           .from('predictions')
-          .select('user_id, p10_driver_id, dnf_driver_id, profiles(username)')
+          .select('user_id, p10_driver_id, dnf_driver_id')
           .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
 
-        const formattedDbPreds: CommunityPrediction[] = dbCommunityPreds ? (dbCommunityPreds as unknown as DbPrediction[]).map((p) => ({
-          username: p.profiles?.username || 'Unknown',
-          p10: p.p10_driver_id,
-          dnf: p.dnf_driver_id
-        })) : [];
+        if (predsError) {
+          console.error('Error fetching community predictions:', predsError);
+        }
+
+        let formattedDbPreds: CommunityPrediction[] = [];
+        const userIds = (dbPreds as unknown as CommunityPredictionData[] || []).map(p => p.user_id);
+
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', userIds);
+
+          if (profilesError) {
+            console.error('Error fetching profiles for community mapping:', profilesError);
+          }
+
+          const profilesMap = new Map(profiles?.map(p => [p.id, p.username]));
+          formattedDbPreds = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => ({
+            username: profilesMap.get(p.user_id) || 'Unknown',
+            p10: p.p10_driver_id,
+            dnf: p.dnf_driver_id
+          }));
+        }
 
         const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
 
@@ -198,6 +249,7 @@ function PredictContent() {
         const localPreds = playersList
           .filter((p: string) => p !== currentUsername)
           .map((p: string) => {
+            if (!currentRace) return null;
             const pred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${p}_${currentRace.id}`);
             return pred ? JSON.parse(pred) : null;
           }).filter(p => p !== null);
@@ -208,11 +260,14 @@ function PredictContent() {
           dnf: p.dnf
         }));
 
-        setCommunityPredictions([...otherDbPreds, ...formattedLocalPreds]);
+        const combinedCommunity = [...otherDbPreds, ...formattedLocalPreds];
+        setCommunityPredictions(combinedCommunity);
+        localStorage.setItem(`p10_cache_community_${currentRace.round}`, JSON.stringify(combinedCommunity));
       }
       setLoadingRace(false);
 
-      const existingPlayersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const parsedPlayers = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const existingPlayersList: string[] = (Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3);
       setExistingPlayers(existingPlayersList);
     }
     init();
@@ -220,10 +275,19 @@ function PredictContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (p10Driver && dnfDriver) {
+    if (p10Driver && dnfDriver && nextRace) {
       Haptics.impact({ style: ImpactStyle.Heavy });
       
+      const prediction = { 
+        username: username || 'User', 
+        p10: p10Driver, 
+        dnf: dnfDriver, 
+        raceId: nextRace.id, 
+        season: CURRENT_SEASON 
+      };
+
       if (session) {
+        // 1. Save to Cloud (Supabase)
         const { error } = await supabase
           .from('predictions')
           .upsert({
@@ -235,11 +299,15 @@ function PredictContent() {
           }, { onConflict: 'user_id, race_id' });
         
         if (error) {
-          alert('Error saving prediction: ' + error.message);
+          showNotification('Error saving prediction: ' + error.message, 'error');
           return;
         }
+
+        // 2. Mirror to LocalStorage for instant UI & offline support
+        const storageUser = username || session.user.id;
+        localStorage.setItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${nextRace.id}`, JSON.stringify(prediction));
       } else {
-        const prediction = { username, p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id, season: CURRENT_SEASON };
+        // Guest mode - LocalStorage only
         localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
         const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
         if (!players.includes(username)) {
@@ -256,6 +324,7 @@ function PredictContent() {
     Haptics.selectionChanged();
     localStorage.setItem('p10_current_user', name);
     setUsername(name);
+    if (!nextRace) return;
     const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${name}_${nextRace.id}`);
     if (finalized) {
       const parsed = JSON.parse(finalized);
@@ -267,9 +336,28 @@ function PredictContent() {
     }
   };
 
+  const handleGuestLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    Haptics.impact({ style: ImpactStyle.Medium });
+    const cleanName = tempUsername.trim();
+    if (cleanName.length >= 3) {
+      selectUser(cleanName);
+    } else {
+      showNotification('Name must be at least 3 characters.', 'error');
+    }
+  };
+
+  const handleSwitchGuest = () => {
+    Haptics.impact({ style: ImpactStyle.Light });
+    localStorage.removeItem('p10_current_user');
+    setUsername('');
+    setTempUsername('');
+  };
+
   const handleShare = async () => {
-    const p10Name = drivers.find(d => d.id === p10Driver)?.name || p10Driver;
-    const dnfName = drivers.find(d => d.id === dnfDriver)?.name || dnfDriver;
+    if (!nextRace) return;
+    const p10Name = getDriverDisplayName(p10Driver, drivers as Driver[]);
+    const dnfName = getDriverDisplayName(dnfDriver, drivers as Driver[]);
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
     
     try {
@@ -280,18 +368,17 @@ function PredictContent() {
         dialogTitle: 'Share your Picks',
       });
     } catch (error) {
-      console.error('Error sharing', error);
-      // Fallback for non-native or failed share
-      if (navigator.share) {
-        navigator.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app/predict' }).catch(console.error);
-      } else {
+      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web or unsupported browser)
+      console.log('Share dismissed or failed:', error);
+      
+      if (!navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
-        alert('Prediction copied to clipboard!');
+        showNotification('Picks copied to clipboard!', 'success');
       }
     }
   };
 
-  if (loadingSession || loadingRace) {
+  if (!nextRace && (loadingRace || loadingSession)) {
     return <LoadingView />;
   }
 
@@ -318,8 +405,8 @@ function PredictContent() {
                     <hr className="border-secondary mt-4" />
                   </div>
                 )}
-                <Form onSubmit={(e) => { e.preventDefault(); if (username.trim()) selectUser(username); }}>
-                  <Form.Group className="mb-3"><Form.Label>Guest Name</Form.Label><Form.Control type="text" placeholder="Enter name" value={username} onChange={(e) => setUsername(e.target.value)} className="bg-dark text-white border-secondary py-2" /></Form.Group>
+                <Form onSubmit={handleGuestLogin}>
+                  <Form.Group className="mb-3"><Form.Label>Guest Name</Form.Label><Form.Control type="text" placeholder="Enter name" value={tempUsername} onChange={(e) => setTempUsername(e.target.value)} minLength={3} required className="bg-dark text-white border-secondary py-2" /></Form.Group>
                   <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">CONTINUE AS GUEST</Button>
                 </Form>
               </Card>
@@ -336,7 +423,7 @@ function PredictContent() {
         <Container className="mt-5 text-center">
           <div className="mb-4 display-1">🏁</div>
           <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
-          <p className="lead mb-5 text-muted">Good luck for the {nextRace.name}, <span className="text-white fw-bold">{username}</span>.</p>
+          <p className="lead mb-5 text-muted">Good luck for the {nextRace?.name}, <span className="text-white fw-bold">{username}</span>.</p>
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
             <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
             <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Home</Button></Link>
@@ -351,21 +438,15 @@ function PredictContent() {
       <Container className="mt-4 mb-3">
         <Row className="mb-4 align-items-center">
           <Col>
-            <div className="d-flex align-items-center gap-2">
-              <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace.name}</h1>
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                className="rounded-circle p-0 d-flex align-items-center justify-content-center opacity-50" 
-                style={{ width: '22px', height: '22px', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '4px' }}
+            <div className="d-flex align-items-center gap-3">
+              <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace?.name}</h1>
+              <HowToPlayButton 
                 onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setShowHowToPlay(true); }}
-              >
-                ?
-              </Button>
+              />
             </div>
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
-          <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={() => { localStorage.removeItem('p10_current_user'); setUsername(''); }} className="rounded-pill">Switch Guest</Button>)}</Col>
+          <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}</Col>
         </Row>
         {startingGrid.length > 0 && !isLocked && (
           <Row className="mb-4">
@@ -379,6 +460,7 @@ function PredictContent() {
                 </Card.Header>
                 <Card.Body className="p-2 bg-black bg-opacity-40" style={{ 
                   backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 1px, transparent 1px, transparent 10px)',
+                  minHeight: '200px'
                 }}>
                   <div className="position-relative py-2 px-1">
                     {/* Finish Line Look - Top-aligned */}
@@ -450,7 +532,7 @@ function PredictContent() {
               <p className="lead mb-4 text-muted">
                 {isSeasonFinished 
                   ? `The ${CURRENT_SEASON} season has concluded. See you in ${CURRENT_SEASON + 1}!` 
-                  : `The ${nextRace.name} is underway. Good luck!`}
+                  : `The ${nextRace?.name} is underway. Good luck!`}
               </p>
               <Row className="text-start">
                 <Col lg={6} className="mb-4">
@@ -488,7 +570,7 @@ function PredictContent() {
                 <Card className="shadow-sm border-secondary mb-3">
                   <Card.Body className="p-3">
                     <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">P10 Finisher</h3>
-                    <div className="driver-list-scroll" style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
+                    <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
                       {drivers.map((driver) => (
 <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}><div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div><div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>{p10Driver === driver.id && <div className="text-danger">●</div>}</div>))}</div></Card.Body></Card>
               </Col>
@@ -496,7 +578,7 @@ function PredictContent() {
                 <Card className="shadow-sm border-secondary mb-3">
                   <Card.Body className="p-3">
                     <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">First DNF</h3>
-                    <div className="driver-list-scroll" style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
+                    <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
                       {drivers.map((driver) => (
 <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}><div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div><div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>{dnfDriver === driver.id && <div className="text-danger">●</div>}</div>))}</div></Card.Body></Card>
               </Col>
@@ -562,10 +644,11 @@ function PredictContent() {
   );
 }
 
-export default function PredictPage() {
+export default function PredictPageWrapper() {
   return (
     <Suspense fallback={<LoadingView />}>
-      <PredictContent />
+      <PredictPage />
     </Suspense>
   );
 }
+

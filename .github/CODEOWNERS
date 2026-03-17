@@ -1,0 +1,20 @@
+# Global owners
+# These users will be requested for review for all changes
+* @dawnofwar911
+
+# Sensitive CI/CD and security files
+/.github/workflows/ @dawnofwar911
+/GEMINI.md @dawnofwar911
+/package.json @dawnofwar911
+/package-lock.json @dawnofwar911
+/LICENSE @dawnofwar911
+/.gitignore @dawnofwar911
+
+# Android signing and configuration
+/android/*.keystore @dawnofwar911
+/android/app/google-services.json @dawnofwar911
+
+# Core library and scoring logic
+/lib/ @dawnofwar911
+/lib/scoring.ts @dawnofwar911
+/lib/supabase/ @dawnofwar911

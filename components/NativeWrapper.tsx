@@ -20,19 +20,16 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         const platform = info.platform;
         const osVersion = parseInt(info.osVersion || '0', 10);
 
-        // 1. Ensure the status bar overlaps the webview so CSS safe-area-insets work
         // Note: Android 15+ (API 35+) enforces edge-to-edge by default.
+        // We avoid calling Capacitor StatusBar methods on Android 15+ to eliminate 
+        // deprecation warnings for getStatusBarColor/setStatusBarColor/etc.
         if (platform === 'android' && osVersion < 15) {
           await StatusBar.setOverlaysWebView({ overlay: true });
+          await StatusBar.setStyle({ style: Style.Dark });
+        } else if (platform !== 'android') {
+          // Keep normal behavior for iOS
+          await StatusBar.setStyle({ style: Style.Dark });
         }
-        
-        // 2. We use Dark style because the app theme is dark (#15151e),
-        // so we want light icons (white) on the status bar.
-        // Style.Dark = Light text for dark backgrounds.
-        // On Android 15+, this might still trigger a deprecation warning in the plugin,
-        // but it is currently the only way to set the icon color through Capacitor.
-        await StatusBar.setStyle({ style: Style.Dark });
-        
         // 2. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
           try {
@@ -66,15 +63,16 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         App.addListener('backButton', ({ canGoBack }) => {
           const path = window.location.pathname;
           
-          // If on a main tab or root, exit the app
-          const mainTabs = ['/', '/predict', '/leagues', '/leaderboard', '/standings', '/history'];
-          if (mainTabs.includes(path)) {
+          // Only exit the app if we are on the root home page
+          if (path === '/') {
             App.exitApp();
           } else if (canGoBack) {
+            // If we have history (e.g. went from Home -> Predict), go back
             router.back();
           } else {
-            // Fallback for safety
-            App.exitApp();
+            // If we are on a deep page but have no history (e.g. app launched to that page),
+            // navigate to home instead of exiting
+            router.push('/');
           }
         });
 

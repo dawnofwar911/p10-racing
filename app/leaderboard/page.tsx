@@ -2,11 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
-import { LeaderboardEntry, CURRENT_SEASON, SimplifiedResults } from '@/lib/data';
+import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
-import { fetchCalendar, DbPrediction } from '@/lib/api';
+import { fetchCalendar } from '@/lib/api';
+import { DbPrediction } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
+import { fetchAllSimplifiedResults } from '@/lib/results';
+import { isTestAccount } from '@/lib/utils/profiles';
 
 interface LeaderboardPlayer {
   username: string;
@@ -24,21 +27,11 @@ export default function LeaderboardPage() {
 
   const supabase = createClient();
 
-  const calculate = useCallback(async () => {
-    setLoading(true);
+  const calculate = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     
-    // 1. Fetch all verified results from Supabase
-    const { data: dbResults } = await supabase
-      .from('verified_results')
-      .select('*');
-
-    const raceResultsMap: { [round: string]: SimplifiedResults } = {};
-    if (dbResults) {
-      dbResults.forEach(res => {
-        const round = res.id.split('_')[1];
-        raceResultsMap[round] = res.data as unknown as SimplifiedResults;
-      });
-    }
+    // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
+    const raceResultsMap = await fetchAllSimplifiedResults();
 
     // 2. Fetch Calendar to check if season is complete
     const races = await fetchCalendar(CURRENT_SEASON);
@@ -48,16 +41,24 @@ export default function LeaderboardPage() {
     let playersData: LeaderboardPlayer[] = [];
 
     if (view === 'global') {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+
       const { data: profiles } = await supabase.from('profiles').select('id, username');
       const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
 
       if (profiles) {
-        playersData = profiles.map(p => ({ 
-          username: p.username, 
-          userId: p.id, 
-          isLocal: false,
-          dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
-        }));
+        playersData = profiles
+          .filter(p => {
+            // Show if NOT a test account OR if it IS the current user's account
+            return !isTestAccount(p.username) || p.id === currentUserId;
+          })
+          .map(p => ({ 
+            username: p.username, 
+            userId: p.id, 
+            isLocal: false,
+            dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+          }));
       }
     } else {
       const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
@@ -96,12 +97,25 @@ export default function LeaderboardPage() {
     const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
     
     setLeaderboard(ranked);
+    if (view === 'global') {
+      localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
+    }
     setLoading(false);
   }, [supabase, view]);
 
   useEffect(() => {
+    // Cache loading logic
+    if (view === 'global') {
+      const cached = localStorage.getItem('p10_cache_leaderboard');
+      if (cached) {
+        setLeaderboard(JSON.parse(cached));
+        setLoading(false);
+        calculate(true); // Quiet update
+        return;
+      }
+    }
     calculate();
-  }, [calculate]);
+  }, [calculate, view]);
 
   // Real-time subscription
   useEffect(() => {
@@ -200,7 +214,7 @@ export default function LeaderboardPage() {
                             <div className="p-3 p-md-4 m-2 m-md-3 bg-dark rounded border border-secondary shadow-sm">
                               {entry.breakdown && (
                                 <div className="row g-3 text-white mb-4 border-bottom border-secondary pb-4">
-                                  <div className="col-md-6 border-end-md border-secondary">
+                                  <div className="col-md-6 border-md-end border-secondary">
                                     <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: P10 Result</small>
                                     <div className="d-flex justify-content-between align-items-center">
                                       <span className="fw-bold fs-5 text-uppercase">{entry.breakdown.p10Driver.replace('_', ' ')}</span>

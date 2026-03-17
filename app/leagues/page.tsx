@@ -9,6 +9,7 @@ import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
+import PullToRefresh from '@/components/PullToRefresh';
 
 interface League {
   id: string;
@@ -32,8 +33,8 @@ function LeaguesContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
 
-  const fetchLeagues = useCallback(async () => {
-    setLoading(true);
+  const fetchLeagues = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const { data, error } = await supabase
         .from('leagues')
@@ -42,6 +43,7 @@ function LeaguesContent() {
 
       if (error) throw error;
       setLeagues(data || []);
+      localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
     } finally {
@@ -51,15 +53,25 @@ function LeaguesContent() {
 
   useEffect(() => {
     async function init() {
+      // 1. Load from cache first
+      const cached = localStorage.getItem('p10_cache_leagues');
+      let hasCache = false;
+      if (cached) {
+        setLeagues(JSON.parse(cached));
+        setLoading(false);
+        hasCache = true;
+      }
+
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       
       // Load local guests for migration
-      const guests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guestsData = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
       setLocalGuests(guests);
 
       if (currentSession) {
-        fetchLeagues();
+        fetchLeagues(hasCache);
       } else {
         setLoading(false);
       }
@@ -239,7 +251,7 @@ function LeaguesContent() {
   };
 
   return (
-    <>
+    <PullToRefresh onRefresh={() => fetchLeagues(false)}>
       <Container className="mt-3 mb-4">
         <h1 className="h4 fw-bold text-uppercase letter-spacing-1 mb-3 text-white ps-1">Leagues</h1>
 
@@ -366,7 +378,7 @@ function LeaguesContent() {
           </>
         )}
       </Container>
-    </>
+    </PullToRefresh>
   );
 }
 

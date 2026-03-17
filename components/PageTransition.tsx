@@ -1,32 +1,29 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <AnimatePresence mode="popLayout" initial={false}>
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, x: 10 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -10 }}
-        transition={{ 
-          duration: 0.15, 
-          ease: "easeOut"
-        }}
-        className="page-transition-container"
-        style={{
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          flexGrow: 1
-        }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    /* 
+       ENTRANCE-ONLY TRANSITION
+       Removing AnimatePresence and exit animations ensures 
+       absolute layout stability and prevents 'double refreshes'.
+       This provides a clean, native 'soft-load' feel.
+    */
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ 
+        duration: 0.15, 
+        ease: "easeOut" 
+      }}
+      className="page-transition-wrapper"
+    >
+      {children}
+    </motion.div>
   );
 }

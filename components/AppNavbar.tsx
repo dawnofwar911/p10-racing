@@ -1,13 +1,15 @@
 'use client';
 
-import { Navbar, Button, Nav } from 'react-bootstrap';
+import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { User } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
+import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
 
 export default function AppNavbar() {
@@ -153,37 +155,40 @@ export default function AppNavbar() {
       {!isOnResetPage && (
         <>
           <div className="d-flex align-items-center ms-auto order-lg-last">
-            {(session || currentUser) ? (
+            {isAuthReady ? (
               <button 
                 onClick={() => { triggerHaptic(); setShowDrawer(true); }}
                 className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
               >
                 <div className="d-flex flex-column align-items-end me-2 d-none d-sm-flex">
-                  <span className="text-light small text-uppercase letter-spacing-1 opacity-75" style={{ fontSize: '0.6rem', lineHeight: 1 }}>Player</span>
-                  <span className="fw-bold text-white text-uppercase" style={{ fontSize: '0.8rem', lineHeight: 1 }}>{currentUser}</span>
+                  <span className="text-light small text-uppercase letter-spacing-1 opacity-75" style={{ fontSize: '0.6rem', lineHeight: 1 }}>
+                    {(session || currentUser) ? 'Player' : 'Guest'}
+                  </span>
+                  <span className="fw-bold text-white text-uppercase" style={{ fontSize: '0.8rem', lineHeight: 1 }}>
+                    {currentUser || 'Profile'}
+                  </span>
                 </div>
                 <div className="bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center text-white fw-bold border border-secondary border-opacity-50" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
-                  {currentUser?.charAt(0).toUpperCase() || '?'}
+                  {(session || currentUser) ? (currentUser?.charAt(0).toUpperCase() || '?') : <User size={18} />}
                 </div>
               </button>
-            ) : isAuthReady ? (
-              <Link href="/auth" passHref legacyBehavior>
-                <Button variant="outline-danger" size="sm" onClick={triggerHaptic} className="rounded-pill px-4 fw-bold" style={{ fontSize: '0.7rem' }}>
-                  SIGN IN
-                </Button>
-              </Link>
             ) : (
               <div style={{ height: '31px', width: '80px' }}></div>
             )}
           </div>
 
           <Nav className="me-auto ms-xl-4 d-none d-xl-flex gap-2">
-            <Link href="/" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Home</Link>
-            <Link href="/predict" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/predict' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Predict</Link>
-            <Link href="/leagues" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leagues' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leagues</Link>
-            <Link href="/leaderboard" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/leaderboard' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Leaderboard</Link>
-            <Link href="/standings" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/standings' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>Standings</Link>
-            <Link href="/history" onClick={triggerHaptic} className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === '/history' ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} style={{ fontSize: '0.75rem' }}>History</Link>
+            {NAV_ITEMS.map((item) => (
+              <Link 
+                key={item.href}
+                href={item.href} 
+                onClick={triggerHaptic} 
+                className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === item.href ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} 
+                style={{ fontSize: '0.75rem' }}
+              >
+                {item.label}
+              </Link>
+            ))}
           </Nav>
         </>
       )}

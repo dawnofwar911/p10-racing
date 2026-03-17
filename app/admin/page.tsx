@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, TEAM_COLORS, AppDriver, ApiCalendarRace } from '@/lib/api';
+import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCalendarRace } from '@/lib/api';
+import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 
@@ -28,6 +29,8 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [status, setStatus] = useState<{message: string, variant: string} | null>(null);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [showConfirmPublish, setShowConfirmPublish] = useState(false);
+  const [existingResult, setExistingResult] = useState<{p10: string, dnf: string} | null>(null);
   
   const supabase = createClient();
   const router = useRouter();
@@ -38,6 +41,27 @@ export default function AdminPage() {
       return () => clearTimeout(timer);
     }
   }, [status]);
+
+  const checkExistingResults = useCallback(async () => {
+    if (!isAdmin || !selectedRace) return;
+    const { data } = await supabase
+      .from('verified_results')
+      .select('data')
+      .eq('id', `${season}_${selectedRace}`)
+      .maybeSingle();
+    
+    if (data?.data) {
+      const d = data.data as { positions: { [key: string]: number }, firstDnf: string };
+      const p10Id = d.positions ? Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown' : 'Unknown';
+      setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
+    } else {
+      setExistingResult(null);
+    }
+  }, [isAdmin, season, selectedRace, supabase]);
+
+  useEffect(() => {
+    checkExistingResults();
+  }, [checkExistingResults]);
 
   useEffect(() => {
     async function checkAdmin() {
@@ -80,7 +104,7 @@ export default function AdminPage() {
       const d = await fetchDrivers(season);
       if (d.length > 0) {
         setDrivers(d);
-        setResults(Object.fromEntries(d.map((driver: AppDriver, i: number) => [driver.id, i + 1])));
+        setResults(Object.fromEntries(d.map((driver: Driver, i: number) => [driver.id, i + 1])));
       } else {
         setDrivers(FALLBACK_DRIVERS);
         setResults(Object.fromEntries(FALLBACK_DRIVERS.map((driver, i) => [driver.id, i + 1])));
@@ -148,6 +172,11 @@ export default function AdminPage() {
   };
 
   const handleSaveResults = async (target: 'local' | 'global') => {
+    if (target === 'global' && existingResult && !showConfirmPublish) {
+      setShowConfirmPublish(true);
+      return;
+    }
+
     const simplifiedResults = {
       positions: results,
       firstDnf: firstDnf
@@ -167,11 +196,14 @@ export default function AdminPage() {
         });
       
       setLoading(false);
+      setShowConfirmPublish(false);
       if (dbError) {
         setStatus({ message: 'Global publish error: ' + dbError.message, variant: 'danger' });
       } else {
-        setStatus({ message: `Results for Round ${selectedRace} published GLOBALLY!`, variant: 'success' });
+        setStatus({ message: `Results published! Leaderboard updated GLOBALLY for Round ${selectedRace}.`, variant: 'success' });
         Haptics.notification({ type: NotificationType.Success });
+        // Refresh existing check logic for UI update
+        checkExistingResults();
       }
     }
   };
@@ -286,6 +318,24 @@ export default function AdminPage() {
           </Col>
 
           <Col lg={4}>
+            {existingResult && (
+              <Card className="border-warning border-opacity-50 mb-4 shadow-sm bg-warning bg-opacity-5">
+                <Card.Header className="bg-warning bg-opacity-10 border-warning border-opacity-25 py-2">
+                  <h3 className="h6 mb-0 text-uppercase fw-bold text-warning" style={{ fontSize: '0.65rem' }}>Existing Verified Data</h3>
+                </Card.Header>
+                <Card.Body className="p-3">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="small text-muted text-uppercase">Current P10:</span>
+                    <span className="small fw-bold text-white text-uppercase">{existingResult.p10.replace('_', ' ')}</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span className="small text-muted text-uppercase">Current DNF:</span>
+                    <span className="small fw-bold text-danger text-uppercase">{existingResult.dnf.replace('_', ' ')}</span>
+                  </div>
+                </Card.Body>
+              </Card>
+            )}
+
             <Card className="border-secondary mb-4 shadow-sm">
               <Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Verification</h3></Card.Header>
               <Card.Body className="p-4">
@@ -300,9 +350,22 @@ export default function AdminPage() {
                 </Form.Group>
 
                 <div className="d-grid gap-3">
-                  <Button variant="danger" size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className="fw-bold py-3">PUBLISH GLOBALLY</Button>
+                  <Button 
+                    variant={existingResult ? "warning" : "danger"} 
+                    size="lg" 
+                    onClick={() => handleSaveResults('global')} 
+                    disabled={loading} 
+                    className={`fw-bold py-3 ${existingResult ? 'text-dark' : ''}`}
+                  >
+                    {existingResult ? 'CORRECT & RE-CALCULATE' : 'PUBLISH GLOBALLY'}
+                  </Button>
                   <Button variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2">PUBLISH LOCALLY</Button>
                 </div>
+                {existingResult && (
+                  <div className="mt-3 extra-small text-warning text-center fw-bold opacity-75">
+                    ⚠️ THIS WILL RE-CALCULATE ALL PLAYER SCORES
+                  </div>
+                )}
               </Card.Body>
             </Card>
 
@@ -349,6 +412,26 @@ export default function AdminPage() {
           </Button>
           <Button variant="warning" onClick={handleNotifyQuali} className="rounded-pill px-4 fw-bold text-dark">
             SEND BROADCAST
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showConfirmPublish} onHide={() => setShowConfirmPublish(false)} centered contentClassName="bg-dark border-secondary">
+        <Modal.Header closeButton closeVariant="white" className="border-secondary">
+          <Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Correct Global Results?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-white opacity-75">
+          You are about to overwrite the verified results for <strong>{availableRaces.find(r => r.round === selectedRace)?.raceName}</strong>.
+          <div className="mt-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded small text-danger fw-bold">
+            THIS WILL IMMEDIATELY UPDATE THE LEADERBOARD AND POINTS FOR ALL PLAYERS.
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-secondary">
+          <Button variant="outline-light" onClick={() => setShowConfirmPublish(false)} className="rounded-pill px-4">
+            CANCEL
+          </Button>
+          <Button variant="warning" onClick={() => handleSaveResults('global')} className="rounded-pill px-4 fw-bold text-dark">
+            CONFIRM & RE-CALCULATE
           </Button>
         </Modal.Footer>
       </Modal>
