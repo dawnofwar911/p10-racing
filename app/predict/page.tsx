@@ -9,7 +9,6 @@ import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { Share } from '@capacitor/share';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -18,6 +17,7 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
+import { useAuth } from '@/components/AuthProvider';
 
 interface PredictRace {
   id: string;
@@ -40,10 +40,12 @@ interface CommunityPredictionData {
   dnf_driver_id: string;
 }
 
+const supabase = createClient();
+
 function PredictPage() {
+  const { session, isLoading: authLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [tempUsername, setTempUsername] = useState('');
-  const [session, setSession] = useState<Session | null>(null);
   const { showNotification } = useNotification();
   const [p10Driver, setP10Driver] = useState('');
 
@@ -51,7 +53,6 @@ function PredictPage() {
   const [submitted, setSubmitted] = useState(false);
   const [nextRace, setNextRace] = useState<PredictRace | null>(null);
   const [loadingRace, setLoadingRace] = useState(true);
-  const [loadingSession, setLoadingSession] = useState(true); 
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS);
   const [isLocked, setIsLocked] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
@@ -60,7 +61,6 @@ function PredictPage() {
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   
-  const supabase = createClient();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -83,7 +83,6 @@ function PredictPage() {
           setNextRace(parsedRace);
           setDrivers(parsedDrivers);
           setLoadingRace(false);
-          if (cachedUsername) setLoadingSession(false);
 
           // Load grid and community from cache if available (keyed by race_id)
           const cachedGrid = localStorage.getItem(`p10_cache_grid_${parsedRace.round}`);
@@ -101,15 +100,12 @@ function PredictPage() {
       }
 
       // 2. Background Async Fetches
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      
       let currentUsername = cachedUsername || '';
-      if (currentSession) {
+      if (session) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('username')
-          .eq('id', currentSession.user.id)
+          .eq('id', session.user.id)
           .maybeSingle();
         if (profile) {
           currentUsername = profile.username;
@@ -117,7 +113,6 @@ function PredictPage() {
           localStorage.setItem('p10_cache_username', profile.username);
         }
       }
-      setLoadingSession(false);
 
       // 3. Get Race Data (Refresh)
       const races = await fetchCalendar(CURRENT_SEASON);
@@ -181,11 +176,11 @@ function PredictPage() {
           setIsLocked(true);
         }
 
-        if (currentSession) {
+        if (session) {
           const { data: dbPred } = await supabase
             .from('predictions')
             .select('*')
-            .eq('user_id', currentSession.user.id)
+            .eq('user_id', session.user.id)
             .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
             .maybeSingle();
           
@@ -194,7 +189,7 @@ function PredictPage() {
             setDnfDriver(dbPred.dnf_driver_id);
           } else {
             // Offline/Cache fallback for auth users
-            const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
+            const storageUser = localStorage.getItem('p10_cache_username') || session.user.id;
             const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace.id}`);
             if (finalized) {
               const parsed = JSON.parse(finalized);
@@ -271,7 +266,7 @@ function PredictPage() {
       setExistingPlayers(existingPlayersList);
     }
     init();
-  }, [supabase, isSeasonFinished]);
+  }, [isSeasonFinished, session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -378,7 +373,7 @@ function PredictPage() {
     }
   };
 
-  if (!nextRace && (loadingRace || loadingSession)) {
+  if (authLoading || (!nextRace && loadingRace)) {
     return <LoadingView />;
   }
 
@@ -651,4 +646,3 @@ export default function PredictPageWrapper() {
     </Suspense>
   );
 }
-

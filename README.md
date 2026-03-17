@@ -115,6 +115,8 @@ To ensure consistency across web, Android, and the App Store, we use a dual-trac
 
 ### 1. Staging (Active Development)
 - **Branch:** `main`
+- **Workflow:** Create a feature branch (`feat/...` or `fix/...`), open a Pull Request, and merge after review.
+- **Atomic PRs:** Ensure each PR focuses on a single logical change (e.g., one bug fix or one feature). Avoid bundling unrelated polish or multiple tasks into one PR to keep reviews efficient and rollbacks safe.
 - **Web:** Automatically deployed to Vercel (Staging environment).
 - **Android:** GitHub Actions builds the AAB and **automatically uploads** it to the **Internal Testing** track in the Google Play Console.
 - **Release Notes:** The latest **commit message** is automatically used as the **Play Store "What's New" text** (en-GB).

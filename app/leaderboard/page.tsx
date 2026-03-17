@@ -18,14 +18,14 @@ interface LeaderboardPlayer {
   dbPredictions?: DbPrediction[];
 }
 
+const supabase = createClient();
+
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [view, setView] = useState<'global' | 'local'>('global');
-
-  const supabase = createClient();
 
   const calculate = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
       localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
     }
     setLoading(false);
-  }, [supabase, view]);
+  }, [view]);
 
   useEffect(() => {
     // Cache loading logic
@@ -138,7 +138,7 @@ export default function LeaderboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, view, calculate]);
+  }, [view, calculate]);
 
   return (
     <PullToRefresh onRefresh={calculate}>

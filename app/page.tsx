@@ -16,7 +16,7 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import PullToRefresh from '@/components/PullToRefresh';
+import { useAuth } from '@/components/AuthProvider';
 
 interface HomeRace {
   id: string;
@@ -32,11 +32,19 @@ interface HomePrediction {
   dnf: string;
 }
 
+const supabase = createClient();
+
 export default function Home() {
+  const { session, isLoading: authLoading } = useAuth();
   const [nextRace, setNextRace] = useState<HomeRace | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasSession, setHasSession] = useState(false);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  
+  // Initialize currentUser synchronously to prevent UI flash
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('p10_current_user');
+    return null;
+  });
+
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
   const [showCountdown, setShowCountdown] = useState(false);
@@ -46,7 +54,6 @@ export default function Home() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
-  const supabase = createClient();
   const router = useRouter();
   const { showNotification } = useNotification();
 
@@ -99,16 +106,6 @@ export default function Home() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      // Secondary check: if session exists but user came from recovery
-      if (session && window.location.hash.includes('type=recovery')) {
-        await supabase.auth.signOut();
-        router.replace('/auth/reset-password' + window.location.hash);
-        return;
-      }
-      setHasSession(!!session);
-      
       const user = localStorage.getItem('p10_current_user');
       setCurrentUser(user);
 
@@ -216,7 +213,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, router]);
+  }, [session, router]);
 
   useEffect(() => {
     init();
@@ -284,165 +281,163 @@ export default function Home() {
   };
 
   return (
-    <PullToRefresh onRefresh={init}>
-      <Container className="mt-3 mt-md-4 flex-grow-1">
-        <Row className="justify-content-center text-center">
-          <Col md={8} className="mb-2">
-            <h1 className="display-5 fw-bold mb-2 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
-            <p className="small text-white opacity-75 mb-4 mx-auto" style={{ maxWidth: '500px' }}>
-              Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
-            </p>
-            
-            {nextRace && !loading && isSeasonFinished && (
-              <div className="mb-4 p-4 border border-warning rounded bg-warning bg-opacity-10 shadow-lg">
-                <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
-                <h2 className="display-6 fw-bold text-white mb-2">
-                  {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
-                </h2>
-                <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
-                <Link href="/leaderboard" passHref legacyBehavior>
-                  <Button variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</Button>
-                </Link>
-              </div>
-            )}
-
-            {!isSeasonFinished && (
-              <div style={{ minHeight: "115px" }} className="d-flex flex-column align-items-center justify-content-center mb-4">
-                {nextRace && (
-                  <>
-                    {showCountdown ? (
-                      <div>
-                        <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                        <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
-                          {[
-                            { label: 'D', val: countdown.d },
-                            { label: 'H', val: countdown.h },
-                            { label: 'M', val: countdown.m },
-                            { label: 'S', val: countdown.s }
-                          ].map(item => (
-                            <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
-                              <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
-                              <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : isRaceInProgress ? (
-                      <div>
-                        <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
-                        <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
-                      </div>
-                    ) : (
-                      /* If nextRace exists but not showing countdown or progress, it might be loading or transitional */
-                      <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
-              {!isSeasonFinished ? (
-                <Link href="/predict" passHref legacyBehavior>
-                  <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
-                    {isLocked 
-                      ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
-                      : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/history" passHref legacyBehavior>
-                  <Button size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
-                    VIEW SEASON RECAP
-                  </Button>
-                </Link>
-              )}
+    <Container className="mt-3 mt-md-4 flex-grow-1">
+      <Row className="justify-content-center text-center">
+        <Col md={8} className="mb-2">
+          <h1 className="display-5 fw-bold mb-2 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
+          <p className="small text-white opacity-75 mb-4 mx-auto" style={{ maxWidth: '500px' }}>
+            Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
+          </p>
+          
+          {nextRace && !loading && isSeasonFinished && (
+            <div className="mb-4 p-4 border border-warning rounded bg-warning bg-opacity-10 shadow-lg">
+              <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
+              <h2 className="display-6 fw-bold text-white mb-2">
+                {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
+              </h2>
+              <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
               <Link href="/leaderboard" passHref legacyBehavior>
-                <Button variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
-                  {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
-                </Button>
+                <Button variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</Button>
               </Link>
             </div>
-            
-            <div className="mb-4">
-              <HowToPlayButton 
-                onClick={() => { triggerHaptic(); router.push('/predict?howto=true'); }}
-              />
-            </div>
+          )}
 
-            {!isSeasonFinished && userPrediction && nextRace && (
-              <div className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" style={{ maxWidth: '400px' }}>
-                <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
-                  Your {nextRace.name} Picks {isLocked && '🔒'}
-                </h3>
-                <div className="d-flex justify-content-center gap-4 mb-3">
-                  <div>
-                    <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-                    <span className="fw-bold text-white h6 mb-0">
-                      {getDriverDisplayName(userPrediction.p10, allDrivers)}
-                    </span>
-                  </div>
-                  <div className="border-start border-secondary border-opacity-25 ps-4">
-                    <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-                    <span className="fw-bold text-danger h6 mb-0">
-                      {getDriverDisplayName(userPrediction.dnf, allDrivers)}
-                    </span>
-                  </div>
-                </div>
-                <Button variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
-                  SHARE PICKS ↗
-                </Button>
-              </div>
-            )}
-
-          </Col>
-        </Row>
-
-        <Row className="mt-2 g-3 px-1">
-          <Col md={6}>
-            <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm" style={{ minHeight: '110px' }}>
-              <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
-              {loading && !nextRace ? (
-                <Spinner animation="border" size="sm" variant="danger" />
-              ) : (
+          {!isSeasonFinished && (
+            <div style={{ minHeight: "115px" }} className="d-flex flex-column align-items-center justify-content-center mb-4">
+              {nextRace && (
                 <>
-                  <p className="fw-bold mb-0 text-white" style={{ fontSize: '1.1rem' }}>{nextRace?.name}</p>
-                  <p className="text-white opacity-50 small mb-2">{nextRace?.circuit}</p>
-                  <div className="badge bg-danger bg-opacity-10 text-danger px-2 py-1 border border-danger border-opacity-20 rounded-pill fw-bold" style={{ fontSize: '0.65rem' }}>
-                    {nextRace && new Date(nextRace.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </div>
+                  {showCountdown ? (
+                    <div>
+                      <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
+                      <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
+                        {[
+                          { label: 'D', val: countdown.d },
+                          { label: 'H', val: countdown.h },
+                          { label: 'M', val: countdown.m },
+                          { label: 'S', val: countdown.s }
+                        ].map(item => (
+                          <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
+                            <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
+                            <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : isRaceInProgress ? (
+                    <div>
+                      <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
+                      <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
+                    </div>
+                  ) : (
+                    /* If nextRace exists but not showing countdown or progress, it might be loading or transitional */
+                    <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
+                  )}
                 </>
               )}
             </div>
-          </Col>
+          )}
 
-          <Col md={6}>
-            <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm d-flex flex-column justify-content-between">
-              <div>
-                <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
-                <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Compete with Friends</p>
+          <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
+            {!isSeasonFinished ? (
+              <Link href="/predict" passHref legacyBehavior>
+                <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                  {isLocked 
+                    ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
+                    : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/history" passHref legacyBehavior>
+                <Button size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                  VIEW SEASON RECAP
+                </Button>
+              </Link>
+            )}
+            <Link href="/leaderboard" passHref legacyBehavior>
+              <Button variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="mb-4">
+            <HowToPlayButton 
+              onClick={() => { triggerHaptic(); router.push('/predict?howto=true'); }}
+            />
+          </div>
+
+          {!isSeasonFinished && userPrediction && nextRace && (
+            <div className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" style={{ maxWidth: '400px' }}>
+              <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
+                Your {nextRace.name} Picks {isLocked && '🔒'}
+              </h3>
+              <div className="d-flex justify-content-center gap-4 mb-3">
+                <div>
+                  <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                  <span className="fw-bold text-white h6 mb-0">
+                    {getDriverDisplayName(userPrediction.p10, allDrivers)}
+                  </span>
+                </div>
+                <div className="border-start border-secondary border-opacity-25 ps-4">
+                  <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                  <span className="fw-bold text-danger h6 mb-0">
+                    {getDriverDisplayName(userPrediction.dnf, allDrivers)}
+                  </span>
+                </div>
               </div>
-              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start" style={{ fontSize: '0.65rem' }} onClick={triggerHaptic}>
-                View Leagues →
+              <Button variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
+                SHARE PICKS ↗
+              </Button>
+            </div>
+          )}
+
+        </Col>
+      </Row>
+
+      <Row className="mt-2 g-3 px-1">
+        <Col md={6}>
+          <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm" style={{ minHeight: '110px' }}>
+            <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
+            {loading && !nextRace ? (
+              <Spinner animation="border" size="sm" variant="danger" />
+            ) : (
+              <>
+                <p className="fw-bold mb-0 text-white" style={{ fontSize: '1.1rem' }}>{nextRace?.name}</p>
+                <p className="text-white opacity-50 small mb-2">{nextRace?.circuit}</p>
+                <div className="badge bg-danger bg-opacity-10 text-danger px-2 py-1 border border-danger border-opacity-20 rounded-pill fw-bold" style={{ fontSize: '0.65rem' }}>
+                  {nextRace && new Date(nextRace.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              </>
+            )}
+          </div>
+        </Col>
+
+        <Col md={6}>
+          <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm d-flex flex-column justify-content-between">
+            <div>
+              <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
+              <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Compete with Friends</p>
+            </div>
+            <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start" style={{ fontSize: '0.65rem' }} onClick={triggerHaptic}>
+              View Leagues →
+            </Link>
+          </div>
+        </Col>
+      </Row>
+
+      {!authLoading && !session && !currentUser && (
+        <Row className="mt-4 justify-content-center">
+          <Col md={6}>
+            <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
+              <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
+              <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
+              <Link href="/auth" passHref legacyBehavior>
+                <Button variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }} onClick={triggerHaptic}>GET STARTED</Button>
               </Link>
             </div>
           </Col>
         </Row>
-
-        {!loading && !hasSession && !currentUser && (
-          <Row className="mt-4 justify-content-center">
-            <Col md={6}>
-              <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
-                <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
-                <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
-                <Link href="/auth" passHref legacyBehavior>
-                  <Button variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }} onClick={triggerHaptic}>GET STARTED</Button>
-                </Link>
-              </div>
-            </Col>
-          </Row>
-        )}
-      </Container>
-    </PullToRefresh>
+      )}
+    </Container>
   );
 }

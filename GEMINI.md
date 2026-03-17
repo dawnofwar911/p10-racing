@@ -99,6 +99,10 @@ To ensure the web and mobile versions stay in sync, we use a dual-track release 
 ---
 
 *   **Testing:** New tests MUST use the `.vitest.test.ts` extension and leverage MSW for cloud service mocking to ensure CI/CD performance and isolation.
+*   **PR Atomicity Mandate:**
+    *   **Single Purpose:** PRs MUST be atomic and focused on a single logical change (e.g., one feature, one bug fix, or one specific refactor).
+    *   **No Bundling:** Do not bundle unrelated minor polish, tweaks, or multiple bug fixes into a single architectural PR.
+    *   **Sequential Flow:** If a task depends on an unmerged PR, wait for the merge or branch specifically from that PR and clearly label it as a "dependent" or "stacked" change.
 *   **Branch Protection Mandate:**
     *   **Main & Stable:** Direct pushes are strictly prohibited. All changes must be made via Pull Request.
     *   **Status Checks:** GitHub Actions (Lint, Type Check, Vitest) MUST pass before a PR can be merged.
