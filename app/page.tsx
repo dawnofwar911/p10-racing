@@ -16,7 +16,6 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import PullToRefresh from '@/components/PullToRefresh';
 import { useAuth } from '@/components/AuthProvider';
 
 interface HomeRace {
@@ -276,9 +275,8 @@ export default function Home() {
   };
 
   return (
-    <PullToRefresh onRefresh={init}>
-      <Container className="mt-3 mt-md-4 flex-grow-1">
-        <Row className="justify-content-center text-center">
+    <Container className="mt-3 mt-md-4 flex-grow-1">
+      <Row className="justify-content-center text-center">
           <Col md={8} className="mb-2">
             <h1 className="display-5 fw-bold mb-2 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
             <p className="small text-white opacity-75 mb-4 mx-auto" style={{ maxWidth: '500px' }}>
@@ -435,6 +433,5 @@ export default function Home() {
           </Row>
         )}
       </Container>
-    </PullToRefresh>
   );
 }
