@@ -112,7 +112,7 @@ export default function AuthPage() {
             .from('profiles')
             .select('username')
             .eq('id', loginData.user.id)
-            .single();
+            .maybeSingle();
           
           if (!existingProfile) {
             // Check metadata first (from signup), then fallback to email prefix
