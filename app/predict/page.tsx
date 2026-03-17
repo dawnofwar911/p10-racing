@@ -18,6 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
+import { addToSyncQueue, SyncPayload } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -298,7 +299,7 @@ function PredictPage() {
       };
 
       if (session) {
-        const payload = {
+        const payload: SyncPayload = {
           user_id: session.user.id,
           race_id: `${CURRENT_SEASON}_${nextRace.id}`,
           p10_driver_id: p10Driver,
@@ -314,10 +315,12 @@ function PredictPage() {
           
           if (error) {
             console.error('Supabase error, falling back to local queue', error);
-            await queueOfflinePrediction(payload);
+            await addToSyncQueue(payload);
+            setIsPendingSync(true);
           }
         } else {
-          await queueOfflinePrediction(payload);
+          await addToSyncQueue(payload);
+          setIsPendingSync(true);
         }
 
         // 2. Mirror to LocalStorage for instant UI & offline support
@@ -334,41 +337,6 @@ function PredictPage() {
       }
 
       setSubmitted(true);
-    }
-  };
-
-  const queueOfflinePrediction = async (payload: { user_id: string; race_id: string; p10_driver_id: string; dnf_driver_id: string; updated_at: string }) => {
-    const queueRaw = localStorage.getItem('p10_sync_queue');
-    const queue = queueRaw ? JSON.parse(queueRaw) : {};
-    queue[payload.race_id] = payload;
-    localStorage.setItem('p10_sync_queue', JSON.stringify(queue));
-    setIsPendingSync(true);
-
-    try {
-      const { LocalNotifications } = await import('@capacitor/local-notifications');
-      const hasPermission = await LocalNotifications.checkPermissions();
-      
-      // Request permission if not determined
-      if (hasPermission.display === 'prompt') {
-        await LocalNotifications.requestPermissions();
-      }
-      
-      const updatedPermission = await LocalNotifications.checkPermissions();
-      if (updatedPermission.display === 'granted') {
-        const notificationId = parseInt(payload.race_id.replace(/[^0-9]/g, '')) || Math.floor(Math.random() * 100000);
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              title: 'Unsynced Prediction!',
-              body: 'You have a pending offline prediction. Open P10 Racing while connected to the internet to sync it before the race!',
-              id: notificationId,
-              schedule: { at: new Date(Date.now() + 1000 * 60 * 15) }
-            }
-          ]
-        });
-      }
-    } catch (err) {
-      console.log('Local Notifications not available', err);
     }
   };
 
