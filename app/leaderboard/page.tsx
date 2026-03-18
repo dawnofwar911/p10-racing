@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
+import { Container, Row, Col, Table, Button, Spinner, ButtonGroup, Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
@@ -163,36 +163,78 @@ export default function LeaderboardPage() {
                     <React.Fragment key={entry.player}>
                       <tr onClick={() => setExpandedPlayer(expandedPlayer === entry.player ? null : entry.player)} style={{ height: '70px', verticalAlign: 'middle', cursor: 'pointer' }} className={expandedPlayer === entry.player ? 'bg-danger bg-opacity-10' : ''}>
                         <td className="ps-4 fw-bold text-muted">{entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}</td>
-                        <td className="fw-bold text-white">{entry.player} {entry.player === currentUser && <span className="badge bg-danger ms-2" style={{ fontSize: '0.5rem' }}>YOU</span>}</td>
-                        <td className="text-end fw-bold text-muted">{entry.lastRacePoints > 0 ? `+${entry.lastRacePoints}` : entry.lastRacePoints}</td>
-                        <td className="text-end pe-4 fw-bold text-danger">{entry.points}</td>
+                        <td className="fw-bold text-white fs-5">{entry.player} {entry.player === currentUser && <span className="badge bg-danger ms-2" style={{ fontSize: '0.5rem' }}>YOU</span>}</td>
+                        <td className="text-end fw-bold text-muted small">{entry.lastRacePoints > 0 ? `+${entry.lastRacePoints}` : entry.lastRacePoints === 0 ? '-' : entry.lastRacePoints}</td>
+                        <td className="text-end pe-4 fw-bold text-danger fs-4">{entry.points}</td>
                       </tr>
                       {expandedPlayer === entry.player && (
-                        <tr>
+                        <tr className="bg-dark bg-opacity-75">
                           <td colSpan={4} className="p-0 border-0">
-                            <div className="bg-black bg-opacity-20 p-4 border-top border-bottom border-secondary border-opacity-25">
-                              <Row className="g-4">
-                                <Col md={6}>
-                                  <h4 className="h6 text-uppercase fw-bold text-danger mb-3">Latest Breakdown</h4>
-                                  {entry.breakdown ? (
-                                    <div className="small">
-                                      <div className="d-flex justify-content-between mb-2"><span>P10 Pick:</span><span className="fw-bold text-white">{entry.breakdown.p10Driver} ({entry.breakdown.p10Points} pts)</span></div>
-                                      <div className="d-flex justify-content-between"><span>DNF Pick:</span><span className="fw-bold text-white">{entry.breakdown.dnfDriver} ({entry.breakdown.dnfPoints} pts)</span></div>
+                            <div className="p-3 p-md-4 m-2 m-md-3 bg-dark rounded border border-secondary shadow-sm">
+                              {entry.breakdown && (
+                                <div className="row g-3 text-white mb-4 border-bottom border-secondary pb-4">
+                                  <div className="col-md-6 border-md-end border-secondary">
+                                    <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: P10 Result</small>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="fw-bold fs-5 text-uppercase">{entry.breakdown.p10Driver.replace(/_/g, ' ')}</span>
+                                      <Badge bg="secondary">P{entry.breakdown.actualP10Pos}</Badge>
                                     </div>
-                                  ) : <p className="small text-muted">No breakdown available.</p>}
-                                </Col>
-                                <Col md={6}>
-                                  <h4 className="h6 text-uppercase fw-bold text-danger mb-3">Recent Performance</h4>
-                                  <div className="d-flex gap-1">
-                                    {entry.history && entry.history.slice(-5).map((h, idx) => (
-                                      <div key={idx} className="bg-dark border border-secondary rounded p-2 text-center" style={{ minWidth: '40px' }}>
-                                        <div className="extra-small text-muted mb-1">R{h.round}</div>
-                                        <div className="small fw-bold">{h.points}</div>
-                                      </div>
-                                    ))}
+                                    <div className="mt-2 text-danger fw-bold small">+{entry.breakdown.p10Points} PTS</div>
                                   </div>
-                                </Col>
-                              </Row>
+                                  <div className="col-md-6 ps-md-4">
+                                    <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: First DNF Bonus</small>
+                                    <div className="mt-1">
+                                      {entry.breakdown.dnfPoints > 0 ? (
+                                        <div className="text-success fw-bold d-flex align-items-center small">
+                                          <span className="fs-5 me-2">🏎️💨</span> Correct (+25 PTS)
+                                        </div>
+                                      ) : (
+                                        <div className="text-muted d-flex align-items-center opacity-50 small">
+                                          <span className="fs-5 me-2">🏁</span> Incorrect (+0 PTS)
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="season-history">
+                                <h4 className="h6 text-uppercase fw-bold text-danger letter-spacing-2 mb-3">Season History</h4>
+                                {entry.history && entry.history.length > 0 ? (
+                                  <div className="table-responsive">
+                                    <Table variant="dark" size="sm" className="mb-0 extra-small opacity-75">
+                                      <thead>
+                                        <tr className="text-muted border-bottom border-secondary">
+                                          <th>Race</th>
+                                          <th>P10 Pick</th>
+                                          <th>DNF Pick</th>
+                                          <th className="text-end">PTS</th>
+                                          <th className="text-end">Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {entry.history.map((h, idx) => (
+                                          <tr key={idx} className="border-bottom border-secondary border-opacity-25">
+                                            <td className="py-2">Round {h.round}</td>
+                                            <td className="py-2 text-uppercase">
+                                              {h.p10Driver.replace(/_/g, ' ')} 
+                                              <span className="ms-1 text-muted">(P{h.p10Pos})</span>
+                                            </td>
+                                            <td className="py-2 text-uppercase">
+                                              {h.dnfDriver.replace(/_/g, ' ')}
+                                              {h.dnfCorrect ? <span className="ms-1 text-success">✓</span> : <span className="ms-1 text-muted">✗</span>}
+                                            </td>
+                                            <td className="py-2 text-end fw-bold text-white">+{h.points}</td>
+                                            <td className="py-2 text-end text-muted">{h.totalSoFar}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </Table>
+                                  </div>
+                                ) : (
+                                  <p className="text-muted small mb-0">No history available for this season.</p>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
