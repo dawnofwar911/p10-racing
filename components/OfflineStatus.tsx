@@ -19,6 +19,12 @@ export default function OfflineStatus() {
 
     // 1. App Resume Orchestration (Capacitor)
     let resumeListener: { remove: () => void } | null = null;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        window.dispatchEvent(new CustomEvent('p10:app_resume'));
+      }
+    };
+
     async function setupResume() {
       try {
         const { App } = await import('@capacitor/app');
@@ -30,11 +36,6 @@ export default function OfflineStatus() {
         });
       } catch {
         // Fallback for web: visibilitychange
-        const handleVisibility = () => {
-          if (document.visibilityState === 'visible') {
-            window.dispatchEvent(new CustomEvent('p10:app_resume'));
-          }
-        };
         document.addEventListener('visibilitychange', handleVisibility);
       }
     }
@@ -44,6 +45,7 @@ export default function OfflineStatus() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       if (resumeListener) resumeListener.remove();
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 

@@ -145,8 +145,12 @@ function LeaguesContent() {
       const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
       localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
       if (mountedRef.current) setLocalGuests(filteredGuests);
-    } catch {
-      if (mountedRef.current) setError('Migration failed.');
+    } catch (err: unknown) {
+      console.error('Leagues: Import error:', err);
+      if (mountedRef.current) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Migration failed: ${msg}`);
+      }
     } finally {
       if (mountedRef.current) setActionLoading(false);
     }

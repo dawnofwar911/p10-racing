@@ -254,7 +254,11 @@ export default function AdminPage() {
   };
 
   if (!isAdmin || (loading && drivers.length === 0)) {
-    return (<Container className="vh-100 d-flex align-items-center justify-content-center"><Spinner animation="border" variant="danger" /></Container>);
+    return (
+      <Container className="vh-100 d-flex align-items-center justify-content-center">
+        <Spinner animation="border" variant="danger" />
+      </Container>
+    );
   }
 
   return (

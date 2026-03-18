@@ -110,7 +110,7 @@ export default function LeaderboardPage() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate]);
+  }, [calculate, view]);
 
   // Real-time subscription
   useEffect(() => {

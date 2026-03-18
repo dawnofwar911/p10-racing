@@ -17,6 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import PullToRefresh from '@/components/PullToRefresh';
+import { withTimeout } from '@/lib/utils/sync-queue';
 
 interface HomeRace {
   id: string;
@@ -74,7 +75,7 @@ export default function Home() {
   const init = useCallback(async () => {
     try {
       // 2. Explicit truth check from Supabase
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       
       if (mountedRef.current) {
         setHasSession(!!currentSession);
