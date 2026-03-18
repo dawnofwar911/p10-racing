@@ -15,11 +15,37 @@ export default function OfflineStatus() {
     window.addEventListener('offline', handleOffline);
 
     // Initial check
-    if (!navigator.onLine) setIsOffline(true);
+    if (typeof navigator !== 'undefined' && !navigator.onLine) setIsOffline(true);
+
+    // 1. App Resume Orchestration (Capacitor)
+    let resumeListener: { remove: () => void } | null = null;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        window.dispatchEvent(new CustomEvent('p10:app_resume'));
+      }
+    };
+
+    async function setupResume() {
+      try {
+        const { App } = await import('@capacitor/app');
+        resumeListener = await App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) {
+            console.log('App resumed (foreground). Dispatching refresh...');
+            window.dispatchEvent(new CustomEvent('p10:app_resume'));
+          }
+        });
+      } catch {
+        // Fallback for web: visibilitychange
+        document.addEventListener('visibilitychange', handleVisibility);
+      }
+    }
+    setupResume();
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (resumeListener) resumeListener.remove();
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 

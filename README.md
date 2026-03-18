@@ -6,7 +6,7 @@ P10 Racing is a multiplayer mobile application for F1 fans who love the midfield
 
 ## 🏎️ Features
 - **Global & Private Leagues**: Create your own competitions or compete with the world.
-- **Real-Time Data**: Live driver standings and race results via the [Jolpica F1 API](https://api.jolpi.ca).
+- **Real-Time Data**: Live driver standings and race results via the [Jolpica F1 API](https://jolpica.github.io/jolpica-f1/).
 - **Native Experience**: Smooth transitions, haptic feedback, and offline support.
 - **Cloud Sync**: Secure authentication and prediction backup via Supabase.
 - **Migration Tool**: Easily move your local guest scores to your cloud account.
@@ -23,7 +23,7 @@ This application uses data provided by the **Jolpica F1 API**. We are not affili
 - A Supabase account
 
 ### 1. Database Configuration
-Run the schema found in `lib/supabase/schema.sql`, `lib/supabase/results_migration.sql`, and `lib/supabase/delete_user.sql` in your Supabase SQL Editor to initialize the tables, RLS policies, and account deletion functions.
+Run the master schema found in `lib/supabase/setup/schema.sql` in your Supabase SQL Editor to initialize all tables, RLS policies, triggers, and the account deletion function.
 
 ### 2. Environment Variables
 Create a `.env.local` file in the root directory:
@@ -81,7 +81,7 @@ npx cap open android
 ### Core Components
 - **Frontend**: Next.js 15 (App Router) + Capacitor JS (Mobile Bridge).
 - **Backend**: Supabase (PostgreSQL, Auth, RLS).
-- **External API**: [Jolpica (Ergast) F1 API](https://api.jolpi.ca/ergast/f1) for real-time race data.
+- **External API**: [Jolpica (Ergast) F1 API](https://jolpica.github.io/jolpica-f1/ergast/f1) for real-time race data.
 
 ### Automated Results Ingestion
 The app uses **Supabase Edge Functions** to automate the season:
@@ -115,6 +115,8 @@ To ensure consistency across web, Android, and the App Store, we use a dual-trac
 
 ### 1. Staging (Active Development)
 - **Branch:** `main`
+- **Workflow:** Create a feature branch (`feat/...` or `fix/...`), open a Pull Request, and merge after review.
+- **Atomic PRs:** Ensure each PR focuses on a single logical change (e.g., one bug fix or one feature). Avoid bundling unrelated polish or multiple tasks into one PR to keep reviews efficient and rollbacks safe.
 - **Web:** Automatically deployed to Vercel (Staging environment).
 - **Android:** GitHub Actions builds the AAB and **automatically uploads** it to the **Internal Testing** track in the Google Play Console.
 - **Release Notes:** The latest **commit message** is automatically used as the **Play Store "What's New" text** (en-GB).

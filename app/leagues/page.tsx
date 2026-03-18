@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
+import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
+import { sessionTracker } from '@/lib/utils/session';
+import { useAuth } from '@/components/AuthProvider';
 
 interface League {
   id: string;
@@ -19,9 +22,19 @@ interface League {
 }
 
 function LeaguesContent() {
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+  const searchParams = useSearchParams();
+  const mountedRef = useRef(true);
+  const { session, currentUser, syncVersion, triggerRefresh } = useAuth();
+
+  // 1. Synchronous Cache Initialization
+  const [leagues, setLeagues] = useState<League[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LEAGUES);
+    return cached ? JSON.parse(cached) : [];
+  });
+
+  const [loading, setLoading] = useState(!leagues.length);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -30,60 +43,68 @@ function LeaguesContent() {
   const [inviteCode, setInviteCode] = useState('');
   const [localGuests, setLocalGuests] = useState<string[]>([]);
 
-  const supabase = createClient();
-  const searchParams = useSearchParams();
+  // Lifecycle
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const fetchLeagues = useCallback(async (quiet = false) => {
-    if (!quiet) setLoading(true);
+    if (!quiet && mountedRef.current) setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await withTimeout(supabase
         .from('leagues')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }));
 
-      if (error) throw error;
-      setLeagues(data || []);
-      localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
+      if (fetchError) throw fetchError;
+      if (mountedRef.current) {
+        setLeagues(data || []);
+        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(data || []));
+      }
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+      if (err instanceof Error && mountedRef.current) setError(err.message);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [supabase]);
 
-  useEffect(() => {
-    async function init() {
-      // 1. Load from cache first
-      const cached = localStorage.getItem('p10_cache_leagues');
-      let hasCache = false;
-      if (cached) {
-        setLeagues(JSON.parse(cached));
-        setLoading(false);
-        hasCache = true;
-      }
-
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
+  const init = useCallback(async () => {
+    try {
+      const fingerprint = session?.user.id || currentUser || 'guest';
+      const isFirstView = sessionTracker.isFirstView('leagues', fingerprint);
       
-      // Load local guests for migration
-      const guestsData = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guestsData = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
       const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
-      setLocalGuests(guests);
+      if (mountedRef.current) setLocalGuests(guests);
 
-      if (currentSession) {
-        fetchLeagues(hasCache);
-      } else {
+      if (session) {
+        // Only refresh leagues if it's the first view or we have none
+        if (leagues.length === 0 || isFirstView) {
+          await fetchLeagues(leagues.length > 0);
+        } else {
+          setLoading(false);
+        }
+      } else if (mountedRef.current) {
         setLoading(false);
       }
 
-      // Check for join parameter
       const joinCode = searchParams.get('join');
-      if (joinCode) {
-        setInviteCode(joinCode);
+      if (joinCode && mountedRef.current) setInviteCode(joinCode);
+      } catch (err) {
+      console.error('Leagues: Init error:', err);
       }
-    }
+      }, [fetchLeagues, searchParams, leagues.length, session, currentUser, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     init();
-  }, [supabase, fetchLeagues, searchParams]);
+    const handleResume = () => {
+      console.log('Leagues: App resumed, re-initializing...');
+      triggerRefresh();
+    };
+    window.addEventListener('p10:app_resume', handleResume);
+    return () => window.removeEventListener('p10:app_resume', handleResume);
+  }, [init, triggerRefresh]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;
@@ -92,73 +113,52 @@ function LeaguesContent() {
     Haptics.impact({ style: ImpactStyle.Heavy });
 
     try {
-      // Find all predictions for this guest in localStorage
+      // Check all possible rounds (max 24)
       let count = 0;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key) continue;
-
-        let season = CURRENT_SEASON;
-        let raceId = '';
-        let match = false;
-
-        // Pattern 1: final_pred_SEASON_USERNAME_ROUND
-        if (key.startsWith('final_pred_')) {
-          const parts = key.split('_');
-          if (parts.length >= 5 && parts[3] === guestName) {
-            season = parseInt(parts[2]);
-            raceId = parts[4];
-            match = true;
-          } 
-          // Pattern 2: final_pred_USERNAME_ROUND (Old style)
-          else if (parts.length === 4 && parts[2] === guestName) {
-            season = CURRENT_SEASON; // Default to current
-            raceId = parts[3];
-            match = true;
-          }
-        }
-
-        if (match) {
-          const predStr = localStorage.getItem(key);
-          if (!predStr) continue;
+      const importPromises = [];
+      for (let round = 1; round <= 24; round++) {
+        const key = `final_pred_${CURRENT_SEASON}_${guestName}_${round}`;
+        const predStr = localStorage.getItem(key);
+        if (predStr) {
           const pred = JSON.parse(predStr);
-          
-          if (pred) {
-            const { error: upsertError } = await supabase
-              .from('predictions')
-              .upsert({
-                user_id: session.user.id,
-                race_id: `${season}_${raceId}`,
-                p10_driver_id: pred.p10,
-                dnf_driver_id: pred.dnf,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'user_id, race_id' });
-            
-            if (!upsertError) count++;
-          }
+          importPromises.push(
+            supabase.from('predictions').upsert({
+              user_id: session.user.id,
+              race_id: `${CURRENT_SEASON}_${round}`,
+              p10_driver_id: pred.p10,
+              dnf_driver_id: pred.dnf,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id, race_id' })
+          );
+          count++;
         }
       }
-      setSuccess(`Successfully imported ${count} predictions to your cloud account!`);
+
+      if (importPromises.length === 0) {
+        if (mountedRef.current) setError('No predictions found to import for this guest.');
+        return;
+      }
+
+      const results = await Promise.all(importPromises);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) throw new Error('Some predictions failed to import.');
+
+      if (mountedRef.current) {
+        setSuccess(`Successfully imported ${count} predictions!`);
+        Haptics.notification({ type: NotificationType.Success });
+      }
+
+      const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+      const updatedPlayers = localPlayers.filter(p => p !== guestName);
+      localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
+      if (mountedRef.current) setLocalGuests(updatedPlayers);
       
-      // Post-migration cleanup
-      const currentGuests = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
-      localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
-      setLocalGuests(filteredGuests);
-      
-      // Cleanup the actual prediction keys
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && (key.includes(`_final_pred_${guestName}_`) || key.startsWith(`final_pred_${guestName}_`) || (key.startsWith('final_pred_') && key.includes(`_${guestName}_`)))) {
-          localStorage.removeItem(key);
-        }
+      // Remove local keys
+      for (let round = 1; round <= 24; round++) {
+        localStorage.removeItem(`final_pred_${CURRENT_SEASON}_${guestName}_${round}`);
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError('Migration failed: ' + err.message);
-      } else {
-        setError('Migration failed with an unknown error.');
-      }
+      setError(err instanceof Error ? err.message : 'Import failed');
     } finally {
       setActionLoading(false);
     }
@@ -166,57 +166,34 @@ function LeaguesContent() {
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) {
-      setError('You must be signed in to create a league.');
-      return;
-    }
+    if (!newLeagueName.trim() || !session) return;
     setActionLoading(true);
     setError(null);
     setSuccess(null);
     Haptics.impact({ style: ImpactStyle.Medium });
-
     try {
-      // 1. Insert league
-      const { data: leagues, error: leagueError } = await supabase
+      const { data: leagues, error: leagueError } = await withTimeout(supabase
         .from('leagues')
-        .insert([{ 
-          name: newLeagueName.trim(), 
-          created_by: session.user.id 
-        }])
-        .select();
+        .insert([{ name: newLeagueName.trim(), created_by: session.user.id }])
+        .select());
 
       if (leagueError) throw leagueError;
+      const league = leagues?.[0];
+      
+      if (league) {
+        await withTimeout(supabase
+          .from('league_members')
+          .insert([{ league_id: league.id, user_id: session.user.id }]));
 
-      if (!leagues || leagues.length === 0) {
-        throw new Error('League created but no data returned.');
+        if (mountedRef.current) {
+          setSuccess(`League "${league.name}" created!`);
+          setNewLeagueName('');
+          Haptics.notification({ type: NotificationType.Success });
+        }
+        fetchLeagues(true);
       }
-
-      const league = leagues[0];
-
-      // 2. Add creator as first member
-      const { error: memberError } = await supabase
-        .from('league_members')
-        .insert([{ 
-          league_id: league.id, 
-          user_id: session.user.id 
-        }]);
-
-      if (memberError) {
-        setError(`League created, but failed to join: ${memberError.message}`);
-      } else {
-        setSuccess(`League "${league.name}" created!`);
-        setNewLeagueName('');
-      }
-
-      // 3. Refresh list
-      fetchLeagues();
     } catch (err: unknown) {
-      console.error('Full creation flow error:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unexpected error occurred during league creation.');
-      }
+      setError(err instanceof Error ? err.message : 'Create failed');
     } finally {
       setActionLoading(false);
     }
@@ -224,27 +201,28 @@ function LeaguesContent() {
 
   const handleJoinLeague = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) return;
+    if (!inviteCode.trim() || !session) return;
     setActionLoading(true);
+    setError(null);
     Haptics.impact({ style: ImpactStyle.Medium });
-
     try {
-      const code = inviteCode.trim().toLowerCase();
-      
-      // Use the RPC to join. It returns {id, name} on success or throws an error.
-      const { data, error } = await supabase
-        .rpc('join_league_by_code', { code });
+      // Use RPC for atomic join
+      const { data, error: joinError } = await withTimeout(supabase
+        .rpc('join_league_by_code', { code: inviteCode.trim().toUpperCase() }));
 
-      if (error) {
-        console.error('Join error:', error);
-        throw new Error(error.message || 'Failed to join league. Check code.');
+      if (joinError) throw joinError;
+
+      if (mountedRef.current) {
+        setSuccess(`Successfully joined "${data.name}"!`);
+        setInviteCode('');
+        Haptics.notification({ type: NotificationType.Success });
       }
-
-      setSuccess(`Joined league "${data.name}"!`);
-      setInviteCode('');
-      if (session?.user?.id) fetchLeagues();
+      fetchLeagues(true);
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+      if (mountedRef.current) {
+        const msg = err instanceof Error ? err.message : 'Join failed';
+        setError(msg.includes('23505') ? 'You are already in this league.' : 'Invalid invite code.');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -254,22 +232,21 @@ function LeaguesContent() {
     <PullToRefresh onRefresh={() => fetchLeagues(false)}>
       <Container className="mt-3 mb-4">
         <h1 className="h4 fw-bold text-uppercase letter-spacing-1 mb-3 text-white ps-1">Leagues</h1>
-
+        
         {!session && !loading ? (
           <div className="text-center py-5 bg-dark bg-opacity-25 rounded border border-secondary border-opacity-25 shadow-sm">
             <div className="display-6 mb-3">🏆</div>
             <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
             <p className="text-muted small mb-4 px-4">Sign in to create or join private leagues and compete with your friends.</p>
-            <Link href="/auth" passHref legacyBehavior>
-              <Button className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</Button>
-            </Link>
+            <Link href="/auth" passHref legacyBehavior><Button className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</Button></Link>
           </div>
         ) : (
           <>
             {error && <Alert variant="danger" dismissible onClose={() => setError(null)} className="py-2 small">{error}</Alert>}
             {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)} className="py-2 small">{success}</Alert>}
-
+            
             <Row className="g-3">
+              {/* Main Content: Active Leagues & Sync */}
               <Col lg={8}>
                 <Card className="border-secondary shadow-sm mb-3">
                   <Card.Header className="bg-dark border-secondary py-2">
@@ -317,16 +294,7 @@ function LeaguesContent() {
                         {localGuests.map(guest => (
                           <div key={guest} className="d-flex align-items-center bg-dark p-1 px-2 rounded border border-secondary border-opacity-50">
                             <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
-                            <Button 
-                              variant="warning" 
-                              size="sm" 
-                              className="fw-bold extra-small py-0" 
-                              style={{ fontSize: '0.6rem' }}
-                              onClick={() => handleImport(guest)}
-                              disabled={actionLoading}
-                            >
-                              IMPORT
-                            </Button>
+                            <Button variant="warning" size="sm" className="fw-bold extra-small py-0" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</Button>
                           </div>
                         ))}
                       </div>
@@ -335,6 +303,7 @@ function LeaguesContent() {
                 )}
               </Col>
 
+              {/* Sidebar: Create & Join */}
               <Col lg={4}>
                 <div className="row g-3">
                   <Col xs={12} md={6} lg={12}>
@@ -345,7 +314,14 @@ function LeaguesContent() {
                       <Card.Body className="p-3">
                         <Form onSubmit={handleCreateLeague}>
                           <Form.Group className="mb-2">
-                            <Form.Control type="text" placeholder="League Name" value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} required className="bg-dark text-white border-secondary py-1 small" />
+                            <Form.Control 
+                              type="text" 
+                              placeholder="League Name" 
+                              value={newLeagueName} 
+                              onChange={(e) => setNewLeagueName(e.target.value)} 
+                              required 
+                              className="bg-dark text-white border-secondary py-1 small" 
+                            />
                           </Form.Group>
                           <Button type="submit" className="btn-f1 w-100 py-1 fw-bold small" disabled={actionLoading}>
                             {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
@@ -363,10 +339,18 @@ function LeaguesContent() {
                       <Card.Body className="p-3">
                         <Form onSubmit={handleJoinLeague}>
                           <Form.Group className="mb-2">
-                            <Form.Control type="text" placeholder="Invite Code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} required className="bg-dark text-white border-secondary py-1 small" />
+                            <Form.Control 
+                              type="text" 
+                              placeholder="Invite Code" 
+                              value={inviteCode} 
+                              onChange={(e) => setInviteCode(e.target.value)} 
+                              required 
+                              className="bg-dark text-white border-secondary py-1 small" 
+                              maxLength={8}
+                            />
                           </Form.Group>
                           <Button type="submit" variant="outline-danger" className="w-100 py-1 fw-bold small" disabled={actionLoading}>
-                            {actionLoading ? <Spinner animation="border" size="sm" /> : 'JOIN'}
+                            JOIN
                           </Button>
                         </Form>
                       </Card.Body>

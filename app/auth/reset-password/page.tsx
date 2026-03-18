@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import LoadingView from '@/components/LoadingView';
 
+const supabase = createClient();
+
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,7 +18,6 @@ export default function ResetPasswordPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isProfileUpdate, setIsProfileUpdate] = useState(false);
   
-  const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
@@ -124,7 +125,7 @@ export default function ResetPasswordPage() {
       subscription.unsubscribe();
       clearTimeout(timer);
     };
-  }, [supabase]);
+  }, []);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();

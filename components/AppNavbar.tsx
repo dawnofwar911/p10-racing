@@ -3,123 +3,22 @@
 import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { User } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
+import { useAuth } from './AuthProvider';
 
 export default function AppNavbar() {
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  const { session, currentUser, isAdmin, isAuthLoading, logout } = useAuth();
   const [showDrawer, setShowDrawer] = useState(false);
   const pathname = usePathname();
-  const supabase = createClient();
-
-  useEffect(() => {
-    async function getSession() {
-      // 1. Load from cache immediately for instant UI
-      const cachedUser = localStorage.getItem('p10_cache_username');
-      const cachedIsAdmin = localStorage.getItem('p10_cache_is_admin') === 'true';
-      if (cachedUser) {
-        setCurrentUser(cachedUser);
-        setIsAdmin(cachedIsAdmin);
-      } else {
-        const localUser = localStorage.getItem('p10_current_user');
-        setCurrentUser(localUser);
-      }
-
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-
-      if (currentSession) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, is_admin')
-          .eq('id', currentSession.user.id)
-          .single();
-        
-        if (profile) {
-          setCurrentUser(profile.username);
-          setIsAdmin(!!profile.is_admin);
-          localStorage.setItem('p10_cache_username', profile.username);
-          localStorage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
-        } else {
-          const fallback = currentSession.user.email?.split('@')[0] || 'User';
-          setCurrentUser(fallback);
-          localStorage.setItem('p10_cache_username', fallback);
-        }
-      } else {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
-        setCurrentUser(localUser);
-      }
-      setIsAuthReady(true);
-    }
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
-      setSession(newSession);
-      if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
-        setCurrentUser(localUser);
-        setIsAdmin(false);
-        window.location.href = '/';
-        return;
-      }
-      
-      if (!newSession) {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
-        setCurrentUser(localUser);
-        setIsAdmin(false);
-      } else {
-        supabase
-          .from('profiles')
-          .select('username, is_admin')
-          .eq('id', newSession.user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              setCurrentUser(data.username);
-              setIsAdmin(!!data.is_admin);
-              localStorage.setItem('p10_cache_username', data.username);
-              localStorage.setItem('p10_cache_is_admin', String(!!data.is_admin));
-            } else {
-              const fallback = newSession.user.email?.split('@')[0] || 'User';
-              setCurrentUser(fallback);
-              localStorage.setItem('p10_cache_username', fallback);
-            }
-          });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
 
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
-    // Clear all session-related cache immediately
-    localStorage.removeItem('p10_cache_username');
-    localStorage.removeItem('p10_cache_is_admin');
-    localStorage.removeItem('p10_current_user');
-    
-    if (session) {
-      await supabase.auth.signOut();
-    }
-    
-    // Force a full page refresh to clear all React state globally
-    window.location.href = '/';
+    await logout();
   };
 
   const triggerHaptic = () => {
@@ -155,7 +54,7 @@ export default function AppNavbar() {
       {!isOnResetPage && (
         <>
           <div className="d-flex align-items-center ms-auto order-lg-last">
-            {isAuthReady ? (
+            {!isAuthLoading ? (
               <button 
                 onClick={() => { triggerHaptic(); setShowDrawer(true); }}
                 className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
@@ -189,6 +88,16 @@ export default function AppNavbar() {
                 {item.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link 
+                href="/admin" 
+                onClick={triggerHaptic} 
+                className={`nav-link text-uppercase fw-bold letter-spacing-1 ${isOnAdminPage ? 'text-warning border-bottom border-warning border-2' : 'text-warning opacity-75'}`} 
+                style={{ fontSize: '0.75rem' }}
+              >
+                ADMIN
+              </Link>
+            )}
           </Nav>
         </>
       )}

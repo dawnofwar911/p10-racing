@@ -1,43 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
+import { withTimeout } from '@/lib/utils/sync-queue';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function SettingsPage() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const supabase = createClient();
+  const { showNotification } = useNotification();
+  const mountedRef = useRef(true);
+  const { session, isAdmin } = useAuth();
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
-  const { showNotification } = useNotification();
-  
-  const supabase = createClient();
 
+  // Lifecycle
   useEffect(() => {
-    async function init() {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-
-      if (currentSession) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', currentSession.user.id)
-          .single();
-        if (profile) setIsAdmin(!!profile.is_admin);
-      }
-    }
-    init();
-  }, [supabase]);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
@@ -49,7 +39,7 @@ export default function SettingsPage() {
     Haptics.notification({ type: NotificationType.Warning });
     
     try {
-      const { error } = await supabase.rpc('delete_user_data');
+      const { error } = await withTimeout(supabase.rpc('delete_user_data'));
       if (error) throw error;
 
       await supabase.auth.signOut();
@@ -58,7 +48,7 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Error deleting account:', err);
       showNotification('Failed to delete account. Please try again.', 'error');
-      setIsDeleting(false);
+      if (mountedRef.current) setIsDeleting(false);
     }
   };
 
@@ -167,12 +157,11 @@ export default function SettingsPage() {
             Version {packageInfo.version}
           </p>
           <p className="text-white opacity-10 extra-small">
-            Data provided by <a href="https://api.jolpi.ca" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
+            Data provided by <a href="https://jolpica.github.io/jolpica-f1/" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
           </p>
         </div>
       </Container>
 
-      {/* Reused Modals */}
       <BugReportModal show={showBugReport} onHide={() => setShowBugReport(false)} />
       
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="bg-dark border-secondary">
