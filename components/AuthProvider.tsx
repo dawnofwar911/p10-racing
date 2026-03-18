@@ -5,6 +5,7 @@ import { Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, setStorageItem, removeStorageItem, STORAGE_UPDATE_EVENT } from '@/lib/utils/storage';
+import { sessionTracker } from '@/lib/utils/session';
 
 interface AuthContextType {
   session: Session | null;
@@ -97,6 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       console.log('AuthProvider: Auth state change:', event);
       setSession(newSession);
+      
+      // Force all pages to re-sync on auth change
+      sessionTracker.resetInitialLoad();
+
       if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {
         setHasSession(false);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
@@ -137,12 +142,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { key } = customEvent.detail || {};
       if (key === STORAGE_KEYS.CURRENT_USER || key === STORAGE_KEYS.CACHE_USERNAME || key === STORAGE_KEYS.HAS_SESSION) {
         const newUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-        const newSession = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
+        const newSessionStatus = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
         const newIsAdmin = localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
         
         setCurrentUser(newUser);
-        setHasSession(newSession);
+        setHasSession(newSessionStatus);
         setIsAdmin(newIsAdmin);
+        
+        // Reset tracker so pages react to guest switches too
+        sessionTracker.resetInitialLoad();
       }
     };
 

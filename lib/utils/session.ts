@@ -38,6 +38,14 @@ class SessionTracker {
     this.initialLoadComplete = true;
   }
 
+  /**
+   * Resets the initial load flag to force a fresh data sync (e.g. after login).
+   */
+  public resetInitialLoad() {
+    this.initialLoadComplete = false;
+    this.visitedPages.clear();
+  }
+
   public isInitialLoadNeeded(): boolean {
     return !this.initialLoadComplete;
   }

@@ -16,7 +16,7 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
@@ -66,9 +66,17 @@ export default function Home() {
     return null;
   });
 
-  // Reactive Prediction Load: When auth status or next race changes, update prediction
+  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
+    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+  });
+
+  // Reactive Prediction Load: Only runs if initial load is needed or dependencies change significantly
   useEffect(() => {
     const loadPrediction = async () => {
+      // If we already have a prediction and it's not a cold start/auth change, skip network
+      if (userPrediction && !sessionTracker.isInitialLoadNeeded()) return;
       if (!nextRace) return;
 
       let finalPrediction: HomePrediction | null = null;
@@ -103,7 +111,7 @@ export default function Home() {
     };
 
     loadPrediction();
-  }, [currentUser, session, nextRace, supabase]);
+  }, [currentUser, session, nextRace, supabase, userPrediction]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -142,11 +150,6 @@ export default function Home() {
     return now > target && now < fourHoursLater;
   });
 
-  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
-    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
-  });
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
@@ -156,6 +159,9 @@ export default function Home() {
   }, []);
 
   const init = useCallback(async () => {
+    // Skip if already loaded this session and we have data
+    if (!sessionTracker.isInitialLoadNeeded() && nextRace && allDrivers.length > 0) return;
+
     try {
       const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
@@ -221,12 +227,13 @@ export default function Home() {
             round: parseInt(upcoming.round)
           };
           setNextRace(raceObj);
-          localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
+          setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
 
           const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
           const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
           setIsLocked(now > lockTime);
           setLoading(false);
+          sessionTracker.markInitialLoadComplete();
         }
       }
     } catch (error) {
@@ -234,23 +241,20 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, nextRace, allDrivers.length]);
 
   useEffect(() => {
-    // Perform full init on cold start or if we have no nextRace
-    // Also re-init if the user changes to ensure we have fresh season data
-    init().then(() => {
-      sessionTracker.markInitialLoadComplete();
-    });
+    init();
     
     // Listen for App Resume
     const handleResume = () => {
       console.log('Home: App resumed, re-initializing...');
+      sessionTracker.resetInitialLoad();
       init();
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init, currentUser, session?.user.id, nextRace, session]);
+  }, [init]);
 
   useEffect(() => {
     if (!nextRace) return;
