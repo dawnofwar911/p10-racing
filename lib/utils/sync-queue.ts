@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { STORAGE_KEYS } from './storage';
 
 export interface SyncPayload {
   user_id: string;
@@ -8,7 +9,7 @@ export interface SyncPayload {
   updated_at: string;
 }
 
-const QUEUE_KEY = 'p10_sync_queue';
+const QUEUE_KEY = STORAGE_KEYS.SYNC_QUEUE;
 export const SYNC_COMPLETE_EVENT = 'p10:sync_complete';
 
 /**

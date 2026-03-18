@@ -11,6 +11,8 @@ import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
+import { sessionTracker } from '@/lib/utils/session';
 
 interface LeaderboardPlayer {
   username: string;
@@ -26,7 +28,7 @@ export default function LeaderboardPage() {
   // 1. Synchronous Cache Initialization
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem('p10_cache_leaderboard');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LEADERBOARD);
     return cached ? JSON.parse(cached) : [];
   });
 
@@ -69,7 +71,7 @@ export default function LeaderboardPage() {
             }));
         }
       } else {
-        const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+        const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
         playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
       }
 
@@ -77,7 +79,7 @@ export default function LeaderboardPage() {
         const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
         Object.keys(raceResultsMap).forEach(round => {
           if (player.isLocal) {
-            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, player.username, round));
             if (predStr) playerPredictions[round] = JSON.parse(predStr);
           } else if (player.dbPredictions) {
             const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
@@ -93,7 +95,7 @@ export default function LeaderboardPage() {
       
       if (mountedRef.current) {
         setLeaderboard(ranked);
-        if (view === 'global') localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
+        if (view === 'global') localStorage.setItem(STORAGE_KEYS.CACHE_LEADERBOARD, JSON.stringify(ranked));
       }
     } catch (err) {
       console.error('Leaderboard: Calc error:', err);
@@ -103,14 +105,21 @@ export default function LeaderboardPage() {
   }, [supabase, view]);
 
   useEffect(() => {
-    calculate();
+    const isFirstView = sessionTracker.isFirstView('leaderboard');
+    
+    // Only calculate if we have no data, OR it's the first time viewing this session
+    if (leaderboard.length === 0 || isFirstView) {
+      calculate(leaderboard.length > 0);
+    }
+    
+    // Listen for app resume, but don't automatically refresh leaderboard
+    // unless the user pulls down. This respects the "last known state" request.
     const handleResume = () => {
-      console.log('Leaderboard: App resumed, refreshing...');
-      calculate(true);
+      console.log('Leaderboard: App resumed (background).');
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate, view]);
+  }, [calculate, leaderboard.length]);
 
   // Real-time subscription
   useEffect(() => {

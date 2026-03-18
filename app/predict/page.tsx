@@ -19,6 +19,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey } from '@/lib/utils/storage';
 
 interface PredictRace {
   id: string;
@@ -50,7 +51,7 @@ function PredictPage() {
   // 1. Synchronous Cache Initialization
   const [username, setUsername] = useState(() => {
     if (typeof window === 'undefined') return '';
-    return localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user') || '';
+    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || '';
   });
   
   const [session, setSession] = useState<Session | null>(null);
@@ -58,13 +59,13 @@ function PredictPage() {
   
   const [nextRace, setNextRace] = useState<PredictRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem('p10_cache_next_race');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     return cached ? JSON.parse(cached) : null;
   });
 
   const [drivers, setDrivers] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return FALLBACK_DRIVERS;
-    const cached = localStorage.getItem('p10_cache_drivers');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
     return cached ? JSON.parse(cached) : FALLBACK_DRIVERS;
   });
 
@@ -105,17 +106,17 @@ function PredictPage() {
           const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentSession.user.id).maybeSingle();
           if (profile && mountedRef.current) {
             setUsername(profile.username);
-            localStorage.setItem('p10_cache_username', profile.username);
+            localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
           }
         }
       }
 
       // Load grid and community from cache if available (keyed by round)
       if (nextRace && mountedRef.current) {
-        const cachedGrid = localStorage.getItem(`p10_cache_grid_${nextRace.round}`);
+        const cachedGrid = localStorage.getItem(getGridKey(nextRace.round));
         if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
 
-        const cachedCommunity = localStorage.getItem(`p10_cache_community_${nextRace.round}`);
+        const cachedCommunity = localStorage.getItem(getCommunityKey(nextRace.round));
         if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
       }
 
@@ -130,7 +131,7 @@ function PredictPage() {
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
         finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
-        localStorage.setItem('p10_cache_drivers', JSON.stringify(finalDriverList));
+        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(finalDriverList));
 
         if (races.length > 0) {
           const now = new Date();
@@ -147,7 +148,7 @@ function PredictPage() {
             round: parseInt(upcoming.round)
           };
           setNextRace(currentRace);
-          localStorage.setItem('p10_cache_next_race', JSON.stringify(currentRace));
+          localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(currentRace));
 
           // Calculate locking
           const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
@@ -184,7 +185,7 @@ function PredictPage() {
           }
           if (mountedRef.current) {
             setStartingGrid(finalGrid);
-            localStorage.setItem(`p10_cache_grid_${currentRace.round}`, JSON.stringify(finalGrid));
+            localStorage.setItem(getGridKey(currentRace.round), JSON.stringify(finalGrid));
           }
 
           // Fetch User Prediction
@@ -195,7 +196,7 @@ function PredictPage() {
               setDnfDriver(dbPred.dnf_driver_id);
             } else {
               const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
-              const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace.id}`);
+              const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, currentRace.id));
               if (finalized && mountedRef.current) {
                 const parsed = JSON.parse(finalized);
                 setP10Driver(parsed.p10);
@@ -203,7 +204,7 @@ function PredictPage() {
               }
             }
           } else if (username) {
-            const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${username}_${currentRace.id}`);
+            const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, username, currentRace.id));
             if (finalized && mountedRef.current) {
               const parsed = JSON.parse(finalized);
               setP10Driver(parsed.p10);
@@ -229,14 +230,14 @@ function PredictPage() {
           const otherDbPreds = formattedDbPreds.filter(p => p.username !== username);
           const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
           const localPreds = playersList.filter((p: string) => p !== username).map((p: string) => {
-            const pred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${p}_${currentRace.id}`);
+            const pred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, p, currentRace.id));
             return pred ? JSON.parse(pred) : null;
           }).filter(p => p !== null);
           
           const combinedCommunity = [...otherDbPreds, ...localPreds.map(p => ({ username: p.username, p10: p.p10, dnf: p.dnf }))];
           if (mountedRef.current) {
             setCommunityPredictions(combinedCommunity);
-            localStorage.setItem(`p10_cache_community_${currentRace.round}`, JSON.stringify(combinedCommunity));
+            localStorage.setItem(getCommunityKey(currentRace.round), JSON.stringify(combinedCommunity));
           }
         }
       }
@@ -283,13 +284,13 @@ function PredictPage() {
           return;
         }
         const storageUser = username || session.user.id;
-        localStorage.setItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${nextRace.id}`, JSON.stringify(prediction));
+        localStorage.setItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id), JSON.stringify(prediction));
       } else {
-        localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
-        const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
+        localStorage.setItem(getPredictionKey(CURRENT_SEASON, username, nextRace.id), JSON.stringify(prediction));
+        const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
         if (!players.includes(username)) {
           players.push(username);
-          localStorage.setItem('p10_players', JSON.stringify(players));
+          localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(players));
         }
       }
       setSubmitted(true);
@@ -298,10 +299,10 @@ function PredictPage() {
 
   const selectUser = (name: string) => {
     Haptics.selectionChanged();
-    localStorage.setItem('p10_current_user', name);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, name);
     setUsername(name);
     if (!nextRace) return;
-    const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${name}_${nextRace.id}`);
+    const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, name, nextRace.id));
     if (finalized) {
       const parsed = JSON.parse(finalized);
       setP10Driver(parsed.p10);
@@ -325,7 +326,7 @@ function PredictPage() {
 
   const handleSwitchGuest = () => {
     Haptics.impact({ style: ImpactStyle.Light });
-    localStorage.removeItem('p10_current_user');
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     setUsername('');
     setTempUsername('');
   };

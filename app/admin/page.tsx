@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 import { useRouter } from 'next/navigation';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS, getResultsKey } from '@/lib/utils/storage';
 
 interface AdminDriver {
   id: string;
@@ -25,7 +26,7 @@ export default function AdminPage() {
   // 1. Synchronous Cache Initialization
   const [isAdmin, setIsAdmin] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem('p10_is_admin') === 'true';
+    return localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
   });
 
   const [drivers, setDrivers] = useState<AdminDriver[]>(FALLBACK_DRIVERS);
@@ -92,7 +93,7 @@ export default function AdminPage() {
 
       if (mountedRef.current) {
         setIsAdmin(true);
-        localStorage.setItem('p10_is_admin', 'true');
+        localStorage.setItem(STORAGE_KEYS.IS_ADMIN, 'true');
         setLoading(false);
       }
       checkExistingResults();
@@ -193,7 +194,7 @@ export default function AdminPage() {
     }
     const simplifiedResults = { positions: results, firstDnf: firstDnf };
     if (target === 'local') {
-      localStorage.setItem(`results_${season}_${selectedRace}`, JSON.stringify(simplifiedResults));
+      localStorage.setItem(getResultsKey(season, selectedRace), JSON.stringify(simplifiedResults));
       setStatus({ message: `Results for Round ${selectedRace} saved locally!`, variant: 'info' });
     } else {
       setLoading(true);

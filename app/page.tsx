@@ -16,8 +16,9 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import PullToRefresh from '@/components/PullToRefresh';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface HomeRace {
   id: string;
@@ -39,34 +40,124 @@ export default function Home() {
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
 
-  // 1. Synchronous Cache Initialization (Zero Pop-in)
+  // 1. Synchronous Cache Initialization
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem('p10_cache_next_race');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     return cached ? JSON.parse(cached) : null;
   });
   
   const [currentUser, setCurrentUser] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('p10_current_user');
+    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
   });
 
   const [hasSession, setHasSession] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem('p10_has_session') === 'true';
+    return localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
   });
 
   const [loading, setLoading] = useState(!nextRace);
-  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
-  const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
-  const [showCountdown, setShowCountdown] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const [isRaceInProgress, setIsRaceInProgress] = useState(false);
-  const [allDrivers, setAllDrivers] = useState<Driver[]>(FALLBACK_DRIVERS as unknown as Driver[]);
+  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+    if (cachedRaceStr && user) {
+      try {
+        const raceObj = JSON.parse(cachedRaceStr);
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+        return predStr ? JSON.parse(predStr) : null;
+      } catch { return null; }
+    }
+    return null;
+  });
+
+  const syncLocalState = useCallback(() => {
+    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const session = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
+    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+    
+    setCurrentUser(user);
+    setHasSession(session);
+    
+    if (cachedRaceStr && user) {
+      try {
+        const raceObj = JSON.parse(cachedRaceStr);
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+        if (predStr) {
+          const parsed = JSON.parse(predStr);
+          // Only update if actually different to prevent render loops
+          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+        } else {
+          setUserPrediction(null);
+        }
+      } catch { setUserPrediction(null); }
+    } else {
+      setUserPrediction(null);
+    }
+  }, []);
+
+  // UseEffect for initial sync and listener
+  useEffect(() => {
+    syncLocalState();
+    
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ key: string; value?: string }>;
+      const { key } = customEvent.detail || {};
+      if (!key || ([STORAGE_KEYS.CACHE_USERNAME, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.HAS_SESSION, STORAGE_KEYS.CACHE_NEXT_RACE] as string[]).includes(key)) {
+        syncLocalState();
+      }
+    };
+
+    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+  }, [syncLocalState]);
+
+  const [countdown, setCountdown] = useState(() => {
+    if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
+    const now = new Date().getTime();
+    const target = new Date(`${nextRace.date}T${nextRace.time}`).getTime();
+    const distance = target - now;
+    if (distance < 0) return { d: 0, h: 0, m: 0, s: 0 };
+    return {
+      d: Math.floor(distance / (1000 * 60 * 60 * 24)),
+      h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+      s: Math.floor((distance % (1000 * 60)) / 1000)
+    };
+  });
+
+  const [showCountdown, setShowCountdown] = useState(() => {
+    if (typeof window === 'undefined' || !nextRace) return false;
+    const now = new Date().getTime();
+    const target = new Date(`${nextRace.date}T${nextRace.time}`).getTime();
+    return target - now > 0;
+  });
+
+  const [isLocked, setIsLocked] = useState(() => {
+    if (typeof window === 'undefined' || !nextRace) return false;
+    const now = new Date();
+    const raceStartTime = new Date(`${nextRace.date}T${nextRace.time}`);
+    const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
+    return now > lockTime;
+  });
+
+  const [isRaceInProgress, setIsRaceInProgress] = useState(() => {
+    if (typeof window === 'undefined' || !nextRace) return false;
+    const now = new Date().getTime();
+    const target = new Date(`${nextRace.date}T${nextRace.time}`).getTime();
+    const fourHoursLater = target + 4 * 60 * 60 * 1000;
+    return now > target && now < fourHoursLater;
+  });
+
+  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
+    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+  });
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
-  // Lifecycle status
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -77,26 +168,21 @@ export default function Home() {
       // 2. Explicit truth check from Supabase
       const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       
+      let authoritativeUser = currentUser;
       if (mountedRef.current) {
         setHasSession(!!currentSession);
-        localStorage.setItem('p10_has_session', currentSession ? 'true' : 'false');
+        setStorageItem(STORAGE_KEYS.HAS_SESSION, currentSession ? 'true' : 'false');
         
         if (currentSession) {
           // Verify admin status
           const { data: profile } = await supabase.from('profiles').select('username, is_admin').eq('id', currentSession.user.id).maybeSingle();
           if (profile && mountedRef.current) {
+            authoritativeUser = profile.username;
             setCurrentUser(profile.username);
-            localStorage.setItem('p10_current_user', profile.username);
-            localStorage.setItem('p10_is_admin', profile.is_admin ? 'true' : 'false');
+            setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
+            setStorageItem(STORAGE_KEYS.IS_ADMIN, profile.is_admin ? 'true' : 'false');
           }
         }
-      }
-
-      // Handle recovery redirects
-      if (typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
-        if (currentSession) await supabase.auth.signOut();
-        router.replace('/auth/reset-password' + window.location.search + window.location.hash);
-        return;
       }
 
       const [races, drivers] = await Promise.all([
@@ -108,7 +194,7 @@ export default function Home() {
         if (drivers.length > 0) {
           const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
           setAllDrivers(sortedDrivers);
-          localStorage.setItem('p10_cache_drivers', JSON.stringify(sortedDrivers));
+          localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(sortedDrivers));
         }
 
         if (races.length > 0) {
@@ -135,11 +221,11 @@ export default function Home() {
                   }, {} as { [round: string]: { p10: string, dnf: string } })
               }));
 
-              const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+              const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
               localPlayers.forEach(lp => {
                 const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
                 Object.keys(raceResultsMap).forEach(round => {
-                  const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${lp}_${round}`);
+                  const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, lp, round));
                   if (predStr) lpPreds[round] = JSON.parse(predStr);
                 });
                 players.push({ username: lp, predictions: lpPreds });
@@ -163,12 +249,14 @@ export default function Home() {
             round: parseInt(upcoming.round)
           };
           setNextRace(raceObj);
-          localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
+          setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
 
           const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
           const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
           setIsLocked(now > lockTime);
 
+          // 3. Authoritative Prediction Sync
+          let finalPrediction: HomePrediction | null = null;
           if (currentSession) {
             const { data: pred } = await supabase
               .from('predictions')
@@ -178,15 +266,24 @@ export default function Home() {
               .maybeSingle();
             
             if (pred) {
-              setUserPrediction({ p10: pred.p10_driver_id, dnf: pred.dnf_driver_id });
+              finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
             } else {
-              const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
-              const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
-              if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
+              const storageUser = authoritativeUser || currentSession.user.id;
+              const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
+              if (cachedPred) finalPrediction = JSON.parse(cachedPred);
             }
-          } else if (currentUser) {
-            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUser}_${raceObj.id}`);
-            if (predStr) setUserPrediction(JSON.parse(predStr));
+          } else if (authoritativeUser) {
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, authoritativeUser, raceObj.id));
+            if (predStr) finalPrediction = JSON.parse(predStr);
+          }
+          
+          if (mountedRef.current) {
+            // Only overwrite if we found something or if we are sure there's nothing
+            // This prevents the optimistic UI from disappearing during lazy sync
+            if (finalPrediction) {
+              setUserPrediction(finalPrediction);
+            }
+            setLoading(false);
           }
         }
       }
@@ -195,12 +292,10 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, router, currentUser]);
+  }, [supabase, currentUser]);
 
   useEffect(() => {
     init();
-    
-    // 3. Listen for App Resume
     const handleResume = () => {
       console.log('Home: App resumed, re-initializing...');
       init();
@@ -267,7 +362,7 @@ export default function Home() {
   };
 
   return (
-    <PullToRefresh onRefresh={init}>
+    <>
       <Container className="mt-3 mt-md-4 flex-grow-1">
         <Row className="justify-content-center text-center">
           <Col md={8} className="mb-2">
@@ -290,11 +385,15 @@ export default function Home() {
             )}
 
             {!isSeasonFinished && (
-              <div style={{ minHeight: "115px" }} className="d-flex flex-column align-items-center justify-content-center mb-4">
+              <div style={{ minHeight: "115px" }} className="d-flex flex-column align-items-center justify-content-center mb-4" suppressHydrationWarning>
                 {nextRace && (
                   <>
                     {showCountdown ? (
-                      <div>
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 }}
+                      >
                         <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
                         <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
                           {[
@@ -309,12 +408,15 @@ export default function Home() {
                             </div>
                           ))}
                         </div>
-                      </div>
+                      </motion.div>
                     ) : isRaceInProgress ? (
-                      <div>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
                         <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
                         <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
-                      </div>
+                      </motion.div>
                     ) : (
                       <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
                     )}
@@ -326,7 +428,7 @@ export default function Home() {
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
               {!isSeasonFinished ? (
                 <Link href="/predict" passHref legacyBehavior>
-                  <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                  <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic} suppressHydrationWarning>
                     {isLocked 
                       ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
                       : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
@@ -352,30 +454,38 @@ export default function Home() {
               />
             </div>
 
-            {!isSeasonFinished && userPrediction && nextRace && (
-              <div className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" style={{ maxWidth: '400px' }}>
-                <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
-                  Your {nextRace.name} Picks {isLocked && '🔒'}
-                </h3>
-                <div className="d-flex justify-content-center gap-4 mb-3">
-                  <div>
-                    <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-                    <span className="fw-bold text-white h6 mb-0">
-                      {getDriverDisplayName(userPrediction.p10, allDrivers)}
-                    </span>
+            <AnimatePresence>
+              {!isSeasonFinished && userPrediction && nextRace && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" 
+                  style={{ maxWidth: '400px' }}
+                >
+                  <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
+                    Your {nextRace.name} Picks {isLocked && '🔒'}
+                  </h3>
+                  <div className="d-flex justify-content-center gap-4 mb-3">
+                    <div>
+                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                      <span className="fw-bold text-white h6 mb-0">
+                        {getDriverDisplayName(userPrediction.p10, allDrivers)}
+                      </span>
+                    </div>
+                    <div className="border-start border-secondary border-opacity-25 ps-4">
+                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                      <span className="fw-bold text-danger h6 mb-0">
+                        {getDriverDisplayName(userPrediction.dnf, allDrivers)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="border-start border-secondary border-opacity-25 ps-4">
-                    <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-                    <span className="fw-bold text-danger h6 mb-0">
-                      {getDriverDisplayName(userPrediction.dnf, allDrivers)}
-                    </span>
-                  </div>
-                </div>
-                <Button variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
-                  SHARE PICKS ↗
-                </Button>
-              </div>
-            )}
+                  <Button variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
+                    SHARE PICKS ↗
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
           </Col>
         </Row>
@@ -387,13 +497,16 @@ export default function Home() {
               {loading && !nextRace ? (
                 <Spinner animation="border" size="sm" variant="danger" />
               ) : (
-                <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
                   <p className="fw-bold mb-0 text-white" style={{ fontSize: '1.1rem' }}>{nextRace?.name}</p>
                   <p className="text-white opacity-50 small mb-2">{nextRace?.circuit}</p>
                   <div className="badge bg-danger bg-opacity-10 text-danger px-2 py-1 border border-danger border-opacity-20 rounded-pill fw-bold" style={{ fontSize: '0.65rem' }}>
                     {nextRace && new Date(nextRace.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </div>
-                </>
+                </motion.div>
               )}
             </div>
           </Col>
@@ -411,20 +524,29 @@ export default function Home() {
           </Col>
         </Row>
 
-        {!loading && !hasSession && !currentUser && (
-          <Row className="mt-4 justify-content-center">
-            <Col md={6}>
-              <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
-                <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
-                <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
-                <Link href="/auth" passHref legacyBehavior>
-                  <Button variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }} onClick={triggerHaptic}>GET STARTED</Button>
-                </Link>
-              </div>
-            </Col>
-          </Row>
-        )}
+        <AnimatePresence>
+          {(!loading && !hasSession && !currentUser) && (
+            <motion.div
+              key="guest-join-grid"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <Row className="mt-4 justify-content-center">
+                <Col md={6}>
+                  <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
+                    <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
+                    <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
+                    <Link href="/auth" passHref legacyBehavior>
+                      <Button variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }} onClick={triggerHaptic}>GET STARTED</Button>
+                    </Link>
+                  </div>
+                </Col>
+              </Row>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Container>
-    </PullToRefresh>
+    </>
   );
 }

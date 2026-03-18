@@ -7,10 +7,16 @@ import { Driver } from '@/lib/types';
 import { fetchDrivers } from '@/lib/api';
 import { getContrastColor } from '@/lib/utils/colors';
 import PullToRefresh from '@/components/PullToRefresh';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
+import { sessionTracker } from '@/lib/utils/session';
 
 export default function StandingsPage() {
-  const [standings, setStandings] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [standings, setStandings] = useState<Driver[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_STANDINGS);
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(!standings.length);
 
   async function load(quiet = false) {
     if (!quiet) setLoading(true);
@@ -18,22 +24,17 @@ export default function StandingsPage() {
     const data = await fetchDrivers(CURRENT_SEASON);
     if (data.length > 0) {
       setStandings(data);
-      localStorage.setItem('p10_cache_standings', JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEYS.CACHE_STANDINGS, JSON.stringify(data));
     }
     setLoading(false);
   }
 
   useEffect(() => {
-    // 1. Load from cache first
-    const cached = localStorage.getItem('p10_cache_standings');
-    let hasCache = false;
-    if (cached) {
-      setStandings(JSON.parse(cached));
-      setLoading(false);
-      hasCache = true;
+    const isFirstView = sessionTracker.isFirstView('standings');
+    if (standings.length === 0 || isFirstView) {
+      load(standings.length > 0);
     }
-    load(hasCache); // If we have cache, do a 'quiet' background refresh
-  }, []);
+  }, [standings.length]);
 
   return (
     <PullToRefresh onRefresh={() => load(false)}>
