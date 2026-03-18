@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
-import { Driver } from '@/lib/types';
+import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
@@ -18,7 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { addToSyncQueue, SyncPayload, SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
+import { addToSyncQueue, SyncPayload, SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -193,34 +193,40 @@ function PredictPage() {
           setIsLocked(true);
         }
 
-        if (session) {
-          const { data: dbPred } = await supabase
-            .from('predictions')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
-            .maybeSingle();
-          
-          if (dbPred) {
-            setP10Driver(dbPred.p10_driver_id);
-            setDnfDriver(dbPred.dnf_driver_id);
-          } else {
-            // Offline/Cache fallback for auth users
-            const storageUser = localStorage.getItem('p10_cache_username') || session.user.id;
-            const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace.id}`);
-            if (finalized) {
-              const parsed = JSON.parse(finalized);
-              setP10Driver(parsed.p10);
-              setDnfDriver(parsed.dnf);
-            }
-          }
-        } else if (currentUsername) {
-          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUsername}_${currentRace.id}`);
+        const loadLocalFallback = () => {
+          const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || currentUsername;
+          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace!.id}`);
           if (finalized) {
             const parsed = JSON.parse(finalized);
             setP10Driver(parsed.p10);
             setDnfDriver(parsed.dnf);
+            setSubmitted(true);
           }
+        };
+
+        if (session) {
+          try {
+            const { data: dbPred } = await withTimeout(supabase
+              .from('predictions')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
+              .maybeSingle());
+            
+            if (dbPred) {
+              const p = dbPred as DbPrediction;
+              setP10Driver(p.p10_driver_id);
+              setDnfDriver(p.dnf_driver_id);
+              setSubmitted(true);
+            } else {
+              loadLocalFallback();
+            }
+          } catch (err) {
+            console.warn('Supabase pred fetch failed, trying fallback', err);
+            loadLocalFallback();
+          }
+        } else if (currentUsername) {
+          loadLocalFallback();
         }
 
         // 4. Fetch Community Predictions
@@ -464,6 +470,9 @@ function PredictPage() {
           <p className="lead mb-5 text-muted">Good luck for the {nextRace?.name}, <span className="text-white fw-bold">{username}</span>.</p>
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
             <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
+            {!isLocked && (
+              <Button variant="outline-danger" size="lg" onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setSubmitted(false); }} className="px-5">Change Picks</Button>
+            )}
             <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Home</Button></Link>
           </div>
         </Container>

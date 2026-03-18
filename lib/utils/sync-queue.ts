@@ -112,3 +112,24 @@ export async function flushSyncQueue(
 
   return successCount;
 }
+
+/**
+ * Wraps a promise or thenable with a timeout.
+ */
+export async function withTimeout<T>(promise: Promise<T> | PromiseLike<T>, timeoutMs = 10000): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return result;
+  } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw error;
+  }
+}
+

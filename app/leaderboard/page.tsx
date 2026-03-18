@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
-import { SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
 
 interface LeaderboardPlayer {
   username: string;
@@ -43,23 +43,24 @@ export default function LeaderboardPage() {
       let playersData: LeaderboardPlayer[] = [];
 
       if (view === 'global') {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: sessionData } = await withTimeout(supabase.auth.getSession());
+        const session = sessionData?.session;
         const currentUserId = session?.user?.id;
 
-        const { data: profiles } = await supabase.from('profiles').select('id, username');
-        const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+        const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username'));
+        const { data: predictions } = await withTimeout(supabase.from('predictions').select('*'));
 
         if (profiles) {
-          playersData = profiles
-            .filter(p => {
+          playersData = (profiles as { id: string; username: string }[])
+            .filter((p) => {
               // Show if NOT a test account OR if it IS the current user's account
               return !isTestAccount(p.username) || p.id === currentUserId;
             })
-            .map(p => ({ 
+            .map((p) => ({ 
               username: p.username, 
               userId: p.id, 
               isLocal: false,
-              dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+              dbPredictions: (predictions as DbPrediction[])?.filter((pred) => pred.user_id === p.id) || []
             }));
         }
       } else {

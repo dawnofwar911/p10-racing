@@ -17,7 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
 
 interface HomeRace {
   id: string;
@@ -185,28 +185,39 @@ export default function Home() {
         const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
         setIsLocked(now > lockTime);
 
-        if (session) {
-          const { data: pred } = await supabase
-            .from('predictions')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
-            .maybeSingle();
-          
-          if (pred) {
-            setUserPrediction({
-              p10: pred.p10_driver_id,
-              dnf: pred.dnf_driver_id
-            });
-          } else {
-            // Offline/Cache fallback for auth users
-            const storageUser = localStorage.getItem('p10_cache_username') || session.user.id;
+        // Define a function to load the local prediction as a fallback
+        const loadLocalFallback = () => {
+          const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || user;
+          if (storageUser) {
             const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
             if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
           }
+        };
+
+        if (session) {
+          try {
+            const { data: pred } = await withTimeout(supabase
+              .from('predictions')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
+              .maybeSingle());
+            
+            if (pred) {
+              const p = pred as DbPrediction;
+              setUserPrediction({
+                p10: p.p10_driver_id,
+                dnf: p.dnf_driver_id
+              });
+            } else {
+              loadLocalFallback();
+            }
+          } catch (err) {
+            console.warn('Supabase fetch failed, trying local fallback', err);
+            loadLocalFallback();
+          }
         } else if (user) {
-          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${user}_${raceObj.id}`);
-          if (predStr) setUserPrediction(JSON.parse(predStr));
+          loadLocalFallback();
         }
       }
     } catch (error) {
