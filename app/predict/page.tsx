@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
+import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
+import { Container, Row, Col, Form, Button, Card, Modal, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
-import { Driver } from '@/lib/types';
+import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
@@ -18,6 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
+import { addToSyncQueue, SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -34,15 +35,8 @@ interface CommunityPrediction {
   dnf: string;
 }
 
-interface CommunityPredictionData {
-  user_id: string;
-  p10_driver_id: string;
-  dnf_driver_id: string;
-}
-
-const supabase = createClient();
-
 function PredictPage() {
+  const supabase = createClient();
   const { session, isLoading: authLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [tempUsername, setTempUsername] = useState('');
@@ -51,17 +45,40 @@ function PredictPage() {
 
   const [dnfDriver, setDnfDriver] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isPendingSync, setIsPendingSync] = useState(false);
   const [nextRace, setNextRace] = useState<PredictRace | null>(null);
   const [loadingRace, setLoadingRace] = useState(true);
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS);
   const [isLocked, setIsLocked] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
+  const mountedRef = useRef(true);
   
   const searchParams = useSearchParams();
+
+  // Dedicated effect for true mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    function handleOnline() { setIsOffline(false); }
+    function handleOffline() { setIsOffline(true); }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    if (!navigator.onLine) setIsOffline(true);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('howto') === 'true') {
@@ -69,62 +86,74 @@ function PredictPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    async function init() {
-      // 1. READ CACHE FIRST
-      const cachedNextRace = localStorage.getItem('p10_cache_next_race');
-      const cachedDrivers = localStorage.getItem('p10_cache_drivers');
-      const cachedUsername = localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user');
+  const init = useCallback(async () => {
+    // 1. PHASE 1: SYNC/CACHE LOAD (Instant UI)
+    const cachedNextRace = localStorage.getItem('p10_cache_next_race');
+    const cachedDrivers = localStorage.getItem('p10_cache_drivers');
+    const cachedUsername = localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user');
 
-      if (cachedNextRace && cachedDrivers) {
-        try {
-          const parsedRace = JSON.parse(cachedNextRace);
-          const parsedDrivers = JSON.parse(cachedDrivers);
-          setNextRace(parsedRace);
-          setDrivers(parsedDrivers);
-          setLoadingRace(false);
+    if (cachedNextRace && cachedDrivers && mountedRef.current) {
+      try {
+        const parsedRace = JSON.parse(cachedNextRace);
+        const parsedDrivers = JSON.parse(cachedDrivers);
+        setNextRace(parsedRace);
+        setDrivers(parsedDrivers);
+        setLoadingRace(false);
 
-          // Load grid and community from cache if available (keyed by race_id)
-          const cachedGrid = localStorage.getItem(`p10_cache_grid_${parsedRace.round}`);
-          if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
+        // Load grid and community from cache if available (keyed by race_id)
+        const cachedGrid = localStorage.getItem(`p10_cache_grid_${parsedRace.round}`);
+        if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
 
-          const cachedCommunity = localStorage.getItem(`p10_cache_community_${parsedRace.round}`);
-          if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
-        } catch (e) {
-          console.error('Error parsing cache:', e);
+        const cachedCommunity = localStorage.getItem(`p10_cache_community_${parsedRace.round}`);
+        if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
+
+        // CRITICAL: Immediate local fallback for prediction persistence
+        const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || cachedUsername;
+        if (storageUser) {
+          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${parsedRace.id}`);
+          if (finalized) {
+            const parsed = JSON.parse(finalized);
+            setP10Driver(parsed.p10);
+            setDnfDriver(parsed.dnf);
+            setSubmitted(true);
+          }
         }
+      } catch (e) {
+        console.error('Error parsing cache:', e);
       }
+    }
 
-      if (cachedUsername) {
-        setUsername(cachedUsername);
-      }
+    if (cachedUsername && mountedRef.current) setUsername(cachedUsername);
 
-      // 2. Background Async Fetches
+    // 2. PHASE 2: BACKGROUND ASYNC REFRESH
+    try {
       let currentUsername = cachedUsername || '';
       if (session) {
-        const { data: profile } = await supabase
+        const { data: profile } = await withTimeout(supabase
           .from('profiles')
           .select('username')
           .eq('id', session.user.id)
-          .maybeSingle();
-        if (profile) {
-          currentUsername = profile.username;
-          setUsername(profile.username);
-          localStorage.setItem('p10_cache_username', profile.username);
+          .maybeSingle());
+        if (profile && mountedRef.current) {
+          const p = profile as { username: string };
+          currentUsername = p.username;
+          setUsername(p.username);
+          localStorage.setItem('p10_cache_username', p.username);
         }
       }
 
-      // 3. Get Race Data (Refresh)
-      const races = await fetchCalendar(CURRENT_SEASON);
-      const raceResultsMap = await fetchAllSimplifiedResults();
-      let currentRace: PredictRace | null = null;
-      if (races.length > 0) {
+      const [races, raceResultsMap] = await Promise.all([
+        fetchCalendar(CURRENT_SEASON),
+        fetchAllSimplifiedResults()
+      ]);
+
+      if (races.length > 0 && mountedRef.current) {
         const now = new Date();
         const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
         setIsSeasonFinished(finished);
 
         const upcoming = races[activeIndex];
-        currentRace = {
+        const currentRaceObj: PredictRace = {
           id: upcoming.round,
           name: upcoming.raceName,
           circuit: upcoming.Circuit.circuitName,
@@ -132,23 +161,23 @@ function PredictPage() {
           time: upcoming.time || '00:00:00Z',
           round: parseInt(upcoming.round)
         };
-        setNextRace(currentRace);
-        localStorage.setItem('p10_cache_next_race', JSON.stringify(currentRace));
+        setNextRace(currentRaceObj);
+        localStorage.setItem('p10_cache_next_race', JSON.stringify(currentRaceObj));
 
         const apiDrivers = await fetchDrivers(CURRENT_SEASON);
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        // Ensure consistent sorting by team (matching Home page)
         finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
         localStorage.setItem('p10_cache_drivers', JSON.stringify(finalDriverList));
 
+        // Fetch Grid
+        const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRaceObj.round);
         let finalGrid: ApiResult[] = [];
-        const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
-        if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
+        if (resultsData?.Results?.length) {
           finalGrid = resultsData.Results;
         } else {
-          const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
-          if (qualiGrid && qualiGrid.length > 0) {
+          const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRaceObj.round);
+          if (qualiGrid?.length) {
             const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
             const missing = finalDriverList.filter(d => !presentIds.has(d.id));
             finalGrid = [...qualiGrid];
@@ -167,106 +196,120 @@ function PredictPage() {
             });
           }
         }
-        setStartingGrid(finalGrid);
-        localStorage.setItem(`p10_cache_grid_${currentRace.round}`, JSON.stringify(finalGrid));
-
-        const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
-        const lockTime = new Date(raceStartTime.getTime() + 120000);
-        if (now > lockTime || isSeasonFinished) {
-          setIsLocked(true);
+        if (mountedRef.current) {
+          setStartingGrid(finalGrid);
+          localStorage.setItem(`p10_cache_grid_${currentRaceObj.round}`, JSON.stringify(finalGrid));
         }
 
-        if (session) {
-          const { data: dbPred } = await supabase
-            .from('predictions')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
-            .maybeSingle();
-          
-          if (dbPred) {
-            setP10Driver(dbPred.p10_driver_id);
-            setDnfDriver(dbPred.dnf_driver_id);
-          } else {
-            // Offline/Cache fallback for auth users
-            const storageUser = localStorage.getItem('p10_cache_username') || session.user.id;
-            const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace.id}`);
-            if (finalized) {
-              const parsed = JSON.parse(finalized);
-              setP10Driver(parsed.p10);
-              setDnfDriver(parsed.dnf);
-            }
-          }
-        } else if (currentUsername) {
-          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUsername}_${currentRace.id}`);
-          if (finalized) {
+        if (now.getTime() > new Date(`${currentRaceObj.date}T${currentRaceObj.time}`).getTime() + 120000 || finished) {
+          if (mountedRef.current) setIsLocked(true);
+        }
+
+        const loadLocalFallback = () => {
+          const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || currentUsername;
+          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRaceObj.id}`);
+          if (finalized && mountedRef.current) {
             const parsed = JSON.parse(finalized);
             setP10Driver(parsed.p10);
             setDnfDriver(parsed.dnf);
+            setSubmitted(true);
           }
+        };
+
+        // Fresh Prediction Load (Supabase Gold Standard)
+        if (session) {
+          try {
+            const { data: dbPred, error: dbPredError } = await withTimeout(supabase
+              .from('predictions')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)
+              .maybeSingle()) as { data: DbPrediction | null, error: { message: string } | null };
+            
+            if (dbPredError) throw dbPredError;
+
+            if (dbPred && mountedRef.current) {
+              setP10Driver(dbPred.p10_driver_id);
+              setDnfDriver(dbPred.dnf_driver_id);
+              setSubmitted(true);
+            } else {
+              loadLocalFallback();
+            }
+          } catch (err) {
+            console.warn('Post-init Supabase check failed, trying fallback', err);
+            loadLocalFallback();
+          }
+        } else if (currentUsername) {
+          loadLocalFallback();
         }
 
-        // 4. Fetch Community Predictions
-        // We fetch predictions and profiles separately to ensure reliability with RLS and joins
-        const { data: dbPreds, error: predsError } = await supabase
+        // Fetch Community
+        const { data: dbPreds, error: dbPredsError } = await withTimeout(supabase
           .from('predictions')
           .select('user_id, p10_driver_id, dnf_driver_id')
-          .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
+          .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)) as { data: { user_id: string; p10_driver_id: string; dnf_driver_id: string }[] | null, error: { message: string } | null };
 
-        if (predsError) {
-          console.error('Error fetching community predictions:', predsError);
+        if (dbPredsError) {
+          console.error('Predict: Error fetching community predictions:', dbPredsError.message);
         }
 
-        let formattedDbPreds: CommunityPrediction[] = [];
-        const userIds = (dbPreds as unknown as CommunityPredictionData[] || []).map(p => p.user_id);
-
-        if (userIds.length > 0) {
-          const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, username')
-            .in('id', userIds);
-
+        if (dbPreds && mountedRef.current) {
+          const uIds = dbPreds.map((p) => p.user_id);
+          const { data: profiles, error: profilesError } = await withTimeout(supabase.from('profiles').select('id, username').in('id', uIds)) as { data: { id: string; username: string }[] | null, error: { message: string } | null };
+          
           if (profilesError) {
-            console.error('Error fetching profiles for community mapping:', profilesError);
+            console.error('Predict: Error fetching profiles for community mapping:', profilesError.message);
           }
 
-          const profilesMap = new Map(profiles?.map(p => [p.id, p.username]));
-          formattedDbPreds = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => ({
-            username: profilesMap.get(p.user_id) || 'Unknown',
+          const pMap = new Map((profiles || []).map((p) => [p.id, p.username]));
+          const formatted = dbPreds.map((p) => ({
+            username: pMap.get(p.user_id) || 'Unknown',
             p10: p.p10_driver_id,
             dnf: p.dnf_driver_id
           }));
-        }
-
-        const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
-
-        const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-        const localPreds = playersList
-          .filter((p: string) => p !== currentUsername)
-          .map((p: string) => {
-            if (!currentRace) return null;
-            const pred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${p}_${currentRace.id}`);
-            return pred ? JSON.parse(pred) : null;
+          
+          const locals: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+          const localPreds = locals.filter(p => p !== currentUsername).map(p => {
+            const pr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${p}_${currentRaceObj.id}`);
+            return pr ? JSON.parse(pr) : null;
           }).filter(p => p !== null);
-        
-        const formattedLocalPreds: CommunityPrediction[] = localPreds.map(p => ({
-          username: p.username,
-          p10: p.p10,
-          dnf: p.dnf
-        }));
 
-        const combinedCommunity = [...otherDbPreds, ...formattedLocalPreds];
-        setCommunityPredictions(combinedCommunity);
-        localStorage.setItem(`p10_cache_community_${currentRace.round}`, JSON.stringify(combinedCommunity));
+          const combined = [...formatted.filter(f => !localPreds.some(lp => lp.username === f.username)), ...localPreds];
+          setCommunityPredictions(combined);
+          localStorage.setItem(`p10_cache_community_${currentRaceObj.round}`, JSON.stringify(combined));
+        }
       }
-      setLoadingRace(false);
 
-      const parsedPlayers = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      const existingPlayersList: string[] = (Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3);
-      setExistingPlayers(existingPlayersList);
+      const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      if (mountedRef.current) setExistingPlayers((Array.isArray(players) ? players : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
+    } catch (error) {
+      console.error('Init error:', error);
+    } finally {
+      if (mountedRef.current) setLoadingRace(false);
     }
+  }, [session, supabase]);
+
+  useEffect(() => {
     init();
-  }, [isSeasonFinished, session]);
+
+    const handleSyncComplete = () => {
+      console.log('Predict: Sync complete event received');
+      if (mountedRef.current) setIsPendingSync(false);
+      init();
+    };
+    const handleReady = () => {
+      console.log('Predict: APP_READY received, re-initializing data');
+      init();
+    };
+
+    window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+    window.addEventListener(APP_READY_EVENT, handleReady);
+
+    return () => {
+      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+      window.removeEventListener(APP_READY_EVENT, handleReady);
+    };
+  }, [init]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,20 +325,28 @@ function PredictPage() {
       };
 
       if (session) {
-        // 1. Save to Cloud (Supabase)
-        const { error } = await supabase
-          .from('predictions')
-          .upsert({
-            user_id: session.user.id,
-            race_id: `${CURRENT_SEASON}_${nextRace.id}`,
-            p10_driver_id: p10Driver,
-            dnf_driver_id: dnfDriver,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id, race_id' });
-        
-        if (error) {
-          showNotification('Error saving prediction: ' + error.message, 'error');
-          return;
+        const payload = {
+          user_id: session.user.id,
+          race_id: `${CURRENT_SEASON}_${nextRace.id}`,
+          p10_driver_id: p10Driver,
+          dnf_driver_id: dnfDriver,
+          updated_at: new Date().toISOString()
+        };
+
+        if (navigator.onLine) {
+          // 1. Save to Cloud (Supabase)
+          const { error } = await withTimeout(supabase
+            .from('predictions')
+            .upsert(payload, { onConflict: 'user_id, race_id' }));
+          
+          if (error) {
+            console.error('Supabase error, falling back to local queue', error);
+            await addToSyncQueue(payload);
+            setIsPendingSync(true);
+          }
+        } else {
+          await addToSyncQueue(payload);
+          setIsPendingSync(true);
         }
 
         // 2. Mirror to LocalStorage for instant UI & offline support
@@ -417,10 +468,18 @@ function PredictPage() {
       <>
         <Container className="mt-5 text-center">
           <div className="mb-4 display-1">🏁</div>
-          <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
+          <h2 className="display-6 mb-4 fw-bold">{isPendingSync ? 'Locked and Loaded (Offline)!' : 'Locked and Loaded!'}</h2>
+          {isPendingSync && (
+            <Alert variant="warning" className="mb-4 border-warning shadow-sm">
+              <span className="fw-bold">⏳ Saved locally.</span> Waiting for connection to sync before the race.
+            </Alert>
+          )}
           <p className="lead mb-5 text-muted">Good luck for the {nextRace?.name}, <span className="text-white fw-bold">{username}</span>.</p>
           <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
             <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
+            {!isLocked && (
+              <Button variant="outline-danger" size="lg" onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setSubmitted(false); }} className="px-5">Change Picks</Button>
+            )}
             <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Home</Button></Link>
           </div>
         </Container>
@@ -498,7 +557,7 @@ function PredictPage() {
                                   <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>
                                     {result.Driver.code}
                                   </div>
-                                  <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.5rem', opacity: 0.7 }}>
+                                  <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>
                                     {driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}
                                   </div>
                                 </div>
@@ -578,7 +637,7 @@ function PredictPage() {
 <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}><div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div><div className="flex-grow-1"><div className="fw-bold text-white">{driver.name}</div><span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span></div>{dnfDriver === driver.id && <div className="text-danger">●</div>}</div>))}</div></Card.Body></Card>
               </Col>
             </Row>
-            <div className="d-grid gap-2 mt-4"><Button type="submit" size="lg" className="btn-f1 py-3 fw-bold" disabled={!p10Driver || !dnfDriver}>LOCK IN PREDICTION</Button></div>
+            <div className="d-grid gap-2 mt-4"><Button type="submit" size="lg" className="btn-f1 py-3 fw-bold" disabled={!p10Driver || !dnfDriver}>{isOffline ? 'SAVE OFFLINE' : 'LOCK IN PREDICTION'}</Button></div>
           </Form>
         )}
       </Container>
