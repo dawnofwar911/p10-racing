@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
@@ -86,8 +86,8 @@ function PredictPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    async function init() {
+  const init = useCallback(async () => {
+    try {
       // 1. READ CACHE FIRST
       const cachedNextRace = localStorage.getItem('p10_cache_next_race');
       const cachedDrivers = localStorage.getItem('p10_cache_drivers');
@@ -276,14 +276,27 @@ function PredictPage() {
         setCommunityPredictions(combinedCommunity);
         localStorage.setItem(`p10_cache_community_${currentRace.round}`, JSON.stringify(combinedCommunity));
       }
-      setLoadingRace(false);
 
       const parsedPlayers = JSON.parse(localStorage.getItem('p10_players') || '[]');
       const existingPlayersList: string[] = (Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3);
       setExistingPlayers(existingPlayersList);
+    } catch (error) {
+      console.error('Init error:', error);
+    } finally {
+      setLoadingRace(false);
     }
-    init();
   }, [isSeasonFinished, session]);
+
+  useEffect(() => {
+    init();
+
+    const handleSyncComplete = () => {
+      setIsPendingSync(false);
+      init();
+    };
+    window.addEventListener('p10:sync_complete', handleSyncComplete);
+    return () => window.removeEventListener('p10:sync_complete', handleSyncComplete);
+  }, [init]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

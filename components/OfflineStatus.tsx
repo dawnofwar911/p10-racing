@@ -30,6 +30,7 @@ export default function OfflineStatus() {
 
         if (successCount > 0) {
           showNotification('✅ Offline predictions synced successfully!', 'success');
+          window.dispatchEvent(new CustomEvent('p10:sync_complete'));
         }
       } catch (err) {
         console.error('Error flushing sync queue', err);

@@ -217,6 +217,10 @@ export default function Home() {
 
   useEffect(() => {
     init();
+    
+    const handleSyncComplete = () => init();
+    window.addEventListener('p10:sync_complete', handleSyncComplete);
+    return () => window.removeEventListener('p10:sync_complete', handleSyncComplete);
   }, [init]);
 
 
