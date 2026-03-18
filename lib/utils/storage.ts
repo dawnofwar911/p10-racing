@@ -17,6 +17,8 @@ export const STORAGE_KEYS = {
   SYNC_QUEUE: 'p10_sync_queue',
 } as const;
 
+export const STORAGE_UPDATE_EVENT = 'p10:storage_update';
+
 /**
  * Returns the localStorage key for a specific prediction.
  */
@@ -43,4 +45,22 @@ export function getCommunityKey(round: string | number): string {
  */
 export function getResultsKey(season: number | string, round: string | number): string {
   return `results_${season}_${round}`;
+}
+
+/**
+ * Helper to set localStorage and dispatch a global update event.
+ */
+export function setStorageItem(key: string, value: string) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(key, value);
+  window.dispatchEvent(new CustomEvent(STORAGE_UPDATE_EVENT, { detail: { key, value } }));
+}
+
+/**
+ * Helper to remove localStorage and dispatch a global update event.
+ */
+export function removeStorageItem(key: string) {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(key);
+  window.dispatchEvent(new CustomEvent(STORAGE_UPDATE_EVENT, { detail: { key } }));
 }

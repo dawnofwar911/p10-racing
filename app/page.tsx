@@ -17,7 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { withTimeout } from '@/lib/utils/sync-queue';
-import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 
@@ -72,6 +72,42 @@ export default function Home() {
     }
     return null;
   });
+
+  const syncLocalState = useCallback(() => {
+    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const session = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
+    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+    
+    setCurrentUser(user);
+    setHasSession(session);
+    
+    if (cachedRaceStr && user) {
+      try {
+        const raceObj = JSON.parse(cachedRaceStr);
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+        setUserPrediction(predStr ? JSON.parse(predStr) : null);
+      } catch { setUserPrediction(null); }
+    } else {
+      setUserPrediction(null);
+    }
+  }, []);
+
+  // UseEffect for initial sync and listener
+  useEffect(() => {
+    syncLocalState();
+    
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ key: string; value?: string }>;
+      const { key } = customEvent.detail || {};
+      if (!key || ([STORAGE_KEYS.CACHE_USERNAME, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.HAS_SESSION] as string[]).includes(key)) {
+        console.log('Home: Storage update detected, syncing...');
+        syncLocalState();
+      }
+    };
+
+    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+  }, [syncLocalState]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -131,7 +167,7 @@ export default function Home() {
       let authoritativeUser = null;
       if (mountedRef.current) {
         setHasSession(!!currentSession);
-        localStorage.setItem(STORAGE_KEYS.HAS_SESSION, currentSession ? 'true' : 'false');
+        setStorageItem(STORAGE_KEYS.HAS_SESSION, currentSession ? 'true' : 'false');
         
         if (currentSession) {
           // Verify admin status
@@ -139,8 +175,8 @@ export default function Home() {
           if (profile && mountedRef.current) {
             authoritativeUser = profile.username;
             setCurrentUser(profile.username);
-            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, profile.username);
-            localStorage.setItem(STORAGE_KEYS.IS_ADMIN, profile.is_admin ? 'true' : 'false');
+            setStorageItem(STORAGE_KEYS.CURRENT_USER, profile.username);
+            setStorageItem(STORAGE_KEYS.IS_ADMIN, profile.is_admin ? 'true' : 'false');
           }
         }
       }
@@ -245,7 +281,10 @@ export default function Home() {
             if (predStr) finalPrediction = JSON.parse(predStr);
           }
           
-          if (mountedRef.current) setUserPrediction(finalPrediction);
+          if (mountedRef.current) {
+            setUserPrediction(finalPrediction);
+            setLoading(false);
+          }
         }
       }
     } catch (error) {
@@ -493,8 +532,9 @@ export default function Home() {
         </Row>
 
         <AnimatePresence>
-          {!loading && !hasSession && !currentUser && (
+          {(!loading && !hasSession && !currentUser) && (
             <motion.div
+              key="guest-join-grid"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
