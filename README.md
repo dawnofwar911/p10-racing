@@ -23,7 +23,7 @@ This application uses data provided by the **Jolpica F1 API**. We are not affili
 - A Supabase account
 
 ### 1. Database Configuration
-Run the schema found in `lib/supabase/schema.sql`, `lib/supabase/results_migration.sql`, and `lib/supabase/delete_user.sql` in your Supabase SQL Editor to initialize the tables, RLS policies, and account deletion functions.
+Run the master schema found in `lib/supabase/setup/schema.sql` in your Supabase SQL Editor to initialize all tables, RLS policies, triggers, and the account deletion function.
 
 ### 2. Environment Variables
 Create a `.env.local` file in the root directory:
