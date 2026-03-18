@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# 1. Run tests first
+npm test
+
+# 2. Sync package-lock.json if package.json is staged
+if git diff --cached --name-only | grep -q "^package.json$"; then
+  echo "📦 package.json change detected. Synchronizing package-lock.json..."
+  npm install --package-lock-only
+  git add package-lock.json
+fi
