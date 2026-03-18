@@ -66,6 +66,28 @@ export default function Home() {
     return null;
   });
 
+  // Reactive Storage Listener: If predictions change on another page, update here immediately
+  useEffect(() => {
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ key: string }>;
+      const updatedKey = customEvent.detail?.key;
+      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
+
+      if (updatedKey === expectedKey) {
+        const predStr = localStorage.getItem(updatedKey!);
+        if (predStr) {
+          const parsed = JSON.parse(predStr);
+          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+        } else {
+          setUserPrediction(null);
+        }
+      }
+    };
+
+    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+  }, [currentUser, nextRace]);
+
   const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
     const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);

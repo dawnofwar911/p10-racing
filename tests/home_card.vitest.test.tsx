@@ -188,4 +188,47 @@ describe('Home Page Prediction Card Visibility', () => {
     // Should NOT show the prediction card for Australian Grand Prix anymore
     expect(screen.queryByText(/Your Australian Grand Prix Picks/i)).toBeNull();
   });
+
+  it('updates prediction card immediately when STORAGE_UPDATE_EVENT is fired', async () => {
+    const nextRace = {
+      round: '1',
+      raceName: 'Australian Grand Prix',
+      Circuit: { circuitName: 'Albert Park' },
+      date: '2026-03-15',
+      time: '05:00:00Z'
+    };
+    (api.fetchCalendar as any).mockResolvedValue([nextRace]);
+    
+    // Set current user but NO prediction
+    localStorage.setItem('p10_current_user', 'testuser');
+
+    // Mock date to BEFORE the race
+    vi.setSystemTime(new Date('2026-03-14T12:00:00Z'));
+
+    const { render: tlRender, act } = await import('@testing-library/react');
+    tlRender(<Home />);
+
+    // Initially no prediction card
+    await waitFor(() => {
+      expect(screen.queryByText(/Your Australian Grand Prix Picks/i)).toBeNull();
+    }, { timeout: 2000 });
+
+    // Simulate another page saving a prediction
+    const newPred = { p10: 'max_verstappen', dnf: 'leclerc' };
+    const predKey = 'final_pred_2026_testuser_1';
+    
+    await act(async () => {
+      localStorage.setItem(predKey, JSON.stringify(newPred));
+      window.dispatchEvent(new CustomEvent('p10:storage_update', { 
+        detail: { key: predKey, value: JSON.stringify(newPred) } 
+      }));
+    });
+
+    // Prediction card should appear without reload
+    await waitFor(() => {
+      expect(screen.getByText(/Your Australian Grand Prix Picks/i)).toBeDefined();
+    }, { timeout: 2000 });
+    
+    expect(screen.getByText(/VERSTAPPEN/i)).toBeDefined();
+  });
 });
