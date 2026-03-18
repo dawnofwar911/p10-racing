@@ -26,6 +26,7 @@ export default function LeaderboardPage() {
   const supabase = createClient();
   const mountedRef = useRef(true);
   const { session, currentUser } = useAuth();
+  const syncId = sessionTracker.getSyncId();
 
   // 1. Synchronous Cache Initialization
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => {
@@ -103,7 +104,7 @@ export default function LeaderboardPage() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, view, session?.user?.id]);
+  }, [supabase, view, session?.user?.id, syncId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const fingerprint = session?.user.id || currentUser || 'guest';
@@ -122,7 +123,7 @@ export default function LeaderboardPage() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate, session?.user.id, currentUser, leaderboard.length]);
+  }, [calculate, session?.user.id, currentUser, leaderboard.length, syncId]);
 
   // Real-time subscription
   useEffect(() => {

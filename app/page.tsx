@@ -43,6 +43,7 @@ export default function Home() {
   
   // Use Global Auth Context
   const { currentUser, hasSession, session, isAuthLoading } = useAuth();
+  const syncId = sessionTracker.getSyncId();
 
   // 1. Synchronous Cache Initialization (Zero Pop-in)
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
@@ -120,7 +121,7 @@ export default function Home() {
     }
 
     loadPrediction();
-  }, [currentUser, session, nextRace, supabase, userPrediction]);
+  }, [currentUser, session, nextRace, supabase, userPrediction, syncId]);
 
   // Reactive Storage Listener: If predictions change on another page, update here immediately
   useEffect(() => {
@@ -149,7 +150,7 @@ export default function Home() {
 
     window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace]);
+  }, [currentUser, nextRace, syncId]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -292,7 +293,7 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, nextRace, allDrivers.length, session, currentUser]);
+  }, [supabase, nextRace, allDrivers.length, session, currentUser, syncId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();

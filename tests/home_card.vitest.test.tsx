@@ -55,6 +55,7 @@ vi.mock('@/lib/utils/session', () => ({
     isInitialLoadNeeded: () => true,
     markInitialLoadComplete: vi.fn(),
     resetInitialLoad: vi.fn(),
+    getSyncId: () => 0,
   }
 }));
 

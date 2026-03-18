@@ -50,6 +50,7 @@ function PredictPage() {
   
   const { session, currentUser, isAuthLoading } = useAuth();
   const username = currentUser || '';
+  const syncId = sessionTracker.getSyncId();
 
   // 1. Synchronous Cache Initialization
   const [nextRace, setNextRace] = useState<PredictRace | null>(() => {
@@ -298,7 +299,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, currentUser, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver]);
+  }, [supabase, session, username, currentUser, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver, syncId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();

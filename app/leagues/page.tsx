@@ -26,6 +26,7 @@ function LeaguesContent() {
   const searchParams = useSearchParams();
   const mountedRef = useRef(true);
   const { session, currentUser } = useAuth();
+  const syncId = sessionTracker.getSyncId();
 
   // 1. Synchronous Cache Initialization
   const [leagues, setLeagues] = useState<League[]>(() => {
@@ -94,16 +95,18 @@ function LeaguesContent() {
       } catch (err) {
       console.error('Leagues: Init error:', err);
       }
-      }, [fetchLeagues, searchParams, leagues.length, session, currentUser]);
+      }, [fetchLeagues, searchParams, leagues.length, session, currentUser, syncId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
     const handleResume = () => {
       console.log('Leagues: App resumed (background).');
+      sessionTracker.resetInitialLoad();
+      init();
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init, session?.user.id]);
+  }, [init, session?.user.id, syncId]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;
