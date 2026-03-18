@@ -68,6 +68,7 @@ function PredictPage() {
   const [p10Driver, setP10Driver] = useState('');
   const [dnfDriver, setDnfDriver] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [loadingRace, setLoadingRace] = useState(!nextRace);
   const [isLocked, setIsLocked] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
@@ -246,7 +247,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, nextRace, drivers.length]);
+  }, [supabase, session, username, drivers.length, nextRace]);
 
   useEffect(() => {
     init();
@@ -278,9 +279,9 @@ function PredictPage() {
           return;
         }
         const storageUser = username || session.user.id;
-        localStorage.setItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id), JSON.stringify(prediction));
+        setStorageItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id), JSON.stringify(prediction));
       } else {
-        localStorage.setItem(getPredictionKey(CURRENT_SEASON, username, nextRace.id), JSON.stringify(prediction));
+        setStorageItem(getPredictionKey(CURRENT_SEASON, username, nextRace.id), JSON.stringify(prediction));
         const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
         if (!players.includes(username)) {
           players.push(username);
@@ -288,6 +289,7 @@ function PredictPage() {
         }
       }
       setSubmitted(true);
+      setIsEditing(false);
     }
   };
 
@@ -344,31 +346,85 @@ function PredictPage() {
     return <LoadingView />;
   }
 
+  // Pre-auth selection summary check
+  const getGuestSelection = () => {
+    if (typeof window === 'undefined' || !nextRace) return null;
+    // Check all local storage for ANY unsaved picks for this race
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(`final_pred_${CURRENT_SEASON}_`) && key.endsWith(`_${nextRace.id}`)) {
+        try {
+          return JSON.parse(localStorage.getItem(key)!) as CommunityPrediction;
+        } catch { return null; }
+      }
+    }
+    return null;
+  };
+  const guestSelection = getGuestSelection();
+
   if (!session && !username) {
     return (
       <Container className="mt-5">
         <Row className="justify-content-center">
-          <Col md={5}>
-            <Card className="p-4 border-secondary shadow">
-              <h2 className="h4 mb-4 fw-bold">Who&apos;s Predicting?</h2>
+          <Col md={6} lg={5}>
+            <Card className="p-4 border-secondary shadow-lg overflow-hidden">
+              <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
               <div className="mb-4">
-                <Link href="/auth" passHref legacyBehavior><Button variant="danger" className="w-100 py-3 fw-bold mb-2">SIGN IN / CREATE ACCOUNT</Button></Link>
-                <p className="text-center text-muted small mt-2">OR PLAY AS GUEST (LOCAL ONLY)</p>
+                <Link href="/auth" passHref legacyBehavior>
+                  <Button variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
+                    SIGN IN / CREATE ACCOUNT
+                  </Button>
+                </Link>
+                <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
               </div>
-              {existingPlayers.length > 0 && (
-                <div className="mb-4">
-                  <Form.Label className="text-muted small text-uppercase fw-semibold">Recent Players</Form.Label>
-                  <div className="d-flex flex-wrap gap-2">
-                    {existingPlayers.map(p => (
-                      <Button key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3">{p}</Button>
-                    ))}
+
+              {guestSelection && (
+                <div className="mb-4 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded text-center">
+                  <div className="text-danger small fw-bold text-uppercase mb-2">Unsaved Picks Found!</div>
+                  <div className="d-flex justify-content-center gap-3">
+                    <div className="text-center">
+                      <div className="extra-small text-muted text-uppercase fw-bold">P10</div>
+                      <div className="fw-bold">{getDriverDisplayName(guestSelection.p10, drivers)}</div>
+                    </div>
+                    <div className="border-start border-secondary opacity-25"></div>
+                    <div className="text-center">
+                      <div className="extra-small text-muted text-uppercase fw-bold">DNF</div>
+                      <div className="fw-bold text-danger">{getDriverDisplayName(guestSelection.dnf, drivers)}</div>
+                    </div>
                   </div>
-                  <hr className="border-secondary mt-4" />
                 </div>
               )}
+
+              <div className="text-center mb-4">
+                <hr className="border-secondary opacity-25" />
+                <span className="bg-dark px-2 text-muted small position-relative" style={{ top: '-13px' }}>OR PLAY AS GUEST</span>
+              </div>
+
+              {existingPlayers.length > 0 && (
+                <div className="mb-4 text-center">
+                  <Form.Label className="text-muted small text-uppercase fw-bold mb-3">Continue as Recent Player</Form.Label>
+                  <div className="d-flex flex-wrap justify-content-center gap-2">
+                    {existingPlayers.map(p => (
+                      <Button key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <Form onSubmit={handleGuestLogin}>
-                <Form.Group className="mb-3"><Form.Label>Guest Name</Form.Label><Form.Control type="text" placeholder="Enter name" value={tempUsername} onChange={(e) => setTempUsername(e.target.value)} minLength={3} required className="bg-dark text-white border-secondary py-2" /></Form.Group>
-                <Button type="submit" className="btn-f1 w-100 py-2 fw-bold">CONTINUE AS GUEST</Button>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small text-uppercase fw-bold opacity-75">New Guest Name</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    placeholder="Enter name" 
+                    value={tempUsername} 
+                    onChange={(e) => setTempUsername(e.target.value)} 
+                    minLength={3} 
+                    required 
+                    className="bg-dark text-white border-secondary py-2 shadow-sm" 
+                  />
+                </Form.Group>
+                <Button type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</Button>
               </Form>
             </Card>
           </Col>
@@ -377,19 +433,7 @@ function PredictPage() {
     );
   }
 
-  if (submitted) {
-    return (
-      <Container className="mt-5 text-center">
-        <div className="mb-4 display-1">🏁</div>
-        <h2 className="display-6 mb-4 fw-bold">Locked and Loaded!</h2>
-        <p className="lead mb-5 text-muted">Good luck for the {nextRace?.name}, <span className="text-white fw-bold">{username}</span>.</p>
-        <div className="d-grid gap-3 d-sm-flex justify-content-sm-center">
-          <Button variant="success" size="lg" onClick={handleShare} className="px-5 fw-bold">Share Picks ↗</Button>
-          <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Home</Button></Link>
-        </div>
-      </Container>
-    );
-  }
+  const showSummary = (submitted || (p10Driver && dnfDriver)) && !isEditing;
 
   return (
     <>
@@ -397,138 +441,186 @@ function PredictPage() {
         <Row className="mb-4 align-items-center">
           <Col>
             <div className="d-flex align-items-center gap-3">
-              <h1 className="h2 mb-1 fw-bold text-uppercase">{nextRace?.name}</h1>
+              <h1 className="h2 mb-1 fw-bold text-uppercase text-truncate">{nextRace?.name}</h1>
               <HowToPlayButton onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setShowHowToPlay(true); }} />
             </div>
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
-          <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}</Col>
+          <Col xs="auto" className="d-flex gap-2">
+            {!isLocked && (
+              <Button 
+                variant={showSummary ? "outline-danger" : "outline-success"} 
+                size="sm" 
+                onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setIsEditing(!isEditing); }} 
+                className="rounded-pill px-3 fw-bold"
+              >
+                {showSummary ? 'Change Picks' : (p10Driver && dnfDriver ? 'View Summary' : 'Cancel')}
+              </Button>
+            )}
+            {!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}
+          </Col>
         </Row>
-        {startingGrid.length > 0 && !isLocked && (
-          <Row className="mb-4">
-            <Col>
-              <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm overflow-hidden">
-                <Card.Header className="bg-dark border-secondary py-2 d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center gap-2">
-                    <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Starting Grid</h3>
-                  </div>
-                  <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
-                </Card.Header>
-                <Card.Body className="p-2 bg-black bg-opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 1px, transparent 1px, transparent 10px)', minHeight: '200px' }}>
-                  <div className="position-relative py-2 px-1">
-                    <div className="mb-3 pb-2 border-bottom border-secondary border-opacity-50 text-center">
-                      <span className="extra-small fw-bold text-muted text-uppercase letter-spacing-2" style={{ fontSize: '0.55rem' }}>START / FINISH LINE</span>
-                    </div>
-                    <div className="position-absolute start-50 top-0 bottom-0 border-start border-secondary border-opacity-20 d-none d-sm-block" style={{ transform: 'translateX(-50%)', borderStyle: 'dashed !important' }}></div>
-                    <div className="row g-2">
-                      {startingGrid.map((result) => {
-                        const pos = parseInt(result.position);
-                        const isLeft = pos % 2 !== 0;
-                        const isP10 = result.position === "10";
-                        const driverInfo = drivers.find(d => d.id === result.Driver.driverId);
-                        const teamColor = driverInfo?.color || '#B6BABD';
-                        return (
-                          <div key={result.Driver.driverId} className="col-6 mb-1">
-                            <div className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(12px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
-                              <div style={{ height: '3px', backgroundColor: teamColor }}></div>
-                              <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
-                                <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
-                                <div className="flex-grow-1 overflow-hidden">
-                                  <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
-                                  <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.5rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
-                                </div>
-                                {isP10 && (<div className="ms-1"><span style={{ fontSize: '0.6rem' }}>🎯</span></div>)}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        )}
-        {isLocked ? (
+
+        {showSummary || isLocked ? (
           <div className="text-center">
-            <Card className="p-5 border-danger bg-dark mb-4 shadow">
-              <div className="display-4 mb-3">{isSeasonFinished ? '🏆' : '🔒'}</div>
-              <h2 className="mb-4 fw-bold">{isSeasonFinished ? 'Season Finished' : 'Predictions Closed'}</h2>
-              <p className="lead mb-4 text-muted">{isSeasonFinished ? `The ${CURRENT_SEASON} season has concluded. See you in ${CURRENT_SEASON + 1}!` : `The ${nextRace?.name} is underway. Good luck!`}</p>
-              <Row className="text-start">
-                <Col lg={6} className="mb-4">
-                  <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
-                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Your Prediction</h3>
+            <Card className={`p-4 p-md-5 border-${isLocked ? 'danger' : 'success'} bg-dark mb-4 shadow`}>
+              <div className="display-4 mb-3">{isSeasonFinished ? '🏆' : (isLocked ? '🔒' : '✅')}</div>
+              <h2 className="mb-4 fw-bold">
+                {isSeasonFinished ? 'Season Finished' : (isLocked ? 'Predictions Closed' : (submitted ? 'Locked and Loaded!' : 'Current Picks'))}
+              </h2>
+              <p className="lead mb-4 text-muted">
+                {isSeasonFinished ? `The ${CURRENT_SEASON} season has concluded.` : (isLocked ? `The ${nextRace?.name} is underway. Good luck!` : `Good luck for the ${nextRace?.name}, ${username}!`)}
+              </p>
+              
+              <Row className="text-start justify-content-center">
+                <Col lg={8} className="mb-4">
+                  <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
+                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger d-flex justify-content-between align-items-center">
+                      Your Selection {isLocked && '🔒'}
+                    </h3>
                     {p10Driver && dnfDriver ? (
                       <Row className="g-3">
-                        <Col sm={6}><div className="p-3 border border-secondary rounded bg-dark"><div className="text-muted small text-uppercase mb-1">P10 Pick</div><div className="h4 mb-0 text-white fw-bold">{drivers.find(d => d.id === p10Driver)?.name || p10Driver}</div></div></Col>
-                        <Col sm={6}><div className="p-3 border border-secondary rounded bg-dark"><div className="text-muted small text-uppercase mb-1">DNF Pick</div><div className="h4 mb-0 text-danger fw-bold">{drivers.find(d => d.id === dnfDriver)?.name || dnfDriver}</div></div></Col>
+                        <Col sm={6}>
+                          <div className="p-3 border border-secondary rounded bg-dark">
+                            <div className="text-muted small text-uppercase mb-1" style={{ fontSize: '0.65rem' }}>P10 Finisher</div>
+                            <div className="h4 mb-0 text-white fw-bold">{getDriverDisplayName(p10Driver, drivers)}</div>
+                          </div>
+                        </Col>
+                        <Col sm={6}>
+                          <div className="p-3 border border-secondary rounded bg-dark">
+                            <div className="text-muted small text-uppercase mb-1" style={{ fontSize: '0.65rem' }}>First DNF</div>
+                            <div className="h4 mb-0 text-danger fw-bold">{getDriverDisplayName(dnfDriver, drivers)}</div>
+                          </div>
+                        </Col>
                       </Row>
                     ) : <p className="text-warning">No prediction submitted.</p>}
-                  </div>
-                </Col>
-                <Col lg={6} className="mb-4">
-                  <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100">
-                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Community</h3>
-                    {communityPredictions.length > 0 ? (
-                      <div className="table-responsive">
-                        <table className="table table-dark table-hover mb-0 small">
-                          <thead><tr className="text-muted"><th>Player</th><th>P10</th><th>DNF</th></tr></thead>
-                          <tbody>{communityPredictions.map((pred, idx) => (<tr key={idx}><td className="text-white fw-bold">{pred.username}</td><td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td><td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td></tr>))}</tbody>
-                        </table>
+                    
+                    {!isSeasonFinished && (
+                      <div className="mt-4 pt-2">
+                        <Button variant="success" className="w-100 py-2 fw-bold shadow-sm" onClick={handleShare}>SHARE YOUR PICKS ↗</Button>
                       </div>
-                    ) : <p className="text-muted small">Only you so far!</p>}
+                    )}
                   </div>
                 </Col>
+
+                {isLocked && (
+                  <Col lg={8} className="mb-4">
+                    <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
+                      <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Community</h3>
+                      {communityPredictions.length > 0 ? (
+                        <div className="table-responsive">
+                          <table className="table table-dark table-hover mb-0 small">
+                            <thead><tr className="text-muted"><th>Player</th><th>P10</th><th>DNF</th></tr></thead>
+                            <tbody>{communityPredictions.map((pred, idx) => (<tr key={idx}><td className="text-white fw-bold">{pred.username}</td><td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td><td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td></tr>))}</tbody>
+                          </table>
+                        </div>
+                      ) : <p className="text-muted small">Only you so far!</p>}
+                    </div>
+                  </Col>
+                )}
               </Row>
             </Card>
-            <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Back Home</Button></Link>
+            <div className="d-flex justify-content-center gap-3">
+              <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Back Home</Button></Link>
+            </div>
           </div>
         ) : (
-          <Form onSubmit={handleSubmit}>
-            <Row className="g-3">
-              <Col md={6}>
-                <Card className="shadow-sm border-secondary mb-3">
-                  <Card.Body className="p-3">
-                    <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">P10 Finisher</h3>
-                    <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
-                      {drivers.map((driver) => (
-                        <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                          <div className="flex-grow-1">
-                            <div className="fw-bold text-white">{driver.name}</div>
-                            <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span>
-                          </div>
-                          {p10Driver === driver.id && <div className="text-danger">●</div>}
+          <>
+            {startingGrid.length > 0 && (
+              <Row className="mb-4">
+                <Col>
+                  <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm overflow-hidden">
+                    <Card.Header className="bg-dark border-secondary py-2 d-flex justify-content-between align-items-center">
+                      <div className="d-flex align-items-center gap-2">
+                        <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Starting Grid</h3>
+                      </div>
+                      <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
+                    </Card.Header>
+                    <Card.Body className="p-2 bg-black bg-opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 1px, transparent 1px, transparent 10px)', minHeight: '200px' }}>
+                      <div className="position-relative py-2 px-1">
+                        <div className="mb-3 pb-2 border-bottom border-secondary border-opacity-50 text-center">
+                          <span className="extra-small fw-bold text-muted text-uppercase letter-spacing-2" style={{ fontSize: '0.55rem' }}>START / FINISH LINE</span>
                         </div>
-                      ))}
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={6}>
-                <Card className="shadow-sm border-secondary mb-3">
-                  <Card.Body className="p-3">
-                    <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">First DNF</h3>
-                    <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
-                      {drivers.map((driver) => (
-                        <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                          <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                          <div className="flex-grow-1">
-                            <div className="fw-bold text-white">{driver.name}</div>
-                            <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span>
-                          </div>
-                          {dnfDriver === driver.id && <div className="text-danger">●</div>}
+                        <div className="position-absolute start-50 top-0 bottom-0 border-start border-secondary border-opacity-20 d-none d-sm-block" style={{ transform: 'translateX(-50%)', borderStyle: 'dashed !important' }}></div>
+                        <div className="row g-2">
+                          {startingGrid.map((result) => {
+                            const pos = parseInt(result.position);
+                            const isLeft = pos % 2 !== 0;
+                            const isP10 = result.position === "10";
+                            const driverInfo = drivers.find(d => d.id === result.Driver.driverId);
+                            const teamColor = driverInfo?.color || '#B6BABD';
+                            return (
+                              <div key={result.Driver.driverId} className="col-6 mb-1">
+                                <div className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(12px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
+                                  <div style={{ height: '3px', backgroundColor: teamColor }}></div>
+                                  <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
+                                    <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
+                                    <div className="flex-grow-1 overflow-hidden">
+                                      <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
+                                      <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.5rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
+                                    </div>
+                                    {isP10 && (<div className="ms-1"><span style={{ fontSize: '0.6rem' }}>🎯</span></div>)}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-            <div className="d-grid gap-2 mt-4"><Button type="submit" size="lg" className="btn-f1 py-3 fw-bold" disabled={!p10Driver || !dnfDriver}>LOCK IN PREDICTION</Button></div>
-          </Form>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+            
+            <Form onSubmit={handleSubmit}>
+              <Row className="g-3">
+                <Col md={6}>
+                  <Card className="shadow-sm border-secondary mb-3">
+                    <Card.Body className="p-3">
+                      <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">P10 Finisher</h3>
+                      <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
+                        {drivers.map((driver) => (
+                          <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+                            <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
+                            <div className="flex-grow-1">
+                              <div className="fw-bold text-white">{driver.name}</div>
+                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span>
+                            </div>
+                            {p10Driver === driver.id && <div className="text-danger">●</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+                <Col md={6}>
+                  <Card className="shadow-sm border-secondary mb-3">
+                    <Card.Body className="p-3">
+                      <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">First DNF</h3>
+                      <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
+                        {drivers.map((driver) => (
+                          <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+                            <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
+                            <div className="flex-grow-1">
+                              <div className="fw-bold text-white">{driver.name}</div>
+                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span>
+                            </div>
+                            {dnfDriver === driver.id && <div className="text-danger">●</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+              <div className="d-grid gap-2 mt-4">
+                <Button type="submit" size="lg" className="btn-f1 py-3 fw-bold shadow-sm" disabled={!p10Driver || !dnfDriver}>
+                  LOCK IN PREDICTION
+                </Button>
+              </div>
+            </Form>
+          </>
         )}
       </Container>
 
