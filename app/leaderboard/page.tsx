@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
-import { SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
 
 interface LeaderboardPlayer {
   username: string;
@@ -125,18 +125,8 @@ export default function LeaderboardPage() {
     }
 
     const handleSyncComplete = () => calculate(true);
-    const handleReady = () => {
-      console.log('Leaderboard: APP_READY received, re-calculating');
-      calculate(true);
-    };
-
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    window.addEventListener(APP_READY_EVENT, handleReady);
-
-    return () => {
-      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-      window.removeEventListener(APP_READY_EVENT, handleReady);
-    };
+    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
   }, [calculate, view]);
 
   useEffect(() => {

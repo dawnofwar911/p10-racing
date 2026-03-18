@@ -18,7 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { addToSyncQueue, SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
+import { addToSyncQueue, SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -37,7 +37,7 @@ interface CommunityPrediction {
 
 function PredictPage() {
   const supabase = createClient();
-  const { session, isLoading: authLoading } = useAuth();
+  const { session: authSession, isLoading: authLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [tempUsername, setTempUsername] = useState('');
   const { showNotification } = useNotification();
@@ -60,7 +60,7 @@ function PredictPage() {
   
   const searchParams = useSearchParams();
 
-  // Dedicated effect for true mount status
+  // Lifecycle check
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -87,7 +87,7 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
-    // 1. PHASE 1: SYNC/CACHE LOAD (Instant UI)
+    // PHASE 1: SYNC CACHE LOAD (Instant UI)
     const cachedNextRace = localStorage.getItem('p10_cache_next_race');
     const cachedDrivers = localStorage.getItem('p10_cache_drivers');
     const cachedUsername = localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user');
@@ -107,8 +107,8 @@ function PredictPage() {
         const cachedCommunity = localStorage.getItem(`p10_cache_community_${parsedRace.round}`);
         if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
 
-        // CRITICAL: Immediate local fallback for prediction persistence
-        const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || cachedUsername;
+        // Immediate local fallback for prediction persistence
+        const storageUser = localStorage.getItem('p10_cache_username') || cachedUsername;
         if (storageUser) {
           const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${parsedRace.id}`);
           if (finalized) {
@@ -125,8 +125,11 @@ function PredictPage() {
 
     if (cachedUsername && mountedRef.current) setUsername(cachedUsername);
 
-    // 2. PHASE 2: BACKGROUND ASYNC REFRESH
+    // PHASE 2: BACKGROUND ASYNC REFRESH
     try {
+      // 2. Fetch Session explicitly (Decoupled from AuthProvider state)
+      const { data: { session } } = await withTimeout(supabase.auth.getSession());
+      
       let currentUsername = cachedUsername || '';
       if (session) {
         const { data: profile } = await withTimeout(supabase
@@ -137,8 +140,8 @@ function PredictPage() {
         if (profile && mountedRef.current) {
           const p = profile as { username: string };
           currentUsername = p.username;
-          setUsername(p.username);
-          localStorage.setItem('p10_cache_username', p.username);
+          setUsername(currentUsername);
+          localStorage.setItem('p10_cache_username', currentUsername);
         }
       }
 
@@ -287,7 +290,7 @@ function PredictPage() {
     } finally {
       if (mountedRef.current) setLoadingRace(false);
     }
-  }, [session, supabase]);
+  }, [supabase]);
 
   useEffect(() => {
     init();
@@ -297,18 +300,9 @@ function PredictPage() {
       if (mountedRef.current) setIsPendingSync(false);
       init();
     };
-    const handleReady = () => {
-      console.log('Predict: APP_READY received, re-initializing data');
-      init();
-    };
 
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    window.addEventListener(APP_READY_EVENT, handleReady);
-
-    return () => {
-      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-      window.removeEventListener(APP_READY_EVENT, handleReady);
-    };
+    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
   }, [init]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -324,6 +318,8 @@ function PredictPage() {
         season: CURRENT_SEASON 
       };
 
+      const { data: { session } } = await supabase.auth.getSession();
+
       if (session) {
         const payload = {
           user_id: session.user.id,
@@ -334,10 +330,9 @@ function PredictPage() {
         };
 
         if (navigator.onLine) {
-          // 1. Save to Cloud (Supabase)
-          const { error } = await withTimeout(supabase
+          const { error } = await supabase
             .from('predictions')
-            .upsert(payload, { onConflict: 'user_id, race_id' }));
+            .upsert(payload, { onConflict: 'user_id, race_id' });
           
           if (error) {
             console.error('Supabase error, falling back to local queue', error);
@@ -349,11 +344,9 @@ function PredictPage() {
           setIsPendingSync(true);
         }
 
-        // 2. Mirror to LocalStorage for instant UI & offline support
         const storageUser = username || session.user.id;
         localStorage.setItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${nextRace.id}`, JSON.stringify(prediction));
       } else {
-        // Guest mode - LocalStorage only
         localStorage.setItem(`final_pred_${CURRENT_SEASON}_${username}_${nextRace.id}`, JSON.stringify(prediction));
         const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
         if (!players.includes(username)) {
@@ -414,9 +407,7 @@ function PredictPage() {
         dialogTitle: 'Share your Picks',
       });
     } catch (error) {
-      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web or unsupported browser)
       console.log('Share dismissed or failed:', error);
-      
       if (!navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
         showNotification('Picks copied to clipboard!', 'success');
@@ -428,7 +419,7 @@ function PredictPage() {
     return <LoadingView />;
   }
 
-  if (!session && !username) {
+  if (!authSession && !username) {
     return (
       <>
         <Container className="mt-5">
@@ -498,9 +489,9 @@ function PredictPage() {
                 onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setShowHowToPlay(true); }}
               />
             </div>
-            <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
+            <p className="text-muted mb-0">{authSession ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
-          <Col xs="auto" className="d-flex gap-2">{!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}</Col>
+          <Col xs="auto" className="d-flex gap-2">{!isLocked && !authSession && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}</Col>
         </Row>
         {startingGrid.length > 0 && !isLocked && (
           <Row className="mb-4">

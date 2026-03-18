@@ -9,7 +9,7 @@ import Link from 'next/link';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import { useAuth } from '@/components/AuthProvider';
-import { withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
+import { withTimeout, SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
 
 interface League {
   id: string;
@@ -20,7 +20,7 @@ interface League {
 
 function LeaguesContent() {
   const supabase = createClient();
-  const { session, isLoading: authLoading } = useAuth();
+  const { session: authSession, isLoading: authLoading } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -32,7 +32,7 @@ function LeaguesContent() {
   const [inviteCode, setInviteCode] = useState('');
   const [localGuests, setLocalGuests] = useState<string[]>([]);
 
-  // Dedicated effect for true mount status
+  // Lifecycle check
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -41,13 +41,23 @@ function LeaguesContent() {
   const fetchLeagues = useCallback(async (quiet = false) => {
     if (!quiet && mountedRef.current) setLoading(true);
     try {
+      // Fetch session explicitly
+      const { data: { session } } = await withTimeout(supabase.auth.getSession());
+      if (!session) {
+        if (mountedRef.current) {
+          setLeagues([]);
+          setLoading(false);
+        }
+        return;
+      }
+
       console.log('Leagues: Fetching leagues...');
-      const { data, error } = await withTimeout(supabase
+      const { data, error: fetchError } = await withTimeout(supabase
         .from('leagues')
         .select('*')
         .order('created_at', { ascending: false }));
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       if (mountedRef.current) {
         setLeagues(data || []);
         localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
@@ -75,28 +85,20 @@ function LeaguesContent() {
     const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
     if (mountedRef.current) setLocalGuests(guests);
 
-    if (session) {
-      await fetchLeagues(hasCache);
-    } else if (!authLoading && mountedRef.current) {
-      setLoading(false);
-    }
-  }, [session, authLoading, fetchLeagues]);
+    // Initial fetch
+    await fetchLeagues(hasCache);
+  }, [fetchLeagues]);
 
   useEffect(() => {
     init();
-
-    const handleReady = () => {
-      console.log('Leagues: APP_READY received, re-initializing');
-      init();
-    };
-
-    window.addEventListener(APP_READY_EVENT, handleReady);
-    return () => {
-      window.removeEventListener(APP_READY_EVENT, handleReady);
-    };
+    
+    // Auto-refresh on sync
+    window.addEventListener(SYNC_COMPLETE_EVENT, init);
+    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, init);
   }, [init]);
 
   const handleImport = async (guestName: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     setActionLoading(true);
     setError(null);
@@ -166,6 +168,7 @@ function LeaguesContent() {
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     setActionLoading(true);
     setError(null);
@@ -202,6 +205,7 @@ function LeaguesContent() {
 
   const handleJoinLeague = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     setActionLoading(true);
     setError(null);
@@ -232,7 +236,7 @@ function LeaguesContent() {
       <Container className="mt-3 mb-4">
         <h1 className="h4 fw-bold text-uppercase letter-spacing-1 mb-3 text-white ps-1">Leagues</h1>
 
-        {!session ? (
+        {!authSession ? (
           <div className="text-center py-5 bg-dark bg-opacity-25 rounded border border-secondary border-opacity-25 shadow-sm">
             <div className="display-6 mb-3">🏆</div>
             <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
@@ -286,7 +290,7 @@ function LeaguesContent() {
                   </Card.Body>
                 </Card>
 
-                {session && localGuests.length > 0 && (
+                {authSession && localGuests.length > 0 && (
                   <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3">
                     <Card.Body className="p-3">
                       <h3 className="extra-small mb-2 text-uppercase fw-bold text-warning letter-spacing-1" style={{ fontSize: '0.6rem' }}>Sync Local Data</h3>

@@ -17,7 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
 
 interface HomeRace {
   id: string;
@@ -58,7 +58,7 @@ export default function Home() {
   const router = useRouter();
   const { showNotification } = useNotification();
 
-  // Dedicated effect for true mount status
+  // Lifecycle check
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -67,7 +67,7 @@ export default function Home() {
   const init = useCallback(async () => {
     console.log('Home: init() started. Session ready:', !!session);
     
-    // 1. Load from cache first to avoid layout shift
+    // 1. Load from cache first
     const cachedRace = localStorage.getItem('p10_cache_next_race');
     const cachedDrivers = localStorage.getItem('p10_cache_drivers');
     
@@ -81,10 +81,10 @@ export default function Home() {
       const distance = target - now;
       const fourHoursLater = target + 4 * 60 * 60 * 1000;
 
-      if (distance < 0) {
+      if (distance < 0 && mountedRef.current) {
         setShowCountdown(false);
         setIsRaceInProgress(now < fourHoursLater);
-      } else {
+      } else if (mountedRef.current) {
         setShowCountdown(true);
         setIsRaceInProgress(false);
         setCountdown({
@@ -98,23 +98,17 @@ export default function Home() {
     
     if (cachedDrivers && mountedRef.current) setAllDrivers(JSON.parse(cachedDrivers));
 
-    const isRecovery = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
-    const hasRecoveryParam = typeof window !== 'undefined' && window.location.search.includes('type=recovery');
-
-    if (isRecovery || hasRecoveryParam) {
-      const target = '/auth/reset-password' + window.location.search + window.location.hash;
-      router.replace(target);
-      return;
-    }
-
     if (!cachedRace && mountedRef.current) {
       setLoading(true);
     }
 
     try {
-      const user = localStorage.getItem('p10_current_user');
-      if (mountedRef.current) setCurrentUser(user);
+      // 2. Fetch Session explicitly (Decoupled from AuthProvider state)
+      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
+      const localUser = localStorage.getItem('p10_current_user');
+      if (mountedRef.current) setCurrentUser(localUser);
 
+      // 3. Parallel Background Fetches
       const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
         fetchDrivers(CURRENT_SEASON)
@@ -129,20 +123,18 @@ export default function Home() {
       if (races.length > 0 && mountedRef.current) {
         const now = new Date();
         const raceResultsMap = await fetchAllSimplifiedResults();
-        
         const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+        
         if (mountedRef.current) setIsSeasonFinished(finished);
 
         const upcoming = races[activeIndex];
 
+        // Champion calculation if season is done
         if (finished && mountedRef.current) {
-          const { data: profiles, error: profilesError } = await withTimeout(supabase.from('profiles').select('id, username'));
-          const { data: predictions, error: predsError } = await withTimeout(supabase.from('predictions').select('*')) as { data: DbPrediction[] | null, error: { message: string } | null };
+          const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username'));
+          const { data: predictions } = await withTimeout(supabase.from('predictions').select('*')) as { data: DbPrediction[] | null };
 
-          if (profilesError) console.error('Home: Error fetching profiles:', profilesError.message);
-          if (predsError) console.error('Home: Error fetching predictions:', predsError.message);
-
-          if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
+          if (profiles && predictions) {
             const players = profiles.map(p => ({ 
               username: p.username, 
               predictions: predictions
@@ -188,42 +180,36 @@ export default function Home() {
         const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
         if (mountedRef.current) setIsLocked(now > lockTime);
 
+        // Load Prediction Logic
         const loadLocalFallback = () => {
-          const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || user;
-          if (storageUser && mountedRef.current) {
-            const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
+          if (localUser && mountedRef.current) {
+            const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${localUser}_${raceObj.id}`);
             if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
           }
         };
 
-        if (session) {
+        if (currentSession) {
           try {
-            console.log('Home: Requesting prediction from Supabase for', session.user.id);
-            const { data: pred, error } = await withTimeout(supabase
+            const { data: pred, error: predError } = await withTimeout(supabase
               .from('predictions')
               .select('*')
-              .eq('user_id', session.user.id)
+              .eq('user_id', currentSession.user.id)
               .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
               .maybeSingle());
             
-            if (error) throw error;
+            if (predError) throw predError;
 
             if (pred && mountedRef.current) {
-              console.log('Home: Supabase prediction found');
               const p = pred as DbPrediction;
-              setUserPrediction({
-                p10: p.p10_driver_id,
-                dnf: p.dnf_driver_id
-              });
+              setUserPrediction({ p10: p.p10_driver_id, dnf: p.dnf_driver_id });
             } else {
-              console.log('Home: No Supabase prediction found, using fallback');
               loadLocalFallback();
             }
           } catch (err) {
-            console.warn('Home: Supabase fetch failed, trying local fallback', err);
+            console.warn('Home: Prediction fetch failed, using fallback', err);
             loadLocalFallback();
           }
-        } else if (user) {
+        } else {
           loadLocalFallback();
         }
       }
@@ -237,24 +223,11 @@ export default function Home() {
   useEffect(() => {
     init();
     
-    const handleSyncComplete = () => {
-      console.log('Home: Sync complete event received');
-      init();
-    };
-    const handleReady = () => {
-      console.log('Home: APP_READY received, re-initializing data');
-      init();
-    };
-
+    // Listen for background sync completion to update widget
+    const handleSyncComplete = () => init();
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    window.addEventListener(APP_READY_EVENT, handleReady);
-
-    return () => {
-      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-      window.removeEventListener(APP_READY_EVENT, handleReady);
-    };
+    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
   }, [init]);
-
 
   useEffect(() => {
     if (!nextRace) return;
@@ -281,9 +254,8 @@ export default function Home() {
       }
     };
 
-    calculate(); // Run immediately
-    const timer = setInterval(calculate, 1000); // Then every second
-
+    calculate();
+    const timer = setInterval(calculate, 1000);
     return () => clearInterval(timer);
   }, [nextRace]);
 
@@ -305,8 +277,7 @@ export default function Home() {
         url: 'https://p10racing.app',
         dialogTitle: 'Share your Picks',
       });
-    } catch (error) {
-      console.log('Share dismissed or failed:', error);
+    } catch {
       if (!navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
         showNotification('Picks copied to clipboard!', 'success');
