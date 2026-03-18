@@ -12,6 +12,7 @@ import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
+import { sessionTracker } from '@/lib/utils/session';
 
 interface League {
   id: string;
@@ -70,6 +71,8 @@ function LeaguesContent() {
 
   const init = useCallback(async () => {
     try {
+      const isFirstView = sessionTracker.isFirstView('leagues');
+      
       // 2. Truth check
       const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       if (mountedRef.current) setSession(currentSession);
@@ -79,7 +82,12 @@ function LeaguesContent() {
       if (mountedRef.current) setLocalGuests(guests);
 
       if (currentSession) {
-        await fetchLeagues(leagues.length > 0);
+        // Only refresh leagues if it's the first view or we have none
+        if (leagues.length === 0 || isFirstView) {
+          await fetchLeagues(leagues.length > 0);
+        } else {
+          setLoading(false);
+        }
       } else if (mountedRef.current) {
         setLoading(false);
       }
@@ -94,8 +102,7 @@ function LeaguesContent() {
   useEffect(() => {
     init();
     const handleResume = () => {
-      console.log('Leagues: App resumed, refreshing...');
-      init();
+      console.log('Leagues: App resumed (background).');
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
