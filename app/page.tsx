@@ -66,35 +66,13 @@ export default function Home() {
     return null;
   });
 
-  // Reactive Storage Listener: If predictions change on another page, update here immediately
-  useEffect(() => {
-    const handleStorageUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ key: string }>;
-      const updatedKey = customEvent.detail?.key;
-      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
-
-      if (updatedKey === expectedKey) {
-        const predStr = localStorage.getItem(updatedKey!);
-        if (predStr) {
-          const parsed = JSON.parse(predStr);
-          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
-        } else {
-          setUserPrediction(null);
-        }
-      }
-    };
-
-    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace]);
-
   const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
     const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
     return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
   });
 
-  // Reactive Prediction Load: Only runs if initial load is needed or dependencies change significantly
+  // Reactive Prediction Load: Runs when auth status or next race changes
   useEffect(() => {
     const loadPrediction = async () => {
       // If we already have a prediction and it's not a cold start/auth change, skip network
@@ -134,6 +112,26 @@ export default function Home() {
 
     loadPrediction();
   }, [currentUser, session, nextRace, supabase, userPrediction]);
+
+  // Reactive Storage Listener: If predictions change on another page, update here immediately
+  useEffect(() => {
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ key: string }>;
+      const updatedKey = customEvent.detail?.key;
+      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
+
+      if (updatedKey === expectedKey) {
+        const predStr = localStorage.getItem(updatedKey!);
+        if (predStr) {
+          const parsed = JSON.parse(predStr);
+          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+        }
+      }
+    };
+
+    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+  }, [currentUser, nextRace]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -175,34 +173,18 @@ export default function Home() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
-  // Reactive Storage Listener: If predictions change on another page, update here immediately
-  useEffect(() => {
-    const handleStorageUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ key: string }>;
-      const updatedKey = customEvent.detail?.key;
-      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
-
-      if (updatedKey === expectedKey) {
-        const predStr = localStorage.getItem(updatedKey!);
-        if (predStr) {
-          const parsed = JSON.parse(predStr);
-          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
-        }
-      }
-    };
-
-    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace]);
-
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
   const init = useCallback(async () => {
-    // Skip if already loaded this session and we have data
-    if (!sessionTracker.isInitialLoadNeeded() && nextRace && allDrivers.length > 0) return;
+    // Demand-Driven Sync: Skip if we've already synced this page this session and have data
+    const isFirstView = sessionTracker.isFirstView('home');
+    if (!isFirstView && nextRace && allDrivers.length >= 20) {
+      if (mountedRef.current) setLoading(false);
+      return;
+    }
 
     try {
       const [races, drivers] = await Promise.all([
@@ -213,7 +195,10 @@ export default function Home() {
       if (mountedRef.current) {
         if (drivers.length > 0) {
           const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
-          setAllDrivers(sortedDrivers);
+          setAllDrivers(prev => {
+            if (prev.length === sortedDrivers.length && prev[0]?.id === sortedDrivers[0]?.id) return prev;
+            return sortedDrivers;
+          });
           localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(sortedDrivers));
         }
 
@@ -268,7 +253,11 @@ export default function Home() {
             time: upcoming.time || '00:00:00Z',
             round: parseInt(upcoming.round)
           };
-          setNextRace(raceObj);
+          
+          setNextRace(prev => {
+            if (prev?.id === raceObj.id && prev?.date === raceObj.date && prev?.time === raceObj.time) return prev;
+            return raceObj;
+          });
           setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
 
           const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);

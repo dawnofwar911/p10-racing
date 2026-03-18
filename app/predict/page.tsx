@@ -90,14 +90,20 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
-    // Optimistic cache load always runs
+    let cachedRace: PredictRace | null = null;
+    let hasCachedGrid = false;
+
+    // 1. Optimistic cache load (Immediate)
     if (typeof window !== 'undefined') {
       const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
       if (cachedRaceStr && mountedRef.current) {
         try {
-          const cachedRace = JSON.parse(cachedRaceStr) as PredictRace;
+          cachedRace = JSON.parse(cachedRaceStr) as PredictRace;
           const cachedGrid = localStorage.getItem(getGridKey(cachedRace.round));
-          if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
+          if (cachedGrid) {
+            setStartingGrid(JSON.parse(cachedGrid));
+            hasCachedGrid = true;
+          }
 
           const cachedCommunity = localStorage.getItem(getCommunityKey(cachedRace.round));
           if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
@@ -105,9 +111,13 @@ function PredictPage() {
       }
     }
 
-    // Skip full background fetch if already loaded this session and data exists
-    if (!sessionTracker.isInitialLoadNeeded() && nextRace && drivers.length > 20) {
-      setLoadingRace(false);
+    // 2. Demand-Driven Sync Check
+    const isFirstView = sessionTracker.isFirstView('predict');
+    const hasData = (nextRace || cachedRace) && (drivers.length >= 20) && (startingGrid.length > 0 || hasCachedGrid);
+    
+    // Skip full background fetch if we've already synced this page this session AND have data
+    if (!isFirstView && hasData) {
+      if (mountedRef.current) setLoadingRace(false);
       return;
     }
 
@@ -235,6 +245,7 @@ function PredictPage() {
             setCommunityPredictions(combinedCommunity);
             localStorage.setItem(getCommunityKey(currentRace.round), JSON.stringify(combinedCommunity));
           }
+          sessionTracker.markInitialLoadComplete();
         }
       }
     } catch (error) {
@@ -247,7 +258,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, drivers.length, nextRace]);
+  }, [supabase, session, username, drivers.length, nextRace, startingGrid.length]);
 
   useEffect(() => {
     init();

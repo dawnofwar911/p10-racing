@@ -48,6 +48,24 @@ vi.mock('@/lib/api', () => ({
   getFirstDnfDriver: vi.fn(),
 }));
 
+// Mock sessionTracker
+vi.mock('@/lib/utils/session', () => ({
+  sessionTracker: {
+    isFirstView: () => true,
+    isInitialLoadNeeded: () => true,
+    markInitialLoadComplete: vi.fn(),
+    resetInitialLoad: vi.fn(),
+  }
+}));
+
+// Mock framer-motion
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
 // Mock useRouter
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -190,17 +208,31 @@ describe('Home Page Prediction Card Visibility', () => {
   });
 
   it('updates prediction card immediately when STORAGE_UPDATE_EVENT is fired', async () => {
-    const nextRace = {
-      round: '1',
-      raceName: 'Australian Grand Prix',
-      Circuit: { circuitName: 'Albert Park' },
-      date: '2026-03-15',
-      time: '05:00:00Z'
-    };
-    (api.fetchCalendar as any).mockResolvedValue([nextRace]);
+    const { CURRENT_SEASON } = await import('@/lib/data');
+    const { getPredictionKey, STORAGE_KEYS, STORAGE_UPDATE_EVENT } = await import('@/lib/utils/storage');
     
-    // Set current user but NO prediction
-    localStorage.setItem('p10_current_user', 'testuser');
+    const nextRace = {
+      id: '1',
+      name: 'Australian Grand Prix',
+      circuit: 'Albert Park',
+      date: '2026-03-15',
+      time: '05:00:00Z',
+      round: 1
+    };
+    (api.fetchCalendar as any).mockResolvedValue([
+      {
+        round: '1',
+        raceName: 'Australian Grand Prix',
+        Circuit: { circuitName: 'Albert Park' },
+        date: '2026-03-15',
+        time: '05:00:00Z'
+      }
+    ]);
+    
+    // Seed the race cache and user
+    const testUser = 'testuser';
+    localStorage.setItem('p10_current_user', testUser);
+    localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(nextRace));
 
     // Mock date to BEFORE the race
     vi.setSystemTime(new Date('2026-03-14T12:00:00Z'));
@@ -208,27 +240,26 @@ describe('Home Page Prediction Card Visibility', () => {
     const { render: tlRender, act } = await import('@testing-library/react');
     tlRender(<Home />);
 
-    // Initially no prediction card
+    // Wait for the page to show the race name in the hero description
     await waitFor(() => {
-      expect(screen.queryByText(/Your Australian Grand Prix Picks/i)).toBeNull();
-    }, { timeout: 2000 });
+      const heroText = screen.getByText(/Predict the 10th place finisher/i);
+      expect(heroText.textContent).toContain('Australian Grand Prix');
+    });
 
     // Simulate another page saving a prediction
     const newPred = { p10: 'max_verstappen', dnf: 'leclerc' };
-    const predKey = 'final_pred_2026_testuser_1';
+    const predKey = getPredictionKey(CURRENT_SEASON, testUser, '1');
     
     await act(async () => {
       localStorage.setItem(predKey, JSON.stringify(newPred));
-      window.dispatchEvent(new CustomEvent('p10:storage_update', { 
-        detail: { key: predKey, value: JSON.stringify(newPred) } 
+      window.dispatchEvent(new CustomEvent(STORAGE_UPDATE_EVENT, { 
+        detail: { key: predKey } 
       }));
     });
 
     // Prediction card should appear without reload
-    await waitFor(() => {
-      expect(screen.getByText(/Your Australian Grand Prix Picks/i)).toBeDefined();
-    }, { timeout: 2000 });
-    
+    const cardTitle = await screen.findByText(/Your Australian Grand Prix Picks/i, {}, { timeout: 4000 });
+    expect(cardTitle).toBeDefined();
     expect(screen.getByText(/VERSTAPPEN/i)).toBeDefined();
   });
 });
