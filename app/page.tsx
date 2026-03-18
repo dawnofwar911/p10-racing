@@ -16,7 +16,7 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
@@ -152,6 +152,26 @@ export default function Home() {
 
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
+
+  // Reactive Storage Listener: If predictions change on another page, update here immediately
+  useEffect(() => {
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ key: string }>;
+      const updatedKey = customEvent.detail?.key;
+      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
+
+      if (updatedKey === expectedKey) {
+        const predStr = localStorage.getItem(updatedKey!);
+        if (predStr) {
+          const parsed = JSON.parse(predStr);
+          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+        }
+      }
+    };
+
+    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
+  }, [currentUser, nextRace]);
 
   useEffect(() => {
     mountedRef.current = true;
