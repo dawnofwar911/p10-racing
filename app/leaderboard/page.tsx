@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
+import { SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
 
 interface LeaderboardPlayer {
   username: string;
@@ -28,79 +29,84 @@ export default function LeaderboardPage() {
   const [view, setView] = useState<'global' | 'local'>('global');
 
   const calculate = useCallback(async (quiet = false) => {
-    if (!quiet) setLoading(true);
-    
-    // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
-    const raceResultsMap = await fetchAllSimplifiedResults();
+    try {
+      if (!quiet) setLoading(true);
+      
+      // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
+      const raceResultsMap = await fetchAllSimplifiedResults();
 
-    // 2. Fetch Calendar to check if season is complete
-    const races = await fetchCalendar(CURRENT_SEASON);
-    const resultsFoundCount = Object.keys(raceResultsMap).length;
-    setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
+      // 2. Fetch Calendar to check if season is complete
+      const races = await fetchCalendar(CURRENT_SEASON);
+      const resultsFoundCount = Object.keys(raceResultsMap).length;
+      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
-    let playersData: LeaderboardPlayer[] = [];
+      let playersData: LeaderboardPlayer[] = [];
 
-    if (view === 'global') {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUserId = session?.user?.id;
+      if (view === 'global') {
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUserId = session?.user?.id;
 
-      const { data: profiles } = await supabase.from('profiles').select('id, username');
-      const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+        const { data: profiles } = await supabase.from('profiles').select('id, username');
+        const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
 
-      if (profiles) {
-        playersData = profiles
-          .filter(p => {
-            // Show if NOT a test account OR if it IS the current user's account
-            return !isTestAccount(p.username) || p.id === currentUserId;
-          })
-          .map(p => ({ 
-            username: p.username, 
-            userId: p.id, 
-            isLocal: false,
-            dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
-          }));
-      }
-    } else {
-      const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
-    }
-
-    const entries: LeaderboardEntry[] = playersData.map((player) => {
-      const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
-
-      // Prepare predictions for calculateSeasonPoints
-      Object.keys(raceResultsMap).forEach(round => {
-        if (player.isLocal) {
-          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
-          if (predStr) playerPredictions[round] = JSON.parse(predStr);
-        } else if (player.dbPredictions) {
-          const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
-          if (dbMatch) {
-            playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
-          }
+        if (profiles) {
+          playersData = profiles
+            .filter(p => {
+              // Show if NOT a test account OR if it IS the current user's account
+              return !isTestAccount(p.username) || p.id === currentUserId;
+            })
+            .map(p => ({ 
+              username: p.username, 
+              userId: p.id, 
+              isLocal: false,
+              dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+            }));
         }
+      } else {
+        const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+        playersData = localPlayers.map(p => ({ username: p, isLocal: true }));
+      }
+
+      const entries: LeaderboardEntry[] = playersData.map((player) => {
+        const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
+
+        // Prepare predictions for calculateSeasonPoints
+        Object.keys(raceResultsMap).forEach(round => {
+          if (player.isLocal) {
+            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
+            if (predStr) playerPredictions[round] = JSON.parse(predStr);
+          } else if (player.dbPredictions) {
+            const dbMatch = player.dbPredictions.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
+            if (dbMatch) {
+              playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
+            }
+          }
+        });
+
+        const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
+
+        return {
+          rank: 0,
+          player: player.username,
+          points: totalPoints,
+          lastRacePoints: lastRacePoints,
+          breakdown: latestBreakdown,
+          history: history
+        };
       });
 
-      const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
-
-      return {
-        rank: 0,
-        player: player.username,
-        points: totalPoints,
-        lastRacePoints: lastRacePoints,
-        breakdown: latestBreakdown,
-        history: history
-      };
-    });
-
-    const sorted = entries.sort((a, b) => b.points - a.points);
-    const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
-    
-    setLeaderboard(ranked);
-    if (view === 'global') {
-      localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
+      const sorted = entries.sort((a, b) => b.points - a.points);
+      const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
+      
+      setLeaderboard(ranked);
+      if (view === 'global') {
+        localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
+      }
+    } catch (error) {
+      console.error('Calculate error:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [view]);
 
   useEffect(() => {
@@ -111,10 +117,16 @@ export default function LeaderboardPage() {
         setLeaderboard(JSON.parse(cached));
         setLoading(false);
         calculate(true); // Quiet update
-        return;
+      } else {
+        calculate();
       }
+    } else {
+      calculate();
     }
-    calculate();
+
+    const handleSyncComplete = () => calculate(true);
+    window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
   }, [calculate, view]);
 
   // Real-time subscription

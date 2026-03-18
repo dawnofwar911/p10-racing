@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { App } from '@capacitor/app';
 import { createClient } from '@/lib/supabase/client';
 import { useNotification } from '@/components/Notification';
-import { flushSyncQueue } from '@/lib/utils/sync-queue';
+import { flushSyncQueue, SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
 
 export default function OfflineStatus() {
   const [isOffline, setIsOffline] = useState(false);
@@ -18,7 +18,7 @@ export default function OfflineStatus() {
     const handleFlush = async () => {
       if (isSyncing.current || !navigator.onLine) return;
       isSyncing.current = true;
-      
+
       try {
         const successCount = await flushSyncQueue(
           supabase,
@@ -30,6 +30,7 @@ export default function OfflineStatus() {
 
         if (successCount > 0) {
           showNotification('✅ Offline predictions synced successfully!', 'success');
+          window.dispatchEvent(new CustomEvent(SYNC_COMPLETE_EVENT));
         }
       } catch (err) {
         console.error('Error flushing sync queue', err);

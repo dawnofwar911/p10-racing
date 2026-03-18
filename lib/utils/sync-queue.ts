@@ -9,6 +9,7 @@ export interface SyncPayload {
 }
 
 const QUEUE_KEY = 'p10_sync_queue';
+export const SYNC_COMPLETE_EVENT = 'p10:sync_complete';
 
 /**
  * Atomic helper to get the current sync queue from localStorage.
