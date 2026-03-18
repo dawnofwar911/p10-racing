@@ -197,6 +197,17 @@ function PredictPage() {
           setIsLocked(true);
         }
 
+        const loadLocalFallback = () => {
+          const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || currentUsername;
+          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRaceObj.id}`);
+          if (finalized) {
+            const parsed = JSON.parse(finalized);
+            setP10Driver(parsed.p10);
+            setDnfDriver(parsed.dnf);
+            setSubmitted(true);
+          }
+        };
+
         // Fresh Prediction Load (Supabase Gold Standard)
         if (session) {
           try {
@@ -211,10 +222,15 @@ function PredictPage() {
               setP10Driver(dbPred.p10_driver_id);
               setDnfDriver(dbPred.dnf_driver_id);
               setSubmitted(true);
+            } else {
+              loadLocalFallback();
             }
           } catch (err) {
-            console.warn('Post-init Supabase check failed', err);
+            console.warn('Post-init Supabase check failed, trying fallback', err);
+            loadLocalFallback();
           }
+        } else if (currentUsername) {
+          loadLocalFallback();
         }
 
         // Fetch Community
