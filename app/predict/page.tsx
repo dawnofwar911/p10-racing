@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { Container, Row, Col, Form, Button, Card, Modal, Alert } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
@@ -18,7 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { addToSyncQueue, SyncPayload, SYNC_COMPLETE_EVENT, withTimeout, APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
+import { addToSyncQueue, SyncPayload, SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -35,9 +35,8 @@ interface CommunityPrediction {
   dnf: string;
 }
 
-const supabase = createClient();
-
 function PredictPage() {
+  const supabase = createClient();
   const { session, isLoading: authLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [tempUsername, setTempUsername] = useState('');
@@ -57,6 +56,7 @@ function PredictPage() {
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
+  const mountedRef = useRef(true);
   
   const searchParams = useSearchParams();
 
@@ -86,7 +86,7 @@ function PredictPage() {
     const cachedDrivers = localStorage.getItem('p10_cache_drivers');
     const cachedUsername = localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user');
 
-    if (cachedNextRace && cachedDrivers) {
+    if (cachedNextRace && cachedDrivers && mountedRef.current) {
       try {
         const parsedRace = JSON.parse(cachedNextRace);
         const parsedDrivers = JSON.parse(cachedDrivers);
@@ -117,7 +117,7 @@ function PredictPage() {
       }
     }
 
-    if (cachedUsername) setUsername(cachedUsername);
+    if (cachedUsername && mountedRef.current) setUsername(cachedUsername);
 
     // 2. PHASE 2: BACKGROUND ASYNC REFRESH
     try {
@@ -128,7 +128,7 @@ function PredictPage() {
           .select('username')
           .eq('id', session.user.id)
           .maybeSingle());
-        if (profile) {
+        if (profile && mountedRef.current) {
           const p = profile as { username: string };
           currentUsername = p.username;
           setUsername(p.username);
@@ -141,7 +141,7 @@ function PredictPage() {
         fetchAllSimplifiedResults()
       ]);
 
-      if (races.length > 0) {
+      if (races.length > 0 && mountedRef.current) {
         const now = new Date();
         const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
         setIsSeasonFinished(finished);
@@ -200,7 +200,7 @@ function PredictPage() {
         const loadLocalFallback = () => {
           const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || currentUsername;
           const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRaceObj.id}`);
-          if (finalized) {
+          if (finalized && mountedRef.current) {
             const parsed = JSON.parse(finalized);
             setP10Driver(parsed.p10);
             setDnfDriver(parsed.dnf);
@@ -218,7 +218,7 @@ function PredictPage() {
               .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)
               .maybeSingle()) as { data: DbPrediction | null };
             
-            if (dbPred) {
+            if (dbPred && mountedRef.current) {
               setP10Driver(dbPred.p10_driver_id);
               setDnfDriver(dbPred.dnf_driver_id);
               setSubmitted(true);
@@ -239,7 +239,7 @@ function PredictPage() {
           .select('user_id, p10_driver_id, dnf_driver_id')
           .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)) as { data: { user_id: string; p10_driver_id: string; dnf_driver_id: string }[] | null };
 
-        if (dbPreds) {
+        if (dbPreds && mountedRef.current) {
           const uIds = dbPreds.map((p) => p.user_id);
           const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username').in('id', uIds)) as { data: { id: string; username: string }[] | null };
           const pMap = new Map((profiles || []).map((p) => [p.id, p.username]));
@@ -262,29 +262,35 @@ function PredictPage() {
       }
 
       const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      setExistingPlayers((Array.isArray(players) ? players : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
+      if (mountedRef.current) setExistingPlayers((Array.isArray(players) ? players : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
     } catch (error) {
       console.error('Init error:', error);
     } finally {
-      setLoadingRace(false);
+      if (mountedRef.current) setLoadingRace(false);
     }
-  }, [session]);
+  }, [session, supabase]);
 
   useEffect(() => {
+    mountedRef.current = true;
     init();
 
     const handleSyncComplete = () => {
-      setIsPendingSync(false);
+      console.log('Predict: Sync complete event received');
+      if (mountedRef.current) setIsPendingSync(false);
       init();
     };
-    const handleResume = () => init();
+    const handleReady = () => {
+      console.log('Predict: APP_READY received, re-initializing data');
+      init();
+    };
 
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    window.addEventListener(APP_RESUME_EVENT, handleResume);
+    window.addEventListener(APP_READY_EVENT, handleReady);
 
     return () => {
+      mountedRef.current = false;
       window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-      window.removeEventListener(APP_RESUME_EVENT, handleResume);
+      window.removeEventListener(APP_READY_EVENT, handleReady);
     };
   }, [init]);
 
@@ -534,7 +540,7 @@ function PredictPage() {
                                   <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>
                                     {result.Driver.code}
                                   </div>
-                                  <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.5rem', opacity: 0.7 }}>
+                                  <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>
                                     {driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}
                                   </div>
                                 </div>
