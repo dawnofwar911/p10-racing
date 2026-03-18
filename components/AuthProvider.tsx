@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setStorageItem(STORAGE_KEYS.CACHE_USERNAME, data.username);
               setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!data.is_admin));
             } else {
-              const fallback = newSession.user.email?.split('@')[0] || 'User';
+              const fallback = newSession.user.email?.split('@')[0] || `User_${newSession.user.id.substring(0, 5)}`;
               setCurrentUser(fallback);
               setStorageItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
             }
