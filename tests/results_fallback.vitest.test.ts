@@ -3,6 +3,7 @@ import { fetchAllSimplifiedResults } from '@/lib/results';
 import { fetchCalendar, fetchRaceResults } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENT_SEASON } from '@/lib/data';
+import { getResultsKey } from '@/lib/utils/storage';
 
 // Mock dependencies
 vi.mock('@/lib/api', () => ({
@@ -55,7 +56,7 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
 
     // localStorage has results
     const cachedData = { positions: { 'leclerc': 1 }, firstDnf: 'russell' };
-    window.localStorage.setItem(`results_${CURRENT_SEASON}_1`, JSON.stringify(cachedData));
+    window.localStorage.setItem(getResultsKey(CURRENT_SEASON, 1), JSON.stringify(cachedData));
 
     const results = await fetchAllSimplifiedResults();
     
@@ -90,6 +91,6 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
     expect(fetchRaceResults).toHaveBeenCalledWith(CURRENT_SEASON, 1);
     
     // Should also cache the result in localStorage
-    expect(window.localStorage.getItem(`results_${CURRENT_SEASON}_1`)).toContain('norris');
+    expect(window.localStorage.getItem(getResultsKey(CURRENT_SEASON, 1))).toContain('norris');
   });
 });

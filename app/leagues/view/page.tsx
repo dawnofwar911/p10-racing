@@ -14,6 +14,8 @@ import LoadingView from '@/components/LoadingView';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
+const supabase = createClient();
+
 function LeagueDetailContent() {
   const searchParams = useSearchParams();
   const leagueId = searchParams.get('id');
@@ -24,8 +26,6 @@ function LeagueDetailContent() {
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
-
-  const supabase = createClient();
 
   const handleShare = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
@@ -132,7 +132,7 @@ function LeagueDetailContent() {
     
     setLeaderboard(ranked);
     setLoading(false);
-  }, [supabase, leagueId]);
+  }, [leagueId]);
 
   useEffect(() => {
     loadLeague();
@@ -164,7 +164,7 @@ function LeagueDetailContent() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, leagueId, loadLeague]);
+  }, [leagueId, loadLeague]);
 
   if (!leagueId) {
     return <Container className="mt-5 text-center text-white"><p>No league selected.</p></Container>;

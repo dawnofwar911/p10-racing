@@ -48,7 +48,13 @@ export function calculateSeasonPoints(
 ) {
   let totalPoints = 0;
   let lastRacePoints = 0;
-  let latestBreakdown = undefined;
+  let latestBreakdown: { 
+    p10Points: number; 
+    dnfPoints: number; 
+    p10Driver: string; 
+    dnfDriver: string; 
+    actualP10Pos: number; 
+  } | undefined = undefined;
 
   const sortedRounds = Object.keys(raceResultsMap).sort((a, b) => parseInt(a) - parseInt(b));
   const history: { round: string, points: number, totalSoFar: number, p10Driver: string, dnfDriver: string, p10Pos: number, dnfCorrect: boolean }[] = [];
@@ -89,6 +95,7 @@ export function calculateSeasonPoints(
           p10Points: p10Score,
           dnfPoints: dnfScore,
           p10Driver: prediction.p10,
+          dnfDriver: prediction.dnf,
           actualP10Pos: actualPosOfPredictedP10
         };
       }

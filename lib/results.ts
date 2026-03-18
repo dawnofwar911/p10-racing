@@ -2,6 +2,7 @@ import { createClient } from './supabase/client';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from './api';
 import { CURRENT_SEASON } from './data';
 import { SimplifiedResults } from './types';
+import { getResultsKey } from './utils/storage';
 
 export interface EnhancedSimplifiedResults extends SimplifiedResults {
   date: Date;
@@ -33,7 +34,7 @@ export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: En
     } else {
       // Priority 2: localStorage (Cached results from previous API fetches)
       const isClient = typeof window !== 'undefined';
-      const cachedData = isClient ? localStorage.getItem(`results_${CURRENT_SEASON}_${round}`) : null;
+      const cachedData = isClient ? localStorage.getItem(getResultsKey(CURRENT_SEASON, round)) : null;
       
       if (cachedData) {
         raceResultsMap[round] = { ...JSON.parse(cachedData), date: raceDate };
@@ -54,7 +55,7 @@ export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: En
           
           // Cache for performance and offline support
           if (isClient) {
-            localStorage.setItem(`results_${CURRENT_SEASON}_${round}`, JSON.stringify(simplified));
+            localStorage.setItem(getResultsKey(CURRENT_SEASON, round), JSON.stringify(simplified));
           }
         }
       }
