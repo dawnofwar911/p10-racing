@@ -65,8 +65,35 @@ function PredictPage() {
   });
 
   const [tempUsername, setTempUsername] = useState('');
-  const [p10Driver, setP10Driver] = useState('');
-  const [dnfDriver, setDnfDriver] = useState('');
+  
+  const [p10Driver, setP10Driver] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+    if (cachedRaceStr && user) {
+      try {
+        const raceObj = JSON.parse(cachedRaceStr);
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+        return predStr ? JSON.parse(predStr).p10 : '';
+      } catch { return ''; }
+    }
+    return '';
+  });
+
+  const [dnfDriver, setDnfDriver] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+    if (cachedRaceStr && user) {
+      try {
+        const raceObj = JSON.parse(cachedRaceStr);
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+        return predStr ? JSON.parse(predStr).dnf : '';
+      } catch { return ''; }
+    }
+    return '';
+  });
+
   const [submitted, setSubmitted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingRace, setLoadingRace] = useState(!nextRace);
