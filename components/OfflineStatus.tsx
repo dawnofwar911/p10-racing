@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
+import { App } from '@capacitor/app';
+import { APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
 
 export default function OfflineStatus() {
   const [isOffline, setIsOffline] = useState(false);
@@ -14,12 +16,20 @@ export default function OfflineStatus() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    const appStateListener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        console.log('OfflineStatus: App foregrounded, dispatching APP_RESUME');
+        window.dispatchEvent(new CustomEvent(APP_RESUME_EVENT));
+      }
+    });
+
     // Initial check
     if (!navigator.onLine) setIsOffline(true);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      appStateListener.then(l => l.remove());
     };
   }, []);
 
