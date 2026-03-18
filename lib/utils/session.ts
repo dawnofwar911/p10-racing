@@ -47,11 +47,11 @@ class SessionTracker {
   }
 
   /**
-   * Resets the initial load flag to force a fresh data sync (e.g. after login).
+   * Resets the visited pages tracking to force a fresh data sync.
    */
-  public resetInitialLoad() {
-    this.initialLoadComplete = false;
+  public resetVisitedPages() {
     this.visitedPagesMap.clear();
+    this.initialLoadComplete = false;
   }
 
   public isInitialLoadNeeded(): boolean {

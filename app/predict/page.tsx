@@ -48,7 +48,7 @@ function PredictPage() {
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
   
-  const { session, currentUser, isAuthLoading } = useAuth();
+  const { session, currentUser, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
   const username = currentUser || '';
 
   // 1. Synchronous Cache Initialization
@@ -298,17 +298,17 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, currentUser, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver]);
+  }, [supabase, session, username, currentUser, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
     const handleResume = () => {
       console.log('Predict: App resumed, refreshing data...');
-      init();
+      triggerRefresh();
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init]);
+  }, [init, triggerRefresh]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
