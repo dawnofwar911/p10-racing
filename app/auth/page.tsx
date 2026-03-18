@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import LoadingView from '@/components/LoadingView';
 
+const supabase = createClient();
+
 export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,7 +20,6 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   
-  const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function AuthPage() {
       }
     }
     checkAuth();
-  }, [supabase, router]);
+  }, [router]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
