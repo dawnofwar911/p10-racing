@@ -19,6 +19,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey } from '@/lib/utils/storage';
 
 interface PredictRace {
   id: string;
@@ -50,7 +51,7 @@ function PredictPage() {
   // 1. Synchronous Cache Initialization
   const [username, setUsername] = useState(() => {
     if (typeof window === 'undefined') return '';
-    return localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user') || '';
+    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || '';
   });
   
   const [session, setSession] = useState<Session | null>(null);
@@ -58,13 +59,13 @@ function PredictPage() {
   
   const [nextRace, setNextRace] = useState<PredictRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem('p10_cache_next_race');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     return cached ? JSON.parse(cached) : null;
   });
 
   const [drivers, setDrivers] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return FALLBACK_DRIVERS;
-    const cached = localStorage.getItem('p10_cache_drivers');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
     return cached ? JSON.parse(cached) : FALLBACK_DRIVERS;
   });
 
@@ -105,17 +106,17 @@ function PredictPage() {
           const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentSession.user.id).maybeSingle();
           if (profile && mountedRef.current) {
             setUsername(profile.username);
-            localStorage.setItem('p10_cache_username', profile.username);
+            localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
           }
         }
       }
 
       // Load grid and community from cache if available (keyed by round)
       if (nextRace && mountedRef.current) {
-        const cachedGrid = localStorage.getItem(`p10_cache_grid_${nextRace.round}`);
+        const cachedGrid = localStorage.getItem(getGridKey(nextRace.round));
         if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
 
-        const cachedCommunity = localStorage.getItem(`p10_cache_community_${nextRace.round}`);
+        const cachedCommunity = localStorage.getItem(getCommunityKey(nextRace.round));
         if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
       }
 

@@ -17,6 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 
 interface HomeRace {
   id: string;
@@ -41,18 +42,18 @@ export default function Home() {
   // 1. Synchronous Cache Initialization (Zero Pop-in)
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem('p10_cache_next_race');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     return cached ? JSON.parse(cached) : null;
   });
   
   const [currentUser, setCurrentUser] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('p10_current_user');
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
   });
 
   const [hasSession, setHasSession] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem('p10_has_session') === 'true';
+    return localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
   });
 
   const [loading, setLoading] = useState(!nextRace);
@@ -69,12 +70,12 @@ export default function Home() {
     mountedRef.current = true;
     
     // 2. Optimistic Load (Immediate client-side)
-    const cachedUser = localStorage.getItem('p10_current_user') || localStorage.getItem('p10_cache_username');
-    const cachedRaceStr = localStorage.getItem('p10_cache_next_race');
+    const cachedUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME);
+    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     if (cachedRaceStr && cachedUser) {
       try {
         const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${cachedUser}_${raceObj.id}`);
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, cachedUser, raceObj.id));
         if (predStr) setUserPrediction(JSON.parse(predStr));
       } catch (e) {
         console.error('Home: Optimistic load error:', e);
@@ -92,7 +93,7 @@ export default function Home() {
       let authoritativeUser = null;
       if (mountedRef.current) {
         setHasSession(!!currentSession);
-        localStorage.setItem('p10_has_session', currentSession ? 'true' : 'false');
+        localStorage.setItem(STORAGE_KEYS.HAS_SESSION, currentSession ? 'true' : 'false');
         
         if (currentSession) {
           // Verify admin status
@@ -100,8 +101,8 @@ export default function Home() {
           if (profile && mountedRef.current) {
             authoritativeUser = profile.username;
             setCurrentUser(profile.username);
-            localStorage.setItem('p10_current_user', profile.username);
-            localStorage.setItem('p10_is_admin', profile.is_admin ? 'true' : 'false');
+            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, profile.username);
+            localStorage.setItem(STORAGE_KEYS.IS_ADMIN, profile.is_admin ? 'true' : 'false');
           }
         }
       }
@@ -122,7 +123,7 @@ export default function Home() {
         if (drivers.length > 0) {
           const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
           setAllDrivers(sortedDrivers);
-          localStorage.setItem('p10_cache_drivers', JSON.stringify(sortedDrivers));
+          localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(sortedDrivers));
         }
 
         if (races.length > 0) {
@@ -149,11 +150,11 @@ export default function Home() {
                   }, {} as { [round: string]: { p10: string, dnf: string } })
               }));
 
-              const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+              const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
               localPlayers.forEach(lp => {
                 const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
                 Object.keys(raceResultsMap).forEach(round => {
-                  const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${lp}_${round}`);
+                  const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, lp, round));
                   if (predStr) lpPreds[round] = JSON.parse(predStr);
                 });
                 players.push({ username: lp, predictions: lpPreds });
@@ -177,7 +178,7 @@ export default function Home() {
             round: parseInt(upcoming.round)
           };
           setNextRace(raceObj);
-          localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
+          localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
 
           const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
           const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
@@ -196,13 +197,13 @@ export default function Home() {
             if (pred) {
               finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
             } else {
-              const storageUser = authoritativeUser || localStorage.getItem('p10_cache_username') || currentSession.user.id;
-              const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
+              const storageUser = authoritativeUser || localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || currentSession.user.id;
+              const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
               if (cachedPred) finalPrediction = JSON.parse(cachedPred);
             }
           } else if (authoritativeUser || currentUser) {
             const userToFetch = authoritativeUser || currentUser;
-            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${userToFetch}_${raceObj.id}`);
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, userToFetch, raceObj.id));
             if (predStr) finalPrediction = JSON.parse(predStr);
           }
           
