@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ key: string; value?: string }>;
       const { key } = customEvent.detail || {};
-      if (key === STORAGE_KEYS.CURRENT_USER || key === STORAGE_KEYS.CACHE_USERNAME || key === STORAGE_KEYS.HAS_SESSION) {
+      if (key === STORAGE_KEYS.CURRENT_USER || key === STORAGE_KEYS.CACHE_USERNAME || key === STORAGE_KEYS.HAS_SESSION || key === STORAGE_KEYS.IS_ADMIN) {
         const newUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         const newSessionStatus = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
         const newIsAdmin = localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
