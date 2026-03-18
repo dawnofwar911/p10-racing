@@ -19,7 +19,6 @@ import HowToPlayButton from '@/components/HowToPlayButton';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
-import { sessionTracker } from '@/lib/utils/session';
 
 interface HomeRace {
   id: string;
@@ -41,7 +40,7 @@ export default function Home() {
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
 
-  // 1. Synchronous Cache Initialization (Zero Pop-in)
+  // 1. Synchronous Cache Initialization
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
     if (typeof window === 'undefined') return null;
     const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
@@ -61,12 +60,12 @@ export default function Home() {
   const [loading, setLoading] = useState(!nextRace);
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cachedUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && cachedUser) {
+    if (cachedRaceStr && user) {
       try {
         const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, cachedUser, raceObj.id));
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
         return predStr ? JSON.parse(predStr) : null;
       } catch { return null; }
     }
@@ -85,7 +84,13 @@ export default function Home() {
       try {
         const raceObj = JSON.parse(cachedRaceStr);
         const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
-        setUserPrediction(predStr ? JSON.parse(predStr) : null);
+        if (predStr) {
+          const parsed = JSON.parse(predStr);
+          // Only update if actually different to prevent render loops
+          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+        } else {
+          setUserPrediction(null);
+        }
       } catch { setUserPrediction(null); }
     } else {
       setUserPrediction(null);
@@ -99,8 +104,7 @@ export default function Home() {
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ key: string; value?: string }>;
       const { key } = customEvent.detail || {};
-      if (!key || ([STORAGE_KEYS.CACHE_USERNAME, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.HAS_SESSION] as string[]).includes(key)) {
-        console.log('Home: Storage update detected, syncing...');
+      if (!key || ([STORAGE_KEYS.CACHE_USERNAME, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.HAS_SESSION, STORAGE_KEYS.CACHE_NEXT_RACE] as string[]).includes(key)) {
         syncLocalState();
       }
     };
@@ -164,7 +168,7 @@ export default function Home() {
       // 2. Explicit truth check from Supabase
       const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       
-      let authoritativeUser = null;
+      let authoritativeUser = currentUser;
       if (mountedRef.current) {
         setHasSession(!!currentSession);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, currentSession ? 'true' : 'false');
@@ -175,17 +179,10 @@ export default function Home() {
           if (profile && mountedRef.current) {
             authoritativeUser = profile.username;
             setCurrentUser(profile.username);
-            setStorageItem(STORAGE_KEYS.CURRENT_USER, profile.username);
+            setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
             setStorageItem(STORAGE_KEYS.IS_ADMIN, profile.is_admin ? 'true' : 'false');
           }
         }
-      }
-
-      // Handle recovery redirects
-      if (typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
-        if (currentSession) await supabase.auth.signOut();
-        router.replace('/auth/reset-password' + window.location.search + window.location.hash);
-        return;
       }
 
       const [races, drivers] = await Promise.all([
@@ -252,7 +249,7 @@ export default function Home() {
             round: parseInt(upcoming.round)
           };
           setNextRace(raceObj);
-          localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
+          setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
 
           const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
           const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
@@ -271,18 +268,21 @@ export default function Home() {
             if (pred) {
               finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
             } else {
-              const storageUser = authoritativeUser || localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || currentSession.user.id;
+              const storageUser = authoritativeUser || currentSession.user.id;
               const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
               if (cachedPred) finalPrediction = JSON.parse(cachedPred);
             }
-          } else if (authoritativeUser || currentUser) {
-            const userToFetch = authoritativeUser || currentUser;
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, userToFetch, raceObj.id));
+          } else if (authoritativeUser) {
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, authoritativeUser, raceObj.id));
             if (predStr) finalPrediction = JSON.parse(predStr);
           }
           
           if (mountedRef.current) {
-            setUserPrediction(finalPrediction);
+            // Only overwrite if we found something or if we are sure there's nothing
+            // This prevents the optimistic UI from disappearing during lazy sync
+            if (finalPrediction) {
+              setUserPrediction(finalPrediction);
+            }
             setLoading(false);
           }
         }
@@ -292,24 +292,17 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, router, currentUser]);
+  }, [supabase, currentUser]);
 
   useEffect(() => {
-    // Only perform full init on cold start or if we have no nextRace
-    if (sessionTracker.isInitialLoadNeeded() || !nextRace) {
-      init().then(() => {
-        sessionTracker.markInitialLoadComplete();
-      });
-    }
-    
-    // 3. Listen for App Resume
+    init();
     const handleResume = () => {
       console.log('Home: App resumed, re-initializing...');
       init();
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init, nextRace]);
+  }, [init]);
 
   useEffect(() => {
     if (!nextRace) return;
