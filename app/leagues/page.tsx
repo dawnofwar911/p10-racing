@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -9,7 +9,6 @@ import Link from 'next/link';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import { useAuth } from '@/components/AuthProvider';
-import { withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
 
 interface League {
   id: string;
@@ -18,79 +17,62 @@ interface League {
   created_at: string;
 }
 
+const supabase = createClient();
+
 function LeaguesContent() {
-  const supabase = createClient();
   const { session, isLoading: authLoading } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const mountedRef = useRef(true);
   
   const [newLeagueName, setNewLeagueName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [localGuests, setLocalGuests] = useState<string[]>([]);
 
   const fetchLeagues = useCallback(async (quiet = false) => {
-    if (!quiet && mountedRef.current) setLoading(true);
+    if (!quiet) setLoading(true);
     try {
-      console.log('Leagues: Fetching leagues...');
-      const { data, error } = await withTimeout(supabase
+      const { data, error } = await supabase
         .from('leagues')
         .select('*')
-        .order('created_at', { ascending: false }));
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (mountedRef.current) {
-        setLeagues(data || []);
-        localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
-      }
+      setLeagues(data || []);
+      localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
     } catch (err: unknown) {
-      console.error('Leagues: Fetch error:', err);
-      if (err instanceof Error && mountedRef.current) setError(err.message);
+      if (err instanceof Error) setError(err.message);
     } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, [supabase]);
-
-  const init = useCallback(async () => {
-    // 1. Load from cache first
-    const cached = localStorage.getItem('p10_cache_leagues');
-    let hasCache = false;
-    if (cached && mountedRef.current) {
-      setLeagues(JSON.parse(cached));
-      setLoading(false);
-      hasCache = true;
-    }
-    
-    // Load local guests for migration
-    const guestsData = JSON.parse(localStorage.getItem('p10_players') || '[]');
-    const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
-    if (mountedRef.current) setLocalGuests(guests);
-
-    if (session) {
-      await fetchLeagues(hasCache);
-    } else if (!authLoading && mountedRef.current) {
       setLoading(false);
     }
-  }, [session, authLoading, fetchLeagues]);
+  }, []);
 
   useEffect(() => {
-    mountedRef.current = true;
+    async function init() {
+      // 1. Load from cache first
+      const cached = localStorage.getItem('p10_cache_leagues');
+      let hasCache = false;
+      if (cached) {
+        setLeagues(JSON.parse(cached));
+        setLoading(false);
+        hasCache = true;
+      }
+      
+      // Load local guests for migration
+      const guestsData = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
+      setLocalGuests(guests);
+
+      if (session) {
+        fetchLeagues(hasCache);
+      } else if (!authLoading) {
+        setLoading(false);
+      }
+    }
     init();
-
-    const handleReady = () => {
-      console.log('Leagues: APP_READY received, re-initializing');
-      init();
-    };
-
-    window.addEventListener(APP_READY_EVENT, handleReady);
-    return () => {
-      mountedRef.current = false;
-      window.removeEventListener(APP_READY_EVENT, handleReady);
-    };
-  }, [init]);
+  }, [session, authLoading, fetchLeagues]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;
@@ -99,6 +81,7 @@ function LeaguesContent() {
     Haptics.impact({ style: ImpactStyle.Heavy });
 
     try {
+      // Find all predictions for this guest in localStorage
       let count = 0;
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -108,13 +91,17 @@ function LeaguesContent() {
         let raceId = '';
         let match = false;
 
+        // Pattern 1: final_pred_SEASON_USERNAME_ROUND
         if (key.startsWith('final_pred_')) {
           const parts = key.split('_');
           if (parts.length >= 5 && parts[3] === guestName) {
             season = parseInt(parts[2]);
             raceId = parts[4];
             match = true;
-          } else if (parts.length === 4 && parts[2] === guestName) {
+          } 
+          // Pattern 2: final_pred_USERNAME_ROUND (Old style)
+          else if (parts.length === 4 && parts[2] === guestName) {
+            season = CURRENT_SEASON; // Default to current
             raceId = parts[3];
             match = true;
           }
@@ -140,13 +127,15 @@ function LeaguesContent() {
           }
         }
       }
-      setSuccess(`Successfully imported ${count} predictions!`);
+      setSuccess(`Successfully imported ${count} predictions to your cloud account!`);
       
+      // Post-migration cleanup
       const currentGuests = JSON.parse(localStorage.getItem('p10_players') || '[]');
       const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
       localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
-      if (mountedRef.current) setLocalGuests(filteredGuests);
+      setLocalGuests(filteredGuests);
       
+      // Cleanup the actual prediction keys
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const key = localStorage.key(i);
         if (key && (key.includes(`_final_pred_${guestName}_`) || key.startsWith(`final_pred_${guestName}_`) || (key.startsWith('final_pred_') && key.includes(`_${guestName}_`)))) {
@@ -154,43 +143,71 @@ function LeaguesContent() {
         }
       }
     } catch (err: unknown) {
-      if (err instanceof Error) setError('Migration failed: ' + err.message);
+      if (err instanceof Error) {
+        setError('Migration failed: ' + err.message);
+      } else {
+        setError('Migration failed with an unknown error.');
+      }
     } finally {
-      if (mountedRef.current) setActionLoading(false);
+      setActionLoading(false);
     }
   };
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) return;
+    if (!session) {
+      setError('You must be signed in to create a league.');
+      return;
+    }
     setActionLoading(true);
     setError(null);
     setSuccess(null);
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
+      // 1. Insert league
       const { data: leaguesData, error: leagueError } = await supabase
         .from('leagues')
-        .insert([{ name: newLeagueName.trim(), created_by: session.user.id }])
+        .insert([{ 
+          name: newLeagueName.trim(), 
+          created_by: session.user.id 
+        }])
         .select();
 
       if (leagueError) throw leagueError;
-      const league = leaguesData?.[0];
-      if (!league) throw new Error('Failed to create league.');
 
+      if (!leaguesData || leaguesData.length === 0) {
+        throw new Error('League created but no data returned.');
+      }
+
+      const league = leaguesData[0];
+
+      // 2. Add creator as first member
       const { error: memberError } = await supabase
         .from('league_members')
-        .insert([{ league_id: league.id, user_id: session.user.id }]);
+        .insert([{ 
+          league_id: league.id, 
+          user_id: session.user.id 
+        }]);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        setError(`League created, but failed to join: ${memberError.message}`);
+      } else {
+        setSuccess(`League "${league.name}" created!`);
+        setNewLeagueName('');
+      }
 
-      setSuccess(`League "${league.name}" created!`);
-      setNewLeagueName('');
+      // 3. Refresh list
       fetchLeagues();
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+      console.error('Full creation flow error:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred during league creation.');
+      }
     } finally {
-      if (mountedRef.current) setActionLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -198,26 +215,33 @@ function LeaguesContent() {
     e.preventDefault();
     if (!session) return;
     setActionLoading(true);
-    setError(null);
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
       const code = inviteCode.trim().toLowerCase();
-      const { data: joinData, error: joinError } = await supabase.rpc('join_league_by_code', { code });
+      
+      // Use the RPC to join. It returns {id, name} on success or throws an error.
+      const { data: joinData, error: joinError } = await supabase
+        .rpc('join_league_by_code', { code });
 
-      if (joinError) throw joinError;
+      if (joinError) {
+        console.error('Join error:', joinError);
+        throw new Error(joinError.message || 'Failed to join league. Check code.');
+      }
 
       setSuccess(`Joined league "${joinData.name}"!`);
       setInviteCode('');
-      fetchLeagues();
+      if (session?.user?.id) fetchLeagues();
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
     } finally {
-      if (mountedRef.current) setActionLoading(false);
+      setActionLoading(false);
     }
   };
 
-  if (authLoading) return <LoadingView />;
+  if (authLoading) {
+    return <LoadingView />;
+  }
 
   return (
     <PullToRefresh onRefresh={() => fetchLeagues(false)}>

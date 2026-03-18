@@ -1,9 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { APP_RESUME_EVENT, APP_READY_EVENT } from '@/lib/utils/sync-queue';
 
 export interface Profile {
   id: string;
@@ -26,11 +25,11 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
 });
 
+const supabase = createClient();
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const mountedRef = useRef(true);
   
   // 1. Synchronously initialize profile from cache if available
   const [profile, setProfile] = useState<Profile | null>(() => {
@@ -47,8 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   });
   
+  // Try to synchronously read standard local storage if possible to prevent initial flash
   const [isLoading, setIsLoading] = useState(() => {
     if (typeof window !== 'undefined') {
+       // Only start as loading if we're fairly sure they have a session to prevent flash.
+       // If they're a guest (no p10_has_session), we show the guest UI immediately.
        return localStorage.getItem('p10_has_session') === 'true';
     }
     return true;
@@ -71,38 +73,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('p10_is_admin');
       localStorage.removeItem('p10_cached_profile');
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
-    mountedRef.current = true;
+    let mounted = true;
     
-    async function initAuth() {
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      if (mountedRef.current) {
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
+    // Always fetch latest session to be sure, regardless of optimistic state.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (mounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
         
-        if (initialSession) {
+        if (session) {
           localStorage.setItem('p10_has_session', 'true');
-          await fetchProfile(initialSession.user.id);
+          await fetchProfile(session.user.id);
+        } else {
+          localStorage.removeItem('p10_has_session');
+          localStorage.removeItem('p10_is_admin');
+          localStorage.removeItem('p10_cached_profile');
+          setProfile(null);
         }
         setIsLoading(false);
-        console.log('AuthProvider: Initial load complete, broadcasting APP_READY');
-        window.dispatchEvent(new CustomEvent(APP_READY_EVENT));
       }
-    }
+    });
 
-    initAuth();
-
+    // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        if (mountedRef.current) {
-          setSession(newSession);
-          setUser(newSession?.user ?? null);
+      async (_event, session) => {
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
           
-          if (newSession) {
+          if (session) {
             localStorage.setItem('p10_has_session', 'true');
-            await fetchProfile(newSession.user.id);
+            await fetchProfile(session.user.id);
           } else {
             localStorage.removeItem('p10_has_session');
             localStorage.removeItem('p10_is_admin');
@@ -115,35 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
-      mountedRef.current = false;
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile, supabase]);
-
-  useEffect(() => {
-    const handleResume = async () => {
-      console.log('AuthProvider: APP_RESUME detected, refreshing session...');
-      
-      // Force a session refresh to get new JWT
-      const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
-      
-      if (error) {
-        console.error('AuthProvider: Session refresh error:', error);
-      }
-
-      if (mountedRef.current && refreshedSession) {
-        setSession(refreshedSession);
-        setUser(refreshedSession.user);
-        await fetchProfile(refreshedSession.user.id);
-      }
-
-      console.log('AuthProvider: Refresh complete, broadcasting APP_READY');
-      window.dispatchEvent(new CustomEvent(APP_READY_EVENT));
-    };
-
-    window.addEventListener(APP_RESUME_EVENT, handleResume);
-    return () => window.removeEventListener(APP_RESUME_EVENT, handleResume);
-  }, [fetchProfile, supabase]);
+  }, [fetchProfile]);
 
   return (
     <AuthContext.Provider value={{ session, user, profile, isLoading }}>
