@@ -69,7 +69,7 @@ export default function Home() {
   // Reactive Prediction Load: When auth status or next race changes, update prediction
   useEffect(() => {
     const loadPrediction = async () => {
-      if (!nextRace || isAuthLoading) return;
+      if (!nextRace) return;
 
       let finalPrediction: HomePrediction | null = null;
       
@@ -94,12 +94,16 @@ export default function Home() {
       }
 
       if (mountedRef.current) {
-        setUserPrediction(prev => (prev?.p10 === finalPrediction?.p10 && prev?.dnf === finalPrediction?.dnf) ? prev : finalPrediction);
+        setUserPrediction(prev => {
+          if (!finalPrediction) return null;
+          if (prev?.p10 === finalPrediction.p10 && prev?.dnf === finalPrediction.dnf) return prev;
+          return finalPrediction;
+        });
       }
     };
 
     loadPrediction();
-  }, [currentUser, hasSession, session, isAuthLoading, nextRace?.id, nextRace, supabase]);
+  }, [currentUser, session, nextRace, supabase]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -233,12 +237,11 @@ export default function Home() {
   }, [supabase]);
 
   useEffect(() => {
-    // Only perform full init on cold start or if we have no nextRace
-    if (sessionTracker.isInitialLoadNeeded() || !nextRace) {
-      init().then(() => {
-        sessionTracker.markInitialLoadComplete();
-      });
-    }
+    // Perform full init on cold start or if we have no nextRace
+    // Also re-init if the user changes to ensure we have fresh season data
+    init().then(() => {
+      sessionTracker.markInitialLoadComplete();
+    });
     
     // Listen for App Resume
     const handleResume = () => {
@@ -247,7 +250,7 @@ export default function Home() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init, nextRace]);
+  }, [init, currentUser, session?.user.id, nextRace, session]);
 
   useEffect(() => {
     if (!nextRace) return;

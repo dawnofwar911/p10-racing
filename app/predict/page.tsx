@@ -88,8 +88,6 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
-    if (isAuthLoading) return; // Wait for auth to be stable before syncing predictions
-
     try {
       // Load grid and community from cache if available (keyed by round)
       if (nextRace && mountedRef.current) {
@@ -231,7 +229,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, isAuthLoading, nextRace?.round, nextRace]);
+  }, [supabase, session, username, nextRace]);
 
   useEffect(() => {
     init();

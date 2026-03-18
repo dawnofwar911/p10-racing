@@ -25,7 +25,7 @@ function LeaguesContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const mountedRef = useRef(true);
-  const { session, isAuthLoading } = useAuth();
+  const { session } = useAuth();
 
   // 1. Synchronous Cache Initialization
   const [leagues, setLeagues] = useState<League[]>(() => {
@@ -70,7 +70,6 @@ function LeaguesContent() {
   }, [supabase]);
 
   const init = useCallback(async () => {
-    if (isAuthLoading) return;
     try {
       const isFirstView = sessionTracker.isFirstView('leagues');
       
@@ -91,10 +90,10 @@ function LeaguesContent() {
 
       const joinCode = searchParams.get('join');
       if (joinCode && mountedRef.current) setInviteCode(joinCode);
-    } catch (err) {
+      } catch (err) {
       console.error('Leagues: Init error:', err);
-    }
-  }, [fetchLeagues, searchParams, leagues.length, session, isAuthLoading]);
+      }
+      }, [fetchLeagues, searchParams, leagues.length, session]);
 
   useEffect(() => {
     init();
@@ -103,7 +102,7 @@ function LeaguesContent() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init]);
+  }, [init, session?.user.id]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;

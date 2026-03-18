@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, setStorageItem, removeStorageItem, STORAGE_UPDATE_EVENT } from '@/lib/utils/storage';
 
 interface AuthContextType {
@@ -51,17 +52,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getSession = useCallback(async () => {
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       setSession(currentSession);
 
       if (currentSession) {
         setHasSession(true);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
-        const { data: profile } = await supabase
+        const { data: profile } = await withTimeout(supabase
           .from('profiles')
           .select('username, is_admin')
           .eq('id', currentSession.user.id)
-          .single();
+          .single());
         
         if (profile) {
           setCurrentUser(profile.username);
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
           setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!profile.is_admin));
         } else {
-          const fallback = currentSession.user.email?.split('@')[0] || 'User';
+          const fallback = currentSession.user.email?.split('@')[0] || `User_${currentSession.user.id.substring(0, 5)}`;
           setCurrentUser(fallback);
           setStorageItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
         }

@@ -12,7 +12,6 @@ import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
-import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
 
 interface LeaderboardPlayer {
@@ -106,21 +105,16 @@ export default function LeaderboardPage() {
   }, [supabase, view, session?.user?.id]);
 
   useEffect(() => {
-    const isFirstView = sessionTracker.isFirstView('leaderboard');
+    // Only calculate if we have no data, OR it's the first view, OR the user changed
+    calculate(leaderboard.length > 0);
     
-    // Only calculate if we have no data, OR it's the first time viewing this session
-    if (leaderboard.length === 0 || isFirstView) {
-      calculate(leaderboard.length > 0);
-    }
-    
-    // Listen for app resume, but don't automatically refresh leaderboard
-    // unless the user pulls down. This respects the "last known state" request.
+    // Listen for app resume
     const handleResume = () => {
       console.log('Leaderboard: App resumed (background).');
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate, leaderboard.length]);
+  }, [calculate, session?.user.id, leaderboard.length]);
 
   // Real-time subscription
   useEffect(() => {
