@@ -42,8 +42,7 @@ export default function Home() {
   const mountedRef = useRef(true);
   
   // Use Global Auth Context
-  const { currentUser, hasSession, session, isAuthLoading } = useAuth();
-  const syncId = sessionTracker.getSyncId();
+  const { currentUser, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
 
   // 1. Synchronous Cache Initialization (Zero Pop-in)
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
@@ -73,7 +72,7 @@ export default function Home() {
     return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
   });
 
-  // Reactive Prediction Load: Runs when auth status or next race changes
+  // Reactive Prediction Load: Runs when auth status, sync version or next race changes
   useEffect(() => {
     const loadPrediction = async () => {
       if (!nextRace) return;
@@ -121,7 +120,7 @@ export default function Home() {
     }
 
     loadPrediction();
-  }, [currentUser, session, nextRace, supabase, userPrediction, syncId]);
+  }, [currentUser, session, nextRace, supabase, userPrediction, syncVersion]);
 
   // Reactive Storage Listener: If predictions change on another page, update here immediately
   useEffect(() => {
@@ -150,7 +149,7 @@ export default function Home() {
 
     window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace, syncId]);
+  }, [currentUser, nextRace, syncVersion]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -293,7 +292,7 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, nextRace, allDrivers.length, session, currentUser, syncId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, nextRace, allDrivers.length, session, currentUser, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
@@ -301,12 +300,11 @@ export default function Home() {
     // Listen for App Resume
     const handleResume = () => {
       console.log('Home: App resumed, re-initializing...');
-      sessionTracker.resetInitialLoad();
-      init();
+      triggerRefresh();
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init]);
+  }, [init, triggerRefresh]);
 
   useEffect(() => {
     if (!nextRace) return;

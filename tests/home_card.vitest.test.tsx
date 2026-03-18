@@ -11,7 +11,9 @@ vi.mock('@/components/AuthProvider', () => ({
     session: null,
     hasSession: false,
     isAuthLoading: false,
+    syncVersion: 0,
     logout: vi.fn(),
+    triggerRefresh: vi.fn(),
   }),
 }));
 
@@ -54,8 +56,7 @@ vi.mock('@/lib/utils/session', () => ({
     isFirstView: () => true,
     isInitialLoadNeeded: () => true,
     markInitialLoadComplete: vi.fn(),
-    resetInitialLoad: vi.fn(),
-    getSyncId: () => 0,
+    resetVisitedPages: vi.fn(),
   }
 }));
 

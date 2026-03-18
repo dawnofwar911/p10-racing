@@ -9,8 +9,6 @@ class SessionTracker {
   // Map of session fingerprint (e.g. user ID) to set of visited page IDs
   private visitedPagesMap: Map<string, Set<string>> = new Map();
   private initialLoadComplete: boolean = false;
-  // Incrementing ID to force re-renders/re-syncs
-  private syncId: number = 0;
 
   private constructor() {}
 
@@ -49,24 +47,15 @@ class SessionTracker {
   }
 
   /**
-   * Resets the initial load flag to force a fresh data sync (e.g. after login or resume).
+   * Resets the visited pages tracking to force a fresh data sync.
    */
-  public resetInitialLoad() {
-    this.initialLoadComplete = false;
+  public resetVisitedPages() {
     this.visitedPagesMap.clear();
-    this.syncId++;
+    this.initialLoadComplete = false;
   }
 
   public isInitialLoadNeeded(): boolean {
     return !this.initialLoadComplete;
-  }
-
-  /**
-   * Returns a unique ID for the current sync session.
-   * Changes whenever resetInitialLoad is called.
-   */
-  public getSyncId(): number {
-    return this.syncId;
   }
 }
 

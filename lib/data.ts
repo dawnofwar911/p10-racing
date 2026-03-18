@@ -59,6 +59,7 @@ export interface LeaderboardEntry {
     p10Points: number;
     dnfPoints: number;
     p10Driver: string;
+    dnfDriver: string;
     actualP10Pos: number;
   };
   history?: { 

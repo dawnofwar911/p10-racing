@@ -13,8 +13,10 @@ interface AuthContextType {
   isAdmin: boolean;
   hasSession: boolean;
   isAuthLoading: boolean;
+  syncVersion: number;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  triggerRefresh: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,8 +25,10 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   hasSession: false,
   isAuthLoading: true,
+  syncVersion: 0,
   logout: async () => {},
   refreshAuth: async () => {},
+  triggerRefresh: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -50,13 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [syncVersion, setSyncVersion] = useState(0);
+
+  const triggerRefresh = useCallback(() => {
+    sessionTracker.resetVisitedPages();
+    setSyncVersion(v => v + 1);
+  }, []);
 
   const getSession = useCallback(async () => {
     try {
       const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       
       if (currentSession) {
-        sessionTracker.resetInitialLoad(); // Priority Reset
+        triggerRefresh();
         setSession(currentSession);
         setHasSession(true);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
@@ -92,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsAuthLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, triggerRefresh]);
 
   useEffect(() => {
     getSession();
@@ -101,8 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       console.log('AuthProvider: Auth state change:', event);
       
-      // Force all pages to re-sync on auth change BEFORE updating state
-      sessionTracker.resetInitialLoad();
+      triggerRefresh();
       setSession(newSession);
 
       if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {
@@ -166,8 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const customEvent = e as CustomEvent<{ key: string; value?: string }>;
       const { key } = customEvent.detail || {};
       if (key === STORAGE_KEYS.CURRENT_USER || key === STORAGE_KEYS.CACHE_USERNAME || key === STORAGE_KEYS.HAS_SESSION || key === STORAGE_KEYS.IS_ADMIN) {
-        // Reset tracker so pages react to guest switches too BEFORE updating state
-        sessionTracker.resetInitialLoad();
+        triggerRefresh();
 
         const newUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         const newSessionStatus = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
@@ -186,10 +194,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(profileChannel);
       window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     };
-  }, [supabase, getSession, session?.user.id]);
+  }, [supabase, getSession, session?.user.id, triggerRefresh]);
 
   const logout = useCallback(async () => {
-    sessionTracker.resetInitialLoad();
+    triggerRefresh();
     setHasSession(false);
     setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
     removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
@@ -203,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     window.location.href = '/';
-  }, [supabase, session]);
+  }, [supabase, session, triggerRefresh]);
 
   const value = React.useMemo(() => ({
     session,
@@ -211,9 +219,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin,
     hasSession,
     isAuthLoading,
+    syncVersion,
     logout,
-    refreshAuth: getSession
-  }), [session, currentUser, isAdmin, hasSession, isAuthLoading, logout, getSession]);
+    refreshAuth: getSession,
+    triggerRefresh
+  }), [session, currentUser, isAdmin, hasSession, isAuthLoading, syncVersion, logout, getSession, triggerRefresh]);
 
   return (
     <AuthContext.Provider value={value}>
