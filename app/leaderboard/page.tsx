@@ -28,6 +28,12 @@ export default function LeaderboardPage() {
   const [view, setView] = useState<'global' | 'local'>('global');
   const mountedRef = useRef(true);
 
+  // Dedicated effect for true mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const calculate = useCallback(async (quiet = false) => {
     try {
       if (!quiet && mountedRef.current) setLoading(true);
@@ -40,7 +46,9 @@ export default function LeaderboardPage() {
       let playersData: LeaderboardPlayer[] = [];
 
       if (view === 'global') {
-        const { data: sessionData } = await withTimeout(supabase.auth.getSession());
+        const { data: sessionData, error: sessionError } = await withTimeout(supabase.auth.getSession());
+        if (sessionError) throw sessionError;
+        
         const session = sessionData?.session;
         const currentUserId = session?.user?.id;
 
@@ -103,8 +111,6 @@ export default function LeaderboardPage() {
   }, [view, supabase]);
 
   useEffect(() => {
-    mountedRef.current = true;
-    
     if (view === 'global') {
       const cached = localStorage.getItem('p10_cache_leaderboard');
       if (cached && mountedRef.current) {
@@ -128,7 +134,6 @@ export default function LeaderboardPage() {
     window.addEventListener(APP_READY_EVENT, handleReady);
 
     return () => {
-      mountedRef.current = false;
       window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
       window.removeEventListener(APP_READY_EVENT, handleReady);
     };

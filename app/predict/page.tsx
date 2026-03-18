@@ -18,7 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
+import { addToSyncQueue, SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -59,6 +59,12 @@ function PredictPage() {
   const mountedRef = useRef(true);
   
   const searchParams = useSearchParams();
+
+  // Dedicated effect for true mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     function handleOnline() { setIsOffline(false); }
@@ -190,11 +196,13 @@ function PredictPage() {
             });
           }
         }
-        setStartingGrid(finalGrid);
-        localStorage.setItem(`p10_cache_grid_${currentRaceObj.round}`, JSON.stringify(finalGrid));
+        if (mountedRef.current) {
+          setStartingGrid(finalGrid);
+          localStorage.setItem(`p10_cache_grid_${currentRaceObj.round}`, JSON.stringify(finalGrid));
+        }
 
         if (now.getTime() > new Date(`${currentRaceObj.date}T${currentRaceObj.time}`).getTime() + 120000 || finished) {
-          setIsLocked(true);
+          if (mountedRef.current) setIsLocked(true);
         }
 
         const loadLocalFallback = () => {
@@ -211,13 +219,15 @@ function PredictPage() {
         // Fresh Prediction Load (Supabase Gold Standard)
         if (session) {
           try {
-            const { data: dbPred } = await withTimeout(supabase
+            const { data: dbPred, error: dbPredError } = await withTimeout(supabase
               .from('predictions')
               .select('*')
               .eq('user_id', session.user.id)
               .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)
-              .maybeSingle()) as { data: DbPrediction | null };
+              .maybeSingle()) as { data: DbPrediction | null, error: { message: string } | null };
             
+            if (dbPredError) throw dbPredError;
+
             if (dbPred && mountedRef.current) {
               setP10Driver(dbPred.p10_driver_id);
               setDnfDriver(dbPred.dnf_driver_id);
@@ -234,13 +244,13 @@ function PredictPage() {
         }
 
         // Fetch Community
-        const { data: dbPreds, error: predsError } = await withTimeout(supabase
+        const { data: dbPreds, error: dbPredsError } = await withTimeout(supabase
           .from('predictions')
           .select('user_id, p10_driver_id, dnf_driver_id')
           .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)) as { data: { user_id: string; p10_driver_id: string; dnf_driver_id: string }[] | null, error: { message: string } | null };
 
-        if (predsError) {
-          console.error('Predict: Error fetching community predictions:', predsError.message);
+        if (dbPredsError) {
+          console.error('Predict: Error fetching community predictions:', dbPredsError.message);
         }
 
         if (dbPreds && mountedRef.current) {
@@ -280,7 +290,6 @@ function PredictPage() {
   }, [session, supabase]);
 
   useEffect(() => {
-    mountedRef.current = true;
     init();
 
     const handleSyncComplete = () => {
@@ -297,7 +306,6 @@ function PredictPage() {
     window.addEventListener(APP_READY_EVENT, handleReady);
 
     return () => {
-      mountedRef.current = false;
       window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
       window.removeEventListener(APP_READY_EVENT, handleReady);
     };
@@ -327,16 +335,18 @@ function PredictPage() {
 
         if (navigator.onLine) {
           // 1. Save to Cloud (Supabase)
-          const { error } = await supabase
+          const { error } = await withTimeout(supabase
             .from('predictions')
-            .upsert(payload, { onConflict: 'user_id, race_id' });
+            .upsert(payload, { onConflict: 'user_id, race_id' }));
           
           if (error) {
             console.error('Supabase error, falling back to local queue', error);
-            // In a real implementation, we would call addToSyncQueue here
+            await addToSyncQueue(payload);
+            setIsPendingSync(true);
           }
         } else {
-          // In a real implementation, we would call addToSyncQueue here
+          await addToSyncQueue(payload);
+          setIsPendingSync(true);
         }
 
         // 2. Mirror to LocalStorage for instant UI & offline support

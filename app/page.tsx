@@ -17,7 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
 
 interface HomeRace {
   id: string;
@@ -57,6 +57,12 @@ export default function Home() {
 
   const router = useRouter();
   const { showNotification } = useNotification();
+
+  // Dedicated effect for true mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const init = useCallback(async () => {
     console.log('Home: init() started. Session ready:', !!session);
@@ -229,18 +235,22 @@ export default function Home() {
   }, [session, router, supabase]);
 
   useEffect(() => {
-    mountedRef.current = true;
     init();
     
+    const handleSyncComplete = () => {
+      console.log('Home: Sync complete event received');
+      init();
+    };
     const handleReady = () => {
       console.log('Home: APP_READY received, re-initializing data');
       init();
     };
 
+    window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
     window.addEventListener(APP_READY_EVENT, handleReady);
 
     return () => {
-      mountedRef.current = false;
+      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
       window.removeEventListener(APP_READY_EVENT, handleReady);
     };
   }, [init]);
@@ -256,10 +266,10 @@ export default function Home() {
       const distance = target - now;
       const fourHoursLater = target + 4 * 60 * 60 * 1000;
 
-      if (distance < 0) {
+      if (distance < 0 && mountedRef.current) {
         setShowCountdown(false);
         setIsRaceInProgress(now < fourHoursLater);
-      } else {
+      } else if (mountedRef.current) {
         setShowCountdown(true);
         setIsRaceInProgress(false);
         setCountdown({

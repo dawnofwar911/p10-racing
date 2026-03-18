@@ -32,6 +32,12 @@ function LeaguesContent() {
   const [inviteCode, setInviteCode] = useState('');
   const [localGuests, setLocalGuests] = useState<string[]>([]);
 
+  // Dedicated effect for true mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const fetchLeagues = useCallback(async (quiet = false) => {
     if (!quiet && mountedRef.current) setLoading(true);
     try {
@@ -77,7 +83,6 @@ function LeaguesContent() {
   }, [session, authLoading, fetchLeagues]);
 
   useEffect(() => {
-    mountedRef.current = true;
     init();
 
     const handleReady = () => {
@@ -87,7 +92,6 @@ function LeaguesContent() {
 
     window.addEventListener(APP_READY_EVENT, handleReady);
     return () => {
-      mountedRef.current = false;
       window.removeEventListener(APP_READY_EVENT, handleReady);
     };
   }, [init]);
@@ -126,7 +130,7 @@ function LeaguesContent() {
           const pred = JSON.parse(predStr);
           
           if (pred) {
-            const { error: upsertError } = await supabase
+            const { error: upsertError } = await withTimeout(supabase
               .from('predictions')
               .upsert({
                 user_id: session.user.id,
@@ -134,13 +138,13 @@ function LeaguesContent() {
                 p10_driver_id: pred.p10,
                 dnf_driver_id: pred.dnf,
                 updated_at: new Date().toISOString()
-              }, { onConflict: 'user_id, race_id' });
+              }, { onConflict: 'user_id, race_id' }));
             
             if (!upsertError) count++;
           }
         }
       }
-      setSuccess(`Successfully imported ${count} predictions!`);
+      if (mountedRef.current) setSuccess(`Successfully imported ${count} predictions!`);
       
       const currentGuests = JSON.parse(localStorage.getItem('p10_players') || '[]');
       const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
@@ -169,24 +173,26 @@ function LeaguesContent() {
     Haptics.impact({ style: ImpactStyle.Medium });
 
     try {
-      const { data: leaguesData, error: leagueError } = await supabase
+      const { data: leaguesData, error: leagueError } = await withTimeout(supabase
         .from('leagues')
         .insert([{ name: newLeagueName.trim(), created_by: session.user.id }])
-        .select();
+        .select());
 
       if (leagueError) throw leagueError;
       const league = leaguesData?.[0];
       if (!league) throw new Error('Failed to create league.');
 
-      const { error: memberError } = await supabase
+      const { error: memberError } = await withTimeout(supabase
         .from('league_members')
-        .insert([{ league_id: league.id, user_id: session.user.id }]);
+        .insert([{ league_id: league.id, user_id: session.user.id }]));
 
       if (memberError) throw memberError;
 
-      setSuccess(`League "${league.name}" created!`);
-      setNewLeagueName('');
-      fetchLeagues();
+      if (mountedRef.current) {
+        setSuccess(`League "${league.name}" created!`);
+        setNewLeagueName('');
+        fetchLeagues();
+      }
     } catch (err: unknown) {
       if (err instanceof Error && mountedRef.current) setError(err.message);
     } finally {
@@ -203,13 +209,15 @@ function LeaguesContent() {
 
     try {
       const code = inviteCode.trim().toLowerCase();
-      const { data: joinData, error: joinError } = await supabase.rpc('join_league_by_code', { code });
+      const { data: joinData, error: joinError } = await withTimeout(supabase.rpc('join_league_by_code', { code }));
 
       if (joinError) throw joinError;
 
-      setSuccess(`Joined league "${joinData.name}"!`);
-      setInviteCode('');
-      fetchLeagues();
+      if (mountedRef.current) {
+        setSuccess(`Joined league "${joinData.name}"!`);
+        setInviteCode('');
+        fetchLeagues();
+      }
     } catch (err: unknown) {
       if (err instanceof Error && mountedRef.current) setError(err.message);
     } finally {

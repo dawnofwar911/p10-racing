@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { APP_RESUME_EVENT, APP_READY_EVENT } from '@/lib/utils/sync-queue';
+import { APP_RESUME_EVENT, APP_READY_EVENT, withTimeout } from '@/lib/utils/sync-queue';
 
 export interface Profile {
   id: string;
@@ -54,22 +54,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   });
 
+  // Dedicated effect for true mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await withTimeout(supabase
         .from('profiles')
         .select('id, username, is_admin, avatar_url')
         .eq('id', userId)
-        .maybeSingle();
+        .maybeSingle());
       
       if (error) throw error;
 
-      if (data) {
+      if (data && mountedRef.current) {
         const profileData = data as Profile;
         setProfile(profileData);
         localStorage.setItem('p10_is_admin', profileData.is_admin ? 'true' : 'false');
         localStorage.setItem('p10_cached_profile', JSON.stringify(profileData));
-      } else {
+      } else if (mountedRef.current) {
         setProfile(null);
         localStorage.removeItem('p10_is_admin');
         localStorage.removeItem('p10_cached_profile');
@@ -80,11 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   useEffect(() => {
-    mountedRef.current = true;
-    
     async function initAuth() {
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        const { data: { session: initialSession } } = await withTimeout(supabase.auth.getSession());
         if (mountedRef.current) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
@@ -101,8 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error('AuthProvider: initAuth error:', err);
-        setIsLoading(false);
-        window.dispatchEvent(new CustomEvent(APP_READY_EVENT));
+        if (mountedRef.current) {
+          setIsLoading(false);
+          window.dispatchEvent(new CustomEvent(APP_READY_EVENT));
+        }
       }
     }
 
@@ -110,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
+        console.log('AuthProvider: onAuthStateChange:', _event);
         if (mountedRef.current) {
           setSession(newSession);
           setUser(newSession?.user ?? null);
@@ -129,7 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
-      mountedRef.current = false;
       subscription.unsubscribe();
     };
   }, [fetchProfile, supabase]);
@@ -140,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       try {
         // Force a session refresh to get new JWT
-        const { data: { session: refreshedSession }, error } = await supabase.auth.refreshSession();
+        const { data: { session: refreshedSession }, error } = await withTimeout(supabase.auth.refreshSession());
         
         if (error) {
           console.error('AuthProvider: Session refresh error:', error);
@@ -153,16 +159,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await fetchProfile(refreshedSession.user.id);
           } else {
             // If no session after refresh, check if we still have one
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
+            const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
+            if (mountedRef.current) {
+              setSession(currentSession);
+              setUser(currentSession?.user ?? null);
+            }
           }
         }
       } catch (err) {
         console.error('AuthProvider: handleResume critical error:', err);
       } finally {
-        console.log('AuthProvider: Refresh complete, broadcasting APP_READY');
-        window.dispatchEvent(new CustomEvent(APP_READY_EVENT));
+        if (mountedRef.current) {
+          console.log('AuthProvider: Refresh complete, broadcasting APP_READY');
+          window.dispatchEvent(new CustomEvent(APP_READY_EVENT));
+        }
       }
     };
 
