@@ -401,15 +401,18 @@ function PredictPage() {
   // Pre-auth selection summary check
   const getGuestSelection = () => {
     if (typeof window === 'undefined' || !nextRace) return null;
-    // Check all local storage for ANY unsaved picks for this race
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(`final_pred_${CURRENT_SEASON}_`) && key.endsWith(`_${nextRace.id}`)) {
-        try {
-          return JSON.parse(localStorage.getItem(key)!) as CommunityPrediction;
-        } catch { return null; }
+    
+    try {
+      const players: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+      for (const player of players) {
+        const key = getPredictionKey(CURRENT_SEASON, player, nextRace.id);
+        const val = localStorage.getItem(key);
+        if (val) {
+          return JSON.parse(val) as CommunityPrediction;
+        }
       }
-    }
+    } catch { return null; }
+    
     return null;
   };
   const guestSelection = getGuestSelection();
