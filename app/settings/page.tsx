@@ -1,27 +1,68 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
-import { useAuth } from '@/components/AuthProvider';
-import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
-
-const supabase = createClient();
+import { withTimeout } from '@/lib/utils/sync-queue';
 
 export default function SettingsPage() {
-  const { session, profile, isLoading: authLoading } = useAuth();
+  const supabase = createClient();
+  const { showNotification } = useNotification();
+  const mountedRef = useRef(true);
+
+  // 1. Synchronous Cache Initialization
+  const [isAdmin, setIsAdmin] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('p10_is_admin') === 'true';
+  });
+
+  const [session, setSession] = useState<Session | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
-  const { showNotification } = useNotification();
-  
+
+  // Lifecycle
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const init = useCallback(async () => {
+    try {
+      // 2. Truth check
+      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
+      if (mountedRef.current) setSession(currentSession);
+
+      if (currentSession) {
+        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', currentSession.user.id).maybeSingle();
+        if (mountedRef.current) {
+          setIsAdmin(!!profile?.is_admin);
+          localStorage.setItem('p10_is_admin', profile?.is_admin ? 'true' : 'false');
+        }
+      }
+    } catch (err) {
+      console.error('Settings: Init error:', err);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    init();
+    const handleResume = () => {
+      console.log('Settings: App resumed, refreshing...');
+      init();
+    };
+    window.addEventListener('p10:app_resume', handleResume);
+    return () => window.removeEventListener('p10:app_resume', handleResume);
+  }, [init]);
+
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
   };
@@ -32,7 +73,7 @@ export default function SettingsPage() {
     Haptics.notification({ type: NotificationType.Warning });
     
     try {
-      const { error } = await supabase.rpc('delete_user_data');
+      const { error } = await withTimeout(supabase.rpc('delete_user_data'));
       if (error) throw error;
 
       await supabase.auth.signOut();
@@ -41,15 +82,9 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Error deleting account:', err);
       showNotification('Failed to delete account. Please try again.', 'error');
-      setIsDeleting(false);
+      if (mountedRef.current) setIsDeleting(false);
     }
   };
-
-  if (authLoading) {
-    return <LoadingView />;
-  }
-
-  const isAdmin = !!profile?.is_admin;
 
   return (
     <>
@@ -156,12 +191,11 @@ export default function SettingsPage() {
             Version {packageInfo.version}
           </p>
           <p className="text-white opacity-10 extra-small">
-            Data provided by <a href="https://jolpi.ca" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
+            Data provided by <a href="https://api.jolpi.ca" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
           </p>
         </div>
       </Container>
 
-      {/* Reused Modals */}
       <BugReportModal show={showBugReport} onHide={() => setShowBugReport(false)} />
       
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="bg-dark border-secondary">

@@ -12,7 +12,6 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import PushNotificationHandler from '@/components/PushNotificationHandler';
 import PWAInstallHint from '@/components/PWAInstallHint';
 import { NotificationProvider } from '@/components/Notification';
-import { AuthProvider } from '@/components/AuthProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -38,27 +37,25 @@ export default function RootLayout({
   return (
     <html lang="en" data-bs-theme="dark">
       <body className={inter.className}>
-        <AuthProvider>
-          <NotificationProvider>
-            <NativeWrapper>
-              <PushNotificationHandler />
-              <AppNavbar />
-              <OfflineStatus />
-              
-              {/* THE PERMANENT SCROLL CONTAINER */}
-              <main id="main-scroll-container">
-                <Suspense fallback={<Loading />}>
-                  <PageTransition>
-                    {children}
-                  </PageTransition>
-                </Suspense>
-              </main>
+        <NotificationProvider>
+          <NativeWrapper>
+            <PushNotificationHandler />
+            <AppNavbar />
+            <OfflineStatus />
+            
+            {/* THE PERMANENT SCROLL CONTAINER */}
+            <main id="main-scroll-container">
+              <Suspense fallback={<Loading />}>
+                <PageTransition>
+                  {children}
+                </PageTransition>
+              </Suspense>
+            </main>
 
-              <PWAInstallHint />
-              <MobileBottomNav />
-            </NativeWrapper>
-          </NotificationProvider>
-        </AuthProvider>
+            <PWAInstallHint />
+            <MobileBottomNav />
+          </NativeWrapper>
+        </NotificationProvider>
       </body>
     </html>
   );

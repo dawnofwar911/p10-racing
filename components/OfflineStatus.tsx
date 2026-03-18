@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
-import { App } from '@capacitor/app';
-import { APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
 
 export default function OfflineStatus() {
   const [isOffline, setIsOffline] = useState(false);
@@ -16,20 +14,38 @@ export default function OfflineStatus() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const appStateListener = App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        console.log('OfflineStatus: App foregrounded, dispatching APP_RESUME');
-        window.dispatchEvent(new CustomEvent(APP_RESUME_EVENT));
-      }
-    });
-
     // Initial check
-    if (!navigator.onLine) setIsOffline(true);
+    if (typeof navigator !== 'undefined' && !navigator.onLine) setIsOffline(true);
+
+    // 1. App Resume Orchestration (Capacitor)
+    let resumeListener: { remove: () => void } | null = null;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        window.dispatchEvent(new CustomEvent('p10:app_resume'));
+      }
+    };
+
+    async function setupResume() {
+      try {
+        const { App } = await import('@capacitor/app');
+        resumeListener = await App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) {
+            console.log('App resumed (foreground). Dispatching refresh...');
+            window.dispatchEvent(new CustomEvent('p10:app_resume'));
+          }
+        });
+      } catch {
+        // Fallback for web: visibilitychange
+        document.addEventListener('visibilitychange', handleVisibility);
+      }
+    }
+    setupResume();
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      appStateListener.then(l => l.remove());
+      if (resumeListener) resumeListener.remove();
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
