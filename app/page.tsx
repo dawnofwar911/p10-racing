@@ -16,7 +16,7 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
@@ -52,9 +52,6 @@ export default function Home() {
   });
 
   const [loading, setLoading] = useState(!nextRace);
-  
-  // User Prediction is derived from the current user. 
-  // It starts out synchronous if we have a cache match, then updates reactively.
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
     if (typeof window === 'undefined') return null;
     const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
@@ -69,24 +66,40 @@ export default function Home() {
     return null;
   });
 
-  // Keep user prediction perfectly in sync with the global currentUser state
+  // Reactive Prediction Load: When auth status or next race changes, update prediction
   useEffect(() => {
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && currentUser) {
-      try {
-        const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, raceObj.id));
-        if (predStr) {
-          const parsed = JSON.parse(predStr);
-          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
-        } else {
-          setUserPrediction(null);
+    const loadPrediction = async () => {
+      if (!nextRace || isAuthLoading) return;
+
+      let finalPrediction: HomePrediction | null = null;
+      
+      // Try DB first if logged in
+      if (session) {
+        const { data: pred } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('race_id', `${CURRENT_SEASON}_${nextRace.id}`)
+          .maybeSingle();
+        
+        if (pred) {
+          finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
         }
-      } catch { setUserPrediction(null); }
-    } else if (!currentUser && !isAuthLoading) {
-      setUserPrediction(null);
-    }
-  }, [currentUser, isAuthLoading, nextRace]);
+      }
+
+      // If no DB result or not logged in, try cache
+      if (!finalPrediction && currentUser) {
+        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, nextRace.id));
+        if (cachedPred) finalPrediction = JSON.parse(cachedPred);
+      }
+
+      if (mountedRef.current) {
+        setUserPrediction(prev => (prev?.p10 === finalPrediction?.p10 && prev?.dnf === finalPrediction?.dnf) ? prev : finalPrediction);
+      }
+    };
+
+    loadPrediction();
+  }, [currentUser, hasSession, session, isAuthLoading, nextRace?.id, nextRace, supabase]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -140,13 +153,6 @@ export default function Home() {
 
   const init = useCallback(async () => {
     try {
-      // Handle recovery redirects
-      if (typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
-        if (session) await supabase.auth.signOut();
-        router.replace('/auth/reset-password' + window.location.search + window.location.hash);
-        return;
-      }
-
       const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
         fetchDrivers(CURRENT_SEASON)
@@ -211,42 +217,12 @@ export default function Home() {
             round: parseInt(upcoming.round)
           };
           setNextRace(raceObj);
-          setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
+          localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
 
           const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
           const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
           setIsLocked(now > lockTime);
-
-          // 3. Authoritative Prediction Sync
-          let finalPrediction: HomePrediction | null = null;
-          if (session) {
-            const { data: pred } = await supabase
-              .from('predictions')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
-              .maybeSingle();
-            
-            if (pred) {
-              finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-            } else {
-              const storageUser = currentUser || session.user.id;
-              const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
-              if (cachedPred) finalPrediction = JSON.parse(cachedPred);
-            }
-          } else if (currentUser) {
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, raceObj.id));
-            if (predStr) finalPrediction = JSON.parse(predStr);
-          }
-          
-          if (mountedRef.current) {
-            // Only overwrite if we found something or if we are sure there's nothing
-            // This prevents the optimistic UI from disappearing during lazy sync
-            if (finalPrediction) {
-              setUserPrediction(finalPrediction);
-            }
-            setLoading(false);
-          }
+          setLoading(false);
         }
       }
     } catch (error) {
@@ -254,7 +230,7 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, session, currentUser, router]);
+  }, [supabase]);
 
   useEffect(() => {
     // Only perform full init on cold start or if we have no nextRace
