@@ -54,11 +54,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const getSession = useCallback(async () => {
     try {
       const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
-      setSession(currentSession);
-
+      
       if (currentSession) {
+        sessionTracker.resetInitialLoad(); // Priority Reset
+        setSession(currentSession);
         setHasSession(true);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
+        
         const { data: profile } = await withTimeout(supabase
           .from('profiles')
           .select('username, is_admin')
@@ -76,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setStorageItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
         }
       } else {
+        setSession(null);
         setHasSession(false);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
         removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
@@ -97,10 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for Auth Changes (Login/Logout/Token Refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       console.log('AuthProvider: Auth state change:', event);
-      setSession(newSession);
       
-      // Force all pages to re-sync on auth change
+      // Force all pages to re-sync on auth change BEFORE updating state
       sessionTracker.resetInitialLoad();
+      setSession(newSession);
 
       if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {
         setHasSession(false);
@@ -136,11 +139,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    // Real-time Profile Subscription
+    const profileChannel = supabase
+      .channel('profile-updates')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles',
+        filter: session?.user.id ? `id=eq.${session.user.id}` : undefined
+      }, (payload) => {
+        const updated = payload.new as { username: string; is_admin: boolean };
+        console.log('AuthProvider: Profile updated in real-time:', updated);
+        if (updated.username) {
+          setCurrentUser(updated.username);
+          setStorageItem(STORAGE_KEYS.CACHE_USERNAME, updated.username);
+        }
+        if (updated.is_admin !== undefined) {
+          setIsAdmin(!!updated.is_admin);
+          setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!updated.is_admin));
+        }
+      })
+      .subscribe();
+
     // Listen for manual Storage Updates (e.g. Guest name changes in Predict page)
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ key: string; value?: string }>;
       const { key } = customEvent.detail || {};
       if (key === STORAGE_KEYS.CURRENT_USER || key === STORAGE_KEYS.CACHE_USERNAME || key === STORAGE_KEYS.HAS_SESSION || key === STORAGE_KEYS.IS_ADMIN) {
+        // Reset tracker so pages react to guest switches too BEFORE updating state
+        sessionTracker.resetInitialLoad();
+
         const newUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         const newSessionStatus = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
         const newIsAdmin = localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
@@ -148,9 +176,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(newUser);
         setHasSession(newSessionStatus);
         setIsAdmin(newIsAdmin);
-        
-        // Reset tracker so pages react to guest switches too
-        sessionTracker.resetInitialLoad();
       }
     };
 
@@ -158,11 +183,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       subscription.unsubscribe();
+      supabase.removeChannel(profileChannel);
       window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     };
-  }, [supabase, getSession]);
+  }, [supabase, getSession, session?.user.id]);
 
   const logout = useCallback(async () => {
+    sessionTracker.resetInitialLoad();
     setHasSession(false);
     setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
     removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);

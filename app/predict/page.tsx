@@ -139,10 +139,11 @@ function PredictPage() {
     }
 
     // 2. Demand-Driven Sync Check
-    const isFirstView = sessionTracker.isFirstView('predict');
+    const fingerprint = session?.user.id || currentUser || 'guest';
+    const isFirstView = sessionTracker.isFirstView('predict', fingerprint);
     const hasData = (nextRace || cachedRace) && (drivers.length >= 20) && (startingGrid.length > 0 || hasCachedGrid);
     
-    // Skip full background fetch if we've already synced this page this session AND have data
+    // Skip full background fetch if we've already synced this page for this user AND have data
     // EXCEPT if we are missing the current user's predictions in state
     if (!isFirstView && hasData && p10Driver && dnfDriver) {
       if (mountedRef.current) setLoadingRace(false);
@@ -297,7 +298,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver]);
+  }, [supabase, session, username, currentUser, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver]);
 
   useEffect(() => {
     init();

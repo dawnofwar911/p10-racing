@@ -13,6 +13,7 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
+import { sessionTracker } from '@/lib/utils/session';
 
 interface LeaderboardPlayer {
   username: string;
@@ -24,7 +25,7 @@ interface LeaderboardPlayer {
 export default function LeaderboardPage() {
   const supabase = createClient();
   const mountedRef = useRef(true);
-  const { session } = useAuth();
+  const { session, currentUser } = useAuth();
 
   // 1. Synchronous Cache Initialization
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => {
@@ -105,16 +106,23 @@ export default function LeaderboardPage() {
   }, [supabase, view, session?.user?.id]);
 
   useEffect(() => {
-    // Only calculate if we have no data, OR it's the first view, OR the user changed
-    calculate(leaderboard.length > 0);
+    const fingerprint = session?.user.id || currentUser || 'guest';
+    const isFirstView = sessionTracker.isFirstView('leaderboard', fingerprint);
+    
+    // Only calculate if we have no data, OR it's the first view for this user
+    if (leaderboard.length === 0 || isFirstView) {
+      calculate(leaderboard.length > 0);
+    }
     
     // Listen for app resume
     const handleResume = () => {
       console.log('Leaderboard: App resumed (background).');
+      sessionTracker.resetInitialLoad();
+      calculate(true);
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate, session?.user.id, leaderboard.length]);
+  }, [calculate, session?.user.id, currentUser, leaderboard.length]);
 
   // Real-time subscription
   useEffect(() => {

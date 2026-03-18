@@ -197,8 +197,10 @@ export default function Home() {
   }, []);
 
   const init = useCallback(async () => {
-    // Demand-Driven Sync: Skip if we've already synced this page this session and have data
-    const isFirstView = sessionTracker.isFirstView('home');
+    // Demand-Driven Sync: Skip if we've already synced this page for this user/session and have data
+    const fingerprint = session?.user.id || currentUser || 'guest';
+    const isFirstView = sessionTracker.isFirstView('home', fingerprint);
+    
     if (!isFirstView && nextRace && allDrivers.length >= 20) {
       if (mountedRef.current) setLoading(false);
       return;
@@ -290,7 +292,7 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, nextRace, allDrivers.length]);
+  }, [supabase, nextRace, allDrivers.length, session, currentUser]);
 
   useEffect(() => {
     init();

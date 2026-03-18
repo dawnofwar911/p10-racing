@@ -25,7 +25,7 @@ function LeaguesContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const mountedRef = useRef(true);
-  const { session } = useAuth();
+  const { session, currentUser } = useAuth();
 
   // 1. Synchronous Cache Initialization
   const [leagues, setLeagues] = useState<League[]>(() => {
@@ -71,7 +71,8 @@ function LeaguesContent() {
 
   const init = useCallback(async () => {
     try {
-      const isFirstView = sessionTracker.isFirstView('leagues');
+      const fingerprint = session?.user.id || currentUser || 'guest';
+      const isFirstView = sessionTracker.isFirstView('leagues', fingerprint);
       
       const guestsData = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
       const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
@@ -93,7 +94,7 @@ function LeaguesContent() {
       } catch (err) {
       console.error('Leagues: Init error:', err);
       }
-      }, [fetchLeagues, searchParams, leagues.length, session]);
+      }, [fetchLeagues, searchParams, leagues.length, session, currentUser]);
 
   useEffect(() => {
     init();
