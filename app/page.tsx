@@ -17,7 +17,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout, APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
 
 interface HomeRace {
   id: string;
@@ -231,8 +231,15 @@ export default function Home() {
     init();
     
     const handleSyncComplete = () => init();
+    const handleResume = () => init();
+
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+    window.addEventListener(APP_RESUME_EVENT, handleResume);
+
+    return () => {
+      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+      window.removeEventListener(APP_RESUME_EVENT, handleResume);
+    };
   }, [init]);
 
 

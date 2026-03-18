@@ -18,7 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { addToSyncQueue, SyncPayload, SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
+import { addToSyncQueue, SyncPayload, SYNC_COMPLETE_EVENT, withTimeout, APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -33,12 +33,6 @@ interface CommunityPrediction {
   username: string;
   p10: string;
   dnf: string;
-}
-
-interface CommunityPredictionData {
-  user_id: string;
-  p10_driver_id: string;
-  dnf_driver_id: string;
 }
 
 const supabase = createClient();
@@ -87,61 +81,73 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
-    try {
-      // 1. READ CACHE FIRST
-      const cachedNextRace = localStorage.getItem('p10_cache_next_race');
-      const cachedDrivers = localStorage.getItem('p10_cache_drivers');
-      const cachedUsername = localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user');
+    // 1. PHASE 1: SYNC/CACHE LOAD (Instant UI)
+    const cachedNextRace = localStorage.getItem('p10_cache_next_race');
+    const cachedDrivers = localStorage.getItem('p10_cache_drivers');
+    const cachedUsername = localStorage.getItem('p10_cache_username') || localStorage.getItem('p10_current_user');
 
-      if (cachedNextRace && cachedDrivers) {
-        try {
-          const parsedRace = JSON.parse(cachedNextRace);
-          const parsedDrivers = JSON.parse(cachedDrivers);
-          setNextRace(parsedRace);
-          setDrivers(parsedDrivers);
-          setLoadingRace(false);
+    if (cachedNextRace && cachedDrivers) {
+      try {
+        const parsedRace = JSON.parse(cachedNextRace);
+        const parsedDrivers = JSON.parse(cachedDrivers);
+        setNextRace(parsedRace);
+        setDrivers(parsedDrivers);
+        setLoadingRace(false);
 
-          // Load grid and community from cache if available (keyed by race_id)
-          const cachedGrid = localStorage.getItem(`p10_cache_grid_${parsedRace.round}`);
-          if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
+        // Load grid and community from cache if available (keyed by race_id)
+        const cachedGrid = localStorage.getItem(`p10_cache_grid_${parsedRace.round}`);
+        if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
 
-          const cachedCommunity = localStorage.getItem(`p10_cache_community_${parsedRace.round}`);
-          if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
-        } catch (e) {
-          console.error('Error parsing cache:', e);
+        const cachedCommunity = localStorage.getItem(`p10_cache_community_${parsedRace.round}`);
+        if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
+
+        // CRITICAL: Immediate local fallback for prediction persistence
+        const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || cachedUsername;
+        if (storageUser) {
+          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${parsedRace.id}`);
+          if (finalized) {
+            const parsed = JSON.parse(finalized);
+            setP10Driver(parsed.p10);
+            setDnfDriver(parsed.dnf);
+            setSubmitted(true);
+          }
         }
+      } catch (e) {
+        console.error('Error parsing cache:', e);
       }
+    }
 
-      if (cachedUsername) {
-        setUsername(cachedUsername);
-      }
+    if (cachedUsername) setUsername(cachedUsername);
 
-      // 2. Background Async Fetches
+    // 2. PHASE 2: BACKGROUND ASYNC REFRESH
+    try {
       let currentUsername = cachedUsername || '';
       if (session) {
-        const { data: profile } = await supabase
+        const { data: profile } = await withTimeout(supabase
           .from('profiles')
           .select('username')
           .eq('id', session.user.id)
-          .maybeSingle();
+          .maybeSingle());
         if (profile) {
-          currentUsername = profile.username;
-          setUsername(profile.username);
-          localStorage.setItem('p10_cache_username', profile.username);
+          const p = profile as { username: string };
+          currentUsername = p.username;
+          setUsername(p.username);
+          localStorage.setItem('p10_cache_username', p.username);
         }
       }
 
-      // 3. Get Race Data (Refresh)
-      const races = await fetchCalendar(CURRENT_SEASON);
-      const raceResultsMap = await fetchAllSimplifiedResults();
-      let currentRace: PredictRace | null = null;
+      const [races, raceResultsMap] = await Promise.all([
+        fetchCalendar(CURRENT_SEASON),
+        fetchAllSimplifiedResults()
+      ]);
+
       if (races.length > 0) {
         const now = new Date();
         const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
         setIsSeasonFinished(finished);
 
         const upcoming = races[activeIndex];
-        currentRace = {
+        const currentRaceObj: PredictRace = {
           id: upcoming.round,
           name: upcoming.raceName,
           circuit: upcoming.Circuit.circuitName,
@@ -149,23 +155,23 @@ function PredictPage() {
           time: upcoming.time || '00:00:00Z',
           round: parseInt(upcoming.round)
         };
-        setNextRace(currentRace);
-        localStorage.setItem('p10_cache_next_race', JSON.stringify(currentRace));
+        setNextRace(currentRaceObj);
+        localStorage.setItem('p10_cache_next_race', JSON.stringify(currentRaceObj));
 
         const apiDrivers = await fetchDrivers(CURRENT_SEASON);
         const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        // Ensure consistent sorting by team (matching Home page)
         finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
         setDrivers(finalDriverList);
         localStorage.setItem('p10_cache_drivers', JSON.stringify(finalDriverList));
 
+        // Fetch Grid
+        const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRaceObj.round);
         let finalGrid: ApiResult[] = [];
-        const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
-        if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
+        if (resultsData?.Results?.length) {
           finalGrid = resultsData.Results;
         } else {
-          const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
-          if (qualiGrid && qualiGrid.length > 0) {
+          const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRaceObj.round);
+          if (qualiGrid?.length) {
             const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
             const missing = finalDriverList.filter(d => !presentIds.has(d.id));
             finalGrid = [...qualiGrid];
@@ -185,113 +191,68 @@ function PredictPage() {
           }
         }
         setStartingGrid(finalGrid);
-        localStorage.setItem(`p10_cache_grid_${currentRace.round}`, JSON.stringify(finalGrid));
+        localStorage.setItem(`p10_cache_grid_${currentRaceObj.round}`, JSON.stringify(finalGrid));
 
-        const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
-        const lockTime = new Date(raceStartTime.getTime() + 120000);
-        if (now > lockTime || isSeasonFinished) {
+        if (now.getTime() > new Date(`${currentRaceObj.date}T${currentRaceObj.time}`).getTime() + 120000 || finished) {
           setIsLocked(true);
         }
 
-        const loadLocalFallback = () => {
-          const storageUser = localStorage.getItem('p10_cache_username') || session?.user?.id || currentUsername;
-          const finalized = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${currentRace!.id}`);
-          if (finalized) {
-            const parsed = JSON.parse(finalized);
-            setP10Driver(parsed.p10);
-            setDnfDriver(parsed.dnf);
-            setSubmitted(true);
-          }
-        };
-
+        // Fresh Prediction Load (Supabase Gold Standard)
         if (session) {
           try {
             const { data: dbPred } = await withTimeout(supabase
               .from('predictions')
               .select('*')
               .eq('user_id', session.user.id)
-              .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`)
-              .maybeSingle());
+              .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)
+              .maybeSingle()) as { data: DbPrediction | null };
             
             if (dbPred) {
-              const p = dbPred as DbPrediction;
-              setP10Driver(p.p10_driver_id);
-              setDnfDriver(p.dnf_driver_id);
+              setP10Driver(dbPred.p10_driver_id);
+              setDnfDriver(dbPred.dnf_driver_id);
               setSubmitted(true);
-            } else {
-              loadLocalFallback();
             }
           } catch (err) {
-            console.warn('Supabase pred fetch failed, trying fallback', err);
-            loadLocalFallback();
+            console.warn('Post-init Supabase check failed', err);
           }
-        } else if (currentUsername) {
-          loadLocalFallback();
         }
 
-        // 4. Fetch Community Predictions
-        // We fetch predictions and profiles separately to ensure reliability with RLS and joins
-        const { data: dbPreds, error: predsError } = await supabase
+        // Fetch Community
+        const { data: dbPreds } = await withTimeout(supabase
           .from('predictions')
           .select('user_id, p10_driver_id, dnf_driver_id')
-          .eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
+          .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)) as { data: { user_id: string; p10_driver_id: string; dnf_driver_id: string }[] | null };
 
-        if (predsError) {
-          console.error('Error fetching community predictions:', predsError);
-        }
-
-        let formattedDbPreds: CommunityPrediction[] = [];
-        const userIds = (dbPreds as unknown as CommunityPredictionData[] || []).map(p => p.user_id);
-
-        if (userIds.length > 0) {
-          const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, username')
-            .in('id', userIds);
-
-          if (profilesError) {
-            console.error('Error fetching profiles for community mapping:', profilesError);
-          }
-
-          const profilesMap = new Map(profiles?.map(p => [p.id, p.username]));
-          formattedDbPreds = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => ({
-            username: profilesMap.get(p.user_id) || 'Unknown',
+        if (dbPreds) {
+          const uIds = dbPreds.map((p) => p.user_id);
+          const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username').in('id', uIds)) as { data: { id: string; username: string }[] | null };
+          const pMap = new Map((profiles || []).map((p) => [p.id, p.username]));
+          const formatted = dbPreds.map((p) => ({
+            username: pMap.get(p.user_id) || 'Unknown',
             p10: p.p10_driver_id,
             dnf: p.dnf_driver_id
           }));
-        }
-
-        const otherDbPreds = formattedDbPreds.filter(p => p.username !== currentUsername);
-
-        const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-        const localPreds = playersList
-          .filter((p: string) => p !== currentUsername)
-          .map((p: string) => {
-            if (!currentRace) return null;
-            const pred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${p}_${currentRace.id}`);
-            return pred ? JSON.parse(pred) : null;
+          
+          const locals: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+          const localPreds = locals.filter(p => p !== currentUsername).map(p => {
+            const pr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${p}_${currentRaceObj.id}`);
+            return pr ? JSON.parse(pr) : null;
           }).filter(p => p !== null);
-        
-        const formattedLocalPreds: CommunityPrediction[] = localPreds.map(p => ({
-          username: p.username,
-          p10: p.p10,
-          dnf: p.dnf
-        }));
 
-        const combinedCommunity = [...otherDbPreds, ...formattedLocalPreds];
-        setCommunityPredictions(combinedCommunity);
-        localStorage.setItem(`p10_cache_community_${currentRace.round}`, JSON.stringify(combinedCommunity));
+          const combined = [...formatted.filter(f => !localPreds.some(lp => lp.username === f.username)), ...localPreds];
+          setCommunityPredictions(combined);
+          localStorage.setItem(`p10_cache_community_${currentRaceObj.round}`, JSON.stringify(combined));
+        }
       }
 
-      const parsedPlayers = JSON.parse(localStorage.getItem('p10_players') || '[]');
-      const existingPlayersList: string[] = (Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3);
-      setExistingPlayers(existingPlayersList);
+      const players = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      setExistingPlayers((Array.isArray(players) ? players : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
     } catch (error) {
       console.error('Init error:', error);
     } finally {
       setLoadingRace(false);
     }
-  }, [isSeasonFinished, session]);
+  }, [session]);
 
   useEffect(() => {
     init();
@@ -300,8 +261,15 @@ function PredictPage() {
       setIsPendingSync(false);
       init();
     };
+    const handleResume = () => init();
+
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+    window.addEventListener(APP_RESUME_EVENT, handleResume);
+
+    return () => {
+      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+      window.removeEventListener(APP_RESUME_EVENT, handleResume);
+    };
   }, [init]);
 
   const handleSubmit = async (e: React.FormEvent) => {
