@@ -37,15 +37,6 @@ vi.mock('@capacitor/splash-screen', () => ({
   },
 }));
 
-vi.mock('@capacitor/local-notifications', () => ({
-  LocalNotifications: {
-    schedule: vi.fn().mockResolvedValue({}),
-    cancel: vi.fn().mockResolvedValue({}),
-    checkPermissions: vi.fn().mockResolvedValue({ display: 'granted' }),
-    requestPermissions: vi.fn().mockResolvedValue({ display: 'granted' }),
-  },
-}));
-
 // --- Supabase / MSW Mocks ---
 export const server = setupServer();
 
