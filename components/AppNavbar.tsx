@@ -88,6 +88,16 @@ export default function AppNavbar() {
                 {item.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link 
+                href="/admin" 
+                onClick={triggerHaptic} 
+                className={`nav-link text-uppercase fw-bold letter-spacing-1 ${isOnAdminPage ? 'text-warning border-bottom border-warning border-2' : 'text-warning opacity-75'}`} 
+                style={{ fontSize: '0.75rem' }}
+              >
+                ADMIN
+              </Link>
+            )}
           </Nav>
         </>
       )}
