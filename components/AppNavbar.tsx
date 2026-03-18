@@ -1,6 +1,6 @@
 'use client';
 
-import { Navbar, Nav, Button } from 'react-bootstrap';
+import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
@@ -17,6 +17,7 @@ export default function AppNavbar() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const pathname = usePathname();
   const supabase = createClient();
@@ -62,6 +63,7 @@ export default function AppNavbar() {
         const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
       }
+      setIsAuthReady(true);
     }
 
     getSession();
@@ -132,6 +134,7 @@ export default function AppNavbar() {
   };
 
   const isOnAdminPage = pathname === '/admin';
+  const isOnResetPage = pathname === '/auth/reset-password';
 
   return (
     <>
@@ -151,40 +154,51 @@ export default function AppNavbar() {
             className="d-inline-block align-top me-2"
           />
           <span className="d-none d-sm-inline letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>RACING</span></span>
+          <span className="d-inline d-sm-none letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>R</span></span>
+          {isOnAdminPage && <span className="ms-2 badge bg-danger" style={{ fontSize: '0.6rem' }}>ADMIN</span>}
         </Navbar.Brand>
       </Link>
-
-      <Nav className="ms-auto d-none d-lg-flex flex-row align-items-center gap-3">
-        {NAV_ITEMS.map((item) => (
-          <Link key={item.href} href={item.href} passHref legacyBehavior>
-            <Nav.Link 
-              active={pathname === item.href} 
-              className={`text-uppercase small fw-bold letter-spacing-1 ${pathname === item.href ? 'text-danger' : 'text-white opacity-75'}`}
-              onClick={triggerHaptic}
-            >
-              {item.label}
-            </Nav.Link>
-          </Link>
-        ))}
-        {isAdmin && (
-          <Link href="/admin" passHref legacyBehavior>
-            <Nav.Link active={isOnAdminPage} className={`text-uppercase small fw-bold letter-spacing-1 ${isOnAdminPage ? 'text-warning' : 'text-warning opacity-75'}`} onClick={triggerHaptic}>ADMIN</Nav.Link>
-          </Link>
-        )}
-      </Nav>
-
-      <div className="ms-auto ms-lg-3 d-flex align-items-center gap-2">
-        <Button 
-          variant="link" 
-          className="p-0 text-white opacity-75 hover-opacity-100 transition-all d-flex align-items-center justify-content-center"
-          style={{ width: '36px', height: '36px' }}
-          onClick={() => { triggerHaptic(); setShowDrawer(true); }}
-        >
-          <div className="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center fw-bold shadow-sm" style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}>
-            {currentUser ? currentUser.charAt(0).toUpperCase() : <User size={16} />}
+      
+      {!isOnResetPage && (
+        <>
+          <div className="d-flex align-items-center ms-auto order-lg-last">
+            {isAuthReady ? (
+              <button 
+                onClick={() => { triggerHaptic(); setShowDrawer(true); }}
+                className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
+              >
+                <div className="d-flex flex-column align-items-end me-2 d-none d-sm-flex">
+                  <span className="text-light small text-uppercase letter-spacing-1 opacity-75" style={{ fontSize: '0.6rem', lineHeight: 1 }}>
+                    {(session || currentUser) ? 'Player' : 'Guest'}
+                  </span>
+                  <span className="fw-bold text-white text-uppercase" style={{ fontSize: '0.8rem', lineHeight: 1 }}>
+                    {currentUser || 'Profile'}
+                  </span>
+                </div>
+                <div className="bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center text-white fw-bold border border-secondary border-opacity-50" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
+                  {(session || currentUser) ? (currentUser?.charAt(0).toUpperCase() || '?') : <User size={18} />}
+                </div>
+              </button>
+            ) : (
+              <div style={{ height: '31px', width: '80px' }}></div>
+            )}
           </div>
-        </Button>
-      </div>
+
+          <Nav className="me-auto ms-xl-4 d-none d-xl-flex gap-2">
+            {NAV_ITEMS.map((item) => (
+              <Link 
+                key={item.href}
+                href={item.href} 
+                onClick={triggerHaptic} 
+                className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === item.href ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} 
+                style={{ fontSize: '0.75rem' }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </Nav>
+        </>
+      )}
     </Navbar>
 
     <UserDrawer 
