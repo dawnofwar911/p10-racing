@@ -75,8 +75,6 @@ export default function Home() {
   // Reactive Prediction Load: Runs when auth status or next race changes
   useEffect(() => {
     const loadPrediction = async () => {
-      // If we already have a prediction and it's not a cold start/auth change, skip network
-      if (userPrediction && !sessionTracker.isInitialLoadNeeded()) return;
       if (!nextRace) return;
 
       let finalPrediction: HomePrediction | null = null;
@@ -110,6 +108,17 @@ export default function Home() {
       }
     };
 
+    // Skip if we already performed initial load AND have a prediction (optimistic stability)
+    // UNLESS the user has changed (detected by currentUser dependency change)
+    if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
+      // Small check to ensure the prediction in state matches the current user's cache
+      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace?.id || ''));
+      if (cached) {
+          const parsed = JSON.parse(cached);
+          if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
+      }
+    }
+
     loadPrediction();
   }, [currentUser, session, nextRace, supabase, userPrediction]);
 
@@ -120,11 +129,20 @@ export default function Home() {
       const updatedKey = customEvent.detail?.key;
       const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
 
-      if (updatedKey === expectedKey) {
-        const predStr = localStorage.getItem(updatedKey!);
-        if (predStr) {
-          const parsed = JSON.parse(predStr);
-          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER) {
+        const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+        const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+        if (cachedRaceStr && user) {
+          try {
+            const raceObj = JSON.parse(cachedRaceStr);
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+            if (predStr) {
+              const parsed = JSON.parse(predStr);
+              setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+            } else {
+              setUserPrediction(null);
+            }
+          } catch { setUserPrediction(null); }
         }
       }
     };

@@ -143,7 +143,8 @@ function PredictPage() {
     const hasData = (nextRace || cachedRace) && (drivers.length >= 20) && (startingGrid.length > 0 || hasCachedGrid);
     
     // Skip full background fetch if we've already synced this page this session AND have data
-    if (!isFirstView && hasData) {
+    // EXCEPT if we are missing the current user's predictions in state
+    if (!isFirstView && hasData && p10Driver && dnfDriver) {
       if (mountedRef.current) setLoadingRace(false);
       return;
     }
@@ -221,27 +222,38 @@ function PredictPage() {
             localStorage.setItem(getGridKey(currentRace.round), JSON.stringify(finalGrid));
           }
 
-          // Fetch User Prediction
-          if (session) {
-            const { data: dbPred } = await supabase.from('predictions').select('*').eq('user_id', session.user.id).eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`).maybeSingle();
-            if (dbPred && mountedRef.current) {
-              setP10Driver(dbPred.p10_driver_id);
-              setDnfDriver(dbPred.dnf_driver_id);
-            } else {
-              const storageUser = username || session.user.id;
-              const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, currentRace.id));
-              if (finalized && mountedRef.current) {
+          // Fetch User Prediction - Only if we don't have picks or it's the first view
+          // And NEVER if the user is currently editing
+          if (!isEditing) {
+            let finalP10 = '';
+            let finalDnf = '';
+
+            if (session) {
+              const { data: dbPred } = await supabase.from('predictions').select('*').eq('user_id', session.user.id).eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`).maybeSingle();
+              if (dbPred) {
+                finalP10 = dbPred.p10_driver_id;
+                finalDnf = dbPred.dnf_driver_id;
+              } else {
+                const storageUser = username || session.user.id;
+                const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, currentRace.id));
+                if (finalized) {
+                  const parsed = JSON.parse(finalized);
+                  finalP10 = parsed.p10;
+                  finalDnf = parsed.dnf;
+                }
+              }
+            } else if (username) {
+              const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, username, currentRace.id));
+              if (finalized) {
                 const parsed = JSON.parse(finalized);
-                setP10Driver(parsed.p10);
-                setDnfDriver(parsed.dnf);
+                finalP10 = parsed.p10;
+                finalDnf = parsed.dnf;
               }
             }
-          } else if (username) {
-            const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, username, currentRace.id));
-            if (finalized && mountedRef.current) {
-              const parsed = JSON.parse(finalized);
-              setP10Driver(parsed.p10);
-              setDnfDriver(parsed.dnf);
+
+            if (mountedRef.current && finalP10 && finalDnf) {
+              setP10Driver((prev: string) => prev || finalP10);
+              setDnfDriver((prev: string) => prev || finalDnf);
             }
           }
 
@@ -285,7 +297,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, drivers.length, nextRace, startingGrid.length]);
+  }, [supabase, session, username, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver]);
 
   useEffect(() => {
     init();
@@ -340,9 +352,11 @@ function PredictPage() {
       const parsed = JSON.parse(finalized);
       setP10Driver(parsed.p10);
       setDnfDriver(parsed.dnf);
+      setIsEditing(false); // Switch to summary if they already have picks
     } else {
       setP10Driver('');
       setDnfDriver('');
+      setIsEditing(true); // Switch to editing if they don't
     }
   };
 
@@ -471,7 +485,8 @@ function PredictPage() {
     );
   }
 
-  const showSummary = (submitted || (p10Driver && dnfDriver)) && !isEditing;
+  const hasPicks = p10Driver && dnfDriver;
+  const showSummary = (submitted || hasPicks) && !isEditing;
 
   return (
     <>
@@ -491,8 +506,9 @@ function PredictPage() {
                 size="sm" 
                 onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setIsEditing(!isEditing); }} 
                 className="rounded-pill px-3 fw-bold"
+                disabled={!showSummary && !hasPicks}
               >
-                {showSummary ? 'Change Picks' : (p10Driver && dnfDriver ? 'View Summary' : 'Cancel')}
+                {showSummary ? 'Change Picks' : (hasPicks ? 'View Summary' : 'Cancel')}
               </Button>
             )}
             {!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}
@@ -513,10 +529,10 @@ function PredictPage() {
               <Row className="text-start justify-content-center">
                 <Col lg={8} className="mb-4">
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
-                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger d-flex justify-content-between align-items-center">
+                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">
                       Your Selection {isLocked && '🔒'}
                     </h3>
-                    {p10Driver && dnfDriver ? (
+                    {hasPicks ? (
                       <Row className="g-3">
                         <Col sm={6}>
                           <div className="p-3 border border-secondary rounded bg-dark">
@@ -533,7 +549,7 @@ function PredictPage() {
                       </Row>
                     ) : <p className="text-warning">No prediction submitted.</p>}
                     
-                    {!isSeasonFinished && (
+                    {!isSeasonFinished && hasPicks && (
                       <div className="mt-4 pt-2">
                         <Button variant="success" className="w-100 py-2 fw-bold shadow-sm" onClick={handleShare}>SHARE YOUR PICKS ↗</Button>
                       </div>
