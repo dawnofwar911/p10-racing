@@ -3,130 +3,22 @@
 import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { User } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
-import { STORAGE_KEYS, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
+import { useAuth } from './AuthProvider';
 
 export default function AppNavbar() {
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  const { session, currentUser, isAdmin, isAuthLoading, logout } = useAuth();
   const [showDrawer, setShowDrawer] = useState(false);
   const pathname = usePathname();
-  const supabase = createClient();
-
-  useEffect(() => {
-    async function getSession() {
-      // 1. Load from cache immediately for instant UI
-      const cachedUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME);
-      const cachedIsAdmin = localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
-      if (cachedUser) {
-        setCurrentUser(cachedUser);
-        setIsAdmin(cachedIsAdmin);
-      } else {
-        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-        setCurrentUser(localUser);
-      }
-
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-
-      if (currentSession) {
-        setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, is_admin')
-          .eq('id', currentSession.user.id)
-          .single();
-        
-        if (profile) {
-          setCurrentUser(profile.username);
-          setIsAdmin(!!profile.is_admin);
-          setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
-          setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!profile.is_admin));
-        } else {
-          const fallback = currentSession.user.email?.split('@')[0] || 'User';
-          setCurrentUser(fallback);
-          setStorageItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
-        }
-      } else {
-        setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
-        removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
-        removeStorageItem(STORAGE_KEYS.IS_ADMIN);
-        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-        setCurrentUser(localUser);
-      }
-      setIsAuthReady(true);
-    }
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
-      setSession(newSession);
-      if (event === 'SIGNED_OUT') {
-        setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
-        removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
-        removeStorageItem(STORAGE_KEYS.IS_ADMIN);
-        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-        setCurrentUser(localUser);
-        setIsAdmin(false);
-        window.location.href = '/';
-        return;
-      }
-      
-      if (!newSession) {
-        setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
-        removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
-        removeStorageItem(STORAGE_KEYS.IS_ADMIN);
-        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-        setCurrentUser(localUser);
-        setIsAdmin(false);
-      } else {
-        setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
-        supabase
-          .from('profiles')
-          .select('username, is_admin')
-          .eq('id', newSession.user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              setCurrentUser(data.username);
-              setIsAdmin(!!data.is_admin);
-              setStorageItem(STORAGE_KEYS.CACHE_USERNAME, data.username);
-              setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!data.is_admin));
-            } else {
-              const fallback = newSession.user.email?.split('@')[0] || 'User';
-              setCurrentUser(fallback);
-              setStorageItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
-            }
-          });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
 
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
-    // Clear all session-related cache immediately
-    setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
-    removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
-    removeStorageItem(STORAGE_KEYS.IS_ADMIN);
-    removeStorageItem(STORAGE_KEYS.CURRENT_USER);
-    
-    if (session) {
-      await supabase.auth.signOut();
-    }
-    
-    // Force a full page refresh to clear all React state globally
-    window.location.href = '/';
+    await logout();
   };
 
   const triggerHaptic = () => {
@@ -162,7 +54,7 @@ export default function AppNavbar() {
       {!isOnResetPage && (
         <>
           <div className="d-flex align-items-center ms-auto order-lg-last">
-            {isAuthReady ? (
+            {!isAuthLoading ? (
               <button 
                 onClick={() => { triggerHaptic(); setShowDrawer(true); }}
                 className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
@@ -196,6 +88,16 @@ export default function AppNavbar() {
                 {item.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link 
+                href="/admin" 
+                onClick={triggerHaptic} 
+                className={`nav-link text-uppercase fw-bold letter-spacing-1 ${isOnAdminPage ? 'text-warning border-bottom border-warning border-2' : 'text-warning opacity-75'}`} 
+                style={{ fontSize: '0.75rem' }}
+              >
+                ADMIN
+              </Link>
+            )}
           </Nav>
         </>
       )}
@@ -204,10 +106,10 @@ export default function AppNavbar() {
     <UserDrawer 
       show={showDrawer} 
       onHide={() => setShowDrawer(false)} 
-      currentUser={currentUser}
-      session={session}
-      isAdmin={isAdmin}
-      onLogout={handleLogout}
+      currentUser={currentUser} 
+      session={session} 
+      isAdmin={isAdmin} 
+      onLogout={handleLogout} 
     />
     </>
   );

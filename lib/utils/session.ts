@@ -6,7 +6,8 @@
 
 class SessionTracker {
   private static instance: SessionTracker;
-  private visitedPages: Set<string> = new Set();
+  // Map of session fingerprint (e.g. user ID) to set of visited page IDs
+  private visitedPagesMap: Map<string, Set<string>> = new Map();
   private initialLoadComplete: boolean = false;
 
   private constructor() {}
@@ -20,14 +21,21 @@ class SessionTracker {
 
   /**
    * Returns true if this is the first time the specific page is being viewed
-   * in the current app session.
+   * for the given fingerprint (usually the current user's ID or name).
    */
-  public isFirstView(pageId: string): boolean {
+  public isFirstView(pageId: string, fingerprint: string = 'guest'): boolean {
     if (typeof window === 'undefined') return false;
-    if (this.visitedPages.has(pageId)) {
+    
+    if (!this.visitedPagesMap.has(fingerprint)) {
+      this.visitedPagesMap.set(fingerprint, new Set());
+    }
+    
+    const visitedSet = this.visitedPagesMap.get(fingerprint)!;
+    if (visitedSet.has(pageId)) {
       return false;
     }
-    this.visitedPages.add(pageId);
+    
+    visitedSet.add(pageId);
     return true;
   }
 
@@ -36,6 +44,14 @@ class SessionTracker {
    */
   public markInitialLoadComplete() {
     this.initialLoadComplete = true;
+  }
+
+  /**
+   * Resets the initial load flag to force a fresh data sync (e.g. after login).
+   */
+  public resetInitialLoad() {
+    this.initialLoadComplete = false;
+    this.visitedPagesMap.clear();
   }
 
   public isInitialLoadNeeded(): boolean {

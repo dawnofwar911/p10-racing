@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
@@ -13,6 +12,7 @@ import PullToRefresh from '@/components/PullToRefresh';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
+import { useAuth } from '@/components/AuthProvider';
 
 interface League {
   id: string;
@@ -25,6 +25,7 @@ function LeaguesContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const mountedRef = useRef(true);
+  const { session, currentUser } = useAuth();
 
   // 1. Synchronous Cache Initialization
   const [leagues, setLeagues] = useState<League[]>(() => {
@@ -33,7 +34,6 @@ function LeaguesContent() {
     return cached ? JSON.parse(cached) : [];
   });
 
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(!leagues.length);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,17 +71,14 @@ function LeaguesContent() {
 
   const init = useCallback(async () => {
     try {
-      const isFirstView = sessionTracker.isFirstView('leagues');
-      
-      // 2. Truth check
-      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
-      if (mountedRef.current) setSession(currentSession);
+      const fingerprint = session?.user.id || currentUser || 'guest';
+      const isFirstView = sessionTracker.isFirstView('leagues', fingerprint);
       
       const guestsData = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
       const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
       if (mountedRef.current) setLocalGuests(guests);
 
-      if (currentSession) {
+      if (session) {
         // Only refresh leagues if it's the first view or we have none
         if (leagues.length === 0 || isFirstView) {
           await fetchLeagues(leagues.length > 0);
@@ -94,10 +91,10 @@ function LeaguesContent() {
 
       const joinCode = searchParams.get('join');
       if (joinCode && mountedRef.current) setInviteCode(joinCode);
-    } catch (err) {
+      } catch (err) {
       console.error('Leagues: Init error:', err);
-    }
-  }, [supabase, fetchLeagues, searchParams, leagues.length]);
+      }
+      }, [fetchLeagues, searchParams, leagues.length, session, currentUser]);
 
   useEffect(() => {
     init();
@@ -106,7 +103,7 @@ function LeaguesContent() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init]);
+  }, [init, session?.user.id]);
 
   const handleImport = async (guestName: string) => {
     if (!session) return;

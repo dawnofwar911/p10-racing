@@ -16,9 +16,10 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sessionTracker } from '@/lib/utils/session';
+import { useAuth } from '@/components/AuthProvider';
 
 interface HomeRace {
   id: string;
@@ -39,22 +40,15 @@ export default function Home() {
   const router = useRouter();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
+  
+  // Use Global Auth Context
+  const { currentUser, hasSession, session, isAuthLoading } = useAuth();
 
-  // 1. Synchronous Cache Initialization
+  // 1. Synchronous Cache Initialization (Zero Pop-in)
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
     if (typeof window === 'undefined') return null;
     const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     return cached ? JSON.parse(cached) : null;
-  });
-  
-  const [currentUser, setCurrentUser] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-  });
-
-  const [hasSession, setHasSession] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
   });
 
   const [loading, setLoading] = useState(!nextRace);
@@ -72,46 +66,90 @@ export default function Home() {
     return null;
   });
 
-  const syncLocalState = useCallback(() => {
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const session = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    
-    setCurrentUser(user);
-    setHasSession(session);
-    
-    if (cachedRaceStr && user) {
-      try {
-        const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
-        if (predStr) {
-          const parsed = JSON.parse(predStr);
-          // Only update if actually different to prevent render loops
-          setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
-        } else {
-          setUserPrediction(null);
-        }
-      } catch { setUserPrediction(null); }
-    } else {
-      setUserPrediction(null);
-    }
-  }, []);
+  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
+    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+  });
 
-  // UseEffect for initial sync and listener
+  // Reactive Prediction Load: Runs when auth status or next race changes
   useEffect(() => {
-    syncLocalState();
-    
+    const loadPrediction = async () => {
+      if (!nextRace) return;
+
+      let finalPrediction: HomePrediction | null = null;
+      
+      // Try DB first if logged in
+      if (session) {
+        const { data: pred } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('race_id', `${CURRENT_SEASON}_${nextRace.id}`)
+          .maybeSingle();
+        
+        if (pred) {
+          finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
+        }
+      }
+
+      // If no DB result or not logged in, try cache
+      if (!finalPrediction && currentUser) {
+        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, nextRace.id));
+        if (cachedPred) finalPrediction = JSON.parse(cachedPred);
+      }
+
+      if (mountedRef.current) {
+        setUserPrediction(prev => {
+          if (!finalPrediction) return null;
+          if (prev?.p10 === finalPrediction.p10 && prev?.dnf === finalPrediction.dnf) return prev;
+          return finalPrediction;
+        });
+      }
+    };
+
+    // Skip if we already performed initial load AND have a prediction (optimistic stability)
+    // UNLESS the user has changed (detected by currentUser dependency change)
+    if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
+      // Small check to ensure the prediction in state matches the current user's cache
+      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace?.id || ''));
+      if (cached) {
+          const parsed = JSON.parse(cached);
+          if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
+      }
+    }
+
+    loadPrediction();
+  }, [currentUser, session, nextRace, supabase, userPrediction]);
+
+  // Reactive Storage Listener: If predictions change on another page, update here immediately
+  useEffect(() => {
     const handleStorageUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ key: string; value?: string }>;
-      const { key } = customEvent.detail || {};
-      if (!key || ([STORAGE_KEYS.CACHE_USERNAME, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.HAS_SESSION, STORAGE_KEYS.CACHE_NEXT_RACE] as string[]).includes(key)) {
-        syncLocalState();
+      const customEvent = e as CustomEvent<{ key: string }>;
+      const updatedKey = customEvent.detail?.key;
+      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
+
+      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER) {
+        const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+        const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+        if (cachedRaceStr && user) {
+          try {
+            const raceObj = JSON.parse(cachedRaceStr);
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+            if (predStr) {
+              const parsed = JSON.parse(predStr);
+              setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
+            } else {
+              setUserPrediction(null);
+            }
+          } catch { setUserPrediction(null); }
+        }
       }
     };
 
     window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [syncLocalState]);
+  }, [currentUser, nextRace]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -150,11 +188,6 @@ export default function Home() {
     return now > target && now < fourHoursLater;
   });
 
-  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
-    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
-  });
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
@@ -164,27 +197,16 @@ export default function Home() {
   }, []);
 
   const init = useCallback(async () => {
-    try {
-      // 2. Explicit truth check from Supabase
-      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
-      
-      let authoritativeUser = currentUser;
-      if (mountedRef.current) {
-        setHasSession(!!currentSession);
-        setStorageItem(STORAGE_KEYS.HAS_SESSION, currentSession ? 'true' : 'false');
-        
-        if (currentSession) {
-          // Verify admin status
-          const { data: profile } = await supabase.from('profiles').select('username, is_admin').eq('id', currentSession.user.id).maybeSingle();
-          if (profile && mountedRef.current) {
-            authoritativeUser = profile.username;
-            setCurrentUser(profile.username);
-            setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
-            setStorageItem(STORAGE_KEYS.IS_ADMIN, profile.is_admin ? 'true' : 'false');
-          }
-        }
-      }
+    // Demand-Driven Sync: Skip if we've already synced this page for this user/session and have data
+    const fingerprint = session?.user.id || currentUser || 'guest';
+    const isFirstView = sessionTracker.isFirstView('home', fingerprint);
+    
+    if (!isFirstView && nextRace && allDrivers.length >= 20) {
+      if (mountedRef.current) setLoading(false);
+      return;
+    }
 
+    try {
       const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
         fetchDrivers(CURRENT_SEASON)
@@ -193,7 +215,10 @@ export default function Home() {
       if (mountedRef.current) {
         if (drivers.length > 0) {
           const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
-          setAllDrivers(sortedDrivers);
+          setAllDrivers(prev => {
+            if (prev.length === sortedDrivers.length && prev[0]?.id === sortedDrivers[0]?.id) return prev;
+            return sortedDrivers;
+          });
           localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(sortedDrivers));
         }
 
@@ -248,43 +273,18 @@ export default function Home() {
             time: upcoming.time || '00:00:00Z',
             round: parseInt(upcoming.round)
           };
-          setNextRace(raceObj);
+          
+          setNextRace(prev => {
+            if (prev?.id === raceObj.id && prev?.date === raceObj.date && prev?.time === raceObj.time) return prev;
+            return raceObj;
+          });
           setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(raceObj));
 
           const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
           const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
           setIsLocked(now > lockTime);
-
-          // 3. Authoritative Prediction Sync
-          let finalPrediction: HomePrediction | null = null;
-          if (currentSession) {
-            const { data: pred } = await supabase
-              .from('predictions')
-              .select('*')
-              .eq('user_id', currentSession.user.id)
-              .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
-              .maybeSingle();
-            
-            if (pred) {
-              finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-            } else {
-              const storageUser = authoritativeUser || currentSession.user.id;
-              const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
-              if (cachedPred) finalPrediction = JSON.parse(cachedPred);
-            }
-          } else if (authoritativeUser) {
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, authoritativeUser, raceObj.id));
-            if (predStr) finalPrediction = JSON.parse(predStr);
-          }
-          
-          if (mountedRef.current) {
-            // Only overwrite if we found something or if we are sure there's nothing
-            // This prevents the optimistic UI from disappearing during lazy sync
-            if (finalPrediction) {
-              setUserPrediction(finalPrediction);
-            }
-            setLoading(false);
-          }
+          setLoading(false);
+          sessionTracker.markInitialLoadComplete();
         }
       }
     } catch (error) {
@@ -292,12 +292,15 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, currentUser]);
+  }, [supabase, nextRace, allDrivers.length, session, currentUser]);
 
   useEffect(() => {
     init();
+    
+    // Listen for App Resume
     const handleResume = () => {
       console.log('Home: App resumed, re-initializing...');
+      sessionTracker.resetInitialLoad();
       init();
     };
     window.addEventListener('p10:app_resume', handleResume);
@@ -361,6 +364,8 @@ export default function Home() {
     }
   };
 
+  const isColdStart = typeof window !== 'undefined' ? sessionTracker.isFirstView('home') : true;
+
   return (
     <>
       <Container className="mt-3 mt-md-4 flex-grow-1">
@@ -390,7 +395,7 @@ export default function Home() {
                   <>
                     {showCountdown ? (
                       <motion.div
-                        initial={{ opacity: 0, y: 5 }}
+                        initial={isColdStart ? { opacity: 0, y: 5 } : false}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
                       >
@@ -411,7 +416,7 @@ export default function Home() {
                       </motion.div>
                     ) : isRaceInProgress ? (
                       <motion.div
-                        initial={{ opacity: 0 }}
+                        initial={isColdStart ? { opacity: 0 } : false}
                         animate={{ opacity: 1 }}
                       >
                         <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
@@ -457,7 +462,7 @@ export default function Home() {
             <AnimatePresence>
               {!isSeasonFinished && userPrediction && nextRace && (
                 <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={isColdStart ? { opacity: 0, scale: 0.95 } : false}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" 
@@ -498,7 +503,7 @@ export default function Home() {
                 <Spinner animation="border" size="sm" variant="danger" />
               ) : (
                 <motion.div
-                  initial={{ opacity: 0 }}
+                  initial={isColdStart ? { opacity: 0 } : false}
                   animate={{ opacity: 1 }}
                 >
                   <p className="fw-bold mb-0 text-white" style={{ fontSize: '1.1rem' }}>{nextRace?.name}</p>
@@ -525,7 +530,7 @@ export default function Home() {
         </Row>
 
         <AnimatePresence>
-          {(!loading && !hasSession && !currentUser) && (
+          {(!loading && !hasSession && !currentUser && !isAuthLoading) && (
             <motion.div
               key="guest-join-grid"
               initial={{ opacity: 0, y: 10 }}
