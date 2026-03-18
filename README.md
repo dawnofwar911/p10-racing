@@ -6,7 +6,7 @@ P10 Racing is a multiplayer mobile application for F1 fans who love the midfield
 
 ## 🏎️ Features
 - **Global & Private Leagues**: Create your own competitions or compete with the world.
-- **Real-Time Data**: Live driver standings and race results via the [Jolpica F1 API](https://api.jolpi.ca).
+- **Real-Time Data**: Live driver standings and race results via the [Jolpica F1 API](https://jolpica.github.io/jolpica-f1/).
 - **Native Experience**: Smooth transitions, haptic feedback, and offline support.
 - **Cloud Sync**: Secure authentication and prediction backup via Supabase.
 - **Migration Tool**: Easily move your local guest scores to your cloud account.
@@ -81,7 +81,7 @@ npx cap open android
 ### Core Components
 - **Frontend**: Next.js 15 (App Router) + Capacitor JS (Mobile Bridge).
 - **Backend**: Supabase (PostgreSQL, Auth, RLS).
-- **External API**: [Jolpica (Ergast) F1 API](https://api.jolpi.ca/ergast/f1) for real-time race data.
+- **External API**: [Jolpica (Ergast) F1 API](https://jolpica.github.io/jolpica-f1/ergast/f1) for real-time race data.
 
 ### Automated Results Ingestion
 The app uses **Supabase Edge Functions** to automate the season:
