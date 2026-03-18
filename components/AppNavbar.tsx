@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export default function AppNavbar() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -24,13 +25,13 @@ export default function AppNavbar() {
   useEffect(() => {
     async function getSession() {
       // 1. Load from cache immediately for instant UI
-      const cachedUser = localStorage.getItem('p10_cache_username');
-      const cachedIsAdmin = localStorage.getItem('p10_cache_is_admin') === 'true';
+      const cachedUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME);
+      const cachedIsAdmin = localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
       if (cachedUser) {
         setCurrentUser(cachedUser);
         setIsAdmin(cachedIsAdmin);
       } else {
-        const localUser = localStorage.getItem('p10_current_user');
+        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
       }
 
@@ -47,17 +48,17 @@ export default function AppNavbar() {
         if (profile) {
           setCurrentUser(profile.username);
           setIsAdmin(!!profile.is_admin);
-          localStorage.setItem('p10_cache_username', profile.username);
-          localStorage.setItem('p10_cache_is_admin', String(!!profile.is_admin));
+          localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
+          localStorage.setItem(STORAGE_KEYS.IS_ADMIN, String(!!profile.is_admin));
         } else {
           const fallback = currentSession.user.email?.split('@')[0] || 'User';
           setCurrentUser(fallback);
-          localStorage.setItem('p10_cache_username', fallback);
+          localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
         }
       } else {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
+        localStorage.removeItem(STORAGE_KEYS.CACHE_USERNAME);
+        localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
+        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
       }
       setIsAuthReady(true);
@@ -68,9 +69,9 @@ export default function AppNavbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
+        localStorage.removeItem(STORAGE_KEYS.CACHE_USERNAME);
+        localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
+        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
         setIsAdmin(false);
         window.location.href = '/';
@@ -78,9 +79,9 @@ export default function AppNavbar() {
       }
       
       if (!newSession) {
-        localStorage.removeItem('p10_cache_username');
-        localStorage.removeItem('p10_cache_is_admin');
-        const localUser = localStorage.getItem('p10_current_user');
+        localStorage.removeItem(STORAGE_KEYS.CACHE_USERNAME);
+        localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
+        const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
         setIsAdmin(false);
       } else {
@@ -93,12 +94,12 @@ export default function AppNavbar() {
             if (data) {
               setCurrentUser(data.username);
               setIsAdmin(!!data.is_admin);
-              localStorage.setItem('p10_cache_username', data.username);
-              localStorage.setItem('p10_cache_is_admin', String(!!data.is_admin));
+              localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, data.username);
+              localStorage.setItem(STORAGE_KEYS.IS_ADMIN, String(!!data.is_admin));
             } else {
               const fallback = newSession.user.email?.split('@')[0] || 'User';
               setCurrentUser(fallback);
-              localStorage.setItem('p10_cache_username', fallback);
+              localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
             }
           });
       }

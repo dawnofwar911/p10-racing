@@ -7,6 +7,7 @@ import { Driver } from '@/lib/types';
 import { fetchDrivers } from '@/lib/api';
 import { getContrastColor } from '@/lib/utils/colors';
 import PullToRefresh from '@/components/PullToRefresh';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>([]);
@@ -18,14 +19,14 @@ export default function StandingsPage() {
     const data = await fetchDrivers(CURRENT_SEASON);
     if (data.length > 0) {
       setStandings(data);
-      localStorage.setItem('p10_cache_standings', JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEYS.CACHE_STANDINGS, JSON.stringify(data));
     }
     setLoading(false);
   }
 
   useEffect(() => {
     // 1. Load from cache first
-    const cached = localStorage.getItem('p10_cache_standings');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_STANDINGS);
     let hasCache = false;
     if (cached) {
       setStandings(JSON.parse(cached));

@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 interface League {
   id: string;
@@ -27,7 +28,7 @@ function LeaguesContent() {
   // 1. Synchronous Cache Initialization
   const [leagues, setLeagues] = useState<League[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem('p10_cache_leagues');
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LEAGUES);
     return cached ? JSON.parse(cached) : [];
   });
 
@@ -58,7 +59,7 @@ function LeaguesContent() {
       if (fetchError) throw fetchError;
       if (mountedRef.current) {
         setLeagues(data || []);
-        localStorage.setItem('p10_cache_leagues', JSON.stringify(data || []));
+        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(data || []));
       }
     } catch (err: unknown) {
       if (err instanceof Error && mountedRef.current) setError(err.message);
@@ -73,7 +74,7 @@ function LeaguesContent() {
       const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       if (mountedRef.current) setSession(currentSession);
       
-      const guestsData = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const guestsData = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
       const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
       if (mountedRef.current) setLocalGuests(guests);
 
@@ -141,9 +142,9 @@ function LeaguesContent() {
         }
       }
       if (mountedRef.current) setSuccess(`Successfully imported ${count} predictions!`);
-      const currentGuests = JSON.parse(localStorage.getItem('p10_players') || '[]');
+      const currentGuests = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
       const filteredGuests = currentGuests.filter((g: string) => g !== guestName);
-      localStorage.setItem('p10_players', JSON.stringify(filteredGuests));
+      localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(filteredGuests));
       if (mountedRef.current) setLocalGuests(filteredGuests);
     } catch (err: unknown) {
       console.error('Leagues: Import error:', err);

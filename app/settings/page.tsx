@@ -12,6 +12,7 @@ import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
 import { withTimeout } from '@/lib/utils/sync-queue';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -21,7 +22,7 @@ export default function SettingsPage() {
   // 1. Synchronous Cache Initialization
   const [isAdmin, setIsAdmin] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem('p10_is_admin') === 'true';
+    return localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
   });
 
   const [session, setSession] = useState<Session | null>(null);
@@ -45,7 +46,7 @@ export default function SettingsPage() {
         const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', currentSession.user.id).maybeSingle();
         if (mountedRef.current) {
           setIsAdmin(!!profile?.is_admin);
-          localStorage.setItem('p10_is_admin', profile?.is_admin ? 'true' : 'false');
+          localStorage.setItem(STORAGE_KEYS.IS_ADMIN, profile?.is_admin ? 'true' : 'false');
         }
       }
     } catch (err) {
