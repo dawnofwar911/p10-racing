@@ -5,6 +5,7 @@ import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
+import { fetchCalendar } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
@@ -34,6 +35,7 @@ export default function LeaderboardPage() {
   });
 
   const [loading, setLoading] = useState(!leaderboard.length);
+  const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [view, setView] = useState<'global' | 'local'>('global');
 
@@ -46,7 +48,13 @@ export default function LeaderboardPage() {
   const calculate = useCallback(async (quiet = false) => {
   if (!quiet && mountedRef.current) setLoading(true);
   try {
-    const raceResultsMap = await fetchAllSimplifiedResults();
+    const [raceResultsMap, races] = await Promise.all([
+      fetchAllSimplifiedResults(),
+      fetchCalendar(CURRENT_SEASON)
+    ]);
+    
+    const resultsFoundCount = Object.keys(raceResultsMap).length;
+    if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount >= races.length);
 
     let playersData: LeaderboardPlayer[] = [];
       if (view === 'global') {
@@ -131,7 +139,13 @@ export default function LeaderboardPage() {
     <PullToRefresh onRefresh={() => calculate(false)}>
       <Container className="mt-4 mb-2">
         <Row className="mb-4 align-items-center">
-          <Col><h1 className="h2 mb-1 text-uppercase fw-bold letter-spacing-1">Leaderboard</h1><p className="text-muted small mb-0">Live points from the {CURRENT_SEASON} season</p></Col>
+          <Col>
+            <div className="d-flex align-items-center gap-2 mb-1">
+              <h1 className="h2 mb-0 text-uppercase fw-bold letter-spacing-1">Leaderboard</h1>
+              {isSeasonComplete && <span className="badge bg-warning text-dark fw-bold rounded-pill" style={{ fontSize: '0.6rem' }}>🏆 FINAL STANDINGS</span>}
+            </div>
+            <p className="text-muted small mb-0">{isSeasonComplete ? `Final results from the ${CURRENT_SEASON} season` : `Live points from the ${CURRENT_SEASON} season`}</p>
+          </Col>
           <Col xs="auto">
             <ButtonGroup className="bg-dark rounded border border-secondary p-1">
               <Button variant={view === 'global' ? 'danger' : 'dark'} size="sm" onClick={() => setView('global')} className="rounded px-3">GLOBAL</Button>
