@@ -7,7 +7,8 @@ import {
   addToSyncQueue, 
   removeFromSyncQueue, 
   flushSyncQueue, 
-  SyncPayload 
+  SyncPayload,
+  withTimeout
 } from '@/lib/utils/sync-queue';
 
 // Mock environment variables for Supabase Client initialization
@@ -128,5 +129,23 @@ describe('Sync Queue Utility', () => {
     expect(onSuccess).not.toHaveBeenCalled();
     expect(onLocked).not.toHaveBeenCalled();
     expect(getSyncQueue()['2026_1']).toBeDefined(); // Still in queue
+  });
+
+  describe('withTimeout', () => {
+    it('should resolve if the promise completes before the timeout', async () => {
+      const fastPromise = new Promise(resolve => setTimeout(() => resolve('success'), 50));
+      const result = await withTimeout(fastPromise, 1000);
+      expect(result).toBe('success');
+    });
+
+    it('should reject if the promise takes longer than the timeout', async () => {
+      const slowPromise = new Promise(resolve => setTimeout(() => resolve('too slow'), 2000));
+      await expect(withTimeout(slowPromise, 100)).rejects.toThrow('Request timed out');
+    });
+
+    it('should propagate errors from the original promise', async () => {
+      const errorPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Original error')), 50));
+      await expect(withTimeout(errorPromise, 1000)).rejects.toThrow('Original error');
+    });
   });
 });
