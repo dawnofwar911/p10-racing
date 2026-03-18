@@ -18,7 +18,7 @@ import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { useAuth } from '@/components/AuthProvider';
-import { addToSyncQueue, SyncPayload } from '@/lib/utils/sync-queue';
+import { addToSyncQueue, SyncPayload, SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
 
 interface PredictRace {
   id: string;
@@ -294,8 +294,8 @@ function PredictPage() {
       setIsPendingSync(false);
       init();
     };
-    window.addEventListener('p10:sync_complete', handleSyncComplete);
-    return () => window.removeEventListener('p10:sync_complete', handleSyncComplete);
+    window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
   }, [init]);
 
   const handleSubmit = async (e: React.FormEvent) => {
