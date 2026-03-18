@@ -56,33 +56,7 @@ export default function Home() {
   });
 
   const [loading, setLoading] = useState(!nextRace);
-  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
-    if (typeof window === 'undefined') return null;
-    
-    const cachedUser = localStorage.getItem('p10_current_user') || localStorage.getItem('p10_cache_username');
-    const cachedRaceStr = localStorage.getItem('p10_cache_next_race');
-    
-    if (cachedRaceStr) {
-      try {
-        const raceObj = JSON.parse(cachedRaceStr);
-        
-        if (cachedUser) {
-          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${cachedUser}_${raceObj.id}`);
-          if (predStr) return JSON.parse(predStr);
-        }
-        
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith(`final_pred_${CURRENT_SEASON}_`) && key.endsWith(`_${raceObj.id}`)) {
-            return JSON.parse(localStorage.getItem(key) as string);
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing cached prediction:', e);
-      }
-    }
-    return null;
-  });
+  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
   const [showCountdown, setShowCountdown] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -91,9 +65,22 @@ export default function Home() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
-  // Lifecycle status
   useEffect(() => {
     mountedRef.current = true;
+    
+    // 2. Optimistic Load (Immediate client-side)
+    const cachedUser = localStorage.getItem('p10_current_user') || localStorage.getItem('p10_cache_username');
+    const cachedRaceStr = localStorage.getItem('p10_cache_next_race');
+    if (cachedRaceStr && cachedUser) {
+      try {
+        const raceObj = JSON.parse(cachedRaceStr);
+        const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${cachedUser}_${raceObj.id}`);
+        if (predStr) setUserPrediction(JSON.parse(predStr));
+      } catch (e) {
+        console.error('Home: Optimistic load error:', e);
+      }
+    }
+
     return () => { mountedRef.current = false; };
   }, []);
 
@@ -102,6 +89,7 @@ export default function Home() {
       // 2. Explicit truth check from Supabase
       const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
       
+      let authoritativeUser = null;
       if (mountedRef.current) {
         setHasSession(!!currentSession);
         localStorage.setItem('p10_has_session', currentSession ? 'true' : 'false');
@@ -110,6 +98,7 @@ export default function Home() {
           // Verify admin status
           const { data: profile } = await supabase.from('profiles').select('username, is_admin').eq('id', currentSession.user.id).maybeSingle();
           if (profile && mountedRef.current) {
+            authoritativeUser = profile.username;
             setCurrentUser(profile.username);
             localStorage.setItem('p10_current_user', profile.username);
             localStorage.setItem('p10_is_admin', profile.is_admin ? 'true' : 'false');
@@ -194,6 +183,8 @@ export default function Home() {
           const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
           setIsLocked(now > lockTime);
 
+          // 3. Authoritative Prediction Sync
+          let finalPrediction: HomePrediction | null = null;
           if (currentSession) {
             const { data: pred } = await supabase
               .from('predictions')
@@ -203,16 +194,19 @@ export default function Home() {
               .maybeSingle();
             
             if (pred) {
-              setUserPrediction({ p10: pred.p10_driver_id, dnf: pred.dnf_driver_id });
+              finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
             } else {
-              const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
+              const storageUser = authoritativeUser || localStorage.getItem('p10_cache_username') || currentSession.user.id;
               const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
-              if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
+              if (cachedPred) finalPrediction = JSON.parse(cachedPred);
             }
-          } else if (currentUser) {
-            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUser}_${raceObj.id}`);
-            if (predStr) setUserPrediction(JSON.parse(predStr));
+          } else if (authoritativeUser || currentUser) {
+            const userToFetch = authoritativeUser || currentUser;
+            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${userToFetch}_${raceObj.id}`);
+            if (predStr) finalPrediction = JSON.parse(predStr);
           }
+          
+          if (mountedRef.current) setUserPrediction(finalPrediction);
         }
       }
     } catch (error) {
