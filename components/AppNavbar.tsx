@@ -39,6 +39,7 @@ export default function AppNavbar() {
       setSession(currentSession);
 
       if (currentSession) {
+        localStorage.setItem(STORAGE_KEYS.HAS_SESSION, 'true');
         const { data: profile } = await supabase
           .from('profiles')
           .select('username, is_admin')
@@ -56,6 +57,7 @@ export default function AppNavbar() {
           localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
         }
       } else {
+        localStorage.setItem(STORAGE_KEYS.HAS_SESSION, 'false');
         localStorage.removeItem(STORAGE_KEYS.CACHE_USERNAME);
         localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
         const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
@@ -69,6 +71,7 @@ export default function AppNavbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (event === 'SIGNED_OUT') {
+        localStorage.setItem(STORAGE_KEYS.HAS_SESSION, 'false');
         localStorage.removeItem(STORAGE_KEYS.CACHE_USERNAME);
         localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
         const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
@@ -79,12 +82,14 @@ export default function AppNavbar() {
       }
       
       if (!newSession) {
+        localStorage.setItem(STORAGE_KEYS.HAS_SESSION, 'false');
         localStorage.removeItem(STORAGE_KEYS.CACHE_USERNAME);
         localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
         const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
         setIsAdmin(false);
       } else {
+        localStorage.setItem(STORAGE_KEYS.HAS_SESSION, 'true');
         supabase
           .from('profiles')
           .select('username, is_admin')
@@ -111,9 +116,10 @@ export default function AppNavbar() {
   const handleLogout = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
     // Clear all session-related cache immediately
-    localStorage.removeItem('p10_cache_username');
-    localStorage.removeItem('p10_cache_is_admin');
-    localStorage.removeItem('p10_current_user');
+    localStorage.setItem(STORAGE_KEYS.HAS_SESSION, 'false');
+    localStorage.removeItem(STORAGE_KEYS.CACHE_USERNAME);
+    localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     
     if (session) {
       await supabase.auth.signOut();

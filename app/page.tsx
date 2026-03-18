@@ -50,7 +50,7 @@ export default function Home() {
   
   const [currentUser, setCurrentUser] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
   });
 
   const [hasSession, setHasSession] = useState(() => {
@@ -61,7 +61,7 @@ export default function Home() {
   const [loading, setLoading] = useState(!nextRace);
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cachedUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME);
+    const cachedUser = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     if (cachedRaceStr && cachedUser) {
       try {
