@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Row, Col, Table, Button, Spinner, ButtonGroup } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
-import { SYNC_COMPLETE_EVENT, withTimeout, APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout, APP_READY_EVENT } from '@/lib/utils/sync-queue';
 
 interface LeaderboardPlayer {
   username: string;
@@ -19,26 +19,23 @@ interface LeaderboardPlayer {
   dbPredictions?: DbPrediction[];
 }
 
-const supabase = createClient();
-
 export default function LeaderboardPage() {
+  const supabase = createClient();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [view, setView] = useState<'global' | 'local'>('global');
+  const mountedRef = useRef(true);
 
   const calculate = useCallback(async (quiet = false) => {
     try {
-      if (!quiet) setLoading(true);
+      if (!quiet && mountedRef.current) setLoading(true);
       
-      // 1. Fetch all simplified results (Supabase -> API -> Local fallback)
       const raceResultsMap = await fetchAllSimplifiedResults();
-
-      // 2. Fetch Calendar to check if season is complete
       const races = await fetchCalendar(CURRENT_SEASON);
       const resultsFoundCount = Object.keys(raceResultsMap).length;
-      setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
+      if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
 
       let playersData: LeaderboardPlayer[] = [];
 
@@ -52,12 +49,9 @@ export default function LeaderboardPage() {
           withTimeout(supabase.from('predictions').select('*'))
         ]);
 
-        if (profiles) {
+        if (profiles && mountedRef.current) {
           playersData = (profiles as { id: string; username: string }[])
-            .filter((p) => {
-              // Show if NOT a test account OR if it IS the current user's account
-              return !isTestAccount(p.username) || p.id === currentUserId;
-            })
+            .filter((p) => !isTestAccount(p.username) || p.id === currentUserId)
             .map((p) => ({ 
               username: p.username, 
               userId: p.id, 
@@ -72,8 +66,6 @@ export default function LeaderboardPage() {
 
       const entries: LeaderboardEntry[] = playersData.map((player) => {
         const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
-
-        // Prepare predictions for calculateSeasonPoints
         Object.keys(raceResultsMap).forEach(round => {
           if (player.isLocal) {
             const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${player.username}_${round}`);
@@ -87,39 +79,32 @@ export default function LeaderboardPage() {
         });
 
         const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
-
-        return {
-          rank: 0,
-          player: player.username,
-          points: totalPoints,
-          lastRacePoints: lastRacePoints,
-          breakdown: latestBreakdown,
-          history: history
-        };
+        return { rank: 0, player: player.username, points: totalPoints, lastRacePoints, breakdown: latestBreakdown, history };
       });
 
       const sorted = entries.sort((a, b) => b.points - a.points);
       const ranked = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
       
-      setLeaderboard(ranked);
-      if (view === 'global') {
-        localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
+      if (mountedRef.current) {
+        setLeaderboard(ranked);
+        if (view === 'global') localStorage.setItem('p10_cache_leaderboard', JSON.stringify(ranked));
       }
     } catch (error) {
-      console.error('Calculate error:', error);
+      console.error('Leaderboard: Calculate error:', error);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
-  }, [view]);
+  }, [view, supabase]);
 
   useEffect(() => {
-    // Cache loading logic
+    mountedRef.current = true;
+    
     if (view === 'global') {
       const cached = localStorage.getItem('p10_cache_leaderboard');
-      if (cached) {
+      if (cached && mountedRef.current) {
         setLeaderboard(JSON.parse(cached));
         setLoading(false);
-        calculate(true); // Quiet update
+        calculate(true);
       } else {
         calculate();
       }
@@ -128,39 +113,30 @@ export default function LeaderboardPage() {
     }
 
     const handleSyncComplete = () => calculate(true);
-    const handleResume = () => calculate(true);
+    const handleReady = () => {
+      console.log('Leaderboard: APP_READY received, re-calculating');
+      calculate(true);
+    };
 
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    window.addEventListener(APP_RESUME_EVENT, handleResume);
+    window.addEventListener(APP_READY_EVENT, handleReady);
 
     return () => {
+      mountedRef.current = false;
       window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-      window.removeEventListener(APP_RESUME_EVENT, handleResume);
+      window.removeEventListener(APP_READY_EVENT, handleReady);
     };
   }, [calculate, view]);
 
-  // Real-time subscription
   useEffect(() => {
     if (view !== 'global') return;
-
     const channel = supabase
       .channel('leaderboard-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'verified_results' },
-        () => calculate()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'predictions' },
-        () => calculate()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'verified_results' }, () => calculate(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, () => calculate(true))
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [view, calculate]);
+    return () => { supabase.removeChannel(channel); };
+  }, [view, calculate, supabase]);
 
   return (
     <PullToRefresh onRefresh={calculate}>
@@ -172,22 +148,8 @@ export default function LeaderboardPage() {
           </Col>
           <Col xs="auto">
             <ButtonGroup className="bg-dark rounded border border-secondary p-1">
-              <Button 
-                variant={view === 'global' ? 'danger' : 'dark'} 
-                size="sm" 
-                onClick={() => setView('global')}
-                className="rounded px-3"
-              >
-                GLOBAL
-              </Button>
-              <Button 
-                variant={view === 'local' ? 'danger' : 'dark'} 
-                size="sm" 
-                onClick={() => setView('local')}
-                className="rounded px-3"
-              >
-                GUESTS
-              </Button>
+              <Button variant={view === 'global' ? 'danger' : 'dark'} size="sm" onClick={() => setView('global')} className="rounded px-3">GLOBAL</Button>
+              <Button variant={view === 'local' ? 'danger' : 'dark'} size="sm" onClick={() => setView('local')} className="rounded px-3">GUESTS</Button>
             </ButtonGroup>
           </Col>
         </Row>
@@ -279,14 +241,8 @@ export default function LeaderboardPage() {
                                         {entry.history.map((h, idx) => (
                                           <tr key={idx} className="border-bottom border-secondary border-opacity-25">
                                             <td className="py-2">Round {h.round}</td>
-                                            <td className="py-2 text-uppercase">
-                                              {h.p10Driver.replace('_', ' ')} 
-                                              <span className="ms-1 text-muted">(P{h.p10Pos})</span>
-                                            </td>
-                                            <td className="py-2 text-uppercase">
-                                              {h.dnfDriver.replace('_', ' ')}
-                                              {h.dnfCorrect ? <span className="ms-1 text-success">✓</span> : <span className="ms-1 text-muted">✗</span>}
-                                            </td>
+                                            <td className="py-2 text-uppercase">{h.p10Driver.replace('_', ' ')} <span className="ms-1 text-muted">(P{h.p10Pos})</span></td>
+                                            <td className="py-2 text-uppercase">{h.dnfDriver.replace('_', ' ')} {h.dnfCorrect ? <span className="ms-1 text-success">✓</span> : <span className="ms-1 text-muted">✗</span>}</td>
                                             <td className="py-2 text-end fw-bold text-white">+{h.points}</td>
                                             <td className="py-2 text-end text-muted">{h.totalSoFar}</td>
                                           </tr>
@@ -304,11 +260,7 @@ export default function LeaderboardPage() {
                       )}
                     </React.Fragment>
                   )) : (
-                    <tr>
-                      <td colSpan={4} className="text-center py-5 text-muted">
-                        No predictions found for this view.
-                      </td>
-                    </tr>
+                    <tr><td colSpan={4} className="text-center py-5 text-muted">No predictions found for this view.</td></tr>
                   )}
                 </tbody>
               </Table>

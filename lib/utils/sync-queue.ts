@@ -11,6 +11,7 @@ export interface SyncPayload {
 const QUEUE_KEY = 'p10_sync_queue';
 export const SYNC_COMPLETE_EVENT = 'p10:sync_complete';
 export const APP_RESUME_EVENT = 'p10:app_resume';
+export const APP_READY_EVENT = 'p10:app_ready';
 
 /**
  * Atomic helper to get the current sync queue from localStorage.
@@ -133,4 +134,3 @@ export async function withTimeout<T>(promise: Promise<T> | PromiseLike<T>, timeo
     throw error;
   }
 }
-
