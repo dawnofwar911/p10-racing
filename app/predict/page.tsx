@@ -19,6 +19,7 @@ import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
+import { sessionTracker } from '@/lib/utils/session';
 
 interface PredictRace {
   id: string;
@@ -88,16 +89,28 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
-    try {
-      // Load grid and community from cache if available (keyed by round)
-      if (nextRace && mountedRef.current) {
-        const cachedGrid = localStorage.getItem(getGridKey(nextRace.round));
-        if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
+    // Optimistic cache load always runs
+    if (typeof window !== 'undefined') {
+      const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      if (cachedRaceStr && mountedRef.current) {
+        try {
+          const cachedRace = JSON.parse(cachedRaceStr) as PredictRace;
+          const cachedGrid = localStorage.getItem(getGridKey(cachedRace.round));
+          if (cachedGrid) setStartingGrid(JSON.parse(cachedGrid));
 
-        const cachedCommunity = localStorage.getItem(getCommunityKey(nextRace.round));
-        if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
+          const cachedCommunity = localStorage.getItem(getCommunityKey(cachedRace.round));
+          if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
+        } catch (e) { console.error('Predict: Error parsing cached race', e); }
       }
+    }
 
+    // Skip full background fetch if already loaded this session and data exists
+    if (!sessionTracker.isInitialLoadNeeded() && nextRace && drivers.length > 20) {
+      setLoadingRace(false);
+      return;
+    }
+
+    try {
       // 3. Parallel Background Fetches
       const [races, apiDrivers, raceResultsMap] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
@@ -125,7 +138,11 @@ function PredictPage() {
             time: upcoming.time || '00:00:00Z',
             round: parseInt(upcoming.round)
           };
-          setNextRace(currentRace);
+          
+          setNextRace(prev => {
+            if (prev?.id === currentRace.id && prev?.date === currentRace.date && prev?.time === currentRace.time) return prev;
+            return currentRace;
+          });
           setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(currentRace));
 
           // Calculate locking
@@ -229,7 +246,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, nextRace]);
+  }, [supabase, session, username, nextRace, drivers.length]);
 
   useEffect(() => {
     init();

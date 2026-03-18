@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase, getSession]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     setHasSession(false);
     setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
     removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
@@ -176,10 +176,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     window.location.href = '/';
-  };
+  }, [supabase, session]);
+
+  const value = React.useMemo(() => ({
+    session,
+    currentUser,
+    isAdmin,
+    hasSession,
+    isAuthLoading,
+    logout,
+    refreshAuth: getSession
+  }), [session, currentUser, isAdmin, hasSession, isAuthLoading, logout, getSession]);
 
   return (
-    <AuthContext.Provider value={{ session, currentUser, isAdmin, hasSession, isAuthLoading, logout, refreshAuth: getSession }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
