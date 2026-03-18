@@ -191,7 +191,7 @@ export default function SettingsPage() {
             Version {packageInfo.version}
           </p>
           <p className="text-white opacity-10 extra-small">
-            Data provided by <a href="https://api.jolpi.ca" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
+            Data provided by <a href="https://jolpica.github.io/jolpica-f1/" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
           </p>
         </div>
       </Container>
