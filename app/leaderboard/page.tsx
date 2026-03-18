@@ -47,8 +47,10 @@ export default function LeaderboardPage() {
         const session = sessionData?.session;
         const currentUserId = session?.user?.id;
 
-        const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username'));
-        const { data: predictions } = await withTimeout(supabase.from('predictions').select('*'));
+        const [{ data: profiles }, { data: predictions }] = await Promise.all([
+          withTimeout(supabase.from('profiles').select('id, username')),
+          withTimeout(supabase.from('predictions').select('*'))
+        ]);
 
         if (profiles) {
           playersData = (profiles as { id: string; username: string }[])
