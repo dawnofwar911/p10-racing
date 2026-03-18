@@ -44,10 +44,16 @@ export default function LeaderboardPage() {
         const session = sessionData?.session;
         const currentUserId = session?.user?.id;
 
-        const [{ data: profiles }, { data: predictions }] = await Promise.all([
+        const results = await Promise.all([
           withTimeout(supabase.from('profiles').select('id, username')),
           withTimeout(supabase.from('predictions').select('*'))
-        ]);
+        ]) as { data: unknown; error: { message: string } | null }[];
+
+        const { data: profiles, error: profilesError } = results[0];
+        const { data: predictions, error: predsError } = results[1];
+
+        if (profilesError) console.error('Leaderboard: Error fetching profiles:', profilesError.message);
+        if (predsError) console.error('Leaderboard: Error fetching predictions:', predsError.message);
 
         if (profiles && mountedRef.current) {
           playersData = (profiles as { id: string; username: string }[])

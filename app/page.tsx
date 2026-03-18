@@ -130,8 +130,11 @@ export default function Home() {
         const upcoming = races[activeIndex];
 
         if (finished && mountedRef.current) {
-          const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username'));
-          const { data: predictions } = await withTimeout(supabase.from('predictions').select('*')) as { data: DbPrediction[] | null };
+          const { data: profiles, error: profilesError } = await withTimeout(supabase.from('profiles').select('id, username'));
+          const { data: predictions, error: predsError } = await withTimeout(supabase.from('predictions').select('*')) as { data: DbPrediction[] | null, error: { message: string } | null };
+
+          if (profilesError) console.error('Home: Error fetching profiles:', profilesError.message);
+          if (predsError) console.error('Home: Error fetching predictions:', predsError.message);
 
           if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
             const players = profiles.map(p => ({ 

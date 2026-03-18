@@ -234,14 +234,23 @@ function PredictPage() {
         }
 
         // Fetch Community
-        const { data: dbPreds } = await withTimeout(supabase
+        const { data: dbPreds, error: predsError } = await withTimeout(supabase
           .from('predictions')
           .select('user_id, p10_driver_id, dnf_driver_id')
-          .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)) as { data: { user_id: string; p10_driver_id: string; dnf_driver_id: string }[] | null };
+          .eq('race_id', `${CURRENT_SEASON}_${currentRaceObj.id}`)) as { data: { user_id: string; p10_driver_id: string; dnf_driver_id: string }[] | null, error: { message: string } | null };
+
+        if (predsError) {
+          console.error('Predict: Error fetching community predictions:', predsError.message);
+        }
 
         if (dbPreds && mountedRef.current) {
           const uIds = dbPreds.map((p) => p.user_id);
-          const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username').in('id', uIds)) as { data: { id: string; username: string }[] | null };
+          const { data: profiles, error: profilesError } = await withTimeout(supabase.from('profiles').select('id, username').in('id', uIds)) as { data: { id: string; username: string }[] | null, error: { message: string } | null };
+          
+          if (profilesError) {
+            console.error('Predict: Error fetching profiles for community mapping:', profilesError.message);
+          }
+
           const pMap = new Map((profiles || []).map((p) => [p.id, p.username]));
           const formatted = dbPreds.map((p) => ({
             username: pMap.get(p.user_id) || 'Unknown',
