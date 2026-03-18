@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
@@ -11,33 +11,57 @@ import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
+import { withTimeout } from '@/lib/utils/sync-queue';
 
 export default function SettingsPage() {
+  const supabase = createClient();
+  const { showNotification } = useNotification();
+  const mountedRef = useRef(true);
+
+  // 1. Synchronous Cache Initialization
+  const [isAdmin, setIsAdmin] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('p10_is_admin') === 'true';
+  });
+
   const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
-  const { showNotification } = useNotification();
-  
-  const supabase = createClient();
 
+  // Lifecycle
   useEffect(() => {
-    async function init() {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const init = useCallback(async () => {
+    try {
+      // 2. Truth check
+      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
+      if (mountedRef.current) setSession(currentSession);
 
       if (currentSession) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', currentSession.user.id)
-          .single();
-        if (profile) setIsAdmin(!!profile.is_admin);
+        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', currentSession.user.id).maybeSingle();
+        if (mountedRef.current) {
+          setIsAdmin(!!profile?.is_admin);
+          localStorage.setItem('p10_is_admin', profile?.is_admin ? 'true' : 'false');
+        }
       }
+    } catch (err) {
+      console.error('Settings: Init error:', err);
     }
-    init();
   }, [supabase]);
+
+  useEffect(() => {
+    init();
+    const handleResume = () => {
+      console.log('Settings: App resumed, refreshing...');
+      init();
+    };
+    window.addEventListener('p10:app_resume', handleResume);
+    return () => window.removeEventListener('p10:app_resume', handleResume);
+  }, [init]);
 
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });
@@ -49,7 +73,7 @@ export default function SettingsPage() {
     Haptics.notification({ type: NotificationType.Warning });
     
     try {
-      const { error } = await supabase.rpc('delete_user_data');
+      const { error } = await withTimeout(supabase.rpc('delete_user_data'));
       if (error) throw error;
 
       await supabase.auth.signOut();
@@ -58,7 +82,7 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Error deleting account:', err);
       showNotification('Failed to delete account. Please try again.', 'error');
-      setIsDeleting(false);
+      if (mountedRef.current) setIsDeleting(false);
     }
   };
 
@@ -172,7 +196,6 @@ export default function SettingsPage() {
         </div>
       </Container>
 
-      {/* Reused Modals */}
       <BugReportModal show={showBugReport} onHide={() => setShowBugReport(false)} />
       
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="bg-dark border-secondary">

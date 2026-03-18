@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
@@ -33,10 +33,29 @@ interface HomePrediction {
 }
 
 export default function Home() {
-  const [nextRace, setNextRace] = useState<HomeRace | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [hasSession, setHasSession] = useState(false);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const supabase = createClient();
+  const router = useRouter();
+  const { showNotification } = useNotification();
+  const mountedRef = useRef(true);
+
+  // 1. Synchronous Cache Initialization (Zero Pop-in)
+  const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const cached = localStorage.getItem('p10_cache_next_race');
+    return cached ? JSON.parse(cached) : null;
+  });
+  
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('p10_current_user');
+  });
+
+  const [hasSession, setHasSession] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('p10_has_session') === 'true';
+  });
+
+  const [loading, setLoading] = useState(!nextRace);
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
   const [showCountdown, setShowCountdown] = useState(false);
@@ -46,182 +65,148 @@ export default function Home() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
 
-  const supabase = createClient();
-  const router = useRouter();
-  const { showNotification } = useNotification();
+  // Lifecycle status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const init = useCallback(async () => {
-    // 1. Load from cache first to avoid layout shift - move to TOP
-    const cachedRace = localStorage.getItem('p10_cache_next_race');
-    const cachedDrivers = localStorage.getItem('p10_cache_drivers');
-    
-    if (cachedRace) {
-      const raceData = JSON.parse(cachedRace);
-      setNextRace(raceData);
-      
-      // Perform initial synchronous calculation for countdown
-      const now = new Date().getTime();
-      const targetStr = `${raceData.date}T${raceData.time}`;
-      const target = new Date(targetStr).getTime();
-      const distance = target - now;
-      const fourHoursLater = target + 4 * 60 * 60 * 1000;
-
-      if (distance < 0) {
-        setShowCountdown(false);
-        setIsRaceInProgress(now < fourHoursLater);
-      } else {
-        setShowCountdown(true);
-        setIsRaceInProgress(false);
-        setCountdown({
-          d: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-          s: Math.floor((distance % (1000 * 60)) / 1000)
-        });
-      }
-    }
-    
-    if (cachedDrivers) setAllDrivers(JSON.parse(cachedDrivers));
-
-    // 0. Check for recovery hash or PKCE code - handle Supabase redirecting to home page
-    const isRecovery = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
-    const hasRecoveryParam = typeof window !== 'undefined' && window.location.search.includes('type=recovery');
-
-    if (isRecovery || hasRecoveryParam) {
-      const target = '/auth/reset-password' + window.location.search + window.location.hash;
-      router.replace(target);
-      return;
-    }
-
-    // Only show full-screen loading if we have NO cached data
-    if (!cachedRace) {
-      setLoading(true);
-    }
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 2. Explicit truth check from Supabase
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (mountedRef.current) {
+        setHasSession(!!currentSession);
+        localStorage.setItem('p10_has_session', currentSession ? 'true' : 'false');
+        
+        if (currentSession) {
+          // Verify admin status
+          const { data: profile } = await supabase.from('profiles').select('username, is_admin').eq('id', currentSession.user.id).maybeSingle();
+          if (profile && mountedRef.current) {
+            setCurrentUser(profile.username);
+            localStorage.setItem('p10_current_user', profile.username);
+            localStorage.setItem('p10_is_admin', profile.is_admin ? 'true' : 'false');
+          }
+        }
+      }
 
-      // Secondary check: if session exists but user came from recovery
-      if (session && window.location.hash.includes('type=recovery')) {
-        await supabase.auth.signOut();
-        router.replace('/auth/reset-password' + window.location.hash);
+      // Handle recovery redirects
+      if (typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
+        if (currentSession) await supabase.auth.signOut();
+        router.replace('/auth/reset-password' + window.location.search + window.location.hash);
         return;
       }
-      setHasSession(!!session);
-      
-      const user = localStorage.getItem('p10_current_user');
-      setCurrentUser(user);
 
       const [races, drivers] = await Promise.all([
         fetchCalendar(CURRENT_SEASON),
         fetchDrivers(CURRENT_SEASON)
       ]);
 
-      if (drivers.length > 0) {
-        // Sort consistently by team to match other pages
-        const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
-        setAllDrivers(sortedDrivers);
-        localStorage.setItem('p10_cache_drivers', JSON.stringify(sortedDrivers));
-      }
-
-      if (races.length > 0) {
-        const now = new Date();
-        const raceResultsMap = await fetchAllSimplifiedResults();
-        
-        const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
-        setIsSeasonFinished(finished);
-
-        const upcoming = races[activeIndex];
-
-        // Season is finished if activeIndex is at the end and all races have results
-        if (finished) {
-          // Fetch profiles and predictions for champion calculation
-          const { data: profiles } = await supabase.from('profiles').select('id, username');
-          const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
-
-          if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
-            const players = profiles.map(p => ({ 
-              username: p.username, 
-              predictions: predictions
-                .filter(pred => pred.user_id === p.id)
-                .reduce((acc, pred) => {
-                  const round = pred.race_id.split('_')[1];
-                  acc[round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-                  return acc;
-                }, {} as { [round: string]: { p10: string, dnf: string } })
-            }));
-
-            // Include local players for a complete champion search
-            const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
-            localPlayers.forEach(lp => {
-              const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
-              Object.keys(raceResultsMap).forEach(round => {
-                const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${lp}_${round}`);
-                if (predStr) lpPreds[round] = JSON.parse(predStr);
-              });
-              players.push({ username: lp, predictions: lpPreds });
-            });
-
-            const ranked = players.map(player => ({
-              username: player.username,
-              points: calculateSeasonPoints(player.predictions, raceResultsMap).totalPoints
-            })).sort((a, b) => b.points - a.points);
-
-            if (ranked.length > 0) setChampion(ranked[0].username);
-          }
+      if (mountedRef.current) {
+        if (drivers.length > 0) {
+          const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
+          setAllDrivers(sortedDrivers);
+          localStorage.setItem('p10_cache_drivers', JSON.stringify(sortedDrivers));
         }
 
-        const raceObj: HomeRace = {
-          id: upcoming.round,
-          name: upcoming.raceName,
-          circuit: upcoming.Circuit.circuitName,
-          date: upcoming.date,
-          time: upcoming.time || '00:00:00Z',
-          round: parseInt(upcoming.round)
-        };
-        setNextRace(raceObj);
-        localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
+        if (races.length > 0) {
+          const now = new Date();
+          const raceResultsMap = await fetchAllSimplifiedResults();
+          const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+          setIsSeasonFinished(finished);
 
-        // Calculate locking based on start time
-        const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
-        const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
-        setIsLocked(now > lockTime);
-
-        if (session) {
-          const { data: pred } = await supabase
-            .from('predictions')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
-            .maybeSingle();
+          const upcoming = races[activeIndex];
           
-          if (pred) {
-            setUserPrediction({
-              p10: pred.p10_driver_id,
-              dnf: pred.dnf_driver_id
-            });
-          } else {
-            // Offline/Cache fallback for auth users
-            const storageUser = localStorage.getItem('p10_cache_username') || session.user.id;
-            const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
-            if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
+          if (finished) {
+            const { data: profiles } = await supabase.from('profiles').select('id, username');
+            const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+
+            if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
+              const players = profiles.map(p => ({ 
+                username: p.username, 
+                predictions: predictions
+                  .filter(pred => pred.user_id === p.id)
+                  .reduce((acc, pred) => {
+                    const round = pred.race_id.split('_')[1];
+                    acc[round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
+                    return acc;
+                  }, {} as { [round: string]: { p10: string, dnf: string } })
+              }));
+
+              const localPlayers: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+              localPlayers.forEach(lp => {
+                const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
+                Object.keys(raceResultsMap).forEach(round => {
+                  const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${lp}_${round}`);
+                  if (predStr) lpPreds[round] = JSON.parse(predStr);
+                });
+                players.push({ username: lp, predictions: lpPreds });
+              });
+
+              const ranked = players.map(player => ({
+                username: player.username,
+                points: calculateSeasonPoints(player.predictions, raceResultsMap).totalPoints
+              })).sort((a, b) => b.points - a.points);
+
+              if (ranked.length > 0) setChampion(ranked[0].username);
+            }
           }
-        } else if (user) {
-          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${user}_${raceObj.id}`);
-          if (predStr) setUserPrediction(JSON.parse(predStr));
+
+          const raceObj: HomeRace = {
+            id: upcoming.round,
+            name: upcoming.raceName,
+            circuit: upcoming.Circuit.circuitName,
+            date: upcoming.date,
+            time: upcoming.time || '00:00:00Z',
+            round: parseInt(upcoming.round)
+          };
+          setNextRace(raceObj);
+          localStorage.setItem('p10_cache_next_race', JSON.stringify(raceObj));
+
+          const raceStartTime = new Date(`${raceObj.date}T${raceObj.time}`);
+          const lockTime = new Date(raceStartTime.getTime() + (2 * 60 * 1000));
+          setIsLocked(now > lockTime);
+
+          if (currentSession) {
+            const { data: pred } = await supabase
+              .from('predictions')
+              .select('*')
+              .eq('user_id', currentSession.user.id)
+              .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
+              .maybeSingle();
+            
+            if (pred) {
+              setUserPrediction({ p10: pred.p10_driver_id, dnf: pred.dnf_driver_id });
+            } else {
+              const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
+              const cachedPred = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${storageUser}_${raceObj.id}`);
+              if (cachedPred) setUserPrediction(JSON.parse(cachedPred));
+            }
+          } else if (currentUser) {
+            const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${currentUser}_${raceObj.id}`);
+            if (predStr) setUserPrediction(JSON.parse(predStr));
+          }
         }
       }
     } catch (error) {
-      console.error('Init error:', error);
+      console.error('Home: Init error:', error);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, router]);
+  }, [supabase, router, currentUser]);
 
   useEffect(() => {
     init();
+    
+    // 3. Listen for App Resume
+    const handleResume = () => {
+      console.log('Home: App resumed, re-initializing...');
+      init();
+    };
+    window.addEventListener('p10:app_resume', handleResume);
+    return () => window.removeEventListener('p10:app_resume', handleResume);
   }, [init]);
-
 
   useEffect(() => {
     if (!nextRace) return;
@@ -248,9 +233,8 @@ export default function Home() {
       }
     };
 
-    calculate(); // Run immediately
-    const timer = setInterval(calculate, 1000); // Then every second
-
+    calculate();
+    const timer = setInterval(calculate, 1000);
     return () => clearInterval(timer);
   }, [nextRace]);
 
@@ -273,9 +257,7 @@ export default function Home() {
         dialogTitle: 'Share your Picks',
       });
     } catch (error) {
-      // Only copy to clipboard if sharing is truly unavailable (e.g. non-secure web or unsupported browser)
       console.log('Share dismissed or failed:', error);
-      
       if (!navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
         showNotification('Picks copied to clipboard!', 'success');
@@ -333,7 +315,6 @@ export default function Home() {
                         <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
                       </div>
                     ) : (
-                      /* If nextRace exists but not showing countdown or progress, it might be loading or transitional */
                       <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
                     )}
                   </>
