@@ -16,7 +16,6 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import PullToRefresh from '@/components/PullToRefresh';
 import { withTimeout } from '@/lib/utils/sync-queue';
 
 interface HomeRace {
@@ -57,7 +56,33 @@ export default function Home() {
   });
 
   const [loading, setLoading] = useState(!nextRace);
-  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(null);
+  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
+    if (typeof window === 'undefined') return null;
+    
+    const cachedUser = localStorage.getItem('p10_current_user') || localStorage.getItem('p10_cache_username');
+    const cachedRaceStr = localStorage.getItem('p10_cache_next_race');
+    
+    if (cachedRaceStr) {
+      try {
+        const raceObj = JSON.parse(cachedRaceStr);
+        
+        if (cachedUser) {
+          const predStr = localStorage.getItem(`final_pred_${CURRENT_SEASON}_${cachedUser}_${raceObj.id}`);
+          if (predStr) return JSON.parse(predStr);
+        }
+        
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(`final_pred_${CURRENT_SEASON}_`) && key.endsWith(`_${raceObj.id}`)) {
+            return JSON.parse(localStorage.getItem(key) as string);
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing cached prediction:', e);
+      }
+    }
+    return null;
+  });
   const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 });
   const [showCountdown, setShowCountdown] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -267,7 +292,7 @@ export default function Home() {
   };
 
   return (
-    <PullToRefresh onRefresh={init}>
+    <>
       <Container className="mt-3 mt-md-4 flex-grow-1">
         <Row className="justify-content-center text-center">
           <Col md={8} className="mb-2">
@@ -425,6 +450,6 @@ export default function Home() {
           </Row>
         )}
       </Container>
-    </PullToRefresh>
+    </>
   );
 }
