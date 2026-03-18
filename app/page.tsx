@@ -16,9 +16,10 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { withTimeout } from '@/lib/utils/sync-queue';
-import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sessionTracker } from '@/lib/utils/session';
+import { useAuth } from '@/components/AuthProvider';
 
 interface HomeRace {
   id: string;
@@ -39,25 +40,21 @@ export default function Home() {
   const router = useRouter();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
+  
+  // Use Global Auth Context
+  const { currentUser, hasSession, session, isAuthLoading } = useAuth();
 
-  // 1. Synchronous Cache Initialization
+  // 1. Synchronous Cache Initialization (Zero Pop-in)
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
     if (typeof window === 'undefined') return null;
     const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     return cached ? JSON.parse(cached) : null;
   });
-  
-  const [currentUser, setCurrentUser] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-  });
-
-  const [hasSession, setHasSession] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
-  });
 
   const [loading, setLoading] = useState(!nextRace);
+  
+  // User Prediction is derived from the current user. 
+  // It starts out synchronous if we have a cache match, then updates reactively.
   const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
     if (typeof window === 'undefined') return null;
     const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
@@ -72,46 +69,24 @@ export default function Home() {
     return null;
   });
 
-  const syncLocalState = useCallback(() => {
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const session = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
+  // Keep user prediction perfectly in sync with the global currentUser state
+  useEffect(() => {
     const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    
-    setCurrentUser(user);
-    setHasSession(session);
-    
-    if (cachedRaceStr && user) {
+    if (cachedRaceStr && currentUser) {
       try {
         const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, raceObj.id));
         if (predStr) {
           const parsed = JSON.parse(predStr);
-          // Only update if actually different to prevent render loops
           setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
         } else {
           setUserPrediction(null);
         }
       } catch { setUserPrediction(null); }
-    } else {
+    } else if (!currentUser && !isAuthLoading) {
       setUserPrediction(null);
     }
-  }, []);
-
-  // UseEffect for initial sync and listener
-  useEffect(() => {
-    syncLocalState();
-    
-    const handleStorageUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ key: string; value?: string }>;
-      const { key } = customEvent.detail || {};
-      if (!key || ([STORAGE_KEYS.CACHE_USERNAME, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.HAS_SESSION, STORAGE_KEYS.CACHE_NEXT_RACE] as string[]).includes(key)) {
-        syncLocalState();
-      }
-    };
-
-    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [syncLocalState]);
+  }, [currentUser, isAuthLoading, nextRace]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -165,24 +140,11 @@ export default function Home() {
 
   const init = useCallback(async () => {
     try {
-      // 2. Explicit truth check from Supabase
-      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
-      
-      let authoritativeUser = currentUser;
-      if (mountedRef.current) {
-        setHasSession(!!currentSession);
-        setStorageItem(STORAGE_KEYS.HAS_SESSION, currentSession ? 'true' : 'false');
-        
-        if (currentSession) {
-          // Verify admin status
-          const { data: profile } = await supabase.from('profiles').select('username, is_admin').eq('id', currentSession.user.id).maybeSingle();
-          if (profile && mountedRef.current) {
-            authoritativeUser = profile.username;
-            setCurrentUser(profile.username);
-            setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
-            setStorageItem(STORAGE_KEYS.IS_ADMIN, profile.is_admin ? 'true' : 'false');
-          }
-        }
+      // Handle recovery redirects
+      if (typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
+        if (session) await supabase.auth.signOut();
+        router.replace('/auth/reset-password' + window.location.search + window.location.hash);
+        return;
       }
 
       const [races, drivers] = await Promise.all([
@@ -257,23 +219,23 @@ export default function Home() {
 
           // 3. Authoritative Prediction Sync
           let finalPrediction: HomePrediction | null = null;
-          if (currentSession) {
+          if (session) {
             const { data: pred } = await supabase
               .from('predictions')
               .select('*')
-              .eq('user_id', currentSession.user.id)
+              .eq('user_id', session.user.id)
               .eq('race_id', `${CURRENT_SEASON}_${raceObj.id}`)
               .maybeSingle();
             
             if (pred) {
               finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
             } else {
-              const storageUser = authoritativeUser || currentSession.user.id;
+              const storageUser = currentUser || session.user.id;
               const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
               if (cachedPred) finalPrediction = JSON.parse(cachedPred);
             }
-          } else if (authoritativeUser) {
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, authoritativeUser, raceObj.id));
+          } else if (currentUser) {
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, raceObj.id));
             if (predStr) finalPrediction = JSON.parse(predStr);
           }
           
@@ -292,17 +254,24 @@ export default function Home() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, currentUser]);
+  }, [supabase, session, currentUser, router]);
 
   useEffect(() => {
-    init();
+    // Only perform full init on cold start or if we have no nextRace
+    if (sessionTracker.isInitialLoadNeeded() || !nextRace) {
+      init().then(() => {
+        sessionTracker.markInitialLoadComplete();
+      });
+    }
+    
+    // Listen for App Resume
     const handleResume = () => {
       console.log('Home: App resumed, re-initializing...');
       init();
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init]);
+  }, [init, nextRace]);
 
   useEffect(() => {
     if (!nextRace) return;
@@ -361,6 +330,8 @@ export default function Home() {
     }
   };
 
+  const isColdStart = typeof window !== 'undefined' ? sessionTracker.isFirstView('home') : true;
+
   return (
     <>
       <Container className="mt-3 mt-md-4 flex-grow-1">
@@ -390,7 +361,7 @@ export default function Home() {
                   <>
                     {showCountdown ? (
                       <motion.div
-                        initial={{ opacity: 0, y: 5 }}
+                        initial={isColdStart ? { opacity: 0, y: 5 } : false}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
                       >
@@ -411,7 +382,7 @@ export default function Home() {
                       </motion.div>
                     ) : isRaceInProgress ? (
                       <motion.div
-                        initial={{ opacity: 0 }}
+                        initial={isColdStart ? { opacity: 0 } : false}
                         animate={{ opacity: 1 }}
                       >
                         <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
@@ -457,7 +428,7 @@ export default function Home() {
             <AnimatePresence>
               {!isSeasonFinished && userPrediction && nextRace && (
                 <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={isColdStart ? { opacity: 0, scale: 0.95 } : false}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" 
@@ -498,7 +469,7 @@ export default function Home() {
                 <Spinner animation="border" size="sm" variant="danger" />
               ) : (
                 <motion.div
-                  initial={{ opacity: 0 }}
+                  initial={isColdStart ? { opacity: 0 } : false}
                   animate={{ opacity: 1 }}
                 >
                   <p className="fw-bold mb-0 text-white" style={{ fontSize: '1.1rem' }}>{nextRace?.name}</p>
@@ -525,7 +496,7 @@ export default function Home() {
         </Row>
 
         <AnimatePresence>
-          {(!loading && !hasSession && !currentUser) && (
+          {(!loading && !hasSession && !currentUser && !isAuthLoading) && (
             <motion.div
               key="guest-join-grid"
               initial={{ opacity: 0, y: 10 }}

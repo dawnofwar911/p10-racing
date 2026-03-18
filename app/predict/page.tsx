@@ -9,7 +9,6 @@ import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { Share } from '@capacitor/share';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -18,8 +17,8 @@ import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { withTimeout } from '@/lib/utils/sync-queue';
-import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
+import { useAuth } from '@/components/AuthProvider';
 
 interface PredictRace {
   id: string;
@@ -47,16 +46,11 @@ function PredictPage() {
   const searchParams = useSearchParams();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
+  
+  const { session, currentUser, isAuthLoading } = useAuth();
+  const username = currentUser || '';
 
   // 1. Synchronous Cache Initialization
-  const [username, setUsername] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || '';
-  });
-  
-  const [session, setSession] = useState<Session | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  
   const [nextRace, setNextRace] = useState<PredictRace | null>(() => {
     if (typeof window === 'undefined') return null;
     const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
@@ -94,23 +88,9 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
-    try {
-      // 2. truth check from Supabase
-      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
-      
-      if (mountedRef.current) {
-        setSession(currentSession);
-        setAuthLoading(false);
-        
-        if (currentSession) {
-          const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentSession.user.id).maybeSingle();
-          if (profile && mountedRef.current) {
-            setUsername(profile.username);
-            localStorage.setItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
-          }
-        }
-      }
+    if (isAuthLoading) return; // Wait for auth to be stable before syncing predictions
 
+    try {
       // Load grid and community from cache if available (keyed by round)
       if (nextRace && mountedRef.current) {
         const cachedGrid = localStorage.getItem(getGridKey(nextRace.round));
@@ -148,7 +128,7 @@ function PredictPage() {
             round: parseInt(upcoming.round)
           };
           setNextRace(currentRace);
-          localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(currentRace));
+          setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(currentRace));
 
           // Calculate locking
           const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
@@ -189,13 +169,13 @@ function PredictPage() {
           }
 
           // Fetch User Prediction
-          if (currentSession) {
-            const { data: dbPred } = await supabase.from('predictions').select('*').eq('user_id', currentSession.user.id).eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`).maybeSingle();
+          if (session) {
+            const { data: dbPred } = await supabase.from('predictions').select('*').eq('user_id', session.user.id).eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`).maybeSingle();
             if (dbPred && mountedRef.current) {
               setP10Driver(dbPred.p10_driver_id);
               setDnfDriver(dbPred.dnf_driver_id);
             } else {
-              const storageUser = localStorage.getItem('p10_cache_username') || currentSession.user.id;
+              const storageUser = username || session.user.id;
               const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, currentRace.id));
               if (finalized && mountedRef.current) {
                 const parsed = JSON.parse(finalized);
@@ -228,7 +208,7 @@ function PredictPage() {
           }
 
           const otherDbPreds = formattedDbPreds.filter(p => p.username !== username);
-          const playersList: string[] = JSON.parse(localStorage.getItem('p10_players') || '[]');
+          const playersList: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
           const localPreds = playersList.filter((p: string) => p !== username).map((p: string) => {
             const pred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, p, currentRace.id));
             return pred ? JSON.parse(pred) : null;
@@ -246,13 +226,12 @@ function PredictPage() {
     } finally {
       if (mountedRef.current) {
         setLoadingRace(false);
-        setAuthLoading(false);
       }
     }
 
-    const parsedPlayers = JSON.parse(localStorage.getItem('p10_players') || '[]');
+    const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, username, nextRace]);
+  }, [supabase, session, username, isAuthLoading, nextRace?.round, nextRace]);
 
   useEffect(() => {
     init();
@@ -299,8 +278,7 @@ function PredictPage() {
 
   const selectUser = (name: string) => {
     Haptics.selectionChanged();
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, name);
-    setUsername(name);
+    setStorageItem(STORAGE_KEYS.CURRENT_USER, name);
     if (!nextRace) return;
     const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, name, nextRace.id));
     if (finalized) {
@@ -326,8 +304,7 @@ function PredictPage() {
 
   const handleSwitchGuest = () => {
     Haptics.impact({ style: ImpactStyle.Light });
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-    setUsername('');
+    removeStorageItem(STORAGE_KEYS.CURRENT_USER);
     setTempUsername('');
   };
 
@@ -348,7 +325,7 @@ function PredictPage() {
     }
   };
 
-  if (!nextRace && (loadingRace || authLoading)) {
+  if (!nextRace && (loadingRace || isAuthLoading)) {
     return <LoadingView />;
   }
 

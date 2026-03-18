@@ -4,6 +4,17 @@ import Home from '@/app/page';
 import { createClient } from '@/lib/supabase/client';
 import * as api from '@/lib/api';
 
+// Mock useAuth
+vi.mock('@/components/AuthProvider', () => ({
+  useAuth: () => ({
+    currentUser: localStorage.getItem('p10_current_user'),
+    session: null,
+    hasSession: false,
+    isAuthLoading: false,
+    logout: vi.fn(),
+  }),
+}));
+
 // Mock Supabase
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(() => ({

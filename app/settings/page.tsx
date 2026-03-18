@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
 import Link from 'next/link';
@@ -12,20 +11,14 @@ import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
 import { withTimeout } from '@/lib/utils/sync-queue';
-import { STORAGE_KEYS } from '@/lib/utils/storage';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function SettingsPage() {
   const supabase = createClient();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
+  const { session, isAdmin } = useAuth();
 
-  // 1. Synchronous Cache Initialization
-  const [isAdmin, setIsAdmin] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
-  });
-
-  const [session, setSession] = useState<Session | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
@@ -35,34 +28,6 @@ export default function SettingsPage() {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
-
-  const init = useCallback(async () => {
-    try {
-      // 2. Truth check
-      const { data: { session: currentSession } } = await withTimeout(supabase.auth.getSession());
-      if (mountedRef.current) setSession(currentSession);
-
-      if (currentSession) {
-        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', currentSession.user.id).maybeSingle();
-        if (mountedRef.current) {
-          setIsAdmin(!!profile?.is_admin);
-          localStorage.setItem(STORAGE_KEYS.IS_ADMIN, profile?.is_admin ? 'true' : 'false');
-        }
-      }
-    } catch (err) {
-      console.error('Settings: Init error:', err);
-    }
-  }, [supabase]);
-
-  useEffect(() => {
-    init();
-    const handleResume = () => {
-      console.log('Settings: App resumed, refreshing...');
-      init();
-    };
-    window.addEventListener('p10:app_resume', handleResume);
-    return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [init]);
 
   const triggerHaptic = () => {
     Haptics.impact({ style: ImpactStyle.Light });

@@ -13,6 +13,7 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
+import { useAuth } from '@/components/AuthProvider';
 
 interface LeaderboardPlayer {
   username: string;
@@ -24,6 +25,7 @@ interface LeaderboardPlayer {
 export default function LeaderboardPage() {
   const supabase = createClient();
   const mountedRef = useRef(true);
+  const { session } = useAuth();
 
   // 1. Synchronous Cache Initialization
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => {
@@ -54,7 +56,6 @@ export default function LeaderboardPage() {
       let playersData: LeaderboardPlayer[] = [];
 
       if (view === 'global') {
-        const { data: { session } } = await withTimeout(supabase.auth.getSession());
         const currentUserId = session?.user?.id;
 
         const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username'));
@@ -102,7 +103,7 @@ export default function LeaderboardPage() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, view]);
+  }, [supabase, view, session?.user?.id]);
 
   useEffect(() => {
     const isFirstView = sessionTracker.isFirstView('leaderboard');
