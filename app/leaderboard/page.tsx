@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import PullToRefresh from '@/components/PullToRefresh';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
-import { SYNC_COMPLETE_EVENT, withTimeout } from '@/lib/utils/sync-queue';
+import { SYNC_COMPLETE_EVENT, withTimeout, APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
 
 interface LeaderboardPlayer {
   username: string;
@@ -128,8 +128,15 @@ export default function LeaderboardPage() {
     }
 
     const handleSyncComplete = () => calculate(true);
+    const handleResume = () => calculate(true);
+
     window.addEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
-    return () => window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+    window.addEventListener(APP_RESUME_EVENT, handleResume);
+
+    return () => {
+      window.removeEventListener(SYNC_COMPLETE_EVENT, handleSyncComplete);
+      window.removeEventListener(APP_RESUME_EVENT, handleResume);
+    };
   }, [calculate, view]);
 
   // Real-time subscription

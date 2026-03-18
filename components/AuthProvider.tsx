@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+import { APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
 
 export interface Profile {
   id: string;
@@ -122,6 +123,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    const handleResume = async () => {
+      const { data: { session: refreshedSession } } = await supabase.auth.getSession();
+      if (refreshedSession) {
+        setSession(refreshedSession);
+        setUser(refreshedSession.user);
+        await fetchProfile(refreshedSession.user.id);
+      }
+    };
+
+    window.addEventListener(APP_RESUME_EVENT, handleResume);
+    return () => window.removeEventListener(APP_RESUME_EVENT, handleResume);
   }, [fetchProfile]);
 
   return (

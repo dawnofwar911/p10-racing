@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { App } from '@capacitor/app';
 import { createClient } from '@/lib/supabase/client';
 import { useNotification } from '@/components/Notification';
-import { flushSyncQueue, SYNC_COMPLETE_EVENT } from '@/lib/utils/sync-queue';
+import { flushSyncQueue, SYNC_COMPLETE_EVENT, APP_RESUME_EVENT } from '@/lib/utils/sync-queue';
 
 export default function OfflineStatus() {
   const [isOffline, setIsOffline] = useState(false);
@@ -51,6 +51,7 @@ export default function OfflineStatus() {
     const appStateListener = App.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
         handleFlush();
+        window.dispatchEvent(new CustomEvent(APP_RESUME_EVENT));
       }
     });
 
