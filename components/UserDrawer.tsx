@@ -30,8 +30,6 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
     <Offcanvas 
       show={show} 
       onHide={onHide} 
-      onEntered={() => Haptics.impact({ style: ImpactStyle.Light })}
-      onExited={() => Haptics.impact({ style: ImpactStyle.Light })}
       placement="end" 
       className="bg-dark border-start border-secondary text-white user-drawer-offcanvas"
       style={{ width: '300px' }}

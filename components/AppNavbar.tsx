@@ -33,6 +33,7 @@ export default function AppNavbar() {
     if (!showDrawer) return;
 
     const handleBack = (e: CustomEvent) => {
+      Haptics.impact({ style: ImpactStyle.Light });
       setShowDrawer(false);
       e.preventDefault(); // Stop default navigation behavior
     };
