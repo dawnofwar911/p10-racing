@@ -36,7 +36,9 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 3. Navigate to Leaderboard
     await page.getByRole('link', { name: /Leaderboard/i }).click();
     await expect(page).toHaveURL(/\/leaderboard/);
-    await expect(page.getByText(/Season Standings/i)).toBeVisible();
+    // Check for Global/Guests buttons which are unique to leaderboard
+    await expect(page.getByRole('button', { name: /GLOBAL/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /GUESTS/i })).toBeVisible();
 
     // 4. Navigate to Standings
     await page.getByRole('link', { name: /Standings/i }).click();
@@ -56,11 +58,13 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await input.fill('TestBot');
     
     // Click Play as Guest button
-    await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
+    // Ensure we are clicking the actual button and not the span/text
+    await page.getByRole('button', { name: 'PLAY AS GUEST', exact: true }).click();
 
     // Now we should see the actual prediction UI
-    // The "Next Race" section or "Submit Picks" should appear
-    await expect(page.getByText(/Submit Picks/i).or(page.getByText(/Picks Submitted/i))).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/TestBot/i)).toBeVisible();
+    // Wait for the UI to flip. The "Next Race" or "P10 Prediction" should appear.
+    // We check for any text that appears ONLY after login.
+    await expect(page.getByText(/TestBot/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Current Grid/i).or(page.getByText(/Submit Picks/i))).toBeVisible({ timeout: 15000 });
   });
 });
