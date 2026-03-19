@@ -43,7 +43,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 4. Navigate to Standings
     await page.getByRole('link', { name: /Standings/i }).click();
     await expect(page).toHaveURL(/\/standings/);
-    await expect(page.getByText(/Driver Standings/i)).toBeVisible();
+    await expect(page.getByText(/World Championship Standings/i)).toBeVisible();
     
     // Standings page HAS PullToRefresh
     const ptrContainer = page.locator('.ptr-container');
@@ -58,13 +58,11 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await input.fill('TestBot');
     
     // Click Play as Guest button
-    // Ensure we are clicking the actual button and not the span/text
     await page.getByRole('button', { name: 'PLAY AS GUEST', exact: true }).click();
 
     // Now we should see the actual prediction UI
-    // Wait for the UI to flip. The "Next Race" or "P10 Prediction" should appear.
-    // We check for any text that appears ONLY after login.
-    await expect(page.getByText(/TestBot/i)).toBeVisible({ timeout: 15000 });
+    // Use locator().filter() or specific role to avoid strict mode violation for TestBot
+    await expect(page.locator('strong').getByText('TestBot')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Current Grid/i).or(page.getByText(/Submit Picks/i))).toBeVisible({ timeout: 15000 });
   });
 });
