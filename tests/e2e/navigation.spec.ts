@@ -25,7 +25,6 @@ test.describe('Mobile Navigation and Core Flow', () => {
     
     // Use specific role to avoid strict mode ambiguity
     await expect(page.getByRole('heading', { name: /Who's Predicting/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /PLAY AS GUEST/i })).toBeVisible();
 
     // 2. Navigate to Leagues
     await page.getByRole('link', { name: /Leagues/i }).click();
@@ -50,19 +49,32 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await expect(ptrContainer).toBeVisible();
   });
 
-  test('should allow playing as a guest', async ({ page }) => {
+  test('should allow logging in with a real account', async ({ page }) => {
+    // Skip if secrets are not available (local testing)
+    const email = process.env.TEST_USER_EMAIL;
+    const password = process.env.TEST_USER_PASSWORD;
+    
+    if (!email || !password) {
+      console.log('Skipping real login test: credentials not found');
+      return;
+    }
+
+    await page.goto('/auth');
+    
+    // Fill in credentials
+    await page.getByPlaceholder(/name@example.com/i).fill(email);
+    await page.getByPlaceholder(/••••••••/i).fill(password);
+    
+    // Click Sign In
+    await page.getByRole('button', { name: /SIGN IN/i }).click();
+
+    // Should redirect to home or maintain session
+    await expect(page).toHaveURL(/\/$/);
+    
+    // Navigate to predict to verify session is active
     await page.goto('/predict');
     
-    // Fill in guest name
-    const input = page.getByPlaceholder(/Enter name/i);
-    await input.fill('TestBot');
-    
-    // Click Play as Guest button
-    await page.getByRole('button', { name: 'PLAY AS GUEST', exact: true }).click();
-
-    // Now we should see the actual prediction UI
-    // Use locator().filter() or specific role to avoid strict mode violation for TestBot
-    await expect(page.locator('strong').getByText('TestBot')).toBeVisible({ timeout: 15000 });
+    // Now we should see the actual prediction UI, not the login wall
     await expect(page.getByText(/Current Grid/i).or(page.getByText(/Submit Picks/i))).toBeVisible({ timeout: 15000 });
   });
 });
