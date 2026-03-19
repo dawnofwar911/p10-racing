@@ -1,7 +1,8 @@
 'use client';
 
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card } from 'react-bootstrap';
 import { useRouter } from 'next/navigation';
+import HapticButton from '@/components/HapticButton';
 
 export default function DeleteAccountPage() {
   const router = useRouter();
@@ -44,9 +45,9 @@ export default function DeleteAccountPage() {
               </p>
               
               <div className="text-center mt-5">
-                <Button variant="outline-light" onClick={() => router.push('/')} className="rounded-pill px-4">
+                <HapticButton variant="outline-light" onClick={() => router.push('/')} className="rounded-pill px-4">
                   RETURN HOME
-                </Button>
+                </HapticButton>
               </div>
             </Card.Body>
           </Card>

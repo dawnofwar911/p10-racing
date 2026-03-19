@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Card, Row, Col } from 'react-bootstrap';
+import { Card, Row, Col } from 'react-bootstrap';
 import { Share, X, PlusSquare } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
+import HapticButton from './HapticButton';
 
 export default function PWAInstallHint() {
   const [show, setShow] = useState(false);
@@ -74,13 +75,13 @@ export default function PWAInstallHint() {
               <p className="extra-small mb-0 opacity-75">Add to Home Screen for a faster, app-like experience.</p>
             </Col>
             <Col xs="auto">
-              <Button 
+              <HapticButton 
                 variant="link" 
                 className="text-white p-1 opacity-50" 
                 onClick={dismiss}
               >
                 <X size={20} />
-              </Button>
+              </HapticButton>
             </Col>
           </Row>
           <hr className="my-2 border-secondary opacity-25" />
