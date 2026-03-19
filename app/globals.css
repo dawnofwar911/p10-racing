@@ -141,30 +141,36 @@ main {
   padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
-/* User Drawer Alignment */
+/* User Drawer Alignment - Standard Mobile Native (Full Height) */
 .offcanvas.user-drawer-offcanvas {
-  top: var(--header-height) !important;
-  z-index: var(--z-index-offcanvas) !important; /* Below the navbars */
-  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: -5px 0 15px rgba(0,0,0,0.5);
-  height: calc(100% - var(--header-height) - var(--nav-height) - env(safe-area-inset-bottom, 0px)) !important;
-  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px)) !important;
+  top: 0 !important;
+  z-index: 1100 !important; /* Overlay everything including navbars */
+  border-top: none !important;
+  box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+  height: 100% !important;
+  bottom: 0 !important;
+  /* Use safe-area-inset for padding to avoid status bar overlap */
+  padding-top: env(safe-area-inset-top, 0px) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
 }
 
-/* Backdrop should also be between the navbars to look aligned */
+/* Backdrop should be full height for a native feel */
 .offcanvas-backdrop.show {
-  top: var(--header-height) !important;
-  height: calc(100% - var(--header-height) - var(--nav-height) - env(safe-area-inset-bottom, 0px)) !important;
-  z-index: var(--z-index-offcanvas-backdrop) !important;
+  top: 0 !important;
+  height: 100% !important;
+  z-index: 1090 !important;
 }
 
 @media (min-width: 1200px) {
   .offcanvas.user-drawer-offcanvas {
-    bottom: 0 !important;
+    top: var(--header-height) !important;
     height: calc(100% - var(--header-height)) !important;
+    z-index: var(--z-index-offcanvas) !important;
   }
   .offcanvas-backdrop.show {
+    top: var(--header-height) !important;
     height: calc(100% - var(--header-height)) !important;
+    z-index: var(--z-index-offcanvas-backdrop) !important;
   }
 }
 
@@ -291,4 +297,32 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Standardized F1-style UI Elements */
+.f1-table-header {
+  background-color: rgba(31, 31, 39, 0.8) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.f1-page-title {
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: white;
+}
+
+.f1-last-race-points {
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.f1-total-points {
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: white;
 }
