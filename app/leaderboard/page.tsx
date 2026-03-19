@@ -13,7 +13,6 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
-import { sessionTracker } from '@/lib/utils/session';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy } from 'lucide-react';
 
@@ -109,14 +108,12 @@ export default function LeaderboardPage() {
   }, [supabase, view, session?.user?.id, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const fingerprint = session?.user.id || currentUser || 'guest';
-    const isFirstView = sessionTracker.isFirstView('leaderboard', fingerprint);
-    
-    // Only calculate if we have no data, OR it's the first view for this user
-    if (leaderboard.length === 0 || isFirstView) {
-      calculate(leaderboard.length > 0);
-    }
-    
+    // Always calculate on mount, view change, or sync update
+    // quiet=true if we already have some data to show
+    calculate(leaderboard.length > 0);
+  }, [calculate, leaderboard.length]); // calculate changes when view, session, or syncVersion change
+
+  useEffect(() => {
     // Listen for app resume
     const handleResume = () => {
       console.log('Leaderboard: App resumed (background).');
@@ -124,7 +121,7 @@ export default function LeaderboardPage() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate, session?.user.id, currentUser, leaderboard.length, syncVersion, triggerRefresh, view]);
+  }, [triggerRefresh]);
 
   // Real-time subscription
   useEffect(() => {
