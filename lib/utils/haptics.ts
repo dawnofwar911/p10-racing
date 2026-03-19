@@ -1,21 +1,15 @@
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
-import { Capacitor } from '@capacitor/core';
-
-/**
- * Utility to check if the app is running on a native platform.
- */
-const isNative = () => Capacitor.isNativePlatform();
 
 /**
  * Trigger a light impact haptic feedback.
  * Used for standard taps, navigation, and minor interactions.
  */
 export const triggerLightHaptic = async () => {
-  if (!isNative()) return;
   try {
     await Haptics.impact({ style: ImpactStyle.Light });
   } catch (e) {
-    console.warn('Haptic Light failed:', e);
+    // Silently fail on platforms/browsers that don't support haptics
+    console.debug('Haptic Light not supported:', e);
   }
 };
 
@@ -24,11 +18,10 @@ export const triggerLightHaptic = async () => {
  * Used for significant actions like sharing, switching views, or major transitions.
  */
 export const triggerMediumHaptic = async () => {
-  if (!isNative()) return;
   try {
     await Haptics.impact({ style: ImpactStyle.Medium });
   } catch (e) {
-    console.warn('Haptic Medium failed:', e);
+    console.debug('Haptic Medium not supported:', e);
   }
 };
 
@@ -37,11 +30,10 @@ export const triggerMediumHaptic = async () => {
  * Used for critical actions like locking in predictions or deleting data.
  */
 export const triggerHeavyHaptic = async () => {
-  if (!isNative()) return;
   try {
     await Haptics.impact({ style: ImpactStyle.Heavy });
   } catch (e) {
-    console.warn('Haptic Heavy failed:', e);
+    console.debug('Haptic Heavy not supported:', e);
   }
 };
 
@@ -50,11 +42,10 @@ export const triggerHeavyHaptic = async () => {
  * Used for scrolling through lists or changing selections in a picker.
  */
 export const triggerSelectionHaptic = async () => {
-  if (!isNative()) return;
   try {
     await Haptics.selectionChanged();
   } catch (e) {
-    console.warn('Haptic Selection failed:', e);
+    console.debug('Haptic Selection not supported:', e);
   }
 };
 
@@ -63,11 +54,10 @@ export const triggerSelectionHaptic = async () => {
  * Used when an action completes successfully (e.g., successful submission).
  */
 export const triggerSuccessHaptic = async () => {
-  if (!isNative()) return;
   try {
     await Haptics.notification({ type: NotificationType.Success });
   } catch (e) {
-    console.warn('Haptic Success failed:', e);
+    console.debug('Haptic Success not supported:', e);
   }
 };
 
@@ -76,11 +66,10 @@ export const triggerSuccessHaptic = async () => {
  * Used for cautionary actions or warnings (e.g., before deleting data).
  */
 export const triggerWarningHaptic = async () => {
-  if (!isNative()) return;
   try {
     await Haptics.notification({ type: NotificationType.Warning });
   } catch (e) {
-    console.warn('Haptic Warning failed:', e);
+    console.debug('Haptic Warning not supported:', e);
   }
 };
 
@@ -89,10 +78,9 @@ export const triggerWarningHaptic = async () => {
  * Used when an action fails or an error occurs.
  */
 export const triggerErrorHaptic = async () => {
-  if (!isNative()) return;
   try {
     await Haptics.notification({ type: NotificationType.Error });
   } catch (e) {
-    console.warn('Haptic Error failed:', e);
+    console.debug('Haptic Error not supported:', e);
   }
 };
