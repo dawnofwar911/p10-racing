@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Modal, Form, Alert, Spinner, Row, Col } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { triggerMediumHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '@/lib/utils/haptics';
@@ -26,28 +26,9 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [errorLogs, setErrorLogs] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
-
-  // Simple console error interceptor
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
-      setErrorLogs(prev => [message, ...prev].slice(0, 10));
-      originalError.apply(console, args);
-    };
-
-    return () => {
-      console.error = originalError;
-    };
-  }, []);
 
   const getStorageSummary = () => {
     if (typeof window === 'undefined') return {};
@@ -115,7 +96,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
         screen: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown',
         user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
         storage_summary: getStorageSummary(),
-        recent_errors: errorLogs
+        recent_errors: typeof window !== 'undefined' ? window.__P10_ERROR_LOGS__ || [] : []
       };
 
       // 3. Insert bug report
