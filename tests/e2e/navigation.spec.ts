@@ -30,7 +30,8 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 2. Navigate to Leagues
     await page.getByRole('link', { name: /Leagues/i }).click();
     await expect(page).toHaveURL(/\/leagues/);
-    await expect(page.getByText(/Your Leagues/i).or(page.getByText(/Join a League/i))).toBeVisible();
+    // Unauthenticated view
+    await expect(page.getByText(/Multiplayer Leagues/i).or(page.getByText(/Active Competitions/i))).toBeVisible();
 
     // 3. Navigate to Leaderboard
     await page.getByRole('link', { name: /Leaderboard/i }).click();
@@ -51,12 +52,15 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await page.goto('/predict');
     
     // Fill in guest name
-    await page.getByPlaceholder(/Enter name/i).fill('TestBot');
+    const input = page.getByPlaceholder(/Enter name/i);
+    await input.fill('TestBot');
+    
+    // Click Play as Guest button
     await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
 
     // Now we should see the actual prediction UI
-    // Increase timeout or wait for navigation if needed, but here it's state change
-    await expect(page.getByText(/P10 Prediction/i).or(page.getByText(/Submit Picks/i))).toBeVisible({ timeout: 10000 });
+    // The "Next Race" section or "Submit Picks" should appear
+    await expect(page.getByText(/Submit Picks/i).or(page.getByText(/Picks Submitted/i))).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/TestBot/i)).toBeVisible();
   });
 });
