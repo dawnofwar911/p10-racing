@@ -146,7 +146,13 @@ Deno.serve(async () => {
           return !isFinished && !isLapped && !isDns && hasLaps;
         });
         
-        retirements.sort((a: RaceResultItem, b: RaceResultItem) => parseInt(a.laps) - parseInt(b.laps));
+        retirements.sort((a: RaceResultItem, b: RaceResultItem) => {
+          const lapsA = parseInt(a.laps);
+          const lapsB = parseInt(b.laps);
+          if (lapsA !== lapsB) return lapsA - lapsB;
+          // Tie-breaker: higher position (numeric string) usually means earlier DNF in Ergast
+          return parseInt(b.position) - parseInt(a.position);
+        });
         const firstDnf = retirements[0]?.Driver.driverId || '';
 
         const positions: { [driverId: string]: number } = {};
