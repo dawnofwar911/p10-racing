@@ -42,7 +42,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 4. Navigate to Standings
     await page.getByRole('link', { name: /Standings/i }).click();
     await expect(page).toHaveURL(/\/standings/);
-    await expect(page.getByText(/World Championship Standings/i)).toBeVisible();
+    await expect(page.getByText(/World Standings/i)).toBeVisible();
     
     // Standings page HAS PullToRefresh
     const ptrContainer = page.locator('.ptr-container');
