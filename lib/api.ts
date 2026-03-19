@@ -212,7 +212,13 @@ export function getFirstDnfDriver(race: ApiRace): ApiDriver | null {
 
   if (retirements.length === 0) return null;
 
-  retirements.sort((a, b) => parseInt(a.laps) - parseInt(b.laps));
+  retirements.sort((a, b) => {
+    const lapsA = parseInt(a.laps);
+    const lapsB = parseInt(b.laps);
+    if (lapsA !== lapsB) return lapsA - lapsB;
+    // Tie-breaker: higher position (numeric string) usually means earlier DNF/lower rank in Ergast
+    return parseInt(b.position) - parseInt(a.position);
+  });
   
   return retirements[0].Driver;
 }
