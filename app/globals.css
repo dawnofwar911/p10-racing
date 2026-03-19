@@ -23,7 +23,7 @@ body {
   background-color: var(--f1-black) !important;
   color: white !important;
   -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  /* Remove global user-select: none to prevent issues with native text selection menus/magnifiers */
   overflow: hidden; /* Prevent body scroll */
   margin: 0;
   padding: 0;
@@ -31,6 +31,16 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Surgically disable selection on layout/navigation elements */
+.navbar, .mobile-bottom-nav, .btn, .nav-link, .cursor-pointer {
+  user-select: none;
+}
+
+/* Explicitly enable selection on text-heavy areas and inputs */
+main, .modal-content, input, textarea {
+  user-select: text !important;
 }
 
 /* Header stability */

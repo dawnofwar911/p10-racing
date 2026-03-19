@@ -9,6 +9,7 @@ import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -356,7 +357,8 @@ export default function Home() {
       });
     } catch (error) {
       console.log('Share dismissed or failed:', error);
-      if (!navigator.share && navigator.clipboard) {
+      // Only fallback to clipboard on web where native sharing might be missing
+      if (!Capacitor.isNativePlatform() && !navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
         showNotification('Picks copied to clipboard!', 'success');
       }
