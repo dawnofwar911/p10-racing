@@ -47,8 +47,8 @@ export default function StandingsPage() {
                 <Flag size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="h2 mb-0 f1-page-title">World Standings</h1>
-                <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>{CURRENT_SEASON} Driver Championship</small>
+                <h1 className="h2 mb-0 f1-page-title">World Championship</h1>
+                <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>Driver Standings</small>
               </div>
             </div>
           </Col>

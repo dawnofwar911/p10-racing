@@ -3,7 +3,7 @@ run-name: ${{ github.event.head_commit.message || github.workflow }}
 
 on:
   push:
-    branches: [ '**' ]
+    branches: [ 'main', 'stable' ]
   pull_request:
     branches: [ '**' ]
   workflow_dispatch:
