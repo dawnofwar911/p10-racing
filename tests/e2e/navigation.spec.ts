@@ -19,16 +19,15 @@ test.describe('Mobile Navigation and Core Flow', () => {
   });
 
   test('should navigate to all core pages via bottom nav', async ({ page }) => {
-    // 1. Navigate to Predict
+    // 1. Navigate to Predict (Guest/Login Wall)
     await page.getByRole('link', { name: /Predict/i }).click();
     await expect(page).toHaveURL(/\/predict/);
-    await expect(page.getByText(/P10 Prediction/i).or(page.getByText(/Submit Picks/i))).toBeVisible();
+    // Should see the "Who's Predicting?" wall
+    await expect(page.getByText(/Who's Predicting/i).or(page.getByText(/PLAY AS GUEST/i))).toBeVisible();
 
     // 2. Navigate to Leagues
     await page.getByRole('link', { name: /Leagues/i }).click();
     await expect(page).toHaveURL(/\/leagues/);
-    
-    // Check for unique text on Leagues page
     await expect(page.getByText(/Your Leagues/i).or(page.getByText(/Join a League/i))).toBeVisible();
 
     // 3. Navigate to Leaderboard
@@ -44,5 +43,17 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // Standings page HAS PullToRefresh
     const ptrContainer = page.locator('.ptr-container');
     await expect(ptrContainer).toBeVisible();
+  });
+
+  test('should allow playing as a guest', async ({ page }) => {
+    await page.getByRole('link', { name: /Predict/i }).click();
+    
+    // Fill in guest name
+    await page.getByPlaceholder(/Enter name/i).fill('TestBot');
+    await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
+
+    // Now we should see the actual prediction UI
+    await expect(page.getByText(/P10 Prediction/i).or(page.getByText(/Submit Picks/i))).toBeVisible();
+    await expect(page.getByText(/TestBot/i)).toBeVisible();
   });
 });
