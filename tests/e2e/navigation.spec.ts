@@ -10,6 +10,9 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // Check for the main hero text
     await expect(page.getByText(/Predict the 10th place finisher/i)).toBeVisible();
     
+    // Check for the "Next Race" section on Home
+    await expect(page.getByText(/Next Race/i)).toBeVisible();
+
     // Check for the bottom navigation bar
     const bottomNav = page.locator('.mobile-bottom-nav');
     await expect(bottomNav).toBeVisible();
@@ -19,14 +22,14 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 1. Navigate to Predict
     await page.getByRole('link', { name: /Predict/i }).click();
     await expect(page).toHaveURL(/\/predict/);
-    await expect(page.getByText(/Next Race/i)).toBeVisible();
+    await expect(page.getByText(/P10 Prediction/i).or(page.getByText(/Submit Picks/i))).toBeVisible();
 
     // 2. Navigate to Leagues
     await page.getByRole('link', { name: /Leagues/i }).click();
     await expect(page).toHaveURL(/\/leagues/);
     
-    // Since we're a guest, we might see the join/login screen
-    await expect(page.getByText(/Your Leagues/i).or(page.getByText(/Login/i))).toBeVisible();
+    // Check for unique text on Leagues page
+    await expect(page.getByText(/Your Leagues/i).or(page.getByText(/Join a League/i))).toBeVisible();
 
     // 3. Navigate to Leaderboard
     await page.getByRole('link', { name: /Leaderboard/i }).click();
@@ -37,15 +40,9 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await page.getByRole('link', { name: /Standings/i }).click();
     await expect(page).toHaveURL(/\/standings/);
     await expect(page.getByText(/Driver Standings/i)).toBeVisible();
-  });
-
-  test('should show the pull-to-refresh indicator on pull', async ({ page }) => {
-    // We can't easily simulate complex touch gestures in a unit-test-like way here,
-    // but we can check if the component exists in the DOM.
+    
+    // Standings page HAS PullToRefresh
     const ptrContainer = page.locator('.ptr-container');
     await expect(ptrContainer).toBeVisible();
-    
-    const ptrIndicator = page.locator('.ptr-container .bg-dark');
-    await expect(ptrIndicator).toBeDefined();
   });
 });
