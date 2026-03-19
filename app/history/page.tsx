@@ -5,7 +5,6 @@ import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-import { triggerLightHaptic } from '@/lib/utils/haptics';
 import { useRouter } from 'next/navigation';
 import HapticButton from '@/components/HapticButton';
 

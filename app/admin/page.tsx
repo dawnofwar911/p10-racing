@@ -6,7 +6,7 @@ import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCalendarRace } from '@/lib/api';
 import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
-import { triggerSuccessHaptic, triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
+import { triggerSuccessHaptic, triggerLightHaptic } from '@/lib/utils/haptics';
 import { useRouter } from 'next/navigation';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getResultsKey } from '@/lib/utils/storage';
