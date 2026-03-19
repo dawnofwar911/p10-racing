@@ -266,7 +266,7 @@ function PredictPage() {
 
           if (userIds.length > 0) {
             const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', userIds);
-            const profilesMap = new Map<string, string>((profiles || []).map(p => [p.id, p.username] as [string, string]));
+            const profilesMap = new Map<string, string | null>((profiles || []).map(p => [p.id, p.username]));
             formattedDbPreds = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => ({
               username: profilesMap.get(p.user_id) || 'Unknown',
               p10: p.p10_driver_id,
