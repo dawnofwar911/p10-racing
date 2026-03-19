@@ -249,6 +249,19 @@ describe('API Logic Tests', () => {
       expect(dnf?.driverId).toBe('dnf1');
     });
 
+    it('should use position as a tie-breaker if laps are equal (higher position = earlier retiree)', () => {
+      const mockRace = {
+        Results: [
+          { status: 'Engine', laps: '5', position: '20', Driver: { driverId: 'dnf_early' } },
+          { status: 'Accident', laps: '5', position: '19', Driver: { driverId: 'dnf_late' } },
+          { status: 'Finished', laps: '50', position: '1', Driver: { driverId: 'winner' } }
+        ]
+      } as unknown as ApiRace;
+
+      const dnf = getFirstDnfDriver(mockRace);
+      expect(dnf?.driverId).toBe('dnf_early');
+    });
+
     it('should return null if everyone finished or was lapped', () => {
       const mockRace = {
         Results: [

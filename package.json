@@ -1,6 +1,6 @@
 {
   "name": "p10-racing",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "private": false,
   "license": "UNLICENSED",
   "scripts": {
@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "prepare": "husky"
   },
   "dependencies": {
@@ -41,6 +43,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@playwright/test": "^1.50.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -52,6 +55,7 @@
     "jsdom": "^28.1.0",
     "msw": "^2.12.10",
     "pg-mem": "^3.0.14",
+    "serve": "^14.2.4",
     "typescript": "^5",
     "vitest": "^4.1.0"
   }
