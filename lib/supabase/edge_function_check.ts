@@ -70,6 +70,12 @@ Deno.serve(async () => {
     const round = roundToProcess || races[activeIndex].round;
     const upcomingRace = raceToProcess || races[activeIndex];
 
+    // --- NEW: Calculate Recency for Notifications ---
+    const raceTime = new Date(`${upcomingRace.date}T${upcomingRace.time || '00:00:00Z'}`);
+    const fortyEightHoursAgo = new Date(now.getTime() - (48 * 60 * 60 * 1000));
+    const isRecent = raceTime > fortyEightHoursAgo;
+    // --- END RECENCY ---
+
     // --- NEW: Sync Calendar ---
     // Every time we check, let's sync the next few races to the DB to ensure locking works
     const racesToSync = races.slice(activeIndex, activeIndex + 3);
@@ -97,13 +103,17 @@ Deno.serve(async () => {
       const { data: wasMarked } = await supabase.rpc('check_and_mark_notification_sent', { p_id: notificationId });
 
       if (wasMarked) {
-        console.log('Qualifying results found! Sending broadcast...');
-        await supabase.rpc('send_broadcast_notification', {
-          p_title: 'Qualifying Results Are In!',
-          p_body: `The grid for the ${upcomingRace.raceName} is ready. Make your P10 picks now!`,
-          p_type: 'quali',
-          p_url: '/predict'
-        });
+        if (isRecent) {
+          console.log('Qualifying results found! Sending broadcast...');
+          await supabase.rpc('send_broadcast_notification', {
+            p_title: 'Qualifying Results Are In!',
+            p_body: `The grid for the ${upcomingRace.raceName} is ready. Make your P10 picks now!`,
+            p_type: 'quali',
+            p_url: '/predict'
+          });
+        } else {
+          console.log(`Silencing old qualifying notification for ${upcomingRace.raceName}`);
+        }
       }
     }
 
