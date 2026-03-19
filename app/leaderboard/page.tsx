@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Table, Button, Spinner, ButtonGroup, Badge } from 'react-bootstrap';
+import { Container, Row, Col, ButtonGroup, Button, Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
@@ -38,7 +38,6 @@ export default function LeaderboardPage() {
 
   const [loading, setLoading] = useState(!leaderboard.length);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
-  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [view, setView] = useState<'global' | 'local'>('global');
 
   // Lifecycle

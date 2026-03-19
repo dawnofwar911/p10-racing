@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import { Container, Row, Col, Card, Table, Spinner, Badge, Button } from 'react-bootstrap';
+import { Container, Row, Col, Spinner, Button } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchCalendar } from '@/lib/api';
@@ -27,7 +27,6 @@ function LeagueDetailContent() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
-  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const handleShare = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
