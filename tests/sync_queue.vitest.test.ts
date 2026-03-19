@@ -116,4 +116,20 @@ describe('Sync Queue Logic Tests', () => {
     expect(onLocked).toHaveBeenCalledWith('2026_1');
     expect(getSyncQueue()).toEqual({}); // Should still remove from queue if locked
   });
+
+  describe('withTimeout Utility', () => {
+    it('should resolve if the promise completes before timeout', async () => {
+      const { withTimeout } = await import('@/lib/utils/sync-queue');
+      const promise = Promise.resolve('success');
+      const result = await withTimeout(promise, 100);
+      expect(result).toBe('success');
+    });
+
+    it('should reject if the promise takes too long', async () => {
+      const { withTimeout } = await import('@/lib/utils/sync-queue');
+      const slowPromise = new Promise(resolve => setTimeout(() => resolve('too slow'), 200));
+      
+      await expect(withTimeout(slowPromise, 50)).rejects.toThrow('Request timed out');
+    });
+  });
 });

@@ -82,6 +82,32 @@ describe('PullToRefresh Component Tests', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
+  it('should trigger onRefresh when pulled past threshold', async () => {
+    const onRefresh = vi.fn().mockImplementation(() => Promise.resolve());
+    const el = document.getElementById('main-scroll-container')!;
+    
+    const { act } = await import('@testing-library/react');
+
+    await act(async () => {
+      render(
+        <PullToRefresh onRefresh={onRefresh}>
+          <div>Content</div>
+        </PullToRefresh>,
+        { container: el }
+      );
+    });
+
+    // Simulate a large pull (200px down)
+    await act(async () => {
+      fireEvent.touchStart(el, { touches: [{ pageY: 0 }], changedTouches: [{ pageY: 0 }] });
+      fireEvent.touchMove(el, { touches: [{ pageY: 200 }], changedTouches: [{ pageY: 200 }] });
+      fireEvent.touchEnd(el, { touches: [], changedTouches: [{ pageY: 200 }] });
+    });
+
+    // Should call onRefresh
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
   // Note: Simulating a full successful pull-to-refresh is complex in JSDOM 
   // because it relies on window.requestAnimationFrame and Framer Motion's internal state.
   // We've verified basic rendering and event attachment.
