@@ -14,7 +14,8 @@ import LoadingView from '@/components/LoadingView';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { Users } from 'lucide-react';
+import { Users, ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
 
 const supabase = createClient();
 
@@ -27,6 +28,10 @@ function LeagueDetailContent() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
+
+  const triggerHaptic = () => {
+    Haptics.impact({ style: ImpactStyle.Light });
+  };
 
   const handleShare = async () => {
     Haptics.impact({ style: ImpactStyle.Medium });
@@ -180,6 +185,15 @@ function LeagueDetailContent() {
           <Row className="mb-4 align-items-center g-3">
             <Col xs={12} md={7}>
               <div className="d-flex align-items-center">
+                <Link href="/leagues" passHref legacyBehavior>
+                  <Button 
+                    variant="link" 
+                    className="text-white p-0 me-3 opacity-75 hover-opacity-100"
+                    onClick={triggerHaptic}
+                  >
+                    <ChevronLeft size={28} />
+                  </Button>
+                </Link>
                 <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px' }}>
                   <Users size={24} className="text-white" />
                 </div>

@@ -124,7 +124,7 @@ export default function LeaderboardPage() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate, session?.user.id, currentUser, leaderboard.length, syncVersion, triggerRefresh]);
+  }, [calculate, session?.user.id, currentUser, leaderboard.length, syncVersion, triggerRefresh, view]);
 
   // Real-time subscription
   useEffect(() => {
