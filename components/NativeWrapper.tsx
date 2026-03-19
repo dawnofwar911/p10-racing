@@ -60,13 +60,25 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         });
 
         // 3. Handle Hardware Back Button (Android)
-        App.addListener('backButton', ({ canGoBack }) => {
+        App.addListener('backButton', (data) => {
+          // Check if any component wants to consume the back button
+          // This is useful for closing drawers/modals before navigating
+          const backEvent = new CustomEvent('backbutton', {
+            cancelable: true,
+            detail: data
+          });
+          window.dispatchEvent(backEvent);
+
+          if (backEvent.defaultPrevented) {
+            return;
+          }
+
           const path = window.location.pathname;
           
           // Only exit the app if we are on the root home page
           if (path === '/') {
             App.exitApp();
-          } else if (canGoBack) {
+          } else if (data.canGoBack) {
             // If we have history (e.g. went from Home -> Predict), go back
             router.back();
           } else {

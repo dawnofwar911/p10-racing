@@ -3,7 +3,7 @@
 import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { User } from 'lucide-react';
@@ -27,6 +27,19 @@ export default function AppNavbar() {
 
   const isOnAdminPage = pathname === '/admin';
   const isOnResetPage = pathname === '/auth/reset-password';
+
+  // Support hardware back button closing the drawer
+  useEffect(() => {
+    if (!showDrawer) return;
+
+    const handleBack = (e: CustomEvent) => {
+      Haptics.impact({ style: ImpactStyle.Light });
+      setShowDrawer(false);
+      e.preventDefault(); // Stop default navigation behavior
+    };
+    window.addEventListener('backbutton', handleBack as EventListener);
+    return () => window.removeEventListener('backbutton', handleBack as EventListener);
+  }, [showDrawer]);
 
   return (
     <>

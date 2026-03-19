@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Table, Button, Spinner, ButtonGroup, Badge } from 'react-bootstrap';
+import { Container, Row, Col, ButtonGroup, Button, Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
@@ -13,7 +13,8 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
-import { sessionTracker } from '@/lib/utils/session';
+import LeaderboardTable from '@/components/LeaderboardTable';
+import { Trophy } from 'lucide-react';
 
 interface LeaderboardPlayer {
   username: string;
@@ -36,7 +37,6 @@ export default function LeaderboardPage() {
 
   const [loading, setLoading] = useState(!leaderboard.length);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
-  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [view, setView] = useState<'global' | 'local'>('global');
 
   // Lifecycle
@@ -108,14 +108,12 @@ export default function LeaderboardPage() {
   }, [supabase, view, session?.user?.id, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const fingerprint = session?.user.id || currentUser || 'guest';
-    const isFirstView = sessionTracker.isFirstView('leaderboard', fingerprint);
-    
-    // Only calculate if we have no data, OR it's the first view for this user
-    if (leaderboard.length === 0 || isFirstView) {
-      calculate(leaderboard.length > 0);
-    }
-    
+    // Always calculate on mount, view change, or sync update
+    // quiet=true if we already have some data to show
+    calculate(leaderboard.length > 0);
+  }, [calculate, leaderboard.length]); // calculate changes when view, session, or syncVersion change
+
+  useEffect(() => {
     // Listen for app resume
     const handleResume = () => {
       console.log('Leaderboard: App resumed (background).');
@@ -123,7 +121,7 @@ export default function LeaderboardPage() {
     };
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
-  }, [calculate, session?.user.id, currentUser, leaderboard.length, syncVersion, triggerRefresh]);
+  }, [triggerRefresh]);
 
   // Real-time subscription
   useEffect(() => {
@@ -137,113 +135,55 @@ export default function LeaderboardPage() {
 
   return (
     <PullToRefresh onRefresh={() => calculate(false)}>
-      <Container className="mt-4 mb-2">
-        <Row className="mb-4 align-items-center">
-          <Col>
-            <div className="d-flex align-items-center gap-2 mb-1">
-              <h1 className="h2 mb-0 text-uppercase fw-bold letter-spacing-1">Leaderboard</h1>
-              {isSeasonComplete && <span className="badge bg-warning text-dark fw-bold rounded-pill" style={{ fontSize: '0.6rem' }}>🏆 FINAL STANDINGS</span>}
+      <Container className="mt-4 mb-4">
+        <Row className="mb-4 align-items-center g-3">
+          <Col xs={12} md={6}>
+            <div className="d-flex align-items-center">
+              <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px' }}>
+                <Trophy size={24} className="text-white" />
+              </div>
+              <div>
+                <div className="d-flex align-items-center gap-2">
+                  <h1 className="h2 mb-0 f1-page-title">Leaderboard</h1>
+                  {isSeasonComplete && <Badge bg="warning" text="dark" className="rounded-pill fw-bold" style={{ fontSize: '0.6rem' }}>FINAL STANDINGS</Badge>}
+                </div>
+                <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>{CURRENT_SEASON} World Rankings</small>
+              </div>
             </div>
-            <p className="text-muted small mb-0">{isSeasonComplete ? `Final results from the ${CURRENT_SEASON} season` : `Live points from the ${CURRENT_SEASON} season`}</p>
           </Col>
-          <Col xs="auto">
-            <ButtonGroup className="bg-dark rounded border border-secondary p-1">
-              <Button variant={view === 'global' ? 'danger' : 'dark'} size="sm" onClick={() => setView('global')} className="rounded px-3">GLOBAL</Button>
-              <Button variant={view === 'local' ? 'danger' : 'dark'} size="sm" onClick={() => setView('local')} className="rounded px-3">GUESTS</Button>
+          <Col xs={12} md={6} className="text-md-end">
+            <ButtonGroup className="bg-dark rounded border border-secondary p-1 shadow-sm">
+              <Button 
+                variant={view === 'global' ? 'danger' : 'dark'} 
+                size="sm" 
+                onClick={() => setView('global')} 
+                className="rounded px-4 fw-bold text-uppercase"
+                style={{ fontSize: '0.7rem' }}
+              >
+                GLOBAL
+              </Button>
+              <Button 
+                variant={view === 'local' ? 'danger' : 'dark'} 
+                size="sm" 
+                onClick={() => setView('local')} 
+                className="rounded px-4 fw-bold text-uppercase"
+                style={{ fontSize: '0.7rem' }}
+              >
+                GUESTS
+              </Button>
             </ButtonGroup>
           </Col>
         </Row>
         <Row>
           <Col>
-            <div className="table-responsive rounded border border-secondary shadow-sm">
-              <Table variant="dark" hover className="mb-0">
-                <thead><tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small"><th className="ps-4 py-3">Pos</th><th className="py-3">Player</th><th className="text-end py-3">Last Race</th><th className="text-end pe-4 py-3">Total</th></tr></thead>
-                <tbody>
-                  {loading ? (<tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="danger" /></td></tr>) : leaderboard.length > 0 ? leaderboard.map((entry) => (
-                    <React.Fragment key={entry.player}>
-                      <tr onClick={() => setExpandedPlayer(expandedPlayer === entry.player ? null : entry.player)} style={{ height: '70px', verticalAlign: 'middle', cursor: 'pointer' }} className={expandedPlayer === entry.player ? 'bg-danger bg-opacity-10' : ''}>
-                        <td className="ps-4 fw-bold text-muted">{entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}</td>
-                        <td className="fw-bold text-white fs-5">{entry.player} {entry.player === currentUser && <span className="badge bg-danger ms-2" style={{ fontSize: '0.5rem' }}>YOU</span>}</td>
-                        <td className="text-end fw-bold text-muted small">{entry.lastRacePoints > 0 ? `+${entry.lastRacePoints}` : entry.lastRacePoints === 0 ? '-' : entry.lastRacePoints}</td>
-                        <td className="text-end pe-4 fw-bold text-danger fs-4">{entry.points}</td>
-                      </tr>
-                      {expandedPlayer === entry.player && (
-                        <tr className="bg-dark bg-opacity-75">
-                          <td colSpan={4} className="p-0 border-0">
-                            <div className="p-3 p-md-4 m-2 m-md-3 bg-dark rounded border border-secondary shadow-sm">
-                              {entry.breakdown && (
-                                <div className="row g-3 text-white mb-4 border-bottom border-secondary pb-4">
-                                  <div className="col-md-6 border-md-end border-secondary">
-                                    <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: P10 Result</small>
-                                    <div className="d-flex justify-content-between align-items-center">
-                                      <span className="fw-bold fs-5 text-uppercase">{entry.breakdown.p10Driver.replace(/_/g, ' ')}</span>
-                                      <Badge bg="secondary">P{entry.breakdown.actualP10Pos}</Badge>
-                                    </div>
-                                    <div className="mt-2 text-danger fw-bold small">+{entry.breakdown.p10Points} PTS</div>
-                                  </div>
-                                  <div className="col-md-6 ps-md-4">
-                                    <small className="text-muted text-uppercase d-block mb-2 fw-bold" style={{ fontSize: '0.65rem' }}>Latest Race: First DNF Bonus</small>
-                                    <div className="mt-1">
-                                      {entry.breakdown.dnfPoints > 0 ? (
-                                        <div className="text-success fw-bold d-flex align-items-center small">
-                                          <span className="fs-5 me-2">🏎️💨</span> Correct (+25 PTS)
-                                        </div>
-                                      ) : (
-                                        <div className="text-muted d-flex align-items-center opacity-50 small">
-                                          <span className="fs-5 me-2">🏁</span> Incorrect (+0 PTS)
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              <div className="season-history">
-                                <h4 className="h6 text-uppercase fw-bold text-danger letter-spacing-2 mb-3">Season History</h4>
-                                {entry.history && entry.history.length > 0 ? (
-                                  <div className="table-responsive">
-                                    <Table variant="dark" size="sm" className="mb-0 extra-small opacity-75">
-                                      <thead>
-                                        <tr className="text-muted border-bottom border-secondary">
-                                          <th>Race</th>
-                                          <th>P10 Pick</th>
-                                          <th>DNF Pick</th>
-                                          <th className="text-end">PTS</th>
-                                          <th className="text-end">Total</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {entry.history.map((h, idx) => (
-                                          <tr key={idx} className="border-bottom border-secondary border-opacity-25">
-                                            <td className="py-2">Round {h.round}</td>
-                                            <td className="py-2 text-uppercase">
-                                              {h.p10Driver.replace(/_/g, ' ')} 
-                                              <span className="ms-1 text-muted">(P{h.p10Pos})</span>
-                                            </td>
-                                            <td className="py-2 text-uppercase">
-                                              {h.dnfDriver.replace(/_/g, ' ')}
-                                              {h.dnfCorrect ? <span className="ms-1 text-success">✓</span> : <span className="ms-1 text-muted">✗</span>}
-                                            </td>
-                                            <td className="py-2 text-end fw-bold text-white">+{h.points}</td>
-                                            <td className="py-2 text-end text-muted">{h.totalSoFar}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </Table>
-                                  </div>
-                                ) : (
-                                  <p className="text-muted small mb-0">No history available for this season.</p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  )) : (<tr><td colSpan={4} className="text-center py-5 text-muted small">No entries found.</td></tr>)}
-                </tbody>
-              </Table>
-            </div>
+            <LeaderboardTable 
+              key={view}
+              entries={leaderboard} 
+              loading={loading} 
+              currentUser={currentUser || undefined}
+              isSeasonComplete={isSeasonComplete}
+              emptyMessage={view === 'global' ? "No global players found." : "No guest data found on this device."}
+            />
           </Col>
         </Row>
       </Container>

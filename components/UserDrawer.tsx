@@ -34,7 +34,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
       className="bg-dark border-start border-secondary text-white user-drawer-offcanvas"
       style={{ width: '300px' }}
     >
-      <Offcanvas.Header closeButton closeVariant="white" className="border-bottom border-secondary border-opacity-50 pb-3">
+      <Offcanvas.Header closeButton closeVariant="white" className="border-bottom border-secondary border-opacity-50 py-4">
         <Offcanvas.Title className="fw-bold text-uppercase letter-spacing-1 h6 mb-0">
           Player Profile
         </Offcanvas.Title>
