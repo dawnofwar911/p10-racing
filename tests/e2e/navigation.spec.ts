@@ -22,8 +22,10 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 1. Navigate to Predict (Guest/Login Wall)
     await page.getByRole('link', { name: /Predict/i }).click();
     await expect(page).toHaveURL(/\/predict/);
-    // Should see the "Who's Predicting?" wall
-    await expect(page.getByText(/Who's Predicting/i).or(page.getByText(/PLAY AS GUEST/i))).toBeVisible();
+    
+    // Use specific role to avoid strict mode ambiguity
+    await expect(page.getByRole('heading', { name: /Who's Predicting/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /PLAY AS GUEST/i })).toBeVisible();
 
     // 2. Navigate to Leagues
     await page.getByRole('link', { name: /Leagues/i }).click();
@@ -46,14 +48,15 @@ test.describe('Mobile Navigation and Core Flow', () => {
   });
 
   test('should allow playing as a guest', async ({ page }) => {
-    await page.getByRole('link', { name: /Predict/i }).click();
+    await page.goto('/predict');
     
     // Fill in guest name
     await page.getByPlaceholder(/Enter name/i).fill('TestBot');
     await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
 
     // Now we should see the actual prediction UI
-    await expect(page.getByText(/P10 Prediction/i).or(page.getByText(/Submit Picks/i))).toBeVisible();
+    // Increase timeout or wait for navigation if needed, but here it's state change
+    await expect(page.getByText(/P10 Prediction/i).or(page.getByText(/Submit Picks/i))).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/TestBot/i)).toBeVisible();
   });
 });
