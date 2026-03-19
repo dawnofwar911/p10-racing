@@ -10,6 +10,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
@@ -265,7 +266,7 @@ function PredictPage() {
 
           if (userIds.length > 0) {
             const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', userIds);
-            const profilesMap = new Map(profiles?.map(p => [p.id, p.username]));
+            const profilesMap = new Map<string, string | null>((profiles || []).map(p => [p.id, p.username]));
             formattedDbPreds = (dbPreds as unknown as CommunityPredictionData[] || []).map((p) => ({
               username: profilesMap.get(p.user_id) || 'Unknown',
               p10: p.p10_driver_id,
@@ -388,7 +389,8 @@ function PredictPage() {
       await Share.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app/predict', dialogTitle: 'Share your Picks' });
     } catch (error) {
       console.log('Share dismissed or failed:', error);
-      if (!navigator.share && navigator.clipboard) {
+      // Only fallback to clipboard on web where native sharing might be missing
+      if (!Capacitor.isNativePlatform() && !navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
         showNotification('Picks copied to clipboard!', 'success');
       }
