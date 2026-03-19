@@ -30,14 +30,14 @@ export default function AppNavbar() {
 
   // Support hardware back button closing the drawer
   useEffect(() => {
-    const handleBack = (e: Event) => {
-      if (showDrawer) {
-        setShowDrawer(false);
-        e.preventDefault(); // Stop default navigation behavior
-      }
+    if (!showDrawer) return;
+
+    const handleBack = (e: CustomEvent) => {
+      setShowDrawer(false);
+      e.preventDefault(); // Stop default navigation behavior
     };
-    window.addEventListener('backbutton', handleBack);
-    return () => window.removeEventListener('backbutton', handleBack);
+    window.addEventListener('backbutton', handleBack as EventListener);
+    return () => window.removeEventListener('backbutton', handleBack as EventListener);
   }, [showDrawer]);
 
   return (
