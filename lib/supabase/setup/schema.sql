@@ -63,6 +63,7 @@ CREATE TABLE public.bug_reports (
   user_id UUID REFERENCES auth.users ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
+  severity TEXT DEFAULT 'Minor',
   device_info JSONB,
   image_url TEXT,
   status TEXT DEFAULT 'open',

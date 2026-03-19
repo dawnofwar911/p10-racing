@@ -8,8 +8,50 @@ import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 
+// Declare global for console logs
+declare global {
+  interface Window {
+    __P10_ERROR_LOGS__: string[];
+  }
+}
+
 export default function NativeWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+
+  // Global console error interceptor
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    window.__P10_ERROR_LOGS__ = window.__P10_ERROR_LOGS__ || [];
+    const originalError = console.error;
+
+    // Safe stringify to avoid circular reference crashes
+    const safeStringify = (obj: unknown): string => {
+      try {
+        if (typeof obj !== 'object' || obj === null) return String(obj);
+        const cache = new Set();
+        return JSON.stringify(obj, (key, value) => {
+          if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) return '[Circular]';
+            cache.add(value);
+          }
+          return value;
+        });
+      } catch {
+        return '[Unstringifiable Object]';
+      }
+    };
+
+    console.error = (...args: unknown[]) => {
+      const message = args.map(arg => safeStringify(arg)).join(' ');
+      window.__P10_ERROR_LOGS__ = [message, ...window.__P10_ERROR_LOGS__].slice(0, 10);
+      originalError.apply(console, args);
+    };
+
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
 
   useEffect(() => {
     async function initNative() {
