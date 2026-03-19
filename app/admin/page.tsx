@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Container, Row, Col, Form, Button, Card, Table, Spinner, Alert, Modal, Dropdown } from 'react-bootstrap';
+import { Container, Row, Col, Form, Card, Table, Spinner, Alert, Modal, Dropdown } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
 import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCalendarRace } from '@/lib/api';
 import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
-import { Haptics, NotificationType } from '@capacitor/haptics';
+import { triggerSuccessHaptic, triggerLightHaptic } from '@/lib/utils/haptics';
 import { useRouter } from 'next/navigation';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getResultsKey } from '@/lib/utils/storage';
+import HapticButton from '@/components/HapticButton';
 
 interface AdminDriver {
   id: string;
@@ -176,6 +177,7 @@ export default function AdminPage() {
         const dnf = getFirstDnfDriver(data);
         setFirstDnf(dnf?.driverId || '');
         setStatus({ message: 'Data fetched successfully from API.', variant: 'success' });
+        triggerSuccessHaptic();
       } else if (mountedRef.current) {
         setError(`No results found for Season ${season}, Round ${raceInfo.round}.`);
       }
@@ -196,6 +198,7 @@ export default function AdminPage() {
     if (target === 'local') {
       localStorage.setItem(getResultsKey(season, selectedRace), JSON.stringify(simplifiedResults));
       setStatus({ message: `Results for Round ${selectedRace} saved locally!`, variant: 'info' });
+      triggerLightHaptic();
     } else {
       setLoading(true);
       const { error: dbError } = await withTimeout(supabase.from('verified_results').upsert({
@@ -210,7 +213,7 @@ export default function AdminPage() {
           setStatus({ message: 'Global publish error: ' + dbError.message, variant: 'danger' });
         } else {
           setStatus({ message: `Results published! Leaderboard updated GLOBALLY for Round ${selectedRace}.`, variant: 'success' });
-          Haptics.notification({ type: NotificationType.Success });
+          triggerSuccessHaptic();
           checkExistingResults();
         }
       }
@@ -233,7 +236,7 @@ export default function AdminPage() {
         setStatus({ message: 'Notification error: ' + rpcError.message, variant: 'danger' });
       } else {
         setStatus({ message: 'Broadcast notification sent!', variant: 'success' });
-        Haptics.notification({ type: NotificationType.Success });
+        triggerSuccessHaptic();
       }
     }
   };
@@ -249,7 +252,7 @@ export default function AdminPage() {
         setStatus({ message: 'Test notification error: ' + rpcError.message, variant: 'danger' });
       } else {
         setStatus({ message: 'Test notification sent to your device!', variant: 'success' });
-        Haptics.notification({ type: NotificationType.Success });
+        triggerSuccessHaptic();
       }
     }
   };
@@ -267,10 +270,10 @@ export default function AdminPage() {
       <Container className="mt-4 mb-5">
         {status && (<Alert variant={status.variant} onClose={() => setStatus(null)} dismissible className="sticky-top mt-2 shadow-sm border-secondary">{status.message}</Alert>)}
         <Row className="mb-4">
-          <Col><h1 className="h2 fw-bold text-uppercase letter-spacing-1">Admin Results Entry</h1><div className="d-flex gap-3 align-items-end mt-3 flex-wrap"><Form.Group style={{ maxWidth: '150px' }}><Form.Label className="small text-muted text-uppercase fw-bold">Season</Form.Label><Form.Control type="number" value={season} onChange={(e) => setSeason(parseInt(e.target.value))} className="bg-dark text-white border-secondary" /></Form.Group><Form.Group style={{ maxWidth: '300px' }}><Form.Label className="small text-muted text-uppercase fw-bold">Select Race</Form.Label><Dropdown onSelect={(k) => setSelectedRace(k || '')} className="w-100"><Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-dark text-white fw-bold">{availableRaces.find(r => r.round === selectedRace)?.raceName || 'Select Race'}{selectedRace ? ` (R${selectedRace})` : ''}</Dropdown.Toggle><Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg" style={{ maxHeight: '300px', overflowY: 'auto' }}>{availableRaces.map(race => (<Dropdown.Item key={race.round} eventKey={race.round} active={selectedRace === race.round}>{race.raceName} (R{race.round})</Dropdown.Item>))}</Dropdown.Menu></Dropdown></Form.Group>
+          <Col><h1 className="h2 fw-bold text-uppercase letter-spacing-1">Admin Results Entry</h1><div className="d-flex gap-3 align-items-end mt-3 flex-wrap"><Form.Group style={{ maxWidth: '150px' }}><Form.Label className="small text-muted text-uppercase fw-bold">Season</Form.Label><Form.Control type="number" value={season} onChange={(e) => setSeason(parseInt(e.target.value))} className="bg-dark text-white border-secondary" /></Form.Group><Form.Group style={{ maxWidth: '300px' }}><Form.Label className="small text-muted text-uppercase fw-bold">Select Race</Form.Label><Dropdown onSelect={(k) => { triggerLightHaptic(); setSelectedRace(k || ''); }} className="w-100"><Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-dark text-white fw-bold">{availableRaces.find(r => r.round === selectedRace)?.raceName || 'Select Race'}{selectedRace ? ` (R${selectedRace})` : ''}</Dropdown.Toggle><Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg" style={{ maxHeight: '300px', overflowY: 'auto' }}>{availableRaces.map(race => (<Dropdown.Item key={race.round} eventKey={race.round} active={selectedRace === race.round}>{race.raceName} (R{race.round})</Dropdown.Item>))}</Dropdown.Menu></Dropdown></Form.Group>
 
 
-<Button variant="outline-info" onClick={handleFetchFromApi} disabled={loading} className="px-4 fw-bold">{loading ? <Spinner animation="border" size="sm" /> : 'FETCH API'}</Button></div>{error && <Alert variant="danger" className="mt-3 py-2">{error}</Alert>}</Col>
+<HapticButton variant="outline-info" onClick={handleFetchFromApi} disabled={loading} className="px-4 fw-bold">{loading ? <Spinner animation="border" size="sm" /> : 'FETCH API'}</HapticButton></div>{error && <Alert variant="danger" className="mt-3 py-2">{error}</Alert>}</Col>
         </Row>
         <Row>
           <Col lg={8}>
@@ -283,16 +286,16 @@ export default function AdminPage() {
             {existingResult && (<Card className="border-warning border-opacity-50 mb-4 shadow-sm bg-dark"><Card.Header className="bg-warning bg-opacity-10 border-warning border-opacity-25 py-2"><h3 className="h6 mb-0 text-uppercase fw-bold text-warning" style={{ fontSize: '0.65rem' }}>Existing Verified Data</h3></Card.Header><Card.Body className="p-3"><div className="d-flex justify-content-between mb-2"><span className="small text-white opacity-50 text-uppercase">Current P10:</span><span className="small fw-bold text-white text-uppercase">{existingResult.p10.replace('_', ' ')}</span></div><div className="d-flex justify-content-between"><span className="small text-white opacity-50 text-uppercase">Current DNF:</span><span className="small fw-bold text-danger text-uppercase">{existingResult.dnf.replace('_', ' ')}</span></div></Card.Body></Card>)}
             <Card className="border-secondary mb-4 shadow-sm">
               <Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Verification</h3></Card.Header>
-              <Card.Body className="p-4"><Form.Group className="mb-4"><Form.Label className="small text-muted text-uppercase fw-bold">First DNF</Form.Label><Dropdown onSelect={(k) => setFirstDnf(k || '')} className="w-100"><Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-dark text-white fw-bold">{drivers.find(d => d.id === firstDnf)?.name || 'None / All Finished'}</Dropdown.Toggle><Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg" style={{ maxHeight: '300px', overflowY: 'auto' }}><Dropdown.Item eventKey="" active={firstDnf === ''}>None / All Finished</Dropdown.Item>{drivers.map(driver => (<Dropdown.Item key={driver.id} eventKey={driver.id} active={firstDnf === driver.id}>{driver.name}</Dropdown.Item>))}</Dropdown.Menu></Dropdown></Form.Group>
-<div className="d-grid gap-3"><Button variant={existingResult ? "warning" : "danger"} size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className={`fw-bold py-3 ${existingResult ? 'text-dark' : ''}`}>{existingResult ? 'CORRECT & RE-CALCULATE' : 'PUBLISH GLOBALLY'}</Button><Button variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2">PUBLISH LOCALLY</Button></div>{existingResult && (<div className="mt-3 extra-small text-warning text-center fw-bold opacity-75">⚠️ THIS WILL RE-CALCULATE ALL PLAYER SCORES</div>)}</Card.Body>
+              <Card.Body className="p-4"><Form.Group className="mb-4"><Form.Label className="small text-muted text-uppercase fw-bold">First DNF</Form.Label><Dropdown onSelect={(k) => { triggerLightHaptic(); setFirstDnf(k || ''); }} className="w-100"><Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-dark text-white fw-bold">{drivers.find(d => d.id === firstDnf)?.name || 'None / All Finished'}</Dropdown.Toggle><Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg" style={{ maxHeight: '300px', overflowY: 'auto' }}><Dropdown.Item eventKey="" active={firstDnf === ''}>None / All Finished</Dropdown.Item>{drivers.map(driver => (<Dropdown.Item key={driver.id} eventKey={driver.id} active={firstDnf === driver.id}>{driver.name}</Dropdown.Item>))}</Dropdown.Menu></Dropdown></Form.Group>
+<div className="d-grid gap-3"><HapticButton hapticStyle="medium" variant={existingResult ? "warning" : "danger"} size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className={`fw-bold py-3 ${existingResult ? 'text-dark' : ''}`}>{existingResult ? 'CORRECT & RE-CALCULATE' : 'PUBLISH GLOBALLY'}</HapticButton><HapticButton variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2">PUBLISH LOCALLY</HapticButton></div>{existingResult && (<div className="mt-3 extra-small text-warning text-center fw-bold opacity-75">⚠️ THIS WILL RE-CALCULATE ALL PLAYER SCORES</div>)}</Card.Body>
             </Card>
-            <Card className="border-secondary mb-4 shadow-sm bg-dark"><Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Push Notifications</h3></Card.Header><Card.Body className="p-4"><div className="d-grid gap-2"><Button variant="warning" onClick={() => setShowNotifyModal(true)} disabled={loading} className="fw-bold text-dark">NOTIFY QUALI FINISHED</Button><Button variant="outline-info" onClick={handleSendTestNotification} disabled={loading} className="fw-bold">SEND TEST TO ME</Button></div><div className="mt-3 small text-muted">Note: Broadcast sends to ALL users with registered tokens.</div></Card.Body></Card>
+            <Card className="border-secondary mb-4 shadow-sm bg-dark"><Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Push Notifications</h3></Card.Header><Card.Body className="p-4"><div className="d-grid gap-2"><HapticButton variant="warning" onClick={() => setShowNotifyModal(true)} disabled={loading} className="fw-bold text-dark">NOTIFY QUALI FINISHED</HapticButton><HapticButton variant="outline-info" onClick={handleSendTestNotification} disabled={loading} className="fw-bold">SEND TEST TO ME</HapticButton></div><div className="mt-3 small text-muted">Note: Broadcast sends to ALL users with registered tokens.</div></Card.Body></Card>
             <div className="text-center mt-4 opacity-25"><small className="text-uppercase letter-spacing-1">Admin Mode Active</small></div>
           </Col>
         </Row>
       </Container>
-      <Modal show={showNotifyModal} onHide={() => setShowNotifyModal(false)} centered contentClassName="bg-dark border-secondary"><Modal.Header closeButton closeVariant="white" className="border-secondary"><Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Broadcast Notification?</Modal.Title></Modal.Header><Modal.Body className="text-white opacity-75">This will send a push notification to <strong>ALL</strong> users who have enabled them.<div className="mt-3 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded small text-warning">Title: Qualifying Results Are In!<br/>Target Race: {availableRaces.find(r => r.round === selectedRace)?.raceName}</div></Modal.Body><Modal.Footer className="border-secondary"><Button variant="outline-light" onClick={() => setShowNotifyModal(false)} className="rounded-pill px-4">CANCEL</Button><Button variant="warning" onClick={handleNotifyQuali} className="rounded-pill px-4 fw-bold text-dark">SEND BROADCAST</Button></Modal.Footer></Modal>
-      <Modal show={showConfirmPublish} onHide={() => setShowConfirmPublish(false)} centered contentClassName="bg-dark border-secondary"><Modal.Header closeButton closeVariant="white" className="border-secondary"><Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Correct Global Results?</Modal.Title></Modal.Header><Modal.Body className="text-white opacity-75">You are about to overwrite the verified results for <strong>{availableRaces.find(r => r.round === selectedRace)?.raceName}</strong>.<div className="mt-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded small text-danger fw-bold">THIS WILL IMMEDIATELY UPDATE THE LEADERBOARD AND POINTS FOR ALL PLAYERS.</div></Modal.Body><Modal.Footer className="border-secondary"><Button variant="outline-light" onClick={() => setShowConfirmPublish(false)} className="rounded-pill px-4">CANCEL</Button><Button variant="warning" onClick={() => handleSaveResults('global')} className="rounded-pill px-4 fw-bold text-dark">CONFIRM & RE-CALCULATE</Button></Modal.Footer></Modal>
+      <Modal show={showNotifyModal} onHide={() => setShowNotifyModal(false)} centered contentClassName="bg-dark border-secondary"><Modal.Header closeButton closeVariant="white" className="border-secondary"><Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Broadcast Notification?</Modal.Title></Modal.Header><Modal.Body className="text-white opacity-75">This will send a push notification to <strong>ALL</strong> users who have enabled them.<div className="mt-3 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded small text-warning">Title: Qualifying Results Are In!<br/>Target Race: {availableRaces.find(r => r.round === selectedRace)?.raceName}</div></Modal.Body><Modal.Footer className="border-secondary"><HapticButton variant="outline-light" onClick={() => setShowNotifyModal(false)} className="rounded-pill px-4">CANCEL</HapticButton><HapticButton variant="warning" onClick={handleNotifyQuali} className="rounded-pill px-4 fw-bold text-dark">SEND BROADCAST</HapticButton></Modal.Footer></Modal>
+      <Modal show={showConfirmPublish} onHide={() => setShowConfirmPublish(false)} centered contentClassName="bg-dark border-secondary"><Modal.Header closeButton closeVariant="white" className="border-secondary"><Modal.Title className="text-white text-uppercase letter-spacing-1 fs-5 fw-bold">Correct Global Results?</Modal.Title></Modal.Header><Modal.Body className="text-white opacity-75">You are about to overwrite the verified results for <strong>{availableRaces.find(r => r.round === selectedRace)?.raceName}</strong>.<div className="mt-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded small text-danger fw-bold">THIS WILL IMMEDIATELY UPDATE THE LEADERBOARD AND POINTS FOR ALL PLAYERS.</div></Modal.Body><Modal.Footer className="border-secondary"><HapticButton variant="outline-light" onClick={() => setShowConfirmPublish(false)} className="rounded-pill px-4">CANCEL</HapticButton><HapticButton variant="warning" onClick={() => handleSaveResults('global')} className="rounded-pill px-4 fw-bold text-dark">CONFIRM & RE-CALCULATE</HapticButton></Modal.Footer></Modal>
     </>
   );
 }

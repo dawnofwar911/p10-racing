@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Table, Badge, Spinner } from 'react-bootstrap';
 import { LeaderboardEntry } from '@/lib/data';
+import { triggerSelectionHaptic } from '@/lib/utils/haptics';
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -20,6 +21,11 @@ export default function LeaderboardTable({
   emptyMessage = "No entries found."
 }: LeaderboardTableProps) {
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
+
+  const toggleExpand = (player: string) => {
+    triggerSelectionHaptic();
+    setExpandedPlayer(expandedPlayer === player ? null : player);
+  };
 
   if (loading) {
     return (
@@ -68,7 +74,7 @@ export default function LeaderboardTable({
           {entries.map((entry) => (
             <React.Fragment key={entry.player}>
               <tr 
-                onClick={() => setExpandedPlayer(expandedPlayer === entry.player ? null : entry.player)}
+                onClick={() => toggleExpand(entry.player)}
                 style={{ height: '70px', verticalAlign: 'middle', cursor: 'pointer' }}
                 className={expandedPlayer === entry.player ? 'bg-danger bg-opacity-10' : ''}
               >

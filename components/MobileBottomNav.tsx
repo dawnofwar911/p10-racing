@@ -3,15 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
 import { NAV_ITEMS } from '@/lib/navigation';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
-  };
 
   // On mobile, we show all navigation items.
   // The CSS 'd-xl-none' handles showing it only on mobile.
@@ -34,7 +30,7 @@ export default function MobileBottomNav() {
             <Link 
               key={item.href}
               href={item.href}
-              onClick={triggerHaptic}
+              onClick={triggerLightHaptic}
               className="d-flex flex-column align-items-center text-decoration-none"
               style={{ flex: '1 1 0', minWidth: 0 }}
             >

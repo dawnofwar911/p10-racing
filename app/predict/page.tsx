@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Form, Card, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic, triggerSelectionHaptic } from '@/lib/utils/haptics';
 import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Share } from '@capacitor/share';
@@ -21,6 +21,7 @@ import HowToPlayButton from '@/components/HowToPlayButton';
 import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
 import { sessionTracker } from '@/lib/utils/session';
+import HapticButton from '@/components/HapticButton';
 
 interface PredictRace {
   id: string;
@@ -314,7 +315,7 @@ function PredictPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (p10Driver && dnfDriver && nextRace) {
-      Haptics.impact({ style: ImpactStyle.Heavy });
+      triggerHeavyHaptic();
       const prediction = { username: username || 'User', p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id, season: CURRENT_SEASON };
 
       if (session) {
@@ -346,7 +347,7 @@ function PredictPage() {
   };
 
   const selectUser = (name: string) => {
-    Haptics.selectionChanged();
+    triggerSelectionHaptic();
     setStorageItem(STORAGE_KEYS.CURRENT_USER, name);
     if (!nextRace) return;
     const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, name, nextRace.id));
@@ -364,7 +365,7 @@ function PredictPage() {
 
   const handleGuestLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
     const cleanName = tempUsername.trim();
     if (cleanName.length >= 3) {
       selectUser(cleanName);
@@ -374,13 +375,14 @@ function PredictPage() {
   };
 
   const handleSwitchGuest = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
+    triggerLightHaptic();
     removeStorageItem(STORAGE_KEYS.CURRENT_USER);
     setTempUsername('');
   };
 
   const handleShare = async () => {
     if (!nextRace) return;
+    triggerMediumHaptic();
     const p10Name = getDriverDisplayName(p10Driver, drivers as Driver[]);
     const dnfName = getDriverDisplayName(dnfDriver, drivers as Driver[]);
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
@@ -429,9 +431,9 @@ function PredictPage() {
               <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
               <div className="mb-4">
                 <Link href="/auth" passHref legacyBehavior>
-                  <Button variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
+                  <HapticButton variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
                     SIGN IN / CREATE ACCOUNT
-                  </Button>
+                  </HapticButton>
                 </Link>
                 <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
               </div>
@@ -463,7 +465,7 @@ function PredictPage() {
                   <Form.Label className="text-muted small text-uppercase fw-bold mb-3">Continue as Recent Player</Form.Label>
                   <div className="d-flex flex-wrap justify-content-center gap-2">
                     {existingPlayers.map(p => (
-                      <Button key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</Button>
+                      <HapticButton key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</HapticButton>
                     ))}
                   </div>
                 </div>
@@ -482,7 +484,7 @@ function PredictPage() {
                     className="bg-dark text-white border-secondary py-2 shadow-sm" 
                   />
                 </Form.Group>
-                <Button type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</Button>
+                <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</HapticButton>
               </Form>
             </Card>
           </Col>
@@ -501,23 +503,23 @@ function PredictPage() {
           <Col>
             <div className="d-flex align-items-center gap-3">
               <h1 className="h2 mb-1 fw-bold text-uppercase text-truncate">{nextRace?.name}</h1>
-              <HowToPlayButton onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setShowHowToPlay(true); }} />
+              <HowToPlayButton onClick={() => { triggerLightHaptic(); setShowHowToPlay(true); }} />
             </div>
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
           <Col xs="auto" className="d-flex gap-2">
             {!isLocked && (
-              <Button 
+              <HapticButton 
                 variant={showSummary ? "outline-danger" : "outline-success"} 
                 size="sm" 
-                onClick={() => { Haptics.impact({ style: ImpactStyle.Light }); setIsEditing(!isEditing); }} 
+                onClick={() => { setIsEditing(!isEditing); }} 
                 className="rounded-pill px-3 fw-bold"
                 disabled={!showSummary && !hasPicks}
               >
                 {showSummary ? 'Change Picks' : (hasPicks ? 'View Summary' : 'Cancel')}
-              </Button>
+              </HapticButton>
             )}
-            {!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}
+            {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</HapticButton>)}
           </Col>
         </Row>
 
@@ -557,7 +559,7 @@ function PredictPage() {
                     
                     {!isSeasonFinished && hasPicks && (
                       <div className="mt-4 pt-2">
-                        <Button variant="success" className="w-100 py-2 fw-bold shadow-sm" onClick={handleShare}>SHARE YOUR PICKS ↗</Button>
+                        <HapticButton variant="success" className="w-100 py-2 fw-bold shadow-sm" onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
                       </div>
                     )}
                   </div>
@@ -581,7 +583,7 @@ function PredictPage() {
               </Row>
             </Card>
             <div className="d-flex justify-content-center gap-3">
-              <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Back Home</Button></Link>
+              <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5">Back Home</HapticButton></Link>
             </div>
           </div>
         ) : (
@@ -617,7 +619,7 @@ function PredictPage() {
                                     <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
                                     <div className="flex-grow-1 overflow-hidden">
                                       <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
-                                      <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.5rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
+                                      <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
                                     </div>
                                     {isP10 && (<div className="ms-1"><span style={{ fontSize: '0.6rem' }}>🎯</span></div>)}
                                   </div>
@@ -641,7 +643,7 @@ function PredictPage() {
                       <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">P10 Finisher</h3>
                       <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
                         {drivers.map((driver) => (
-                          <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+                          <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { triggerSelectionHaptic(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
                             <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
                             <div className="flex-grow-1">
                               <div className="fw-bold text-white">{driver.name}</div>
@@ -660,7 +662,7 @@ function PredictPage() {
                       <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">First DNF</h3>
                       <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
                         {drivers.map((driver) => (
-                          <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { Haptics.selectionChanged(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+                          <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { triggerSelectionHaptic(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
                             <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
                             <div className="flex-grow-1">
                               <div className="fw-bold text-white">{driver.name}</div>
@@ -675,9 +677,9 @@ function PredictPage() {
                 </Col>
               </Row>
               <div className="d-grid gap-2 mt-4">
-                <Button type="submit" size="lg" className="btn-f1 py-3 fw-bold shadow-sm" disabled={!p10Driver || !dnfDriver}>
+                <HapticButton hapticStyle="heavy" type="submit" size="lg" className="btn-f1 py-3 fw-bold shadow-sm" disabled={!p10Driver || !dnfDriver}>
                   LOCK IN PREDICTION
-                </Button>
+                </HapticButton>
               </div>
             </Form>
           </>
@@ -720,7 +722,7 @@ function PredictPage() {
           </section>
         </Modal.Body>
         <Modal.Footer className="border-secondary">
-          <Button variant="danger" className="w-100 fw-bold py-2" onClick={() => setShowHowToPlay(false)}>GOT IT</Button>
+          <HapticButton variant="danger" className="w-100 fw-bold py-2" onClick={() => setShowHowToPlay(false)}>GOT IT</HapticButton>
         </Modal.Footer>
       </Modal>
     </>

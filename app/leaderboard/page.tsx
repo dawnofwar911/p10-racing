@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, ButtonGroup, Button, Badge } from 'react-bootstrap';
+import { Container, Row, Col, ButtonGroup, Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
@@ -13,8 +13,10 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy } from 'lucide-react';
+import HapticButton from '@/components/HapticButton';
 
 interface LeaderboardPlayer {
   username: string;
@@ -133,6 +135,13 @@ export default function LeaderboardPage() {
     return () => { supabase.removeChannel(channel); };
   }, [supabase, view, calculate]);
 
+  const handleViewChange = (newView: 'global' | 'local') => {
+    if (newView !== view) {
+      triggerLightHaptic();
+      setView(newView);
+    }
+  };
+
   return (
     <PullToRefresh onRefresh={() => calculate(false)}>
       <Container className="mt-4 mb-4">
@@ -153,24 +162,24 @@ export default function LeaderboardPage() {
           </Col>
           <Col xs={12} md={6} className="text-md-end">
             <ButtonGroup className="bg-dark rounded border border-secondary p-1 shadow-sm">
-              <Button 
+              <HapticButton 
                 variant={view === 'global' ? 'danger' : 'dark'} 
                 size="sm" 
-                onClick={() => setView('global')} 
+                onClick={() => handleViewChange('global')} 
                 className="rounded px-4 fw-bold text-uppercase"
                 style={{ fontSize: '0.7rem' }}
               >
                 GLOBAL
-              </Button>
-              <Button 
+              </HapticButton>
+              <HapticButton 
                 variant={view === 'local' ? 'danger' : 'dark'} 
                 size="sm" 
-                onClick={() => setView('local')} 
+                onClick={() => handleViewChange('local')} 
                 className="rounded px-4 fw-bold text-uppercase"
                 style={{ fontSize: '0.7rem' }}
               >
                 GUESTS
-              </Button>
+              </HapticButton>
             </ButtonGroup>
           </Col>
         </Row>

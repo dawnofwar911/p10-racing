@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
+import { Modal, Form, Alert, Spinner } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { triggerMediumHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '@/lib/utils/haptics';
 import { Capacitor } from '@capacitor/core';
 import packageInfo from '../package.json';
+import HapticButton from './HapticButton';
 
 interface BugReportModalProps {
   show: boolean;
@@ -27,7 +28,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -75,7 +76,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
       if (insertError) throw insertError;
 
       setSuccess(true);
-      Haptics.notification({ type: NotificationType.Success });
+      triggerSuccessHaptic();
       
       // Reset form after 2 seconds and close
       setTimeout(() => {
@@ -90,7 +91,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
       console.error('Bug report error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit bug report';
       setError(errorMessage);
-      Haptics.notification({ type: NotificationType.Error });
+      triggerErrorHaptic();
     } finally {
       setLoading(false);
     }
@@ -158,9 +159,9 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
             </Form.Group>
 
             <div className="d-grid">
-              <Button variant="danger" type="submit" disabled={loading} className="fw-bold py-2">
+              <HapticButton variant="danger" type="submit" disabled={loading} className="fw-bold py-2">
                 {loading ? <Spinner animation="border" size="sm" /> : 'SUBMIT REPORT'}
-              </Button>
+              </HapticButton>
             </div>
           </Form>
         )}

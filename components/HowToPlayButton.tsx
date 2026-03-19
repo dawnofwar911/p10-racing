@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from 'react-bootstrap';
+import HapticButton from './HapticButton';
 
 interface HowToPlayButtonProps {
   onClick: () => void;
@@ -8,7 +8,7 @@ interface HowToPlayButtonProps {
 }
 
 export const HowToPlayButton: React.FC<HowToPlayButtonProps> = ({ onClick, className, style }) => (
-  <Button 
+  <HapticButton 
     variant="outline-danger" 
     size="sm" 
     className={`rounded-pill px-3 py-1 d-inline-flex align-items-center justify-content-center border-opacity-50 ${className || ''}`}
@@ -16,7 +16,7 @@ export const HowToPlayButton: React.FC<HowToPlayButtonProps> = ({ onClick, class
     onClick={onClick}
   >
     <span className="me-1">?</span> HOW TO PLAY
-  </Button>
+  </HapticButton>
 );
 
 export default HowToPlayButton;

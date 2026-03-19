@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -13,6 +13,7 @@ import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
+import HapticButton from '@/components/HapticButton';
 
 interface League {
   id: string;
@@ -110,7 +111,7 @@ function LeaguesContent() {
     if (!session) return;
     setActionLoading(true);
     setError(null);
-    Haptics.impact({ style: ImpactStyle.Heavy });
+    triggerHeavyHaptic();
 
     try {
       // Check all possible rounds (max 24)
@@ -145,7 +146,7 @@ function LeaguesContent() {
 
       if (mountedRef.current) {
         setSuccess(`Successfully imported ${count} predictions!`);
-        Haptics.notification({ type: NotificationType.Success });
+        triggerSuccessHaptic();
       }
 
       const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
@@ -170,7 +171,7 @@ function LeaguesContent() {
     setActionLoading(true);
     setError(null);
     setSuccess(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
     try {
       const { data: leagues, error: leagueError } = await withTimeout(supabase
         .from('leagues')
@@ -188,7 +189,7 @@ function LeaguesContent() {
         if (mountedRef.current) {
           setSuccess(`League "${league.name}" created!`);
           setNewLeagueName('');
-          Haptics.notification({ type: NotificationType.Success });
+          triggerSuccessHaptic();
         }
         fetchLeagues(true);
       }
@@ -204,7 +205,7 @@ function LeaguesContent() {
     if (!inviteCode.trim() || !session) return;
     setActionLoading(true);
     setError(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
     try {
       // Use RPC for atomic join
       const { data, error: joinError } = await withTimeout(supabase
@@ -215,7 +216,7 @@ function LeaguesContent() {
       if (mountedRef.current) {
         setSuccess(`Successfully joined "${data.name}"!`);
         setInviteCode('');
-        Haptics.notification({ type: NotificationType.Success });
+        triggerSuccessHaptic();
       }
       fetchLeagues(true);
     } catch (err: unknown) {
@@ -238,7 +239,7 @@ function LeaguesContent() {
             <div className="display-6 mb-3">🏆</div>
             <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
             <p className="text-muted small mb-4 px-4">Sign in to create or join private leagues and compete with your friends.</p>
-            <Link href="/auth" passHref legacyBehavior><Button className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</Button></Link>
+            <Link href="/auth" passHref legacyBehavior><HapticButton className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</HapticButton></Link>
           </div>
         ) : (
           <>
@@ -271,7 +272,7 @@ function LeaguesContent() {
                               <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
                               <td className="text-end pe-3">
                                 <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
-                                  <Button variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</Button>
+                                  <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</HapticButton>
                                 </Link>
                               </td>
                             </tr>
@@ -294,7 +295,7 @@ function LeaguesContent() {
                         {localGuests.map(guest => (
                           <div key={guest} className="d-flex align-items-center bg-dark p-1 px-2 rounded border border-secondary border-opacity-50">
                             <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
-                            <Button variant="warning" size="sm" className="fw-bold extra-small py-0" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</Button>
+                            <HapticButton hapticStyle="medium" variant="warning" size="sm" className="fw-bold extra-small py-0" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
                           </div>
                         ))}
                       </div>
@@ -323,9 +324,9 @@ function LeaguesContent() {
                               className="bg-dark text-white border-secondary py-1 small" 
                             />
                           </Form.Group>
-                          <Button type="submit" className="btn-f1 w-100 py-1 fw-bold small" disabled={actionLoading}>
+                          <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-1 fw-bold small" disabled={actionLoading}>
                             {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
-                          </Button>
+                          </HapticButton>
                         </Form>
                       </Card.Body>
                     </Card>
@@ -349,9 +350,9 @@ function LeaguesContent() {
                               maxLength={8}
                             />
                           </Form.Group>
-                          <Button type="submit" variant="outline-danger" className="w-100 py-1 fw-bold small" disabled={actionLoading}>
+                          <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-1 fw-bold small" disabled={actionLoading}>
                             JOIN
-                          </Button>
+                          </HapticButton>
                         </Form>
                       </Card.Body>
                     </Card>

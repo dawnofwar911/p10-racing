@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
+import { Container, Card, Modal, Spinner, Form } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
+import { triggerLightHaptic, triggerWarningHaptic } from '@/lib/utils/haptics';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { useAuth } from '@/components/AuthProvider';
+import HapticButton from '@/components/HapticButton';
+import { STORAGE_KEYS, setStorageItem } from '@/lib/utils/storage';
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -22,21 +24,29 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [hapticsEnabled, setHapticsEnabled] = useState(true);
 
   // Lifecycle
   useEffect(() => {
     mountedRef.current = true;
+    
+    // Load haptics preference
+    const stored = localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED);
+    setHapticsEnabled(stored !== 'false');
+
     return () => { mountedRef.current = false; };
   }, []);
 
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
+  const toggleHaptics = (enabled: boolean) => {
+    setHapticsEnabled(enabled);
+    setStorageItem(STORAGE_KEYS.HAPTICS_ENABLED, enabled.toString());
+    if (enabled) triggerLightHaptic();
   };
 
   const handleDeleteAccount = async () => {
     if (!session) return;
     setIsDeleting(true);
-    Haptics.notification({ type: NotificationType.Warning });
+    triggerWarningHaptic();
     
     try {
       const { error } = await withTimeout(supabase.rpc('delete_user_data'));
@@ -60,7 +70,7 @@ export default function SettingsPage() {
         {isAdmin && (
           <Card className="border-secondary border-opacity-25 shadow-sm bg-dark mb-4">
             <Link href="/admin" passHref legacyBehavior>
-              <a className="text-decoration-none" onClick={triggerHaptic}>
+              <a className="text-decoration-none" onClick={triggerLightHaptic}>
                 <Card.Body className="p-3 d-flex align-items-center justify-content-between cursor-pointer">
                   <div className="d-flex align-items-center">
                     <ShieldAlert size={20} className="text-warning opacity-75 me-3" />
@@ -76,13 +86,35 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Preferences</h2>
+        <Card className="border-secondary shadow-sm mb-4">
+          <div className="list-group list-group-flush bg-dark rounded">
+            <div className="list-group-item bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center">
+                <Vibrate size={18} className="me-3 opacity-75" />
+                <div>
+                  <span className="fw-bold d-block">Haptic Feedback</span>
+                  <small className="text-muted extra-small">Tactile response on taps & actions</small>
+                </div>
+              </div>
+              <Form.Check 
+                type="switch"
+                id="haptics-switch"
+                checked={hapticsEnabled}
+                onChange={(e) => toggleHaptics(e.target.checked)}
+                className="custom-switch-lg"
+              />
+            </div>
+          </div>
+        </Card>
+
         <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Account</h2>
         <Card className="border-secondary shadow-sm mb-4">
           <div className="list-group list-group-flush bg-dark rounded">
             {session ? (
               <>
                 <Link href="/auth/reset-password" passHref legacyBehavior>
-                  <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" onClick={triggerHaptic}>
+                  <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" onClick={triggerLightHaptic}>
                     <div className="d-flex align-items-center">
                       <KeyRound size={18} className="me-3 opacity-75" />
                       <span className="fw-bold">Change Password</span>
@@ -92,7 +124,7 @@ export default function SettingsPage() {
                 </Link>
                 <button 
                   className="list-group-item list-group-item-action bg-dark text-danger border-secondary p-3 d-flex align-items-center justify-content-between border-0"
-                  onClick={() => { triggerHaptic(); setShowDeleteModal(true); }}
+                  onClick={() => { triggerLightHaptic(); setShowDeleteModal(true); }}
                 >
                   <div className="d-flex align-items-center">
                     <Trash2 size={18} className="me-3 opacity-75" />
@@ -102,7 +134,7 @@ export default function SettingsPage() {
               </>
             ) : (
               <div className="p-3 text-center text-muted small">
-                Settings are limited while playing as a Guest. <Link href="/auth" className="text-danger fw-bold text-decoration-none">Sign in</Link> to unlock all features.
+                Settings are limited while playing as a Guest. <Link href="/auth" className="text-danger fw-bold text-decoration-none" onClick={triggerLightHaptic}>Sign in</Link> to unlock all features.
               </div>
             )}
           </div>
@@ -112,7 +144,7 @@ export default function SettingsPage() {
         <Card className="border-secondary shadow-sm mb-4">
           <div className="list-group list-group-flush bg-dark rounded">
             <Link href="/history" passHref legacyBehavior>
-              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between border-0" onClick={triggerHaptic}>
+              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between border-0" onClick={triggerLightHaptic}>
                 <div className="d-flex align-items-center">
                   <History size={18} className="me-3 opacity-75" />
                   <span className="fw-bold">Season History</span>
@@ -128,7 +160,7 @@ export default function SettingsPage() {
           <div className="list-group list-group-flush bg-dark rounded">
             <button 
               className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between"
-              onClick={() => { triggerHaptic(); setShowBugReport(true); }}
+              onClick={() => { triggerLightHaptic(); setShowBugReport(true); }}
             >
               <div className="d-flex align-items-center">
                 <Bug size={18} className="me-3 opacity-75" />
@@ -137,7 +169,7 @@ export default function SettingsPage() {
               <ChevronRight size={18} className="opacity-50" />
             </button>
             <Link href="/privacy" passHref legacyBehavior>
-              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between border-0" onClick={triggerHaptic}>
+              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between border-0" onClick={triggerLightHaptic}>
                 <div className="d-flex align-items-center">
                   <FileText size={18} className="me-3 opacity-75" />
                   <span className="fw-bold">Privacy Policy</span>
@@ -157,7 +189,7 @@ export default function SettingsPage() {
             Version {packageInfo.version}
           </p>
           <p className="text-white opacity-10 extra-small">
-            Data provided by <a href="https://jolpica.github.io/jolpica-f1/" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">Jolpica F1 API</a>
+            Data provided by <a href="https://jolpica.github.io/jolpica-f1/" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline" onClick={triggerLightHaptic}>Jolpica F1 API</a>
           </p>
         </div>
       </Container>
@@ -175,12 +207,12 @@ export default function SettingsPage() {
           </div>
         </Modal.Body>
         <Modal.Footer className="border-secondary">
-          <Button variant="outline-light" onClick={() => setShowDeleteModal(false)} disabled={isDeleting} className="rounded-pill px-4">
+          <HapticButton variant="outline-light" onClick={() => { setShowDeleteModal(false); }} disabled={isDeleting} className="rounded-pill px-4">
             CANCEL
-          </Button>
-          <Button variant="danger" onClick={handleDeleteAccount} disabled={isDeleting} className="rounded-pill px-4 fw-bold">
+          </HapticButton>
+          <HapticButton variant="danger" onClick={handleDeleteAccount} disabled={isDeleting} className="rounded-pill px-4 fw-bold">
             {isDeleting ? <Spinner animation="border" size="sm" className="me-2" /> : 'DELETE PERMANENTLY'}
-          </Button>
+          </HapticButton>
         </Modal.Footer>
       </Modal>
     </>
