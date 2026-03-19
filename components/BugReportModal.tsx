@@ -36,7 +36,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
     if (typeof window === 'undefined') return;
 
     const originalError = console.error;
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
@@ -53,15 +53,15 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
     if (typeof window === 'undefined') return {};
     try {
       const keys = Object.keys(localStorage);
-      const summary: Record<string, any> = {
+      const summary: Record<string, number | boolean> = {
         total_keys: keys.length,
         has_session: !!localStorage.getItem('supabase.auth.token') || !!localStorage.getItem('sb-yozhuvzmxpntjrvoxxps-auth-token'),
         has_predictions: !!localStorage.getItem('p10_predictions'),
         has_drivers: !!localStorage.getItem('p10_drivers_cache'),
       };
       return summary;
-    } catch (e) {
-      return { error: 'Failed to access storage' };
+    } catch {
+      return { error: -1 };
     }
   };
 
@@ -209,7 +209,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
             </Row>
 
             <Form.Group className="mb-3">
-              <Form.Label className="small text-muted text-uppercase fw-bold">What's wrong?</Form.Label>
+              <Form.Label className="small text-muted text-uppercase fw-bold">What&apos;s wrong?</Form.Label>
               <Form.Control 
                 as="textarea" 
                 rows={2} 
