@@ -180,6 +180,7 @@ export default function LeaderboardPage() {
         <Row>
           <Col>
             <LeaderboardTable 
+              key={view}
               entries={leaderboard} 
               loading={loading} 
               currentUser={currentUser || undefined}
