@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, ButtonGroup, Button, Badge } from 'react-bootstrap';
+import { Container, Row, Col, ButtonGroup, Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
@@ -16,6 +16,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { triggerLightHaptic } from '@/lib/utils/haptics';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy } from 'lucide-react';
+import HapticButton from '@/components/HapticButton';
 
 interface LeaderboardPlayer {
   username: string;
@@ -161,7 +162,7 @@ export default function LeaderboardPage() {
           </Col>
           <Col xs={12} md={6} className="text-md-end">
             <ButtonGroup className="bg-dark rounded border border-secondary p-1 shadow-sm">
-              <Button 
+              <HapticButton 
                 variant={view === 'global' ? 'danger' : 'dark'} 
                 size="sm" 
                 onClick={() => handleViewChange('global')} 
@@ -169,8 +170,8 @@ export default function LeaderboardPage() {
                 style={{ fontSize: '0.7rem' }}
               >
                 GLOBAL
-              </Button>
-              <Button 
+              </HapticButton>
+              <HapticButton 
                 variant={view === 'local' ? 'danger' : 'dark'} 
                 size="sm" 
                 onClick={() => handleViewChange('local')} 
@@ -178,7 +179,7 @@ export default function LeaderboardPage() {
                 style={{ fontSize: '0.7rem' }}
               >
                 GUESTS
-              </Button>
+              </HapticButton>
             </ButtonGroup>
           </Col>
         </Row>

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Alert, Spinner } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { triggerLightHaptic, triggerMediumHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import LoadingView from '@/components/LoadingView';
+import HapticButton from '@/components/HapticButton';
 
 const supabase = createClient();
 
@@ -143,7 +144,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError(null);
     setMessage(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
 
     try {
       const { error: updateError } = await supabase.auth.updateUser({
@@ -156,7 +157,7 @@ export default function ResetPasswordPage() {
       await supabase.auth.signOut();
       
       setMessage('🏁 Password updated successfully! Please log in with your new credentials.');
-      Haptics.notification({ type: NotificationType.Success });
+      triggerSuccessHaptic();
       
       setTimeout(() => {
         router.push('/auth');
@@ -175,10 +176,11 @@ export default function ResetPasswordPage() {
 
   const handleCancel = async () => {
     if (isProfileUpdate) {
+      triggerLightHaptic();
       router.push('/settings');
     } else {
       setLoading(true);
-      Haptics.impact({ style: ImpactStyle.Light });
+      triggerLightHaptic();
       await supabase.auth.signOut();
       router.push('/auth');
     }
@@ -238,13 +240,14 @@ export default function ResetPasswordPage() {
                     />
                   </Form.Group>
 
-                  <Button 
+                  <HapticButton 
+                    hapticStyle="medium"
                     type="submit" 
                     className="btn-f1 w-100 py-3 fw-bold mb-3" 
                     disabled={loading || !!error}
                   >
                     {loading ? <Spinner animation="border" size="sm" /> : isProfileUpdate ? 'CHANGE PASSWORD' : 'UPDATE PASSWORD'}
-                  </Button>
+                  </HapticButton>
 
                   <div className="text-center mt-3 pt-3 border-top border-secondary border-opacity-25">
                     <button 
@@ -261,13 +264,13 @@ export default function ResetPasswordPage() {
 
               {error && (
                 <div className="text-center">
-                  <Button 
+                  <HapticButton 
                     variant="link" 
                     className="text-danger text-decoration-none small fw-bold"
                     onClick={() => router.push('/auth')}
                   >
                     BACK TO LOGIN
-                  </Button>
+                  </HapticButton>
                 </div>
               )}
             </Card.Body>

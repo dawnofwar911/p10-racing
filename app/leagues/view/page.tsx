@@ -13,9 +13,10 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import LoadingView from '@/components/LoadingView';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Share } from '@capacitor/share';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Users, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
+import HapticButton from '@/components/HapticButton';
 
 const supabase = createClient();
 
@@ -29,12 +30,8 @@ function LeagueDetailContent() {
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
 
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
-  };
-
   const handleShare = async () => {
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
     try {
       await Share.share({
         title: `Join my F1 League: ${leagueName}`,
@@ -189,7 +186,7 @@ function LeagueDetailContent() {
                   <Button 
                     variant="link" 
                     className="text-white p-0 me-3 opacity-75 hover-opacity-100"
-                    onClick={triggerHaptic}
+                    onClick={triggerLightHaptic}
                   >
                     <ChevronLeft size={28} />
                   </Button>
@@ -206,9 +203,9 @@ function LeagueDetailContent() {
             <Col xs={12} md={5} className="text-md-end">
               <div className="d-inline-flex align-items-center gap-2 bg-dark p-1 rounded border border-secondary shadow-sm">
                 <code className="ps-3 text-white fw-bold letter-spacing-1" style={{ fontSize: '0.9rem' }}>{inviteCode}</code>
-                <Button variant="danger" size="sm" className="rounded px-3 fw-bold text-uppercase" style={{ fontSize: '0.7rem' }} onClick={handleShare}>
+                <HapticButton variant="danger" size="sm" className="rounded px-3 fw-bold text-uppercase" style={{ fontSize: '0.7rem' }} onClick={handleShare}>
                   SHARE
-                </Button>
+                </HapticButton>
               </div>
             </Col>
           </Row>

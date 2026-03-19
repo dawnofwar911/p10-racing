@@ -7,6 +7,7 @@ import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic } from '@/lib/utils/haptics';
 import { useRouter } from 'next/navigation';
+import HapticButton from '@/components/HapticButton';
 
 interface HistoryEntry {
   round: string;
@@ -74,12 +75,14 @@ export default function HistoryPage() {
       <Container className="mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h1 className="h2 fw-bold text-uppercase letter-spacing-1">Race History</h1>
-          <button 
-            onClick={() => { triggerLightHaptic(); router.back(); }} 
-            className="btn btn-sm btn-outline-light rounded-pill px-3 opacity-75 border-0 fw-bold"
+          <HapticButton 
+            variant="outline-light"
+            size="sm"
+            onClick={() => { router.back(); }} 
+            className="rounded-pill px-3 opacity-75 border-0 fw-bold"
           >
             Back
-          </button>
+          </HapticButton>
         </div>
         
         {loading ? (

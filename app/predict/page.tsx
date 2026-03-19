@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { Container, Row, Col, Form, Button, Card, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Form, Card, Modal } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -21,6 +21,7 @@ import HowToPlayButton from '@/components/HowToPlayButton';
 import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
 import { sessionTracker } from '@/lib/utils/session';
+import HapticButton from '@/components/HapticButton';
 
 interface PredictRace {
   id: string;
@@ -430,9 +431,9 @@ function PredictPage() {
               <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
               <div className="mb-4">
                 <Link href="/auth" passHref legacyBehavior>
-                  <Button variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
+                  <HapticButton variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
                     SIGN IN / CREATE ACCOUNT
-                  </Button>
+                  </HapticButton>
                 </Link>
                 <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
               </div>
@@ -464,7 +465,7 @@ function PredictPage() {
                   <Form.Label className="text-muted small text-uppercase fw-bold mb-3">Continue as Recent Player</Form.Label>
                   <div className="d-flex flex-wrap justify-content-center gap-2">
                     {existingPlayers.map(p => (
-                      <Button key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</Button>
+                      <HapticButton key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</HapticButton>
                     ))}
                   </div>
                 </div>
@@ -483,7 +484,7 @@ function PredictPage() {
                     className="bg-dark text-white border-secondary py-2 shadow-sm" 
                   />
                 </Form.Group>
-                <Button type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</Button>
+                <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</HapticButton>
               </Form>
             </Card>
           </Col>
@@ -508,17 +509,17 @@ function PredictPage() {
           </Col>
           <Col xs="auto" className="d-flex gap-2">
             {!isLocked && (
-              <Button 
+              <HapticButton 
                 variant={showSummary ? "outline-danger" : "outline-success"} 
                 size="sm" 
-                onClick={() => { triggerLightHaptic(); setIsEditing(!isEditing); }} 
+                onClick={() => { setIsEditing(!isEditing); }} 
                 className="rounded-pill px-3 fw-bold"
                 disabled={!showSummary && !hasPicks}
               >
                 {showSummary ? 'Change Picks' : (hasPicks ? 'View Summary' : 'Cancel')}
-              </Button>
+              </HapticButton>
             )}
-            {!isLocked && !session && (<Button variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</Button>)}
+            {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</HapticButton>)}
           </Col>
         </Row>
 
@@ -558,7 +559,7 @@ function PredictPage() {
                     
                     {!isSeasonFinished && hasPicks && (
                       <div className="mt-4 pt-2">
-                        <Button variant="success" className="w-100 py-2 fw-bold shadow-sm" onClick={handleShare}>SHARE YOUR PICKS ↗</Button>
+                        <HapticButton variant="success" className="w-100 py-2 fw-bold shadow-sm" onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
                       </div>
                     )}
                   </div>
@@ -582,7 +583,7 @@ function PredictPage() {
               </Row>
             </Card>
             <div className="d-flex justify-content-center gap-3">
-              <Link href="/" passHref legacyBehavior><Button variant="outline-light" size="lg" className="px-5">Back Home</Button></Link>
+              <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5">Back Home</HapticButton></Link>
             </div>
           </div>
         ) : (
@@ -676,9 +677,9 @@ function PredictPage() {
                 </Col>
               </Row>
               <div className="d-grid gap-2 mt-4">
-                <Button type="submit" size="lg" className="btn-f1 py-3 fw-bold shadow-sm" disabled={!p10Driver || !dnfDriver}>
+                <HapticButton hapticStyle="heavy" type="submit" size="lg" className="btn-f1 py-3 fw-bold shadow-sm" disabled={!p10Driver || !dnfDriver}>
                   LOCK IN PREDICTION
-                </Button>
+                </HapticButton>
               </div>
             </Form>
           </>
@@ -721,7 +722,7 @@ function PredictPage() {
           </section>
         </Modal.Body>
         <Modal.Footer className="border-secondary">
-          <Button variant="danger" className="w-100 fw-bold py-2" onClick={() => setShowHowToPlay(false)}>GOT IT</Button>
+          <HapticButton variant="danger" className="w-100 fw-bold py-2" onClick={() => setShowHowToPlay(false)}>GOT IT</HapticButton>
         </Modal.Footer>
       </Modal>
     </>

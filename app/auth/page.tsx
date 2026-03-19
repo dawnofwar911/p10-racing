@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Alert, Spinner } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import LoadingView from '@/components/LoadingView';
+import HapticButton from '@/components/HapticButton';
 
 const supabase = createClient();
 
@@ -230,13 +231,14 @@ export default function AuthPage() {
                     </Form.Group>
                   )}
 
-                  <Button 
+                  <HapticButton 
+                    hapticStyle="medium"
                     type="submit" 
                     className="btn-f1 w-100 py-3 fw-bold mb-3" 
                     disabled={loading}
                   >
                     {loading ? <Spinner animation="border" size="sm" /> : (isResetPassword ? 'SEND RESET LINK' : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'))}
-                  </Button>
+                  </HapticButton>
 
                   <div className="text-center">
                     {isResetPassword ? (

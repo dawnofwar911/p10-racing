@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Container, Card, Button, Modal, Spinner } from 'react-bootstrap';
+import { Container, Card, Modal, Spinner } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic } from '@/lib/utils/haptics';
@@ -12,6 +12,7 @@ import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { useAuth } from '@/components/AuthProvider';
+import HapticButton from '@/components/HapticButton';
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -171,12 +172,12 @@ export default function SettingsPage() {
           </div>
         </Modal.Body>
         <Modal.Footer className="border-secondary">
-          <Button variant="outline-light" onClick={() => { triggerLightHaptic(); setShowDeleteModal(false); }} disabled={isDeleting} className="rounded-pill px-4">
+          <HapticButton variant="outline-light" onClick={() => setShowDeleteModal(false)} disabled={isDeleting} className="rounded-pill px-4">
             CANCEL
-          </Button>
-          <Button variant="danger" onClick={handleDeleteAccount} disabled={isDeleting} className="rounded-pill px-4 fw-bold">
+          </HapticButton>
+          <HapticButton variant="danger" onClick={handleDeleteAccount} disabled={isDeleting} className="rounded-pill px-4 fw-bold">
             {isDeleting ? <Spinner animation="border" size="sm" className="me-2" /> : 'DELETE PERMANENTLY'}
-          </Button>
+          </HapticButton>
         </Modal.Footer>
       </Modal>
     </>
