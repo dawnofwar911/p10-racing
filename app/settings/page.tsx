@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Container, Card, Modal, Spinner } from 'react-bootstrap';
+import { Container, Card, Modal, Spinner, Form } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic } from '@/lib/utils/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History } from 'lucide-react';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
@@ -13,6 +13,7 @@ import { useNotification } from '@/components/Notification';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { useAuth } from '@/components/AuthProvider';
 import HapticButton from '@/components/HapticButton';
+import { STORAGE_KEYS, setStorageItem } from '@/lib/utils/storage';
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -23,12 +24,24 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [hapticsEnabled, setHapticsEnabled] = useState(true);
 
   // Lifecycle
   useEffect(() => {
     mountedRef.current = true;
+    
+    // Load haptics preference
+    const stored = localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED);
+    setHapticsEnabled(stored !== 'false');
+
     return () => { mountedRef.current = false; };
   }, []);
+
+  const toggleHaptics = (enabled: boolean) => {
+    setHapticsEnabled(enabled);
+    setStorageItem(STORAGE_KEYS.HAPTICS_ENABLED, enabled.toString());
+    if (enabled) triggerLightHaptic();
+  };
 
   const handleDeleteAccount = async () => {
     if (!session) return;
@@ -72,6 +85,28 @@ export default function SettingsPage() {
             </Link>
           </Card>
         )}
+
+        <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Preferences</h2>
+        <Card className="border-secondary shadow-sm mb-4">
+          <div className="list-group list-group-flush bg-dark rounded">
+            <div className="list-group-item bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center">
+                <Vibrate size={18} className="me-3 opacity-75" />
+                <div>
+                  <span className="fw-bold d-block">Haptic Feedback</span>
+                  <small className="text-muted extra-small">Tactile response on taps & actions</small>
+                </div>
+              </div>
+              <Form.Check 
+                type="switch"
+                id="haptics-switch"
+                checked={hapticsEnabled}
+                onChange={(e) => toggleHaptics(e.target.checked)}
+                className="custom-switch-lg"
+              />
+            </div>
+          </div>
+        </Card>
 
         <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Account</h2>
         <Card className="border-secondary shadow-sm mb-4">
@@ -172,7 +207,7 @@ export default function SettingsPage() {
           </div>
         </Modal.Body>
         <Modal.Footer className="border-secondary">
-          <HapticButton variant="outline-light" onClick={() => setShowDeleteModal(false)} disabled={isDeleting} className="rounded-pill px-4">
+          <HapticButton variant="outline-light" onClick={() => { setShowDeleteModal(false); }} disabled={isDeleting} className="rounded-pill px-4">
             CANCEL
           </HapticButton>
           <HapticButton variant="danger" onClick={handleDeleteAccount} disabled={isDeleting} className="rounded-pill px-4 fw-bold">
