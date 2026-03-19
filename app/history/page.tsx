@@ -5,7 +5,7 @@ import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
 import { useRouter } from 'next/navigation';
 
 interface HistoryEntry {
@@ -22,10 +22,6 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
-  };
 
   useEffect(() => {
     async function loadHistory() {
@@ -79,7 +75,7 @@ export default function HistoryPage() {
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h1 className="h2 fw-bold text-uppercase letter-spacing-1">Race History</h1>
           <button 
-            onClick={() => { triggerHaptic(); router.back(); }} 
+            onClick={() => { triggerLightHaptic(); router.back(); }} 
             className="btn btn-sm btn-outline-light rounded-pill px-3 opacity-75 border-0 fw-bold"
           >
             Back

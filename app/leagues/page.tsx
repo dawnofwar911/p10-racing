@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -110,7 +110,7 @@ function LeaguesContent() {
     if (!session) return;
     setActionLoading(true);
     setError(null);
-    Haptics.impact({ style: ImpactStyle.Heavy });
+    triggerHeavyHaptic();
 
     try {
       // Check all possible rounds (max 24)
@@ -145,7 +145,7 @@ function LeaguesContent() {
 
       if (mountedRef.current) {
         setSuccess(`Successfully imported ${count} predictions!`);
-        Haptics.notification({ type: NotificationType.Success });
+        triggerSuccessHaptic();
       }
 
       const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
@@ -170,7 +170,7 @@ function LeaguesContent() {
     setActionLoading(true);
     setError(null);
     setSuccess(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
     try {
       const { data: leagues, error: leagueError } = await withTimeout(supabase
         .from('leagues')
@@ -188,7 +188,7 @@ function LeaguesContent() {
         if (mountedRef.current) {
           setSuccess(`League "${league.name}" created!`);
           setNewLeagueName('');
-          Haptics.notification({ type: NotificationType.Success });
+          triggerSuccessHaptic();
         }
         fetchLeagues(true);
       }
@@ -204,7 +204,7 @@ function LeaguesContent() {
     if (!inviteCode.trim() || !session) return;
     setActionLoading(true);
     setError(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
     try {
       // Use RPC for atomic join
       const { data, error: joinError } = await withTimeout(supabase
@@ -215,7 +215,7 @@ function LeaguesContent() {
       if (mountedRef.current) {
         setSuccess(`Successfully joined "${data.name}"!`);
         setInviteCode('');
-        Haptics.notification({ type: NotificationType.Success });
+        triggerSuccessHaptic();
       }
       fetchLeagues(true);
     } catch (err: unknown) {
@@ -238,7 +238,7 @@ function LeaguesContent() {
             <div className="display-6 mb-3">🏆</div>
             <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
             <p className="text-muted small mb-4 px-4">Sign in to create or join private leagues and compete with your friends.</p>
-            <Link href="/auth" passHref legacyBehavior><Button className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</Button></Link>
+            <Link href="/auth" passHref legacyBehavior><Button className="btn-f1 px-5 py-2 fw-bold small" onClick={triggerLightHaptic}>SIGN IN TO PLAY</Button></Link>
           </div>
         ) : (
           <>
@@ -271,7 +271,7 @@ function LeaguesContent() {
                               <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
                               <td className="text-end pe-3">
                                 <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
-                                  <Button variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</Button>
+                                  <Button variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }} onClick={triggerLightHaptic}>VIEW</Button>
                                 </Link>
                               </td>
                             </tr>

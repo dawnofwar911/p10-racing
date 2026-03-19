@@ -7,7 +7,7 @@ import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { calculateSeasonPoints } from '@/lib/scoring';
@@ -337,13 +337,9 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [nextRace]);
 
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Medium });
-  };
-
   const handleShare = async () => {
     if (!userPrediction || !nextRace) return;
-    triggerHaptic();
+    triggerMediumHaptic();
     const p10Name = getDriverDisplayName(userPrediction.p10, allDrivers);
     const dnfName = getDriverDisplayName(userPrediction.dnf, allDrivers);
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
@@ -385,7 +381,7 @@ export default function Home() {
                 </h2>
                 <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
                 <Link href="/leaderboard" passHref legacyBehavior>
-                  <Button variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</Button>
+                  <Button variant="warning" className="fw-bold px-4 rounded-pill" onClick={triggerMediumHaptic}>VIEW FINAL STANDINGS</Button>
                 </Link>
               </div>
             )}
@@ -434,7 +430,7 @@ export default function Home() {
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
               {!isSeasonFinished ? (
                 <Link href="/predict" passHref legacyBehavior>
-                  <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic} suppressHydrationWarning>
+                  <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerMediumHaptic} suppressHydrationWarning>
                     {isLocked 
                       ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
                       : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
@@ -442,13 +438,13 @@ export default function Home() {
                 </Link>
               ) : (
                 <Link href="/history" passHref legacyBehavior>
-                  <Button size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                  <Button size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerMediumHaptic}>
                     VIEW SEASON RECAP
                   </Button>
                 </Link>
               )}
               <Link href="/leaderboard" passHref legacyBehavior>
-                <Button variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                <Button variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }} onClick={triggerMediumHaptic}>
                   {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
                 </Button>
               </Link>
@@ -456,7 +452,7 @@ export default function Home() {
             
             <div className="mb-4">
               <HowToPlayButton 
-                onClick={() => { triggerHaptic(); router.push('/predict?howto=true'); }}
+                onClick={() => { triggerLightHaptic(); router.push('/predict?howto=true'); }}
               />
             </div>
 
@@ -523,7 +519,7 @@ export default function Home() {
                 <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
                 <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Compete with Friends</p>
               </div>
-              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start" style={{ fontSize: '0.65rem' }} onClick={triggerHaptic}>
+              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start" style={{ fontSize: '0.65rem' }} onClick={triggerMediumHaptic}>
                 View Leagues →
               </Link>
             </div>
@@ -544,7 +540,7 @@ export default function Home() {
                     <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
                     <Link href="/auth" passHref legacyBehavior>
-                      <Button variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }} onClick={triggerHaptic}>GET STARTED</Button>
+                      <Button variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }} onClick={triggerMediumHaptic}>GET STARTED</Button>
                     </Link>
                   </div>
                 </Col>

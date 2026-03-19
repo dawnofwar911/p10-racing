@@ -13,6 +13,7 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy } from 'lucide-react';
 
@@ -133,6 +134,13 @@ export default function LeaderboardPage() {
     return () => { supabase.removeChannel(channel); };
   }, [supabase, view, calculate]);
 
+  const handleViewChange = (newView: 'global' | 'local') => {
+    if (newView !== view) {
+      triggerLightHaptic();
+      setView(newView);
+    }
+  };
+
   return (
     <PullToRefresh onRefresh={() => calculate(false)}>
       <Container className="mt-4 mb-4">
@@ -156,7 +164,7 @@ export default function LeaderboardPage() {
               <Button 
                 variant={view === 'global' ? 'danger' : 'dark'} 
                 size="sm" 
-                onClick={() => setView('global')} 
+                onClick={() => handleViewChange('global')} 
                 className="rounded px-4 fw-bold text-uppercase"
                 style={{ fontSize: '0.7rem' }}
               >
@@ -165,7 +173,7 @@ export default function LeaderboardPage() {
               <Button 
                 variant={view === 'local' ? 'danger' : 'dark'} 
                 size="sm" 
-                onClick={() => setView('local')} 
+                onClick={() => handleViewChange('local')} 
                 className="rounded px-4 fw-bold text-uppercase"
                 style={{ fontSize: '0.7rem' }}
               >

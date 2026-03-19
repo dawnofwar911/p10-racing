@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import LoadingView from '@/components/LoadingView';
 
 const supabase = createClient();
@@ -50,7 +50,7 @@ export default function AuthPage() {
     setLoading(true);
     setError(null);
     setMessage(null);
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
 
     try {
       if (isSignUp && username.trim().length < 3) {
