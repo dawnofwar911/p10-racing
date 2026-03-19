@@ -70,7 +70,6 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
           window.dispatchEvent(backEvent);
 
           if (backEvent.defaultPrevented) {
-            console.log('NativeWrapper: Hardware back button intercepted.');
             return;
           }
 
