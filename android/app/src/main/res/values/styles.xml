@@ -7,33 +7,22 @@
         <item name="windowNoTitle">true</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@color/f1_black</item>
-        <item name="android:colorBackground">@color/f1_black</item>
-    </style>
-
-    <style name="AppTheme.NoActionBar" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-        <item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">@color/f1_black</item>
-        <item name="android:colorBackground">@color/f1_black</item>
-        <item name="android:colorSurface">@color/f1_dark_grey</item>
+        <item name="colorSurface">@color/f1_dark_grey</item>
         <item name="windowActionModeOverlay">true</item>
-        <item name="android:windowActionModeOverlay">true</item>
         <item name="android:actionModeBackground">@android:color/transparent</item>
         <item name="colorBackgroundFloating">@color/f1_dark_grey</item>
         <item name="android:textColorHighlight">@color/f1_red</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="@style/AppTheme">
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="windowActionModeOverlay">true</item>
-        <item name="android:actionModeBackground">@android:color/transparent</item>
-        <item name="colorBackgroundFloating">@color/f1_dark_grey</item>
-        <item name="android:textColorHighlight">@color/f1_red</item>
     </style>
 </resources>
