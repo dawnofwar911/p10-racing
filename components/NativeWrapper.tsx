@@ -13,6 +13,7 @@ import { Motion } from '@capacitor/motion';
 declare global {
   interface Window {
     __P10_ERROR_LOGS__: string[];
+    __P10_LAST_URL__?: string;
   }
 }
 

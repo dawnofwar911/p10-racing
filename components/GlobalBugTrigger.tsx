@@ -16,7 +16,7 @@ export default function GlobalBugTrigger() {
   // Track the last non-settings URL for diagnostic context
   useEffect(() => {
     if (typeof window !== 'undefined' && pathname !== '/settings') {
-      (window as any).__P10_LAST_URL__ = window.location.href;
+      window.__P10_LAST_URL__ = window.location.href;
     }
   }, [pathname]);
 

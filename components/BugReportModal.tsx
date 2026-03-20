@@ -35,7 +35,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
     if (typeof window === 'undefined') return {};
     try {
       const keys = Object.keys(localStorage);
-      const summary: Record<string, any> = {
+      const summary: Record<string, string | number | boolean | string[]> = {
         total_keys: keys.length,
         all_keys: keys,
         has_session: !!localStorage.getItem(STORAGE_KEYS.HAS_SESSION),
@@ -96,7 +96,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
         network_status: network.connected ? 'online' : 'offline',
         connection_type: network.connectionType,
         url: typeof window !== 'undefined' ? window.location.href : 'unknown',
-        source_url: typeof window !== 'undefined' ? (window as any).__P10_LAST_URL__ || window.location.href : 'unknown',
+        source_url: typeof window !== 'undefined' ? window.__P10_LAST_URL__ || window.location.href : 'unknown',
         screen: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown',
         user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
         storage_summary: getStorageSummary(),
