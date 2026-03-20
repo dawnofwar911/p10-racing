@@ -8,6 +8,7 @@ import { triggerSelectionHaptic } from '@/lib/utils/haptics';
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
   loading: boolean;
+  isRefreshing?: boolean;
   currentUser?: string;
   isSeasonComplete?: boolean;
   emptyMessage?: string;
@@ -16,6 +17,7 @@ interface LeaderboardTableProps {
 export default function LeaderboardTable({ 
   entries, 
   loading, 
+  isRefreshing = false,
   currentUser, 
   isSeasonComplete = false,
   emptyMessage = "No entries found."
@@ -27,7 +29,7 @@ export default function LeaderboardTable({
     setExpandedPlayer(expandedPlayer === player ? null : player);
   };
 
-  if (loading) {
+  if (loading && !isRefreshing) {
     return (
       <div className="table-responsive rounded border border-secondary shadow-sm">
         <Table variant="dark" className="mb-0">
@@ -43,7 +45,7 @@ export default function LeaderboardTable({
     );
   }
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && !loading) {
     return (
       <div className="table-responsive rounded border border-secondary shadow-sm">
         <Table variant="dark" className="mb-0">
@@ -60,8 +62,18 @@ export default function LeaderboardTable({
   }
 
   return (
-    <div className="table-responsive rounded border border-secondary shadow-sm">
-      <Table variant="dark" hover className="mb-0">
+    <div className="table-responsive rounded border border-secondary shadow-sm position-relative">
+      {isRefreshing && (
+        <div 
+          className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3" 
+          style={{ backgroundColor: 'rgba(21, 21, 30, 0.4)', backdropFilter: 'blur(1px)' }}
+        >
+          <div className="bg-dark p-3 rounded-circle border border-secondary shadow-lg">
+            <Spinner animation="border" variant="danger" size="sm" />
+          </div>
+        </div>
+      )}
+      <Table variant="dark" hover className={`mb-0 ${isRefreshing ? 'opacity-50' : ''}`} style={{ transition: 'opacity 0.2s ease' }}>
         <thead>
           <tr className="f1-table-header">
             <th className="ps-4 py-3">Pos</th>

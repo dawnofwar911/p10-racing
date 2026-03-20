@@ -223,7 +223,8 @@ function LeagueDetailContent() {
               <Col>
                 <LeaderboardTable 
                   entries={leaderboard} 
-                  loading={loading || isRefreshing} 
+                  loading={loading} 
+                  isRefreshing={isRefreshing}
                   isSeasonComplete={isSeasonComplete}
                   emptyMessage="No members in this league yet."
                 />
