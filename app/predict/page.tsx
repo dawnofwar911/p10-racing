@@ -500,14 +500,14 @@ function PredictPage() {
     <>
       <Container className="mt-4 mb-3">
         <Row className="mb-4 align-items-center">
-          <Col>
+          <Col xs={12} md="auto" className="mb-2 mb-md-0 me-auto">
             <div className="d-flex align-items-center gap-3">
               <h1 className="h2 mb-1 fw-bold text-uppercase text-truncate">{nextRace?.name}</h1>
               <HowToPlayButton onClick={() => { triggerLightHaptic(); setShowHowToPlay(true); }} />
             </div>
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
-          <Col xs="auto" className="d-flex gap-2">
+          <Col xs="auto" className="d-flex gap-2 ms-auto">
             {!isLocked && (
               <HapticButton 
                 variant={showSummary ? "outline-danger" : "outline-success"} 
