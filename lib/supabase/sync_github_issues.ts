@@ -51,10 +51,10 @@ ${bug.description}
 - **Platform:** ${deviceInfo.platform || 'unknown'}
 - **App Version:** v${deviceInfo.app_version || 'unknown'}
 - **OS Version:** ${deviceInfo.os_version || 'unknown'}
-- **Device:** ${(deviceInfo.manufacturer || '') + ' ' + (deviceInfo.model || 'unknown')}`.trim() + ` ${deviceInfo.is_virtual ? '(Emulator)' : ''}
+- **Device:** ${(deviceInfo.manufacturer ? deviceInfo.manufacturer + ' ' : '') + (deviceInfo.model || 'unknown')}`.trim() + ` ${deviceInfo.is_virtual ? '(Emulator)' : ''}
 - **Screen:** ${deviceInfo.screen || 'unknown'}
 - **Network:** ${deviceInfo.network_status || 'unknown'} (${deviceInfo.connection_type || 'unknown'})
-- **Battery:** ${typeof deviceInfo.battery_level !== 'undefined' ? Math.round(deviceInfo.battery_level * 100) + '%' : 'unknown'} ${deviceInfo.is_charging ? '⚡' : ''}
+- **Battery:** ${typeof deviceInfo.battery_level === 'number' ? Math.round(deviceInfo.battery_level * 100) + '%' : 'unknown'} ${deviceInfo.is_charging ? '⚡' : ''}
 - **User Agent:** ${deviceInfo.user_agent || 'unknown'}
 - **URL:** ${deviceInfo.url || 'unknown'}
 
@@ -64,7 +64,7 @@ ${bug.description}
 - **Predictions:** ${storage.has_predictions ? '✅ Cached' : '❌ None'}
 - **Drivers:** ${storage.has_drivers ? '✅ Cached' : '❌ None'}
 
-${deviceInfo.recent_errors && deviceInfo.recent_errors.length > 0 ? `
+${Array.isArray(deviceInfo.recent_errors) && deviceInfo.recent_errors.length > 0 ? `
 ### Recent Console Errors
 \`\`\`
 ${deviceInfo.recent_errors.join('\n')}
