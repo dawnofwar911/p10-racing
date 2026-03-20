@@ -51,10 +51,10 @@ ${bug.description}
 - **Platform:** ${deviceInfo.platform || 'unknown'}
 - **App Version:** v${deviceInfo.app_version || 'unknown'}
 - **OS Version:** ${deviceInfo.os_version || 'unknown'}
-- **Device:** ${deviceInfo.manufacturer || ''} ${deviceInfo.model || 'unknown'} ${deviceInfo.is_virtual ? '(Emulator)' : ''}
+- **Device:** ${(deviceInfo.manufacturer || '') + ' ' + (deviceInfo.model || 'unknown')}`.trim() + ` ${deviceInfo.is_virtual ? '(Emulator)' : ''}
 - **Screen:** ${deviceInfo.screen || 'unknown'}
 - **Network:** ${deviceInfo.network_status || 'unknown'} (${deviceInfo.connection_type || 'unknown'})
-- **Battery:** ${deviceInfo.battery_level ? Math.round(deviceInfo.battery_level * 100) + '%' : 'unknown'} ${deviceInfo.is_charging ? '⚡' : ''}
+- **Battery:** ${typeof deviceInfo.battery_level !== 'undefined' ? Math.round(deviceInfo.battery_level * 100) + '%' : 'unknown'} ${deviceInfo.is_charging ? '⚡' : ''}
 - **User Agent:** ${deviceInfo.user_agent || 'unknown'}
 - **URL:** ${deviceInfo.url || 'unknown'}
 
