@@ -63,6 +63,7 @@ ${bug.description}
 - **Session:** ${storage.has_session ? '✅ Active' : '❌ None'}
 - **Predictions:** ${storage.has_predictions ? '✅ Cached' : '❌ None'}
 - **Drivers:** ${storage.has_drivers ? '✅ Cached' : '❌ None'}
+${storage.all_keys ? `- **All Keys:** \`${storage.all_keys.join(', ')}\`` : ''}
 
 ${Array.isArray(deviceInfo.recent_errors) && deviceInfo.recent_errors.length > 0 ? `
 ### Recent Console Errors

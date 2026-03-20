@@ -7,6 +7,7 @@ import { triggerMediumHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '@
 import { Capacitor } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { Network } from '@capacitor/network';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 import packageInfo from '../package.json';
 import HapticButton from './HapticButton';
 
@@ -34,11 +35,13 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
     if (typeof window === 'undefined') return {};
     try {
       const keys = Object.keys(localStorage);
-      const summary: Record<string, number | boolean> = {
+      const summary: Record<string, any> = {
         total_keys: keys.length,
-        has_session: !!localStorage.getItem('supabase.auth.token') || !!localStorage.getItem('sb-yozhuvzmxpntjrvoxxps-auth-token'),
-        has_predictions: !!localStorage.getItem('p10_predictions'),
-        has_drivers: !!localStorage.getItem('p10_drivers_cache'),
+        all_keys: keys,
+        has_session: !!localStorage.getItem(STORAGE_KEYS.HAS_SESSION),
+        has_predictions: keys.some(k => k.startsWith('final_pred_')),
+        has_drivers: !!localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS),
+        has_grid: keys.some(k => k.startsWith('p10_cache_grid_')),
       };
       return summary;
     } catch {

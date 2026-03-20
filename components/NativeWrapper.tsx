@@ -43,7 +43,8 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
     };
 
     console.error = (...args: unknown[]) => {
-      const message = args.map(arg => safeStringify(arg)).join(' ');
+      const timestamp = new Date().toLocaleTimeString();
+      const message = `[${timestamp}] ` + args.map(arg => safeStringify(arg)).join(' ');
       window.__P10_ERROR_LOGS__ = [message, ...window.__P10_ERROR_LOGS__].slice(0, 10);
       originalError.apply(console, args);
     };
