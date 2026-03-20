@@ -16,7 +16,7 @@
         <item name="android:windowBackground">@color/f1_black</item>
         <item name="windowActionModeOverlay">true</item>
         <item name="android:actionModeBackground">@android:color/transparent</item>
-        <item name="colorBackgroundFloating">@android:color/transparent</item>
+        <item name="colorBackgroundFloating">@color/f1_dark_grey</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
