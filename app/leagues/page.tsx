@@ -20,9 +20,6 @@ interface League {
   invite_code: string;
   created_by: string;
   created_at: string;
-  profiles?: {
-    username: string;
-  };
 }
 
 function LeaguesContent() {
@@ -56,9 +53,10 @@ function LeaguesContent() {
   const fetchLeagues = useCallback(async (quiet = false) => {
     if (!quiet && mountedRef.current) setLoading(true);
     try {
-      const { data, error: fetchError } = await withTimeout(supabase
+      // 1. Fetch leagues normally
+      const { data: leaguesData, error: fetchError } = await withTimeout(supabase
         .from('leagues')
-        .select('*, profiles!created_by(username)')
+        .select('*')
         .order('created_at', { ascending: false }));
 
       if (fetchError) throw fetchError;
@@ -66,9 +64,18 @@ function LeaguesContent() {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUserId = session?.user?.id;
 
-      // Filter out leagues created by test accounts unless the user is the creator
-      const filteredData = (data || []).filter(league => {
-        const creatorUsername = league.profiles?.username;
+      // 2. Fetch profiles for those creators to check for test accounts
+      const creatorIds = [...new Set((leaguesData || []).map(l => l.created_by).filter(Boolean))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', creatorIds);
+
+      const profileMap = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id]: p.username }), {} as Record<string, string>);
+
+      // 3. Filter out leagues created by test accounts unless the user is the creator
+      const filteredData = (leaguesData || []).filter(league => {
+        const creatorUsername = profileMap[league.created_by];
         const isTest = /\b(tester|reviewer)\b/i.test(creatorUsername || '');
         if (!isTest) return true;
         return league.created_by === currentUserId;
