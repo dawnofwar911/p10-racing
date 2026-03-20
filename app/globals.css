@@ -1,3 +1,7 @@
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 :root {
   --f1-red: #e10600;
   --f1-black: #15151e;
