@@ -56,13 +56,15 @@ ${bug.description}
 - **Network:** ${deviceInfo.network_status || 'unknown'} (${deviceInfo.connection_type || 'unknown'})
 - **Battery:** ${typeof deviceInfo.battery_level === 'number' ? Math.round(deviceInfo.battery_level * 100) + '%' : 'unknown'} ${deviceInfo.is_charging ? '⚡' : ''}
 - **User Agent:** ${deviceInfo.user_agent || 'unknown'}
-- **URL:** ${deviceInfo.url || 'unknown'}
+- **Source URL:** ${deviceInfo.source_url || deviceInfo.url || 'unknown'}
+- **Report URL:** ${deviceInfo.url || 'unknown'}
 
 ### Storage Diagnostics
 - **Local Keys:** ${storage.total_keys || 0}
 - **Session:** ${storage.has_session ? '✅ Active' : '❌ None'}
 - **Predictions:** ${storage.has_predictions ? '✅ Cached' : '❌ None'}
 - **Drivers:** ${storage.has_drivers ? '✅ Cached' : '❌ None'}
+${storage.all_keys ? `- **All Keys:** \`${storage.all_keys.join(', ')}\`` : ''}
 
 ${Array.isArray(deviceInfo.recent_errors) && deviceInfo.recent_errors.length > 0 ? `
 ### Recent Console Errors

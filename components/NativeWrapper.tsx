@@ -7,11 +7,13 @@ import { App } from '@capacitor/app';
 import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
+import { Motion } from '@capacitor/motion';
 
 // Declare global for console logs
 declare global {
   interface Window {
     __P10_ERROR_LOGS__: string[];
+    __P10_LAST_URL__?: string;
   }
 }
 
@@ -43,13 +45,55 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
     };
 
     console.error = (...args: unknown[]) => {
-      const message = args.map(arg => safeStringify(arg)).join(' ');
+      const timestamp = new Date().toLocaleTimeString();
+      const message = `[${timestamp}] ` + args.map(arg => safeStringify(arg)).join(' ');
       window.__P10_ERROR_LOGS__ = [message, ...window.__P10_ERROR_LOGS__].slice(0, 10);
       originalError.apply(console, args);
     };
 
     return () => {
       console.error = originalError;
+    };
+  }, []);
+
+  // Shake Detection Logic
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let lastUpdate = 0;
+    let lastX = 0, lastY = 0, lastZ = 0;
+    // Sensitivity threshold for shake detection (lower is more sensitive)
+    const SHAKE_THRESHOLD = Number(process.env.NEXT_PUBLIC_SHAKE_THRESHOLD) || 15;
+    const COOLDOWN = 2000; // 2 seconds between triggers
+    let lastShakeTime = 0;
+
+    const listener = Motion.addListener('accel', (event) => {
+      const curTime = Date.now();
+      if ((curTime - lastUpdate) > 100) {
+        const diffTime = (curTime - lastUpdate);
+        lastUpdate = curTime;
+
+        const { x, y, z } = event.acceleration;
+        if (!x || !y || !z) return;
+
+        const speed = Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime * 10000;
+
+        if (speed > SHAKE_THRESHOLD) {
+          if ((curTime - lastShakeTime) > COOLDOWN) {
+            lastShakeTime = curTime;
+            // Dispatch custom event for app to handle
+            window.dispatchEvent(new CustomEvent('p10:shake_detected'));
+          }
+        }
+
+        lastX = x;
+        lastY = y;
+        lastZ = z;
+      }
+    });
+
+    return () => {
+      listener.then(l => l.remove());
     };
   }, []);
 
