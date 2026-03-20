@@ -31,6 +31,10 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await expect(page).toHaveURL(/\/leagues/);
     // Unauthenticated view
     await expect(page.getByText(/Multiplayer Leagues/i).or(page.getByText(/Active Competitions/i))).toBeVisible();
+    
+    // Leagues list page DOES NOT HAVE PullToRefresh anymore
+    const leaguesPtr = page.locator('.ptr-container');
+    await expect(leaguesPtr).not.toBeVisible();
 
     // 3. Navigate to Leaderboard
     await page.getByRole('link', { name: /Leaderboard/i }).click();
