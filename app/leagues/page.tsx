@@ -18,7 +18,11 @@ interface League {
   id: string;
   name: string;
   invite_code: string;
+  created_by: string;
   created_at: string;
+  profiles?: {
+    username: string;
+  };
 }
 
 function LeaguesContent() {
@@ -54,13 +58,27 @@ function LeaguesContent() {
     try {
       const { data, error: fetchError } = await withTimeout(supabase
         .from('leagues')
-        .select('*')
+        .select('*, profiles!created_by(username)')
         .order('created_at', { ascending: false }));
 
       if (fetchError) throw fetchError;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', currentUserId || '').maybeSingle();
+      const isAdminUser = profile?.is_admin || false;
+
+      // Filter out leagues created by test accounts unless the user is an admin or the creator
+      const filteredData = (data || []).filter(league => {
+        const creatorUsername = league.profiles?.username;
+        const isTest = /\b(tester|reviewer)\b/i.test(creatorUsername || '');
+        if (!isTest) return true;
+        return isAdminUser || league.created_by === currentUserId;
+      });
+
       if (mountedRef.current) {
-        setLeagues(data || []);
-        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(data || []));
+        setLeagues(filteredData);
+        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(filteredData));
       }
     } catch (err: unknown) {
       if (err instanceof Error && mountedRef.current) setError(err.message);
