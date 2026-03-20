@@ -31,6 +31,23 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await expect(page).toHaveURL(/\/leagues/);
     // Unauthenticated view
     await expect(page.getByText(/Multiplayer Leagues/i).or(page.getByText(/Active Competitions/i))).toBeVisible();
+    
+    // Leagues list page DOES NOT HAVE PullToRefresh anymore
+    const leaguesPtr = page.locator('.ptr-container');
+    await expect(leaguesPtr).not.toBeVisible();
+
+    // 2b. Navigate to a specific league (if any exists)
+    // We try to find the first "VIEW" button
+    const viewButton = page.getByRole('button', { name: /VIEW/i }).first();
+    if (await viewButton.isVisible()) {
+      await viewButton.click();
+      await expect(page).toHaveURL(/\/leagues\/view/);
+      // League View page SHOULD HAVE PullToRefresh
+      const leagueDetailPtr = page.locator('.ptr-container');
+      await expect(leagueDetailPtr).toBeVisible();
+      // Go back
+      await page.getByRole('button', { name: /ChevronLeft/i }).or(page.locator('button:has(svg)')).first().click();
+    }
 
     // 3. Navigate to Leaderboard
     await page.getByRole('link', { name: /Leaderboard/i }).click();

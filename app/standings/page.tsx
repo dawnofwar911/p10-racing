@@ -38,7 +38,7 @@ export default function StandingsPage() {
   }, [standings.length]);
 
   return (
-    <PullToRefresh onRefresh={() => load(false)}>
+    <PullToRefresh onRefresh={() => load(true)}>
       <Container className="mt-4 mb-4">
         <Row className="mb-4 align-items-center">
           <Col>

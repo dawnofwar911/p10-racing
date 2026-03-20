@@ -48,8 +48,8 @@ export default function LeaderboardPage() {
   }, []);
 
   const calculate = useCallback(async (quiet = false) => {
-  if (!quiet && mountedRef.current) setLoading(true);
-  try {
+    if (!quiet && mountedRef.current) setLoading(true);
+    try {
     const [raceResultsMap, races] = await Promise.all([
       fetchAllSimplifiedResults(),
       fetchCalendar(CURRENT_SEASON)
@@ -143,7 +143,7 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <PullToRefresh onRefresh={() => calculate(false)}>
+    <PullToRefresh onRefresh={() => calculate(true)}>
       <Container className="mt-4 mb-4">
         <Row className="mb-4 align-items-center g-3">
           <Col xs={12} md={6}>

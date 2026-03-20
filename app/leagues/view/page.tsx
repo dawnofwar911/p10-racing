@@ -12,6 +12,7 @@ import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 import LoadingView from '@/components/LoadingView';
 import LeaderboardTable from '@/components/LeaderboardTable';
+import PullToRefresh from '@/components/PullToRefresh';
 import { Share } from '@capacitor/share';
 import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Users, ChevronLeft } from 'lucide-react';
@@ -44,9 +45,9 @@ function LeagueDetailContent() {
     }
   };
 
-  const loadLeague = useCallback(async () => {
+  const loadLeague = useCallback(async (quiet = false) => {
     if (!leagueId) return;
-    setLoading(true);
+    if (!quiet) setLoading(true);
     
     // 1. Fetch League Info
     const { data: league, error: leagueError } = await supabase
@@ -150,17 +151,17 @@ function LeagueDetailContent() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'verified_results' },
-        () => loadLeague()
+        () => loadLeague(true)
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'predictions' },
-        () => loadLeague()
+        () => loadLeague(true)
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'league_members', filter: `league_id=eq.${leagueId}` },
-        () => loadLeague()
+        () => loadLeague(true)
       )
       .subscribe();
 
@@ -174,55 +175,57 @@ function LeagueDetailContent() {
   }
 
   return (
-    <Container className="mt-4 mb-5">
-      {loading ? (
-        <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
-      ) : (
-        <>
-          <Row className="mb-4 align-items-center g-3">
-            <Col xs={12} md={7}>
-              <div className="d-flex align-items-center">
-                <Link href="/leagues" passHref legacyBehavior>
-                  <Button 
-                    variant="link" 
-                    className="text-white p-0 me-3 opacity-75 hover-opacity-100"
-                    onClick={triggerLightHaptic}
-                  >
-                    <ChevronLeft size={28} />
-                  </Button>
-                </Link>
-                <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px' }}>
-                  <Users size={24} className="text-white" />
+    <PullToRefresh onRefresh={() => loadLeague(true)}>
+      <Container className="mt-4 mb-5">
+        {loading ? (
+          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+        ) : (
+          <>
+            <Row className="mb-4 align-items-center g-3">
+              <Col xs={12} md={7}>
+                <div className="d-flex align-items-center">
+                  <Link href="/leagues" passHref legacyBehavior>
+                    <Button 
+                      variant="link" 
+                      className="text-white p-0 me-3 opacity-75 hover-opacity-100"
+                      onClick={triggerLightHaptic}
+                    >
+                      <ChevronLeft size={28} />
+                    </Button>
+                  </Link>
+                  <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px' }}>
+                    <Users size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <h1 className="h2 mb-0 f1-page-title text-white">{leagueName}</h1>
+                    <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>League Leaderboard</small>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="h2 mb-0 f1-page-title text-white">{leagueName}</h1>
-                  <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>League Leaderboard</small>
+              </Col>
+              <Col xs={12} md={5} className="text-md-end">
+                <div className="d-inline-flex align-items-center gap-2 bg-dark p-1 rounded border border-secondary shadow-sm">
+                  <code className="ps-3 text-white fw-bold letter-spacing-1" style={{ fontSize: '0.9rem' }}>{inviteCode}</code>
+                  <HapticButton variant="danger" size="sm" className="rounded px-3 fw-bold text-uppercase" style={{ fontSize: '0.7rem' }} onClick={handleShare}>
+                    SHARE
+                  </HapticButton>
                 </div>
-              </div>
-            </Col>
-            <Col xs={12} md={5} className="text-md-end">
-              <div className="d-inline-flex align-items-center gap-2 bg-dark p-1 rounded border border-secondary shadow-sm">
-                <code className="ps-3 text-white fw-bold letter-spacing-1" style={{ fontSize: '0.9rem' }}>{inviteCode}</code>
-                <HapticButton variant="danger" size="sm" className="rounded px-3 fw-bold text-uppercase" style={{ fontSize: '0.7rem' }} onClick={handleShare}>
-                  SHARE
-                </HapticButton>
-              </div>
-            </Col>
-          </Row>
+              </Col>
+            </Row>
 
-          <Row>
-            <Col>
-              <LeaderboardTable 
-                entries={leaderboard} 
-                loading={loading} 
-                isSeasonComplete={isSeasonComplete}
-                emptyMessage="No members in this league yet."
-              />
-            </Col>
-          </Row>
-        </>
-      )}
-    </Container>
+            <Row>
+              <Col>
+                <LeaderboardTable 
+                  entries={leaderboard} 
+                  loading={loading} 
+                  isSeasonComplete={isSeasonComplete}
+                  emptyMessage="No members in this league yet."
+                />
+              </Col>
+            </Row>
+          </>
+        )}
+      </Container>
+    </PullToRefresh>
   );
 }
 
