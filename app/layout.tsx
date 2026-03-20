@@ -13,6 +13,7 @@ import PushNotificationHandler from '@/components/PushNotificationHandler';
 import PWAInstallHint from '@/components/PWAInstallHint';
 import { NotificationProvider } from '@/components/Notification';
 import { AuthProvider } from '@/components/AuthProvider';
+import GlobalBugTrigger from '@/components/GlobalBugTrigger';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -54,6 +55,7 @@ export default function RootLayout({
                 </Suspense>
               </main>
 
+              <GlobalBugTrigger />
               <PWAInstallHint />
               <MobileBottomNav />
             </NativeWrapper>

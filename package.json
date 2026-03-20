@@ -1,6 +1,6 @@
 {
   "name": "p10-racing",
-  "version": "1.26.2",
+  "version": "1.27.0",
   "private": false,
   "license": "UNLICENSED",
   "scripts": {
@@ -24,6 +24,7 @@
     "@capacitor/device": "^8.0.1",
     "@capacitor/haptics": "^8.0.1",
     "@capacitor/local-notifications": "^8.0.2",
+    "@capacitor/motion": "^8.0.0",
     "@capacitor/network": "^8.0.1",
     "@capacitor/push-notifications": "^8.0.2",
     "@capacitor/share": "^8.0.1",

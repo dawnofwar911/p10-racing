@@ -96,6 +96,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
         network_status: network.connected ? 'online' : 'offline',
         connection_type: network.connectionType,
         url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+        source_url: typeof window !== 'undefined' ? (window as any).__P10_LAST_URL__ || window.location.href : 'unknown',
         screen: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown',
         user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
         storage_summary: getStorageSummary(),

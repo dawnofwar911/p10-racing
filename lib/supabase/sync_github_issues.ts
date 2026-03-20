@@ -56,7 +56,8 @@ ${bug.description}
 - **Network:** ${deviceInfo.network_status || 'unknown'} (${deviceInfo.connection_type || 'unknown'})
 - **Battery:** ${typeof deviceInfo.battery_level === 'number' ? Math.round(deviceInfo.battery_level * 100) + '%' : 'unknown'} ${deviceInfo.is_charging ? '⚡' : ''}
 - **User Agent:** ${deviceInfo.user_agent || 'unknown'}
-- **URL:** ${deviceInfo.url || 'unknown'}
+- **Source URL:** ${deviceInfo.source_url || deviceInfo.url || 'unknown'}
+- **Report URL:** ${deviceInfo.url || 'unknown'}
 
 ### Storage Diagnostics
 - **Local Keys:** ${storage.total_keys || 0}
