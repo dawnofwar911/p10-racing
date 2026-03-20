@@ -38,7 +38,6 @@ export default function LeaderboardPage() {
   });
 
   const [loading, setLoading] = useState(!leaderboard.length);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [view, setView] = useState<'global' | 'local'>('global');
 
@@ -48,9 +47,8 @@ export default function LeaderboardPage() {
     return () => { mountedRef.current = false; };
   }, []);
 
-  const calculate = useCallback(async (quiet = false, refreshing = false) => {
+  const calculate = useCallback(async (quiet = false) => {
     if (!quiet && mountedRef.current) setLoading(true);
-    if (refreshing && mountedRef.current) setIsRefreshing(true);
     try {
     const [raceResultsMap, races] = await Promise.all([
       fetchAllSimplifiedResults(),
@@ -107,10 +105,7 @@ export default function LeaderboardPage() {
     } catch (err) {
       console.error('Leaderboard: Calc error:', err);
     } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-        setIsRefreshing(false);
-      }
+      if (mountedRef.current) setLoading(false);
     }
   }, [supabase, view, session?.user?.id, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -148,7 +143,7 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <PullToRefresh onRefresh={() => calculate(true, true)}>
+    <PullToRefresh onRefresh={() => calculate(true)}>
       <Container className="mt-4 mb-4">
         <Row className="mb-4 align-items-center g-3">
           <Col xs={12} md={6}>
@@ -194,7 +189,6 @@ export default function LeaderboardPage() {
               key={view}
               entries={leaderboard} 
               loading={loading} 
-              isRefreshing={isRefreshing}
               currentUser={currentUser || undefined}
               isSeasonComplete={isSeasonComplete}
               emptyMessage={view === 'global' ? "No global players found." : "No guest data found on this device."}

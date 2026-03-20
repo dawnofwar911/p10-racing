@@ -29,7 +29,6 @@ function LeagueDetailContent() {
   const [inviteCode, setInviteCode] = useState('');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
 
   const handleShare = async () => {
@@ -175,14 +174,8 @@ function LeagueDetailContent() {
     return <Container className="mt-5 text-center text-white"><p>No league selected.</p></Container>;
   }
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await loadLeague(true);
-    setIsRefreshing(false);
-  };
-
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
+    <PullToRefresh onRefresh={() => loadLeague(true)}>
       <Container className="mt-4 mb-5">
         {loading ? (
           <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
@@ -224,7 +217,6 @@ function LeagueDetailContent() {
                 <LeaderboardTable 
                   entries={leaderboard} 
                   loading={loading} 
-                  isRefreshing={isRefreshing}
                   isSeasonComplete={isSeasonComplete}
                   emptyMessage="No members in this league yet."
                 />

@@ -18,11 +18,9 @@ export default function StandingsPage() {
     return cached ? JSON.parse(cached) : [];
   });
   const [loading, setLoading] = useState(!standings.length);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function load(quiet = false, refreshing = false) {
+  async function load(quiet = false) {
     if (!quiet) setLoading(true);
-    if (refreshing) setIsRefreshing(true);
     // 2. Fetch fresh data
     const data = await fetchDrivers(CURRENT_SEASON);
     if (data.length > 0) {
@@ -30,7 +28,6 @@ export default function StandingsPage() {
       localStorage.setItem(STORAGE_KEYS.CACHE_STANDINGS, JSON.stringify(data));
     }
     setLoading(false);
-    setIsRefreshing(false);
   }
 
   useEffect(() => {
@@ -41,7 +38,7 @@ export default function StandingsPage() {
   }, [standings.length]);
 
   return (
-    <PullToRefresh onRefresh={() => load(true, true)}>
+    <PullToRefresh onRefresh={() => load(true)}>
       <Container className="mt-4 mb-4">
         <Row className="mb-4 align-items-center">
           <Col>
@@ -57,23 +54,13 @@ export default function StandingsPage() {
           </Col>
         </Row>
         
-        {loading && !isRefreshing ? (
+        {loading ? (
           <div className="text-center py-5">
             <Spinner animation="border" variant="danger" />
           </div>
         ) : (
-          <div className="table-responsive rounded border border-secondary shadow-sm position-relative">
-            {isRefreshing && (
-              <div 
-                className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3" 
-                style={{ backgroundColor: 'rgba(21, 21, 30, 0.4)', backdropFilter: 'blur(1px)' }}
-              >
-                <div className="bg-dark p-3 rounded-circle border border-secondary shadow-lg">
-                  <Spinner animation="border" variant="danger" size="sm" />
-                </div>
-              </div>
-            )}
-            <Table variant="dark" hover className={`mb-0 ${isRefreshing ? 'opacity-50' : ''}`} style={{ transition: 'opacity 0.2s ease' }}>
+          <div className="table-responsive rounded border border-secondary shadow-sm">
+            <Table variant="dark" hover className="mb-0">
               <thead>
                 <tr className="f1-table-header">
                   <th className="ps-4 py-3">Pos</th>
