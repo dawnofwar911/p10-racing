@@ -498,7 +498,7 @@ function PredictPage() {
 
   return (
     <>
-      <Container className="mt-4 mb-3">
+      <Container className="mt-4 mb-3 user-select-none">
         <Row className="mb-4 align-items-center">
           <Col xs={12} md="auto" className="mb-2 mb-md-0 me-auto">
             <div className="d-flex align-items-center gap-3">

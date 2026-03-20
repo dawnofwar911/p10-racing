@@ -31,6 +31,6 @@
         <item name="windowActionModeOverlay">true</item>
         <item name="android:actionModeBackground">@android:color/transparent</item>
         <item name="colorBackgroundFloating">@color/f1_dark_grey</item>
-        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:textColorHighlight">@color/f1_red</item>
     </style>
 </resources>
