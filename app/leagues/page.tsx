@@ -65,15 +65,13 @@ function LeaguesContent() {
       
       const { data: { session } } = await supabase.auth.getSession();
       const currentUserId = session?.user?.id;
-      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', currentUserId || '').maybeSingle();
-      const isAdminUser = profile?.is_admin || false;
 
-      // Filter out leagues created by test accounts unless the user is an admin or the creator
+      // Filter out leagues created by test accounts unless the user is the creator
       const filteredData = (data || []).filter(league => {
         const creatorUsername = league.profiles?.username;
         const isTest = /\b(tester|reviewer)\b/i.test(creatorUsername || '');
         if (!isTest) return true;
-        return isAdminUser || league.created_by === currentUserId;
+        return league.created_by === currentUserId;
       });
 
       if (mountedRef.current) {
