@@ -129,15 +129,17 @@ export default function Home() {
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ key: string }>;
       const updatedKey = customEvent.detail?.key;
-      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
+      const storageUser = session?.user?.id || currentUser || '';
+      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id) : null;
 
       if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER) {
         const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+        const activeUser = session?.user?.id || user || '';
         const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-        if (cachedRaceStr && user) {
+        if (cachedRaceStr && activeUser) {
           try {
             const raceObj = JSON.parse(cachedRaceStr);
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, activeUser, raceObj.id));
             if (predStr) {
               const parsed = JSON.parse(predStr);
               setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
@@ -151,7 +153,7 @@ export default function Home() {
 
     window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace, syncVersion]);
+  }, [currentUser, nextRace, syncVersion, session]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
