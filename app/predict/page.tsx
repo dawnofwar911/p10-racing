@@ -584,7 +584,7 @@ function PredictPage() {
             <div className="d-flex justify-content-center gap-3">
               {!isLocked && (
                 <HapticButton 
-                  variant="outline-light" 
+                  variant="outline-danger" 
                   size="lg" 
                   onClick={() => { setIsEditing(true); }} 
                   className="px-5 fw-bold"
