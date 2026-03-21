@@ -542,11 +542,13 @@ function PredictPage() {
                 {hasPicks ? (
                   <div className="d-flex flex-column gap-2 mb-3 align-items-center">
                     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '220px', width: 'fit-content' }}>
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>P10</small>
+                      <div className="flex-shrink-0 rounded-circle me-3" style={{ width: '10px', height: '10px', backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem' }}>P10</small>
                       <span className="text-white fw-bold small">{getDriverDisplayName(p10Driver, drivers)}</span>
                     </div>
                     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '220px', width: 'fit-content' }}>
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>DNF</small>
+                      <div className="flex-shrink-0 rounded-circle me-3" style={{ width: '10px', height: '10px', backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem' }}>DNF</small>
                       <span className="text-danger fw-bold small">{getDriverDisplayName(dnfDriver, drivers)}</span>
                     </div>
                   </div>
@@ -572,14 +574,19 @@ function PredictPage() {
                           <tr key={idx} className="align-middle">
                             <td className="text-white fw-bold py-2">{pred.username}</td>
                             <td className="text-center">
-                              <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
+                              <div className="d-flex align-items-center justify-content-center gap-2">
+                                <div className="rounded-circle" style={{ width: '6px', height: '6px', backgroundColor: drivers.find(d => d.id === pred.p10)?.color || '#B6BABD' }}></div>
+                                <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
+                              </div>
                             </td>
                             <td className="text-center">
-                              <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
+                              <div className="d-flex align-items-center justify-content-center gap-2">
+                                <div className="rounded-circle" style={{ width: '6px', height: '6px', backgroundColor: drivers.find(d => d.id === pred.dnf)?.color || '#B6BABD' }}></div>
+                                <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
+                              </div>
                             </td>
                           </tr>
-                        ))}</tbody>
-                      </table>
+                        ))}</tbody>                      </table>
                     </div>
                   ) : <p className="text-muted small">Only you so far!</p>}
                 </div>
