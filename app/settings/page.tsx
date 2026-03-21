@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Card, Modal, Spinner, Form, Badge } from 'react-bootstrap';
+import { Card, Modal, Spinner, Form, Badge, Container } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic } from '@/lib/utils/haptics';
@@ -14,7 +14,7 @@ import { withTimeout } from '@/lib/utils/sync-queue';
 import { useAuth } from '@/components/AuthProvider';
 import HapticButton from '@/components/HapticButton';
 import { STORAGE_KEYS, setStorageItem } from '@/lib/utils/storage';
-import SwipeablePageLayout from '@/components/SwipeablePageLayout';
+import StandardPageHeader from '@/components/StandardPageHeader';
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -66,15 +66,14 @@ export default function SettingsPage() {
 
   return (
     <>
-      <SwipeablePageLayout
-        title="Settings"
-        subtitle="Preferences & Info"
-        icon={<Settings size={24} className="text-white" />}
-        activeTab="general"
-        onTabChange={() => {}}
-        tabs={[{ id: 'general', label: 'General', icon: <Settings size={16} /> }]}
-      >
-        <div className="mt-3 max-w-md mx-auto" style={{ maxWidth: '600px' }}>
+      <Container className="mt-4 mb-5 max-w-md mx-auto" style={{ maxWidth: '600px' }}>
+        <StandardPageHeader
+          title="Settings"
+          subtitle="Preferences & Info"
+          icon={<Settings size={24} className="text-white" />}
+        />
+
+        <div className="mt-3">
           {isAdmin && (
             <Card className="border-secondary border-opacity-25 shadow-sm bg-dark mb-4">
               <Link href="/admin" passHref legacyBehavior>
@@ -223,7 +222,7 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
-      </SwipeablePageLayout>
+      </Container>
 
       <BugReportModal show={showBugReport} onHide={() => setShowBugReport(false)} />
       

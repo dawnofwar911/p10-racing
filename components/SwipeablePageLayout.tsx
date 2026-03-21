@@ -1,12 +1,11 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { Container, Row, Col, Nav } from 'react-bootstrap';
+import { Container, Nav } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import PullToRefresh from '@/components/PullToRefresh';
-import { ChevronLeft } from 'lucide-react';
-import HapticButton from './HapticButton';
+import StandardPageHeader from './StandardPageHeader';
 
 const SWIPE_THRESHOLD = 30;
 const VELOCITY_THRESHOLD = 200;
@@ -73,35 +72,13 @@ export default function SwipeablePageLayout<T extends string>({
   const content = (
     <Container className="mt-4 mb-4 overflow-hidden">
       {/* 1. Standardized F1 Header */}
-      <Row className="mb-4 align-items-center">
-        <Col>
-          <div className="d-flex align-items-center">
-            {onBack && (
-              <HapticButton 
-                variant="link" 
-                className="text-white p-0 me-3 opacity-75 hover-opacity-100 border-0 d-flex align-items-center"
-                onClick={onBack}
-              >
-                <ChevronLeft size={28} />
-              </HapticButton>
-            )}
-            <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px', flexShrink: 0 }}>
-              {icon}
-            </div>
-            <div>
-              <div className="d-flex align-items-center gap-2">
-                <h1 className="h2 mb-0 f1-page-title">{title}</h1>
-                {badge}
-              </div>
-              {subtitle && (
-                <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>
-                  {subtitle}
-                </small>
-              )}
-            </div>
-          </div>
-        </Col>
-      </Row>
+      <StandardPageHeader
+        title={title}
+        subtitle={subtitle}
+        icon={icon}
+        badge={badge}
+        onBack={onBack}
+      />
 
       {/* 2. Standardized F1 Tab Switcher */}
       <div className="mb-4">
