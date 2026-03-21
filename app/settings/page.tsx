@@ -128,11 +128,11 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Account</h2>
-        <Card className="border-secondary shadow-sm mb-4">
-          <div className="list-group list-group-flush bg-dark rounded">
-            {session ? (
-              <>
+        {session && (
+          <>
+            <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Account</h2>
+            <Card className="border-secondary shadow-sm mb-4">
+              <div className="list-group list-group-flush bg-dark rounded">
                 <Link href="/auth/reset-password" passHref legacyBehavior>
                   <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" onClick={triggerLightHaptic}>
                     <div className="d-flex align-items-center">
@@ -151,14 +151,10 @@ export default function SettingsPage() {
                     <span className="fw-bold">Delete Account Data</span>
                   </div>
                 </button>
-              </>
-            ) : (
-              <div className="p-3 text-center text-muted small">
-                Settings are limited while playing as a Guest. <Link href="/auth" className="text-danger fw-bold text-decoration-none" onClick={triggerLightHaptic}>Sign in</Link> to unlock all features.
               </div>
-            )}
-          </div>
-        </Card>
+            </Card>
+          </>
+        )}
 
         <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Season</h2>
         <Card className="border-secondary shadow-sm mb-4">
