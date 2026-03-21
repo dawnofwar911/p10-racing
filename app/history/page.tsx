@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Row, Col, Card, Spinner, Container } from 'react-bootstrap';
+import { Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { History } from 'lucide-react';
 import { triggerLightHaptic } from '@/lib/utils/haptics';
-import StandardPageHeader from '@/components/StandardPageHeader';
-import HapticButton from '@/components/HapticButton';
+import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 
 interface HistoryEntry {
   round: string;
@@ -73,24 +72,15 @@ export default function HistoryPage() {
   }, []);
 
   return (
-    <Container className="mt-4 mb-4">
-      <StandardPageHeader
-        title="Season History"
-        subtitle={`${CURRENT_SEASON} Race Results`}
-        icon={<History size={24} className="text-white" />}
-        rightElement={
-          <HapticButton 
-            variant="outline-light"
-            size="sm"
-            onClick={() => { triggerLightHaptic(); router.back(); }} 
-            className="rounded-pill px-4 py-2 opacity-75 fw-bold text-uppercase"
-            style={{ fontSize: '0.75rem' }}
-          >
-            Go Back
-          </HapticButton>
-        }
-      />
-      
+    <SwipeablePageLayout
+      title="Season History"
+      subtitle={`${CURRENT_SEASON} Race Results`}
+      icon={<History size={24} className="text-white" />}
+      onBack={() => { triggerLightHaptic(); router.back(); }}
+      activeTab="history"
+      onTabChange={() => {}}
+      tabs={[{ id: 'history', label: 'History', icon: <History size={16} /> }]}
+    >
       <div className="mt-3">
         {loading ? (
           <div className="text-center py-5">
@@ -130,6 +120,6 @@ export default function HistoryPage() {
           </Row>
         )}
       </div>
-    </Container>
+    </SwipeablePageLayout>
   );
 }
