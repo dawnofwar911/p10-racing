@@ -1,7 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { Container, Nav } from 'react-bootstrap';
+import { Container, Nav, Row, Col } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import PullToRefresh from '@/components/PullToRefresh';
@@ -28,11 +28,23 @@ interface SwipeablePageLayoutProps<T extends string> {
   badge?: ReactNode;
   onBack?: () => void;
   rightElement?: ReactNode;
+  
+  /**
+   * If true, large screens will show all tabs side-by-side.
+   */
+  splitOnWide?: boolean;
+  
+  /**
+   * Optional custom layout for the split view. 
+   * Useful for Predict page which has a 'Grid Top' requirements.
+   */
+  customSplitLayout?: ReactNode;
 }
 
 /**
  * A reusable layout component that provides a standardized F1-styled header,
  * tab switcher, and horizontal swipe navigation between views.
+ * Supports a Split-Pane view for large screens (Foldables/Tablets).
  */
 export default function SwipeablePageLayout<T extends string>({
   title,
@@ -45,7 +57,9 @@ export default function SwipeablePageLayout<T extends string>({
   onRefresh,
   badge,
   onBack,
-  rightElement
+  rightElement,
+  splitOnWide = false,
+  customSplitLayout
 }: SwipeablePageLayoutProps<T>) {
   
   const handleTabChange = (tabId: T) => {
@@ -72,7 +86,7 @@ export default function SwipeablePageLayout<T extends string>({
   };
 
   const content = (
-    <Container className="mt-4 mb-4 overflow-hidden">
+    <Container className="mt-4 mb-4 overflow-hidden" style={{ maxWidth: splitOnWide ? '1400px' : '800px' }}>
       {/* 1. Standardized F1 Header */}
       <StandardPageHeader
         title={title}
@@ -83,8 +97,8 @@ export default function SwipeablePageLayout<T extends string>({
         rightElement={rightElement}
       />
 
-      {/* 2. Standardized F1 Tab Switcher */}
-      <div className="mb-4">
+      {/* 2. Standardized F1 Tab Switcher (Hidden on split view) */}
+      <div className={`mb-4 ${splitOnWide ? 'd-lg-none' : ''}`}>
         <Nav variant="pills" className="f1-tab-container p-1 bg-dark rounded-pill border border-secondary" style={{ width: 'fit-content' }}>
           {tabs.map((tab) => (
             <Nav.Item key={tab.id}>
@@ -101,23 +115,52 @@ export default function SwipeablePageLayout<T extends string>({
         </Nav>
       </div>
 
-      {/* 3. Swipeable Content Area */}
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.15}
-          onDragEnd={swipeHandlers.onDragEnd}
-          className="w-100 flex-grow-1 d-flex flex-column"
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
+      {/* 3. Content Area */}
+      <div className="flex-grow-1 d-flex flex-column">
+        {/* LARGE SCREEN: Split Pane View */}
+        {splitOnWide && (
+          <div className="d-none d-lg-block w-100">
+            {customSplitLayout || (
+              <Row>
+                {/* Automatically render all tabs side by side if no custom layout */}
+                {tabs.map(tab => (
+                  <Col key={tab.id} lg={12 / tabs.length} className="mb-4">
+                    <div className="p-3 border-start border-danger border-4 bg-dark bg-opacity-25 rounded-end h-100">
+                      <h3 className="h6 text-uppercase fw-bold text-muted mb-3 letter-spacing-1 d-flex align-items-center">
+                        {tab.icon && <span className="me-2">{tab.icon}</span>}
+                        {tab.label}
+                      </h3>
+                      {/* Note: This assumes the children handle their own active/inactive state 
+                          when used in custom layouts, but here we just pass them through */}
+                      {children}
+                    </div>
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </div>
+        )}
+
+        {/* MOBILE & FALLBACK: Swipeable View */}
+        <div className={splitOnWide ? 'd-lg-none' : 'w-100'}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.15}
+              onDragEnd={swipeHandlers.onDragEnd}
+              className="w-100 flex-grow-1 d-flex flex-column"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
     </Container>
   );
 
