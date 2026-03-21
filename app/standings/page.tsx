@@ -154,11 +154,11 @@ export default function StandingsPage() {
                   <Table variant="dark" hover className="mb-0">
                     <thead>
                       <tr className="f1-table-header">
-                        <th className="ps-4 py-3" style={{ width: '80px' }}>Pos</th>
+                        <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
                         <th className="py-3">{activeView === 'drivers' ? 'Driver' : 'Team'}</th>
                         {activeView === 'drivers' && <th className="py-3">Team</th>}
-                        <th className={`text-end py-3 ${activeView === 'constructors' ? 'pe-4' : ''}`} style={{ width: '120px' }}>PTS</th>
-                        {activeView === 'drivers' && <th className="text-end pe-4 py-3" style={{ width: '100px' }}>No.</th>}
+                        <th className={`text-end py-3 ${activeView === 'constructors' ? 'pe-4' : ''}`} style={{ width: '80px' }}>PTS</th>
+                        {activeView === 'drivers' && <th className="text-end pe-4 py-3" style={{ width: '80px' }}>No.</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -166,13 +166,13 @@ export default function StandingsPage() {
                         standings.map((d, i) => (
                           <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }}>
                             <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                            <td className="fw-bold text-white fs-5">
+                            <td className="fw-bold text-white fs-5 text-nowrap">
                               <div className="d-flex align-items-center">
-                                <div className="me-3" style={{ width: '4px', height: '24px', backgroundColor: d.color }}></div>
+                                <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: d.color }}></div>
                                 {d.name}
                               </div>
                             </td>
-                            <td>
+                            <td className="text-nowrap">
                               <span className="team-pill" style={{ 
                                 backgroundColor: d.color, 
                                 color: getContrastColor(d.color),
@@ -193,9 +193,9 @@ export default function StandingsPage() {
                         constructorStandings.map((c, i) => (
                           <tr key={c.id} style={{ height: '70px', verticalAlign: 'middle' }}>
                             <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                            <td className="fw-bold text-white fs-5">
+                            <td className="fw-bold text-white fs-5 text-nowrap">
                               <div className="d-flex align-items-center">
-                                <div className="me-3" style={{ width: '4px', height: '24px', backgroundColor: c.color }}></div>
+                                <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: c.color }}></div>
                                 {c.name}
                               </div>
                             </td>
