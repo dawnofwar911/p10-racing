@@ -41,7 +41,7 @@ export default function SettingsPage() {
   const togglePreference = (key: keyof typeof STORAGE_KEYS, setter: (val: boolean) => void, enabled: boolean) => {
     setter(enabled);
     setStorageItem(STORAGE_KEYS[key], enabled.toString());
-    if (enabled) triggerLightHaptic();
+    triggerLightHaptic();
   };
 
   const handleDeleteAccount = async () => {
