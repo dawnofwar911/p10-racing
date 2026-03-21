@@ -1,4 +1,4 @@
-import { Driver, TEAM_COLORS } from '@/lib/types';
+import { Driver, ConstructorStanding, TEAM_COLORS } from '@/lib/types';
 
 export interface ApiDriver {
   driverId: string;
@@ -79,6 +79,17 @@ export async function fetchCalendar(season: number): Promise<ApiCalendarRace[]> 
   }
 }
 
+/**
+ * Formats driver names to fit better on mobile screens by shortening long names
+ * like "Andrea Kimi Antonelli" to "Kimi Antonelli".
+ */
+function shortenDriverName(givenName: string, familyName: string): string {
+  if (givenName === "Andrea Kimi" && familyName === "Antonelli") {
+    return "Kimi Antonelli";
+  }
+  return `${givenName} ${familyName}`;
+}
+
 export async function fetchDrivers(season: number): Promise<Driver[]> {
   try {
     const response = await fetch(`${BASE_URL}/${season}/driverStandings.json`);
@@ -95,7 +106,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
         standings.DriverStandings.forEach((s: ApiStanding) => {
           apiDrivers.push({
             id: s.Driver.driverId,
-            name: `${s.Driver.givenName} ${s.Driver.familyName}`,
+            name: shortenDriverName(s.Driver.givenName, s.Driver.familyName),
             team: s.Constructors[0].name,
             teamId: s.Constructors[0].constructorId,
             code: s.Driver.code,
@@ -119,7 +130,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
           } else {
             apiDrivers.push({
               id: r.Driver.driverId,
-              name: `${r.Driver.givenName} ${r.Driver.familyName}`,
+              name: shortenDriverName(r.Driver.givenName, r.Driver.familyName),
               team: r.Constructor.name,
               teamId: r.Constructor.constructorId,
               code: r.Driver.code,
@@ -135,6 +146,35 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
     return apiDrivers;
   } catch (error) {
     console.error('Error fetching drivers:', error);
+    return [];
+  }
+}
+
+export async function fetchConstructors(season: number): Promise<ConstructorStanding[]> {
+  try {
+    const response = await fetch(`${BASE_URL}/${season}/constructorStandings.json`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
+    if (!standings || !standings.ConstructorStandings) return [];
+
+    interface ApiConstructorStanding {
+      Constructor: {
+        constructorId: string;
+        name: string;
+      };
+      points: string;
+    }
+
+    return standings.ConstructorStandings.map((s: ApiConstructorStanding) => ({
+      id: s.Constructor.constructorId,
+      name: s.Constructor.name,
+      points: parseFloat(s.points) || 0,
+      color: TEAM_COLORS[s.Constructor.constructorId] || '#B6BABD'
+    }));
+  } catch (error) {
+    console.error('Error fetching constructor standings:', error);
     return [];
   }
 }

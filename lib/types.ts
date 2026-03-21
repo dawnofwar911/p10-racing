@@ -9,6 +9,13 @@ export interface Driver {
   points: number;
 }
 
+export interface ConstructorStanding {
+  id: string;
+  name: string;
+  points: number;
+  color: string;
+}
+
 export const TEAM_COLORS: { [id: string]: string } = {
   red_bull: '#3671C6',
   ferrari: '#E80020',
@@ -23,6 +30,7 @@ export const TEAM_COLORS: { [id: string]: string } = {
   alphatauri: '#6692FF',
   audi: '#ffffff',
   sauber: '#ffffff',
+  kick_sauber: '#52E252',
   haas: '#B6BABD',
   haas_f1_team: '#B6BABD',
   cadillac: '#FFD700'
