@@ -98,7 +98,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
 
         {/* Footer Actions */}
         <div className="p-4 border-top border-secondary border-opacity-25 mt-auto">
-          <Link href="https://buymeacoffee.com/dawnofwar911" passHref legacyBehavior>
+          <Link href="https://buymeacoffee.com/f1alex" passHref legacyBehavior>
             <HapticButton 
               variant="outline-warning" 
               className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center mb-3 border-secondary border-opacity-50"
