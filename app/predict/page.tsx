@@ -407,11 +407,9 @@ function PredictPage() {
   const handleP10Select = (id: string) => {
     triggerSelectionHaptic();
     setP10Driver(id);
-    if (!isEditing) {
-      setTimeout(() => {
-        if (mountedRef.current) setActiveTab('dnf');
-      }, 300);
-    }
+    setTimeout(() => {
+      if (mountedRef.current) setActiveTab('dnf');
+    }, 300);
   };
 
   if (!nextRace && (loadingRace || isAuthLoading)) {
@@ -598,7 +596,7 @@ function PredictPage() {
             </Card>
             <div className="d-flex justify-content-center gap-3">
               {!isLocked && (
-                <HapticButton variant="outline-danger" size="lg" onClick={() => { setIsEditing(true); setActiveTab('p10'); }} className="px-5 fw-bold rounded-pill">
+                <HapticButton variant="outline-danger" size="lg" onClick={() => { setIsEditing(true); setSubmitted(false); setActiveTab('p10'); }} className="px-5 fw-bold rounded-pill">
                   Change Picks
                 </HapticButton>
               )}
