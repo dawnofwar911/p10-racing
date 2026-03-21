@@ -14,7 +14,7 @@ import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy, Globe, Users } from 'lucide-react';
-import SwipeablePageLayout from '@/components/SwipeablePageLayout';
+import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
 
 export default function LeaderboardPage() {
   const supabase = createClient();
@@ -148,6 +148,14 @@ export default function LeaderboardPage() {
     return () => { supabase.removeChannel(channel); };
   }, [supabase, calculate]);
 
+  const tabs: TabOption<'global' | 'local'>[] = [
+    { id: 'global', label: 'Global', icon: <Globe size={16} /> }
+  ];
+  
+  if (localLeaderboard.length > 0) {
+    tabs.push({ id: 'local', label: 'Guests', icon: <Users size={16} /> });
+  }
+
   return (
     <SwipeablePageLayout
       title="Leaderboard"
@@ -156,25 +164,28 @@ export default function LeaderboardPage() {
       activeTab={view}
       onTabChange={setView}
       onRefresh={() => calculate(true)}
+      splitOnWide={tabs.length > 1}
       badge={isSeasonComplete && <Badge bg="warning" text="dark" className="rounded-pill fw-bold" style={{ fontSize: '0.6rem' }}>FINAL</Badge>}
-      tabs={[
-        { id: 'global', label: 'Global', icon: <Globe size={16} /> },
-        { id: 'local', label: 'Guests', icon: <Users size={16} /> }
-      ]}
+      tabs={tabs}
+      renderTabContent={(tabId) => (
+        loading ? (
+          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+        ) : (
+          <LeaderboardTable 
+            entries={tabId === 'global' ? globalLeaderboard : localLeaderboard} 
+            loading={false} 
+            currentUser={session?.user?.id || undefined}
+            isSeasonComplete={isSeasonComplete}
+            emptyMessage={tabId === 'global' ? "No global players found." : "No guest data found on this device."}
+          />
+        )
+      )}
     >
       {loading ? (
         <div className="text-center py-5">
           <Spinner animation="border" variant="danger" />
         </div>
-      ) : (
-        <LeaderboardTable 
-          entries={view === 'global' ? globalLeaderboard : localLeaderboard} 
-          loading={false} 
-          currentUser={session?.user?.id || undefined}
-          isSeasonComplete={isSeasonComplete}
-          emptyMessage={view === 'global' ? "No global players found." : "No guest data found on this device."}
-        />
-      )}
+      ) : null}
     </SwipeablePageLayout>
   );
 }

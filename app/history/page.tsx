@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
+import { Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import HapticButton from '@/components/HapticButton';
+import { History } from 'lucide-react';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
+import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 
 interface HistoryEntry {
   round: string;
@@ -70,28 +72,24 @@ export default function HistoryPage() {
   }, []);
 
   return (
-    <>
-      <Container className="mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h1 className="h2 fw-bold text-uppercase letter-spacing-1">Race History</h1>
-          <HapticButton 
-            variant="outline-light"
-            size="sm"
-            onClick={() => { router.back(); }} 
-            className="rounded-pill px-3 opacity-75 border-0 fw-bold"
-          >
-            Back
-          </HapticButton>
-        </div>
-        
+    <SwipeablePageLayout
+      title="Season History"
+      subtitle={`${CURRENT_SEASON} Race Results`}
+      icon={<History size={24} className="text-white" />}
+      onBack={() => { triggerLightHaptic(); router.back(); }}
+      activeTab="history"
+      onTabChange={() => {}}
+      tabs={[{ id: 'history', label: 'History', icon: <History size={16} /> }]}
+    >
+      <div className="mt-3">
         {loading ? (
           <div className="text-center py-5">
             <Spinner animation="border" variant="danger" />
           </div>
         ) : (
-          <Row>
+          <Row className="g-4">
             {history.map(race => (
-              <Col md={6} lg={4} key={race.round} className="mb-4">
+              <Col xs={12} md={6} xl={4} key={race.round}>
                 <Card className="h-100 border-secondary shadow-sm overflow-hidden" style={{ borderLeft: '4px solid var(--f1-red)' }}>
                   <Card.Header className="bg-dark border-secondary d-flex justify-content-between align-items-center py-3">
                     <span className="fw-bold text-danger">ROUND {race.round}</span>
@@ -121,7 +119,7 @@ export default function HistoryPage() {
             )}
           </Row>
         )}
-      </Container>
-    </>
+      </div>
+    </SwipeablePageLayout>
   );
 }

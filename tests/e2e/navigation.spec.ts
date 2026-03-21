@@ -52,14 +52,19 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 3. Navigate to Leaderboard
     await page.getByRole('link', { name: /Leaderboard/i }).click();
     await expect(page).toHaveURL(/\/leaderboard/);
-    // Check for Global/Guests buttons which are unique to leaderboard
-    await expect(page.getByRole('button', { name: /GLOBAL/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /GUESTS/i })).toBeVisible();
+    // Check for Global/Guests pills in the tab container
+    await expect(page.locator('.f1-tab-container').getByText(/GLOBAL/i)).toBeVisible();
+    if (await page.locator('.f1-tab-container').getByText(/GUESTS/i).isVisible()) {
+       await expect(page.locator('.f1-tab-container').getByText(/GUESTS/i)).toBeVisible();
+    }
 
     // 4. Navigate to Standings
     await page.getByRole('link', { name: /Standings/i }).click();
     await expect(page).toHaveURL(/\/standings/);
-    await expect(page.getByText(/World Championship/i)).toBeVisible();
+    await expect(page.getByText(/World Championship/i).first()).toBeVisible();
+    // Check for Drivers/Constructors pills specifically in the tab container
+    await expect(page.locator('.f1-tab-container').getByText(/DRIVERS/i)).toBeVisible();
+    await expect(page.locator('.f1-tab-container').getByText(/CONSTRUCTORS/i)).toBeVisible();
     
     // Standings page HAS PullToRefresh
     const ptrContainer = page.locator('.ptr-container');

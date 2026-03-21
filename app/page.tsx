@@ -81,8 +81,17 @@ export default function Home() {
 
       let finalPrediction: HomePrediction | null = null;
       
-      // Try DB first if logged in
-      if (session) {
+      // 1. Try local cache FIRST for immediate sync
+      const storageUser = session?.user?.id || currentUser || '';
+      if (storageUser) {
+        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
+        if (cachedPred) {
+          finalPrediction = JSON.parse(cachedPred);
+        }
+      }
+
+      // 2. Try DB as fallback if no cache or to ensure fresh data
+      if (!finalPrediction && session) {
         const { data: pred } = await supabase
           .from('predictions')
           .select('*')
@@ -93,12 +102,6 @@ export default function Home() {
         if (pred) {
           finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
         }
-      }
-
-      // If no DB result or not logged in, try cache
-      if (!finalPrediction && currentUser) {
-        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, nextRace.id));
-        if (cachedPred) finalPrediction = JSON.parse(cachedPred);
       }
 
       if (mountedRef.current) {
@@ -114,7 +117,8 @@ export default function Home() {
     // UNLESS the user has changed (detected by currentUser dependency change)
     if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
       // Small check to ensure the prediction in state matches the current user's cache
-      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace?.id || ''));
+      const storageUser = session?.user?.id || currentUser || '';
+      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
       if (cached) {
           const parsed = JSON.parse(cached);
           if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
@@ -129,15 +133,21 @@ export default function Home() {
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ key: string }>;
       const updatedKey = customEvent.detail?.key;
-      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
+      
+      // Re-calculate the current active user exactly how it's done in loadPrediction
+      const activeUserId = session?.user?.id;
+      const localUsername = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const storageUser = activeUserId || localUsername || '';
+      
+      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id) : null;
 
-      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER) {
-        const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      // Update if the prediction for the current user changed, or if the current user itself changed
+      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER || updatedKey === STORAGE_KEYS.CACHE_USERNAME) {
         const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-        if (cachedRaceStr && user) {
+        if (cachedRaceStr && storageUser) {
           try {
             const raceObj = JSON.parse(cachedRaceStr);
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
             if (predStr) {
               const parsed = JSON.parse(predStr);
               setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
@@ -151,7 +161,7 @@ export default function Home() {
 
     window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace, syncVersion]);
+  }, [currentUser, nextRace, syncVersion, session]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -471,21 +481,27 @@ export default function Home() {
                   <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
                     Your {nextRace.name} Picks {isLocked && '🔒'}
                   </h3>
-                  <div className="d-flex justify-content-center gap-4 mb-3">
-                    <div>
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-                      <span className="fw-bold text-white h6 mb-0">
+                  <div className="d-flex flex-column gap-2 mb-3 align-items-center">
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.p10)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                      </div>
+                      <span className="fw-bold text-white small flex-grow-1 text-start ps-2">
                         {getDriverDisplayName(userPrediction.p10, allDrivers)}
                       </span>
                     </div>
-                    <div className="border-start border-secondary border-opacity-25 ps-4">
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-                      <span className="fw-bold text-danger h6 mb-0">
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.dnf)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                      </div>
+                      <span className="fw-bold text-danger small flex-grow-1 text-start ps-2">
                         {getDriverDisplayName(userPrediction.dnf, allDrivers)}
                       </span>
                     </div>
                   </div>
-                  <HapticButton variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
+                  <HapticButton variant="success" size="sm" className="rounded-pill px-4 fw-bold w-100 py-2 small" onClick={handleShare}>
                     SHARE PICKS ↗
                   </HapticButton>
                 </motion.div>
