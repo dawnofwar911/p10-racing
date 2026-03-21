@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Container, Card, Modal, Spinner, Form } from 'react-bootstrap';
+import { Container, Card, Modal, Spinner, Form, Badge } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic } from '@/lib/utils/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate } from 'lucide-react';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
@@ -174,6 +174,15 @@ export default function SettingsPage() {
         <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Support & Legal</h2>
         <Card className="border-secondary shadow-sm mb-4">
           <div className="list-group list-group-flush bg-dark rounded">
+            <Link href="https://buymeacoffee.com/dawnofwar911" passHref legacyBehavior>
+              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
+                <div className="d-flex align-items-center">
+                  <Coffee size={18} className="me-3 text-warning" />
+                  <span className="fw-bold">Support the Developer</span>
+                </div>
+                <Badge bg="danger" className="rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>TIP</Badge>
+              </a>
+            </Link>
             <button 
               className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between"
               onClick={() => { triggerLightHaptic(); setShowBugReport(true); }}
