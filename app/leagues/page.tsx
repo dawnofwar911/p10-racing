@@ -287,7 +287,7 @@ function LeaguesContent() {
       icon={<Trophy size={24} className="text-white" />}
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      onRefresh={() => fetchLeagues(true)}
+      onRefresh={undefined}
       tabs={[
         { id: 'my-leagues', label: 'My Leagues', icon: <Trophy size={16} /> },
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }
