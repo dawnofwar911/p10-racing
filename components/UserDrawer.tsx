@@ -98,18 +98,17 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
 
         {/* Footer Actions */}
         <div className="p-4 border-top border-secondary border-opacity-25 mt-auto">
-          <Link href="https://buymeacoffee.com/f1alex" passHref legacyBehavior>
-            <HapticButton 
-              variant="outline-warning" 
-              className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center mb-3 border-secondary border-opacity-50"
-              onClick={handleLinkClick}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Coffee size={18} className="me-2" />
-              BUY ME A COFFEE
-            </HapticButton>
-          </Link>
+          <HapticButton 
+            href="https://buymeacoffee.com/f1alex"
+            variant="outline-warning" 
+            className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center mb-3 border-secondary border-opacity-50"
+            onClick={onHide}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Coffee size={18} className="me-2" />
+            BUY ME A COFFEE
+          </HapticButton>
 
           {session ? (
             <HapticButton 

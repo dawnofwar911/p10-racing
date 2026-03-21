@@ -174,15 +174,13 @@ export default function SettingsPage() {
         <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Support & Legal</h2>
         <Card className="border-secondary shadow-sm mb-4">
           <div className="list-group list-group-flush bg-dark rounded">
-            <Link href="https://buymeacoffee.com/f1alex" passHref legacyBehavior>
-              <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
-                <div className="d-flex align-items-center">
-                  <Coffee size={18} className="me-3 text-warning" />
-                  <span className="fw-bold">Buy me a coffee</span>
-                </div>
-                <Badge bg="danger" className="rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>TIP</Badge>
-              </a>
-            </Link>
+            <a href="https://buymeacoffee.com/f1alex" className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
+              <div className="d-flex align-items-center">
+                <Coffee size={18} className="me-3 text-warning" />
+                <span className="fw-bold">Buy me a coffee</span>
+              </div>
+              <Badge bg="danger" className="rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>TIP</Badge>
+            </a>
             <button 
               className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between"
               onClick={() => { triggerLightHaptic(); setShowBugReport(true); }}
