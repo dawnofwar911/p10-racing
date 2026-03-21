@@ -48,11 +48,125 @@ interface CommunityPredictionData {
 
 type PredictTab = 'grid' | 'p10' | 'dnf';
 
+// --- SUB-COMPONENTS MOVED OUTSIDE TO PREVENT RE-RENDERING LOOPS ---
+
+const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], drivers: Driver[] }) => (
+  <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm overflow-hidden h-100">
+    <Card.Header className="bg-dark border-secondary py-2 d-flex justify-content-between align-items-center">
+      <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-1" style={{ fontSize: '0.65rem' }}>Starting Grid</h3>
+      <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
+    </Card.Header>
+    <Card.Body className="p-2 bg-black bg-opacity-40">
+      <div className="row g-2">
+        {startingGrid.map((result) => {
+          const pos = parseInt(result.position);
+          const isLeft = pos % 2 !== 0;
+          const isP10 = result.position === "10";
+          const driverInfo = drivers.find(d => d.id === result.Driver.driverId);
+          const teamColor = driverInfo?.color || '#B6BABD';
+          return (
+            <div key={result.Driver.driverId} className="col-6">
+              <div className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
+                <div style={{ height: '3px', backgroundColor: teamColor }}></div>
+                <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
+                  <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
+                  <div className="flex-grow-1 overflow-hidden">
+                    <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
+                    <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card.Body>
+  </Card>
+);
+
+const SelectionList = ({ type, currentPick, onSelect, drivers, isHighlighted = false }: { type: 'p10' | 'dnf', currentPick: string, onSelect: (id: string) => void, drivers: Driver[], isHighlighted?: boolean }) => (
+  <div className={`mx-auto w-100 h-100 p-3 rounded transition-all ${isHighlighted ? 'f1-focus-glow' : ''}`} style={{ maxWidth: '500px', border: isHighlighted ? 'none' : '1px solid transparent' }}>
+    <h3 className={`h6 mb-3 border-start border-4 border-${type === 'p10' ? 'danger' : 'warning'} ps-2 fw-bold text-uppercase letter-spacing-1`}>
+      {type === 'p10' ? 'P10 Finisher' : 'First DNF'}
+    </h3>
+    <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '80px' }}>
+      {drivers.map((driver) => (
+        <div key={`${type}-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${currentPick === driver.id ? 'border-danger bg-danger bg-opacity-20 shadow-sm' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => onSelect(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+          <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '45px' }}>
+            <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: driver.color }}></div>
+            <span style={{ fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</span>
+          </div>
+          <div className="flex-grow-1">
+            <div className="fw-bold text-white small">{driver.name}</div>
+            <div className="extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem', color: driver.color }}>{driver.team}</div>
+          </div>
+          {currentPick === driver.id && <div className="text-danger me-3">●</div>}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const SummaryPills = ({ drivers, p10Driver, dnfDriver, isSideBySide = false }: { drivers: Driver[], p10Driver: string, dnfDriver: string, isSideBySide?: boolean }) => (
+  <div className={`d-flex flex-column ${isSideBySide ? 'flex-md-row' : ''} gap-2 mb-3 align-items-center justify-content-center`}>
+    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
+        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+      </div>
+      <span className="fw-bold text-white small flex-grow-1 text-start ps-2">{getDriverDisplayName(p10Driver, drivers)}</span>
+    </div>
+    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
+        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+      </div>
+      <span className="text-danger fw-bold small flex-grow-1 text-start ps-2">{getDriverDisplayName(dnfDriver, drivers)}</span>
+    </div>
+  </div>
+);
+
+const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void }) => (
+  <Modal show={show} onHide={onHide} centered size="lg" contentClassName="bg-dark border-secondary">
+    <Modal.Header closeButton closeVariant="white" className="border-secondary">
+      <Modal.Title className="fw-bold text-uppercase letter-spacing-1 fs-5">How to <span className="text-danger">Play</span></Modal.Title>
+    </Modal.Header>
+    <Modal.Body className="px-4 py-4">
+      <section className="mb-4">
+        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">The Objective</h3>
+        <p className="text-white opacity-75 small">Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
+      </section>
+      <section className="mb-4">
+        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-3">Scoring: P10 Finisher</h3>
+        <div className="bg-black bg-opacity-50 border border-secondary border-opacity-25 rounded overflow-hidden">
+          <table className="table table-dark table-sm mb-0 extra-small">
+            <thead><tr className="text-uppercase opacity-50" style={{ fontSize: '0.6rem' }}><th className="ps-3 py-2">Actual Finish</th><th className="pe-3 py-2 text-end">Points</th></tr></thead>
+            <tbody>
+              <tr className="table-active fw-bold"><td className="ps-3 py-1">P10 (Exact)</td><td className="pe-3 py-1 text-end text-danger">25</td></tr>
+              {['18', '15', '12', '10', '8', '6', '4', '2', '1'].map((pts, i) => (
+                <tr key={pts}><td className="ps-3 py-1">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td><td className="pe-3 py-1 text-end">{pts}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">Scoring: First DNF</h3>
+        <p className="text-white opacity-75 small mb-0">Get the first driver to retire correctly and earn a massive <span className="fw-bold text-danger">+25 Points</span>.</p>
+      </section>
+    </Modal.Body>
+    <Modal.Footer className="border-secondary">
+      <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill" onClick={onHide}>GOT IT</HapticButton>
+    </Modal.Footer>
+  </Modal>
+);
+
 function PredictPage() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
+  const howtoHandledRef = useRef(false);
   
   const { session, currentUser, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
   const username = currentUser || '';
@@ -119,8 +233,9 @@ function PredictPage() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get('howto') === 'true') {
+    if (searchParams.get('howto') === 'true' && !howtoHandledRef.current) {
       setShowHowToPlay(true);
+      howtoHandledRef.current = true;
     }
   }, [searchParams]);
 
@@ -451,189 +566,80 @@ function PredictPage() {
 
   if (!session && !username) {
     return (
-      <Container className="mt-5">
-        <Row className="justify-content-center">
-          <Col md={6} lg={5}>
-            <Card className="p-4 border-secondary shadow-lg overflow-hidden">
-              <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
-              <div className="mb-4">
-                <Link href="/auth" passHref legacyBehavior>
-                  <HapticButton variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
-                    SIGN IN / CREATE ACCOUNT
-                  </HapticButton>
-                </Link>
-                <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
-              </div>
+      <>
+        <Container className="mt-5">
+          <Row className="justify-content-center">
+            <Col md={6} lg={5}>
+              <Card className="p-4 border-secondary shadow-lg overflow-hidden">
+                <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
+                <div className="mb-4">
+                  <Link href="/auth" passHref legacyBehavior>
+                    <HapticButton variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
+                      SIGN IN / CREATE ACCOUNT
+                    </HapticButton>
+                  </Link>
+                  <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
+                </div>
 
-              {guestSelection && (
-                <div className="mb-4 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded text-center">
-                  <div className="text-danger small fw-bold text-uppercase mb-2">Unsaved Picks Found!</div>
-                  <div className="d-flex justify-content-center gap-3">
-                    <div className="text-center">
-                      <div className="extra-small text-muted text-uppercase fw-bold">P10</div>
-                      <div className="fw-bold">{getDriverDisplayName(guestSelection.p10, drivers)}</div>
-                    </div>
-                    <div className="border-start border-secondary opacity-25"></div>
-                    <div className="text-center">
-                      <div className="extra-small text-muted text-uppercase fw-bold">DNF</div>
-                      <div className="fw-bold text-danger">{getDriverDisplayName(guestSelection.dnf, drivers)}</div>
+                {guestSelection && (
+                  <div className="mb-4 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded text-center">
+                    <div className="text-danger small fw-bold text-uppercase mb-2">Unsaved Picks Found!</div>
+                    <div className="d-flex justify-content-center gap-3">
+                      <div className="text-center">
+                        <div className="extra-small text-muted text-uppercase fw-bold">P10</div>
+                        <div className="fw-bold">{getDriverDisplayName(guestSelection.p10, drivers)}</div>
+                      </div>
+                      <div className="border-start border-secondary opacity-25"></div>
+                      <div className="text-center">
+                        <div className="extra-small text-muted text-uppercase fw-bold">DNF</div>
+                        <div className="fw-bold text-danger">{getDriverDisplayName(guestSelection.dnf, drivers)}</div>
+                      </div>
                     </div>
                   </div>
+                )}
+
+                <div className="text-center mb-4">
+                  <hr className="border-secondary opacity-25" />
+                  <span className="bg-dark px-2 text-muted small position-relative" style={{ top: '-13px' }}>OR PLAY AS GUEST</span>
                 </div>
-              )}
 
-              <div className="text-center mb-4">
-                <hr className="border-secondary opacity-25" />
-                <span className="bg-dark px-2 text-muted small position-relative" style={{ top: '-13px' }}>OR PLAY AS GUEST</span>
-              </div>
-
-              {existingPlayers.length > 0 && (
-                <div className="mb-4 text-center">
-                  <Form.Label className="text-muted small text-uppercase fw-bold mb-3">Continue as Recent Player</Form.Label>
-                  <div className="d-flex flex-wrap justify-content-center gap-2">
-                    {existingPlayers.map(p => (
-                      <HapticButton key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</HapticButton>
-                    ))}
+                {existingPlayers.length > 0 && (
+                  <div className="mb-4 text-center">
+                    <Form.Label className="text-muted small text-uppercase fw-bold mb-3">Continue as Recent Player</Form.Label>
+                    <div className="d-flex flex-wrap justify-content-center gap-2">
+                      {existingPlayers.map(p => (
+                        <HapticButton key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</HapticButton>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <Form onSubmit={handleGuestLogin}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small text-uppercase fw-bold opacity-75">New Guest Name</Form.Label>
-                  <Form.Control 
-                    type="text" 
-                    placeholder="Enter name" 
-                    value={tempUsername} 
-                    onChange={(e) => setTempUsername(e.target.value)} 
-                    minLength={3} 
-                    required 
-                    className="bg-dark text-white border-secondary py-2 shadow-sm" 
-                  />
-                </Form.Group>
-                <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</HapticButton>
-              </Form>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+                <Form onSubmit={handleGuestLogin}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="small text-uppercase fw-bold opacity-75">New Guest Name</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Enter name" 
+                      value={tempUsername} 
+                      onChange={(e) => setTempUsername(e.target.value)} 
+                      minLength={3} 
+                      required 
+                      className="bg-dark text-white border-secondary py-2 shadow-sm" 
+                    />
+                  </Form.Group>
+                  <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</HapticButton>
+                </Form>
+              </Card>
+            </Col>
+          </Row>
+        </Container>
+        <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
+      </>
     );
   }
 
   const hasPicks = p10Driver && dnfDriver;
   const showSummary = (submitted || hasPicks) && !isEditing;
-
-  // REUSABLE SUB-VIEWS
-  const GridView = () => (
-    <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm overflow-hidden h-100">
-      <Card.Header className="bg-dark border-secondary py-2 d-flex justify-content-between align-items-center">
-        <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-1" style={{ fontSize: '0.65rem' }}>Starting Grid</h3>
-        <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
-      </Card.Header>
-      <Card.Body className="p-2 bg-black bg-opacity-40">
-        <div className="row g-2">
-          {startingGrid.map((result) => {
-            const pos = parseInt(result.position);
-            const isLeft = pos % 2 !== 0;
-            const isP10 = result.position === "10";
-            const driverInfo = drivers.find(d => d.id === result.Driver.driverId);
-            const teamColor = driverInfo?.color || '#B6BABD';
-            return (
-              <div key={result.Driver.driverId} className="col-6">
-                <div className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
-                  <div style={{ height: '3px', backgroundColor: teamColor }}></div>
-                  <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
-                    <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
-                    <div className="flex-grow-1 overflow-hidden">
-                      <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
-                      <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card.Body>
-    </Card>
-  );
-
-  const SelectionList = ({ type, currentPick, onSelect, isHighlighted = false }: { type: 'p10' | 'dnf', currentPick: string, onSelect: (id: string) => void, isHighlighted?: boolean }) => (
-    <div className={`mx-auto w-100 h-100 p-3 rounded transition-all ${isHighlighted ? 'f1-focus-glow' : ''}`} style={{ maxWidth: '500px', border: isHighlighted ? 'none' : '1px solid transparent' }}>
-      <h3 className={`h6 mb-3 border-start border-4 border-${type === 'p10' ? 'danger' : 'warning'} ps-2 fw-bold text-uppercase letter-spacing-1`}>
-        {type === 'p10' ? 'P10 Finisher' : 'First DNF'}
-      </h3>
-      <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '80px' }}>
-        {drivers.map((driver) => (
-          <div key={`${type}-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${currentPick === driver.id ? 'border-danger bg-danger bg-opacity-20 shadow-sm' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => onSelect(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-            <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '45px' }}>
-              <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: driver.color }}></div>
-              <span style={{ fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</span>
-            </div>
-            <div className="flex-grow-1">
-              <div className="fw-bold text-white small">{driver.name}</div>
-              <div className="extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem', color: driver.color }}>{driver.team}</div>
-            </div>
-            {currentPick === driver.id && <div className="text-danger me-3">●</div>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const SummaryPills = ({ isSideBySide = false }) => (
-    <div className={`d-flex flex-column ${isSideBySide ? 'flex-md-row' : ''} gap-2 mb-3 align-items-center justify-content-center`}>
-      <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-        <div className="d-flex align-items-center" style={{ width: '45px' }}>
-          <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
-          <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-        </div>
-        <span className="fw-bold text-white small flex-grow-1 text-start ps-2">{getDriverDisplayName(p10Driver, drivers)}</span>
-      </div>
-      <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-        <div className="d-flex align-items-center" style={{ width: '45px' }}>
-          <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
-          <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-        </div>
-        <span className="text-danger fw-bold small flex-grow-1 text-start ps-2">{getDriverDisplayName(dnfDriver, drivers)}</span>
-      </div>
-    </div>
-  );
-
-  const HowToPlayModal = () => (
-    <Modal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} centered size="lg" contentClassName="bg-dark border-secondary">
-      <Modal.Header closeButton closeVariant="white" className="border-secondary">
-        <Modal.Title className="fw-bold text-uppercase letter-spacing-1 fs-5">How to <span className="text-danger">Play</span></Modal.Title>
-      </Modal.Header>
-      <Modal.Body className="px-4 py-4">
-        <section className="mb-4">
-          <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">The Objective</h3>
-          <p className="text-white opacity-75 small">Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
-        </section>
-        <section className="mb-4">
-          <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-3">Scoring: P10 Finisher</h3>
-          <div className="bg-black bg-opacity-50 border border-secondary border-opacity-25 rounded overflow-hidden">
-            <table className="table table-dark table-sm mb-0 extra-small">
-              <thead><tr className="text-uppercase opacity-50" style={{ fontSize: '0.6rem' }}><th className="ps-3 py-2">Actual Finish</th><th className="pe-3 py-2 text-end">Points</th></tr></thead>
-              <tbody>
-                <tr className="table-active fw-bold"><td className="ps-3 py-1">P10 (Exact)</td><td className="pe-3 py-1 text-end text-danger">25</td></tr>
-                {['18', '15', '12', '10', '8', '6', '4', '2', '1'].map((pts, i) => (
-                  <tr key={pts}><td className="ps-3 py-1">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td><td className="pe-3 py-1 text-end">{pts}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-        <section>
-          <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">Scoring: First DNF</h3>
-          <p className="text-white opacity-75 small mb-0">Get the first driver to retire correctly and earn a massive <span className="fw-bold text-danger">+25 Points</span>.</p>
-        </section>
-      </Modal.Body>
-      <Modal.Footer className="border-secondary">
-        <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill" onClick={() => setShowHowToPlay(false)}>GOT IT</HapticButton>
-      </Modal.Footer>
-    </Modal>
-  );
 
   const summaryView = (
     <Container className="mt-4 mb-4">
@@ -661,7 +667,7 @@ function PredictPage() {
                 <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">
                   Your Selection {isLocked && '🔒'}
                 </h3>
-                {hasPicks ? <SummaryPills isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
+                {hasPicks ? <SummaryPills drivers={drivers} p10Driver={p10Driver} dnfDriver={dnfDriver} isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
                 
                 {!isSeasonFinished && hasPicks && (
                   <div className="mt-4 text-center">
@@ -727,7 +733,7 @@ function PredictPage() {
     return (
       <>
         {summaryView}
-        <HowToPlayModal />
+        <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
       </>
     );
   }
@@ -738,17 +744,18 @@ function PredictPage() {
       <Row className="g-4">
         {startingGrid.length > 0 && (
           <Col xs={12} className="mb-2">
-            <GridView />
+            <GridView startingGrid={startingGrid} drivers={drivers} />
           </Col>
         )}
         <Col xs={12} lg={6}>
-          <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} />
+          <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} />
         </Col>
         <Col xs={12} lg={6} className={!p10Driver ? 'opacity-25' : 'opacity-100 transition-all'}>
           <SelectionList 
             type="dnf" 
             currentPick={dnfDriver} 
             onSelect={handleDnfSelect} 
+            drivers={drivers}
             isHighlighted={!!p10Driver && !dnfDriver}
           />
         </Col>
@@ -779,13 +786,13 @@ function PredictPage() {
         }
       >
         <div className="mt-3 flex-grow-1 d-flex flex-column pb-10 mb-5">
-          {activeTab === 'grid' && startingGrid.length > 0 && <GridView />}
-          {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} />}
-          {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} />}
+          {activeTab === 'grid' && startingGrid.length > 0 && <GridView startingGrid={startingGrid} drivers={drivers} />}
+          {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} />}
+          {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={drivers} />}
         </div>
       </SwipeablePageLayout>
 
-      <HowToPlayModal />
+      <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
     </>
   );
 }
