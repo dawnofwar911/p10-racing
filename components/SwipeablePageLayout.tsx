@@ -5,6 +5,8 @@ import { Container, Row, Col, Nav } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerSelectionHaptic } from '@/lib/utils/haptics';
 import PullToRefresh from '@/components/PullToRefresh';
+import { ChevronLeft } from 'lucide-react';
+import HapticButton from './HapticButton';
 
 const SWIPE_THRESHOLD = 30;
 const VELOCITY_THRESHOLD = 200;
@@ -25,6 +27,7 @@ interface SwipeablePageLayoutProps<T extends string> {
   children: ReactNode;
   onRefresh?: () => Promise<void>;
   badge?: ReactNode;
+  onBack?: () => void;
 }
 
 /**
@@ -40,7 +43,8 @@ export default function SwipeablePageLayout<T extends string>({
   tabs,
   children,
   onRefresh,
-  badge
+  badge,
+  onBack
 }: SwipeablePageLayoutProps<T>) {
   
   const handleTabChange = (tabId: T) => {
@@ -72,7 +76,16 @@ export default function SwipeablePageLayout<T extends string>({
       <Row className="mb-4 align-items-center">
         <Col>
           <div className="d-flex align-items-center">
-            <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px' }}>
+            {onBack && (
+              <HapticButton 
+                variant="link" 
+                className="text-white p-0 me-3 opacity-75 hover-opacity-100 border-0 d-flex align-items-center"
+                onClick={onBack}
+              >
+                <ChevronLeft size={28} />
+              </HapticButton>
+            )}
+            <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px', flexShrink: 0 }}>
               {icon}
             </div>
             <div>

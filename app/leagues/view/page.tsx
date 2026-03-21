@@ -179,42 +179,27 @@ function LeagueDetailContent() {
     );
   }
 
-  const headerIcon = (
-    <div className="d-flex align-items-center">
-      <HapticButton 
-        variant="link" 
-        className="text-white p-0 me-2 opacity-75 hover-opacity-100 border-0"
-        onClick={() => { triggerLightHaptic(); router.push('/leagues'); }}
-      >
-        <ChevronLeft size={28} />
-      </HapticButton>
-      <Users size={24} className="text-white" />
-    </div>
-  );
-
-  const invitePill = (
-    <div className="d-inline-flex align-items-center gap-2 bg-dark p-1 rounded-pill border border-secondary shadow-sm ps-3">
-      <code className="text-white fw-bold letter-spacing-1" style={{ fontSize: '0.9rem' }}>{inviteCode}</code>
-      <HapticButton variant="danger" className="rounded-pill px-4 py-2 fw-bold text-uppercase d-flex align-items-center" style={{ fontSize: '0.75rem' }} onClick={handleShare}>
-        SHARE
-      </HapticButton>
-    </div>
-  );
-
   return (
     <SwipeablePageLayout
       title={leagueName || 'Loading...'}
       subtitle="League Leaderboard"
-      icon={headerIcon}
+      icon={<Users size={24} className="text-white" />}
+      onBack={() => { triggerLightHaptic(); router.push('/leagues'); }}
       activeTab="standings"
       onTabChange={() => {}}
       onRefresh={() => loadLeague(true)}
       badge={isSeasonComplete && <Badge bg="warning" text="dark" className="rounded-pill fw-bold" style={{ fontSize: '0.6rem' }}>FINAL</Badge>}
       tabs={[{ id: 'standings', label: 'Standings', icon: <Users size={16} /> }]}
     >
-      <div className="mt-3">
-        <div className="d-flex justify-content-end mb-4">
-          {invitePill}
+      <div className="mt-2">
+        <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 shadow-sm">
+          <div>
+            <small className="text-muted text-uppercase fw-bold letter-spacing-1 d-block mb-1" style={{ fontSize: '0.6rem' }}>Invite your friends</small>
+            <code className="text-white fw-bold letter-spacing-2 fs-5">{inviteCode}</code>
+          </div>
+          <HapticButton variant="danger" className="rounded-pill px-4 py-2 fw-bold text-uppercase d-flex align-items-center" style={{ fontSize: '0.75rem' }} onClick={handleShare}>
+            SHARE LINK
+          </HapticButton>
         </div>
         
         {loading ? (

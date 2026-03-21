@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
+import { Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import HapticButton from '@/components/HapticButton';
 import { History } from 'lucide-react';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
+import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 
 interface HistoryEntry {
   round: string;
@@ -71,33 +72,16 @@ export default function HistoryPage() {
   }, []);
 
   return (
-    <>
-      <Container className="mt-4 mb-4">
-        <Row className="mb-4 align-items-center">
-          <Col xs={12} md={8}>
-            <div className="d-flex align-items-center">
-              <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px' }}>
-                <History size={24} className="text-white" />
-              </div>
-              <div>
-                <h1 className="h2 mb-0 f1-page-title text-white">Season History</h1>
-                <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>{CURRENT_SEASON} Race Results</small>
-              </div>
-            </div>
-          </Col>
-          <Col xs={12} md={4} className="text-md-end mt-3 mt-md-0">
-            <HapticButton 
-              variant="outline-light"
-              size="sm"
-              onClick={() => { router.back(); }} 
-              className="rounded-pill px-4 py-2 opacity-75 fw-bold text-uppercase"
-              style={{ fontSize: '0.75rem' }}
-            >
-              Go Back
-            </HapticButton>
-          </Col>
-        </Row>
-        
+    <SwipeablePageLayout
+      title="Season History"
+      subtitle={`${CURRENT_SEASON} Race Results`}
+      icon={<History size={24} className="text-white" />}
+      onBack={() => { triggerLightHaptic(); router.back(); }}
+      activeTab="history"
+      onTabChange={() => {}}
+      tabs={[{ id: 'history', label: 'History', icon: <History size={16} /> }]}
+    >
+      <div className="mt-3">
         {loading ? (
           <div className="text-center py-5">
             <Spinner animation="border" variant="danger" />
@@ -135,7 +119,7 @@ export default function HistoryPage() {
             )}
           </Row>
         )}
-      </Container>
-    </>
+      </div>
+    </SwipeablePageLayout>
   );
 }
