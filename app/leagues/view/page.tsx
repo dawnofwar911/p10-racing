@@ -145,7 +145,7 @@ function LeagueDetailContent() {
       console.error('Error loading league:', err);
       if (mountedRef.current) setLoading(false);
     }
-  }, [leagueId, supabase]);
+  }, [leagueId]);
 
   useEffect(() => {
     loadLeague();
@@ -163,7 +163,7 @@ function LeagueDetailContent() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [leagueId, loadLeague, supabase]);
+  }, [leagueId, loadLeague]);
 
   if (!leagueId) {
     return (
