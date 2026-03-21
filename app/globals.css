@@ -330,3 +330,23 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   font-size: 1.5rem;
   color: white;
 }
+
+/* Standings Tab Container */
+.f1-tab-container {
+  background-color: var(--f1-dark-grey) !important;
+  border-color: var(--f1-grey) !important;
+}
+
+.f1-tab-container .nav-link {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.f1-tab-container .nav-link.active {
+  background-color: var(--f1-red) !important;
+  color: white !important;
+}

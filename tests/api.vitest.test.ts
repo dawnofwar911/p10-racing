@@ -5,6 +5,7 @@ import {
   fetchRaceResults, 
   fetchCalendar, 
   fetchDrivers, 
+  fetchConstructors,
   fetchDriversFromOpenF1,
   fetchQualifyingResults,
   getP10DriverId,
@@ -133,6 +134,50 @@ describe('API Logic Tests', () => {
       expect(drivers).toHaveLength(2);
       expect(drivers.find(d => d.id === 'max_verstappen')?.points).toBe(25);
       expect(drivers.find(d => d.id === 'hamilton')?.points).toBe(0);
+    });
+  });
+
+  describe('fetchConstructors', () => {
+    it('should fetch constructor standings', async () => {
+      server.use(
+        http.get(`${BASE_URL}/2026/constructorStandings.json`, () => {
+          return HttpResponse.json({
+            MRData: {
+              StandingsTable: {
+                StandingsLists: [{
+                  ConstructorStandings: [
+                    {
+                      points: '100',
+                      Constructor: { constructorId: 'red_bull', name: 'Red Bull' }
+                    },
+                    {
+                      points: '80',
+                      Constructor: { constructorId: 'ferrari', name: 'Ferrari' }
+                    }
+                  ]
+                }]
+              }
+            }
+          });
+        })
+      );
+
+      const constructors = await fetchConstructors(2026);
+      expect(constructors).toHaveLength(2);
+      expect(constructors[0].id).toBe('red_bull');
+      expect(constructors[0].points).toBe(100);
+      expect(constructors[1].id).toBe('ferrari');
+    });
+
+    it('should return empty array on failure', async () => {
+      server.use(
+        http.get(`${BASE_URL}/2026/constructorStandings.json`, () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+
+      const constructors = await fetchConstructors(2026);
+      expect(constructors).toHaveLength(0);
     });
   });
 
