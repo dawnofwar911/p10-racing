@@ -63,7 +63,7 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
     let lastUpdate = 0;
     let lastX = 0, lastY = 0, lastZ = 0;
     // Sensitivity threshold for shake detection (lower is more sensitive)
-    const SHAKE_THRESHOLD = Number(process.env.NEXT_PUBLIC_SHAKE_THRESHOLD) || 40;
+    const SHAKE_THRESHOLD = Number(process.env.NEXT_PUBLIC_SHAKE_THRESHOLD) || 200;
     const COOLDOWN = 2000; // 2 seconds between triggers
     let lastShakeTime = 0;
 
@@ -74,9 +74,16 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         lastUpdate = curTime;
 
         const { x, y, z } = event.acceleration;
-        if (!x || !y || !z) return;
+        // Check for undefined or null rather than falsy, as 0 is a valid acceleration value
+        if (x === undefined || x === null || y === undefined || y === null || z === undefined || z === null) return;
 
-        const speed = Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime * 10000;
+        // Use more standard shake detection: sum of absolute differences to avoid cancellation
+        const speed = (Math.abs(x - lastX) + Math.abs(y - lastY) + Math.abs(z - lastZ)) / diffTime * 10000;
+
+        // Optional: Debugging in development
+        if (process.env.NODE_ENV === 'development' && speed > 20) {
+          console.debug(`Shake speed: ${speed.toFixed(2)}, Threshold: ${SHAKE_THRESHOLD}`);
+        }
 
         if (speed > SHAKE_THRESHOLD) {
           if ((curTime - lastShakeTime) > COOLDOWN) {
