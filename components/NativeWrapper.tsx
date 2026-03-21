@@ -63,7 +63,7 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
     let lastUpdate = 0;
     let lastX = 0, lastY = 0, lastZ = 0;
     // Sensitivity threshold for shake detection (lower is more sensitive)
-    const SHAKE_THRESHOLD = Number(process.env.NEXT_PUBLIC_SHAKE_THRESHOLD) || 200;
+    const SHAKE_THRESHOLD = Number(process.env.NEXT_PUBLIC_SHAKE_THRESHOLD) || 800;
     const COOLDOWN = 2000; // 2 seconds between triggers
     let lastShakeTime = 0;
 
