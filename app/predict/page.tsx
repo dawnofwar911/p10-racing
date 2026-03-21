@@ -719,7 +719,7 @@ function PredictPage() {
           {activeTab === 'p10' && (
             <div className="mx-auto w-100" style={{ maxWidth: '500px' }}>
               <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase letter-spacing-1">P10 Finisher</h3>
-              <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '120px' }}>
+              <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '80px' }}>
                 {drivers.map((driver) => (
                   <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => handleP10Select(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
                     <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '45px' }}>
@@ -738,7 +738,7 @@ function PredictPage() {
           {activeTab === 'dnf' && (
             <div className="mx-auto w-100" style={{ maxWidth: '500px' }}>
               <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase letter-spacing-1">First DNF</h3>
-              <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '120px' }}>
+              <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '80px' }}>
                 {drivers.map((driver) => (
                   <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => handleDnfSelect(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
                     <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '45px' }}>
