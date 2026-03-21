@@ -13,7 +13,8 @@ import { Flag, Trophy, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerSelectionHaptic } from '@/lib/utils/haptics';
 
-const SWIPE_THRESHOLD = 50;
+const SWIPE_THRESHOLD = 30;
+const VELOCITY_THRESHOLD = 200;
 
 export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>(() => {
@@ -71,10 +72,16 @@ export default function StandingsPage() {
   };
 
   const swipeHandlers = {
-    onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number } }) => {
-      if (info.offset.x > SWIPE_THRESHOLD && activeView === 'constructors') {
+    onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }) => {
+      const { offset, velocity } = info;
+      
+      // Trigger if either distance or velocity crosses threshold
+      const isRightSwipe = offset.x > SWIPE_THRESHOLD || velocity.x > VELOCITY_THRESHOLD;
+      const isLeftSwipe = offset.x < -SWIPE_THRESHOLD || velocity.x < -VELOCITY_THRESHOLD;
+
+      if (isRightSwipe && activeView === 'constructors') {
         handleTabChange('drivers');
-      } else if (info.offset.x < -SWIPE_THRESHOLD && activeView === 'drivers') {
+      } else if (isLeftSwipe && activeView === 'drivers') {
         handleTabChange('constructors');
       }
     }
@@ -139,6 +146,7 @@ export default function StandingsPage() {
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.15}
                 onDragEnd={swipeHandlers.onDragEnd}
                 className="w-100"
               >
