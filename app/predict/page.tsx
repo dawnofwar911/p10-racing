@@ -567,13 +567,6 @@ function PredictPage() {
           </div>
         ))}
       </div>
-      {type === 'dnf' && (
-        <div className="d-grid gap-2 mt-4">
-          <HapticButton hapticStyle="heavy" type="button" size="lg" className="btn-f1 py-3 fw-bold shadow-sm rounded-pill" disabled={!p10Driver || !dnfDriver} onClick={handleSubmit}>
-            LOCK IN PREDICTION
-          </HapticButton>
-        </div>
-      )}
     </div>
   );
 
