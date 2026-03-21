@@ -547,8 +547,8 @@ function PredictPage() {
     </Card>
   );
 
-  const SelectionList = ({ type, currentPick, onSelect }: { type: 'p10' | 'dnf', currentPick: string, onSelect: (id: string) => void }) => (
-    <div className="mx-auto w-100 h-100" style={{ maxWidth: '500px' }}>
+  const SelectionList = ({ type, currentPick, onSelect, isHighlighted = false }: { type: 'p10' | 'dnf', currentPick: string, onSelect: (id: string) => void, isHighlighted?: boolean }) => (
+    <div className={`mx-auto w-100 h-100 p-3 rounded transition-all ${isHighlighted ? 'f1-focus-glow' : ''}`} style={{ maxWidth: '500px', border: isHighlighted ? 'none' : '1px solid transparent' }}>
       <h3 className={`h6 mb-3 border-start border-4 border-${type === 'p10' ? 'danger' : 'warning'} ps-2 fw-bold text-uppercase letter-spacing-1`}>
         {type === 'p10' ? 'P10 Finisher' : 'First DNF'}
       </h3>
@@ -737,7 +737,12 @@ function PredictPage() {
           <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} />
         </Col>
         <Col xs={12} lg={6} className={!p10Driver ? 'opacity-25' : 'opacity-100 transition-all'}>
-          <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} />
+          <SelectionList 
+            type="dnf" 
+            currentPick={dnfDriver} 
+            onSelect={handleDnfSelect} 
+            isHighlighted={!!p10Driver && !dnfDriver}
+          />
         </Col>
       </Row>
     </div>

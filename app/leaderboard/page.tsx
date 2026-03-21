@@ -162,20 +162,27 @@ export default function LeaderboardPage() {
         { id: 'global', label: 'Global', icon: <Globe size={16} /> },
         { id: 'local', label: 'Guests', icon: <Users size={16} /> }
       ]}
+      renderTabContent={(tabId) => (
+        loading ? (
+          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+        ) : (tabId === 'local' && localLeaderboard.length === 0) ? (
+          <div className="d-none d-lg-block"></div> // Hide Guest column on desktop if empty
+        ) : (
+          <LeaderboardTable 
+            entries={tabId === 'global' ? globalLeaderboard : localLeaderboard} 
+            loading={false} 
+            currentUser={session?.user?.id || undefined}
+            isSeasonComplete={isSeasonComplete}
+            emptyMessage={tabId === 'global' ? "No global players found." : "No guest data found on this device."}
+          />
+        )
+      )}
     >
       {loading ? (
         <div className="text-center py-5">
           <Spinner animation="border" variant="danger" />
         </div>
-      ) : (
-        <LeaderboardTable 
-          entries={view === 'global' ? globalLeaderboard : localLeaderboard} 
-          loading={false} 
-          currentUser={session?.user?.id || undefined}
-          isSeasonComplete={isSeasonComplete}
-          emptyMessage={view === 'global' ? "No global players found." : "No guest data found on this device."}
-        />
-      )}
+      ) : null}
     </SwipeablePageLayout>
   );
 }

@@ -36,9 +36,14 @@ interface SwipeablePageLayoutProps<T extends string> {
   
   /**
    * Optional custom layout for the split view. 
-   * Useful for Predict page which has a 'Grid Top' requirements.
    */
   customSplitLayout?: ReactNode;
+
+  /**
+   * Function to render content for a specific tab ID. 
+   * Crucial for split view so each pane shows different data.
+   */
+  renderTabContent?: (tabId: T) => ReactNode;
 }
 
 /**
@@ -59,7 +64,8 @@ export default function SwipeablePageLayout<T extends string>({
   onBack,
   rightElement,
   splitOnWide = false,
-  customSplitLayout
+  customSplitLayout,
+  renderTabContent
 }: SwipeablePageLayoutProps<T>) {
   
   const handleTabChange = (tabId: T) => {
@@ -122,17 +128,14 @@ export default function SwipeablePageLayout<T extends string>({
           <div className="d-none d-lg-block w-100">
             {customSplitLayout || (
               <Row>
-                {/* Automatically render all tabs side by side if no custom layout */}
                 {tabs.map(tab => (
                   <Col key={tab.id} lg={12 / tabs.length} className="mb-4">
-                    <div className="p-3 border-start border-danger border-4 bg-dark bg-opacity-25 rounded-end h-100">
+                    <div className="p-3 border-start border-danger border-4 bg-dark bg-opacity-25 rounded-end h-100 shadow-sm">
                       <h3 className="h6 text-uppercase fw-bold text-muted mb-3 letter-spacing-1 d-flex align-items-center">
-                        {tab.icon && <span className="me-2">{tab.icon}</span>}
+                        {tab.icon && <span className="me-2 text-danger">{tab.icon}</span>}
                         {tab.label}
                       </h3>
-                      {/* Note: This assumes the children handle their own active/inactive state 
-                          when used in custom layouts, but here we just pass them through */}
-                      {children}
+                      {renderTabContent ? renderTabContent(tab.id) : children}
                     </div>
                   </Col>
                 ))}
@@ -156,7 +159,7 @@ export default function SwipeablePageLayout<T extends string>({
               onDragEnd={swipeHandlers.onDragEnd}
               className="w-100 flex-grow-1 d-flex flex-column"
             >
-              {children}
+              {renderTabContent ? renderTabContent(activeTab) : children}
             </motion.div>
           </AnimatePresence>
         </div>
