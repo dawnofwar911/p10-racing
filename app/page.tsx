@@ -81,8 +81,17 @@ export default function Home() {
 
       let finalPrediction: HomePrediction | null = null;
       
-      // Try DB first if logged in
-      if (session) {
+      // 1. Try local cache FIRST for immediate sync
+      const storageUser = session?.user?.id || currentUser || '';
+      if (storageUser) {
+        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
+        if (cachedPred) {
+          finalPrediction = JSON.parse(cachedPred);
+        }
+      }
+
+      // 2. Try DB as fallback if no cache or to ensure fresh data
+      if (!finalPrediction && session) {
         const { data: pred } = await supabase
           .from('predictions')
           .select('*')
@@ -93,12 +102,6 @@ export default function Home() {
         if (pred) {
           finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
         }
-      }
-
-      // If no DB result or not logged in, try cache
-      if (!finalPrediction && currentUser) {
-        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, nextRace.id));
-        if (cachedPred) finalPrediction = JSON.parse(cachedPred);
       }
 
       if (mountedRef.current) {
@@ -114,7 +117,8 @@ export default function Home() {
     // UNLESS the user has changed (detected by currentUser dependency change)
     if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
       // Small check to ensure the prediction in state matches the current user's cache
-      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace?.id || ''));
+      const storageUser = session?.user?.id || currentUser || '';
+      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
       if (cached) {
           const parsed = JSON.parse(cached);
           if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
@@ -129,17 +133,21 @@ export default function Home() {
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ key: string }>;
       const updatedKey = customEvent.detail?.key;
-      const storageUser = session?.user?.id || currentUser || '';
+      
+      // Re-calculate the current active user exactly how it's done in loadPrediction
+      const activeUserId = session?.user?.id;
+      const localUsername = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const storageUser = activeUserId || localUsername || '';
+      
       const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id) : null;
 
-      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER) {
-        const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-        const activeUser = session?.user?.id || user || '';
+      // Update if the prediction for the current user changed, or if the current user itself changed
+      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER || updatedKey === STORAGE_KEYS.CACHE_USERNAME) {
         const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-        if (cachedRaceStr && activeUser) {
+        if (cachedRaceStr && storageUser) {
           try {
             const raceObj = JSON.parse(cachedRaceStr);
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, activeUser, raceObj.id));
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
             if (predStr) {
               const parsed = JSON.parse(predStr);
               setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);

@@ -158,6 +158,7 @@ export default function SwipeablePageLayout<T extends string>({
               dragElastic={0.15}
               onDragEnd={swipeHandlers.onDragEnd}
               className="w-100 flex-grow-1 d-flex flex-column"
+              style={{ minHeight: 'calc(100vh - 250px)' }}
             >
               {renderTabContent ? renderTabContent(activeTab) : children}
             </motion.div>
