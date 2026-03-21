@@ -471,15 +471,15 @@ export default function Home() {
                   <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
                     Your {nextRace.name} Picks {isLocked && '🔒'}
                   </h3>
-                  <div className="d-flex flex-column gap-2 mb-3">
-                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                  <div className="d-flex flex-column gap-2 mb-3 align-items-center">
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>P10</small>
                       <span className="fw-bold text-white small">
                         {getDriverDisplayName(userPrediction.p10, allDrivers)}
                       </span>
                     </div>
-                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>DNF</small>
                       <span className="fw-bold text-danger small">
                         {getDriverDisplayName(userPrediction.dnf, allDrivers)}
                       </span>

@@ -540,17 +540,17 @@ function PredictPage() {
                       Your Selection {isLocked && '🔒'}
                     </h3>
                     {hasPicks ? (
-                      <Row className="g-2">
-                        <Col xs={12} sm={6}>
-                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
-                            <small className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem' }}>P10</small>
-                            <span className="text-white fw-bold">{getDriverDisplayName(p10Driver, drivers)}</span>
+                      <Row className="g-2 justify-content-center">
+                        <Col xs={12} sm="auto">
+                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '180px' }}>
+                            <small className="text-muted text-uppercase fw-bold me-3" style={{ fontSize: '0.55rem' }}>P10</small>
+                            <span className="text-white fw-bold small">{getDriverDisplayName(p10Driver, drivers)}</span>
                           </div>
                         </Col>
-                        <Col xs={12} sm={6}>
-                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
-                            <small className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem' }}>DNF</small>
-                            <span className="text-danger fw-bold">{getDriverDisplayName(dnfDriver, drivers)}</span>
+                        <Col xs={12} sm="auto">
+                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '180px' }}>
+                            <small className="text-muted text-uppercase fw-bold me-3" style={{ fontSize: '0.55rem' }}>DNF</small>
+                            <span className="text-danger fw-bold small">{getDriverDisplayName(dnfDriver, drivers)}</span>
                           </div>
                         </Col>
                       </Row>
