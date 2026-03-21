@@ -366,6 +366,13 @@ function LeaguesContent() {
     </Row>
   );
 
+  const FeedbackAlerts = () => (
+    <>
+      {error && <Alert variant="danger" dismissible onClose={() => setError(null)} className="py-2 small">{error}</Alert>}
+      {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)} className="py-2 small">{success}</Alert>}
+    </>
+  );
+
   if (!session && !loading) {
     return (
       <SwipeablePageLayout
@@ -388,6 +395,7 @@ function LeaguesContent() {
 
   const splitLayout = (
     <div className="w-100">
+      <FeedbackAlerts />
       <Row className="g-4">
         <Col xs={12} lg={7}>
           <MyLeaguesView />
@@ -418,8 +426,7 @@ function LeaguesContent() {
       )}
     >
       <div className="mt-3">
-        {error && <Alert variant="danger" dismissible onClose={() => setError(null)} className="py-2 small">{error}</Alert>}
-        {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)} className="py-2 small">{success}</Alert>}
+        <FeedbackAlerts />
         {activeTab === 'my-leagues' ? <MyLeaguesView /> : <ManageLeaguesView />}
       </div>
     </SwipeablePageLayout>
