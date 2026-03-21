@@ -508,6 +508,16 @@ function PredictPage() {
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
           <Col xs="auto" className="d-flex gap-2 ms-auto">
+            {isEditing && (
+              <HapticButton 
+                variant="outline-danger" 
+                size="sm" 
+                onClick={() => { setIsEditing(false); }} 
+                className="rounded-pill px-3 fw-bold"
+              >
+                Cancel
+              </HapticButton>
+            )}
             {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</HapticButton>)}
           </Col>
         </Row>
