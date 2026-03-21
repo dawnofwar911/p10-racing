@@ -59,35 +59,45 @@ export default function LeaderboardPage() {
 
       // 1. GLOBAL CALCULATION
       let globalEntries: LeaderboardEntry[] = [];
-      const { data: profiles } = await withTimeout(supabase.from('profiles').select('id, username'));
-      const { data: predictions } = await withTimeout(supabase.from('predictions').select('*')) as { data: DbPrediction[] | null };
+      try {
+        const [
+          { data: profiles },
+          { data: predictions },
+        ] = await Promise.all([
+          withTimeout(supabase.from('profiles').select('id, username')),
+          withTimeout(supabase.from('predictions').select<'*', DbPrediction>('*')),
+        ]);
 
-      if (profiles) {
-        const globalPlayers = profiles
-          .filter(p => !isTestAccount(p.username) || p.id === currentUserId)
-          .map(p => ({ 
-            username: p.username, 
-            userId: p.id, 
-            dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
-          }));
+        if (profiles) {
+          const globalPlayers = profiles
+            .filter(p => !isTestAccount(p.username) || p.id === currentUserId)
+            .map(p => ({ 
+              username: p.username, 
+              userId: p.id, 
+              isLocal: false,
+              dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+            }));
 
-        globalEntries = globalPlayers.map((player) => {
-          const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
-          Object.keys(raceResultsMap).forEach(round => {
-            const dbMatch = player.dbPredictions?.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
-            if (dbMatch) playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
+          globalEntries = globalPlayers.map((player) => {
+            const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
+            Object.keys(raceResultsMap).forEach(round => {
+              const dbMatch = player.dbPredictions?.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
+              if (dbMatch) playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
+            });
+            const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
+            return { rank: 0, player: player.username, points: totalPoints, lastRacePoints, breakdown: latestBreakdown, history };
           });
-          const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
-          return { rank: 0, player: player.username, points: totalPoints, lastRacePoints, breakdown: latestBreakdown, history };
-        });
 
-        const sortedGlobal = globalEntries.sort((a, b) => b.points - a.points);
-        const rankedGlobal = sortedGlobal.map((entry, index) => ({ ...entry, rank: index + 1 }));
-        
-        if (mountedRef.current) {
-          setGlobalLeaderboard(rankedGlobal);
-          localStorage.setItem(STORAGE_KEYS.CACHE_LEADERBOARD, JSON.stringify(rankedGlobal));
+          const sortedGlobal = globalEntries.sort((a, b) => b.points - a.points);
+          const rankedGlobal = sortedGlobal.map((entry, index) => ({ ...entry, rank: index + 1 }));
+          
+          if (mountedRef.current) {
+            setGlobalLeaderboard(rankedGlobal);
+            localStorage.setItem(STORAGE_KEYS.CACHE_LEADERBOARD, JSON.stringify(rankedGlobal));
+          }
         }
+      } catch (globalErr) {
+        console.error('Leaderboard: Global calc error:', globalErr);
       }
 
       // 2. LOCAL CALCULATION
@@ -118,8 +128,10 @@ export default function LeaderboardPage() {
   }, [supabase, session?.user?.id, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    calculate(globalLeaderboard.length > 0 || localLeaderboard.length > 0);
-  }, [calculate, globalLeaderboard.length, localLeaderboard.length]);
+    const hasData = globalLeaderboard.length > 0 || localLeaderboard.length > 0;
+    calculate(hasData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calculate]);
 
   useEffect(() => {
     const handleResume = () => triggerRefresh();
