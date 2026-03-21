@@ -541,15 +541,19 @@ function PredictPage() {
                 </h3>
                 {hasPicks ? (
                   <div className="d-flex flex-column gap-2 mb-3 align-items-center">
-                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '220px', width: 'fit-content' }}>
-                      <div className="flex-shrink-0 rounded-circle me-3" style={{ width: '10px', height: '10px', backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem' }}>P10</small>
-                      <span className="text-white fw-bold small">{getDriverDisplayName(p10Driver, drivers)}</span>
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                      </div>
+                      <span className="fw-bold text-white small flex-grow-1 text-start ps-2">{getDriverDisplayName(p10Driver, drivers)}</span>
                     </div>
-                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '220px', width: 'fit-content' }}>
-                      <div className="flex-shrink-0 rounded-circle me-3" style={{ width: '10px', height: '10px', backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem' }}>DNF</small>
-                      <span className="text-danger fw-bold small">{getDriverDisplayName(dnfDriver, drivers)}</span>
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                      </div>
+                      <span className="text-danger fw-bold small flex-grow-1 text-start ps-2">{getDriverDisplayName(dnfDriver, drivers)}</span>
                     </div>
                   </div>
                 ) : <p className="text-warning small mb-0">No prediction submitted.</p>}
@@ -718,15 +722,17 @@ function PredictPage() {
               <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
                 {drivers.map((driver) => (
                   <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => handleP10Select(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                    <div className="driver-number ms-3 me-3 text-white fw-bold" style={{ width: '25px', fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</div>
+                    <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '45px' }}>
+                      <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: driver.color }}></div>
+                      <span style={{ fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</span>
+                    </div>
                     <div className="flex-grow-1">
                       <div className="fw-bold text-white small">{driver.name}</div>
                       <div className="text-muted extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
                     </div>
                     {p10Driver === driver.id && <div className="text-danger me-3">●</div>}
                   </div>
-                ))}
-              </div>
+                ))}              </div>
             </div>
           )}
 
@@ -736,15 +742,17 @@ function PredictPage() {
               <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
                 {drivers.map((driver) => (
                   <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => handleDnfSelect(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                    <div className="driver-number ms-3 me-3 text-white fw-bold" style={{ width: '25px', fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</div>
+                    <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '45px' }}>
+                      <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: driver.color }}></div>
+                      <span style={{ fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</span>
+                    </div>
                     <div className="flex-grow-1">
                       <div className="fw-bold text-white small">{driver.name}</div>
                       <div className="text-muted extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
                     </div>
                     {dnfDriver === driver.id && <div className="text-danger me-3">●</div>}
                   </div>
-                ))}
-              </div>
+                ))}              </div>
               <div className="d-grid gap-2 mt-4">
                 <HapticButton hapticStyle="heavy" type="button" size="lg" className="btn-f1 py-3 fw-bold shadow-sm rounded-pill" disabled={!p10Driver || !dnfDriver} onClick={handleSubmit}>
                   LOCK IN PREDICTION

@@ -473,16 +473,20 @@ export default function Home() {
                   </h3>
                   <div className="d-flex flex-column gap-2 mb-3 align-items-center">
                     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-                      <div className="flex-shrink-0 rounded-circle me-3" style={{ width: '10px', height: '10px', backgroundColor: allDrivers.find(d => d.id === userPrediction.p10)?.color || '#B6BABD' }}></div>
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem' }}>P10</small>
-                      <span className="fw-bold text-white small">
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.p10)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                      </div>
+                      <span className="fw-bold text-white small flex-grow-1 text-start ps-2">
                         {getDriverDisplayName(userPrediction.p10, allDrivers)}
                       </span>
                     </div>
                     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-                      <div className="flex-shrink-0 rounded-circle me-3" style={{ width: '10px', height: '10px', backgroundColor: allDrivers.find(d => d.id === userPrediction.dnf)?.color || '#B6BABD' }}></div>
-                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem' }}>DNF</small>
-                      <span className="fw-bold text-danger small">
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.dnf)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                      </div>
+                      <span className="fw-bold text-danger small flex-grow-1 text-start ps-2">
                         {getDriverDisplayName(userPrediction.dnf, allDrivers)}
                       </span>
                     </div>
