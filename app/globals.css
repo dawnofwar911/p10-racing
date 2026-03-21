@@ -331,6 +331,10 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   color: white;
 }
 
+.pb-10 {
+  padding-bottom: 6rem !important;
+}
+
 /* Standings Tab Container */
 .f1-tab-container {
   background-color: var(--f1-dark-grey) !important;
