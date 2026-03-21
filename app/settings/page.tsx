@@ -25,21 +25,22 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
+  const [shakeToReportEnabled, setShakeToReportEnabled] = useState(true);
 
   // Lifecycle
   useEffect(() => {
     mountedRef.current = true;
     
-    // Load haptics preference
-    const stored = localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED);
-    setHapticsEnabled(stored !== 'false');
+    // Load preferences
+    setHapticsEnabled(localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED) !== 'false');
+    setShakeToReportEnabled(localStorage.getItem(STORAGE_KEYS.SHAKE_TO_REPORT_ENABLED) !== 'false');
 
     return () => { mountedRef.current = false; };
   }, []);
 
-  const toggleHaptics = (enabled: boolean) => {
-    setHapticsEnabled(enabled);
-    setStorageItem(STORAGE_KEYS.HAPTICS_ENABLED, enabled.toString());
+  const togglePreference = (key: keyof typeof STORAGE_KEYS, setter: (val: boolean) => void, enabled: boolean) => {
+    setter(enabled);
+    setStorageItem(STORAGE_KEYS[key], enabled.toString());
     if (enabled) triggerLightHaptic();
   };
 
@@ -100,8 +101,27 @@ export default function SettingsPage() {
               <Form.Check 
                 type="switch"
                 id="haptics-switch"
+                label={<span className="visually-hidden">Haptic Feedback</span>}
                 checked={hapticsEnabled}
-                onChange={(e) => toggleHaptics(e.target.checked)}
+                onChange={(e) => togglePreference('HAPTICS_ENABLED', setHapticsEnabled, e.target.checked)}
+                className="custom-switch-lg"
+              />
+            </div>
+
+            <div className="list-group-item bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center">
+                <Bug size={18} className="me-3 opacity-75" />
+                <div>
+                  <span className="fw-bold d-block">Shake to Report</span>
+                  <small className="text-muted extra-small">Shake device to trigger bug report</small>
+                </div>
+              </div>
+              <Form.Check 
+                type="switch"
+                id="shake-switch"
+                label={<span className="visually-hidden">Shake to Report</span>}
+                checked={shakeToReportEnabled}
+                onChange={(e) => togglePreference('SHAKE_TO_REPORT_ENABLED', setShakeToReportEnabled, e.target.checked)}
                 className="custom-switch-lg"
               />
             </div>

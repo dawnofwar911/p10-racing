@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   IS_ADMIN: 'p10_is_admin',
   SYNC_QUEUE: 'p10_sync_queue',
   HAPTICS_ENABLED: 'p10_haptics_enabled',
+  SHAKE_TO_REPORT_ENABLED: 'p10_shake_to_report_enabled',
   HAS_SESSION: 'p10_has_session',
 } as const;
 
