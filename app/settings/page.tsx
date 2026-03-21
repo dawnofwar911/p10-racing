@@ -178,7 +178,7 @@ export default function SettingsPage() {
               <a className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
                 <div className="d-flex align-items-center">
                   <Coffee size={18} className="me-3 text-warning" />
-                  <span className="fw-bold">Support the Developer</span>
+                  <span className="fw-bold">Buy me a coffee</span>
                 </div>
                 <Badge bg="danger" className="rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>TIP</Badge>
               </a>

@@ -107,7 +107,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
               rel="noopener noreferrer"
             >
               <Coffee size={18} className="me-2" />
-              SUPPORT THE APP
+              BUY ME A COFFEE
             </HapticButton>
           </Link>
 
