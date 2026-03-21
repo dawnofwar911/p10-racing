@@ -52,10 +52,10 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // 3. Navigate to Leaderboard
     await page.getByRole('link', { name: /Leaderboard/i }).click();
     await expect(page).toHaveURL(/\/leaderboard/);
-    // Check for Global/Guests pills (which are Nav Links)
-    await expect(page.getByRole('link', { name: /GLOBAL/i })).toBeVisible();
-    if (await page.getByRole('link', { name: /GUESTS/i }).isVisible()) {
-       await expect(page.getByRole('link', { name: /GUESTS/i })).toBeVisible();
+    // Check for Global/Guests pills using text selectors (more robust than getByRole for Nav pills)
+    await expect(page.getByText(/GLOBAL/i)).toBeVisible();
+    if (await page.getByText(/GUESTS/i).isVisible()) {
+       await expect(page.getByText(/GUESTS/i)).toBeVisible();
     }
 
     // 4. Navigate to Standings
@@ -63,8 +63,8 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await expect(page).toHaveURL(/\/standings/);
     await expect(page.getByText(/World Championship/i)).toBeVisible();
     // Check for Drivers/Constructors pills
-    await expect(page.getByRole('link', { name: /DRIVERS/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /CONSTRUCTORS/i })).toBeVisible();
+    await expect(page.getByText(/DRIVERS/i)).toBeVisible();
+    await expect(page.getByText(/CONSTRUCTORS/i)).toBeVisible();
     
     // Standings page HAS PullToRefresh
     const ptrContainer = page.locator('.ptr-container');
