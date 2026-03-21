@@ -41,9 +41,14 @@ interface SwipeablePageLayoutProps<T extends string> {
 
   /**
    * Function to render content for a specific tab ID. 
-   * Crucial for split view so each pane shows different data.
    */
   renderTabContent?: (tabId: T) => ReactNode;
+
+  /**
+   * Optional custom column widths for split view (Bootstrap grid units, 1-12).
+   * Must match the length of the tabs array.
+   */
+  splitWidths?: number[];
 }
 
 /**
@@ -65,7 +70,8 @@ export default function SwipeablePageLayout<T extends string>({
   rightElement,
   splitOnWide = false,
   customSplitLayout,
-  renderTabContent
+  renderTabContent,
+  splitWidths
 }: SwipeablePageLayoutProps<T>) {
   
   const handleTabChange = (tabId: T) => {
@@ -128,9 +134,9 @@ export default function SwipeablePageLayout<T extends string>({
           <div className="d-none d-lg-block w-100">
             {customSplitLayout || (
               <Row>
-                {tabs.map(tab => (
-                  <Col key={tab.id} lg={12 / tabs.length} className="mb-4">
-                    <div className="p-3 border-start border-danger border-4 bg-dark bg-opacity-25 rounded-end h-100 shadow-sm">
+                {tabs.map((tab, idx) => (
+                  <Col key={tab.id} lg={splitWidths?.[idx] || (12 / tabs.length)} className="mb-4">
+                    <div className="f1-dashboard-pane">
                       <h3 className="h6 text-uppercase fw-bold text-muted mb-3 letter-spacing-1 d-flex align-items-center">
                         {tab.icon && <span className="me-2 text-danger">{tab.icon}</span>}
                         {tab.label}

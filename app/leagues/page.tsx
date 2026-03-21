@@ -255,43 +255,38 @@ function LeaguesContent() {
   // SUB-VIEWS FOR TABS
   const MyLeaguesView = () => (
     <>
-      <Card className="border-secondary shadow-sm mb-3">
-        <Card.Header className="bg-dark border-secondary py-2">
-          <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-1" style={{ fontSize: '0.65rem' }}>Active Competitions</h3>
-        </Card.Header>
-        <Card.Body className="p-0">
-          {loading && !leagues.length ? (
-            <div className="text-center py-4"><Spinner animation="border" variant="danger" /></div>
-          ) : leagues.length > 0 ? (
-            <Table variant="dark" hover responsive className="mb-0">
-              <thead>
-                <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
-                  <th className="ps-3 py-2">Name</th>
-                  <th className="py-2">Code</th>
-                  <th className="text-end pe-3 py-2">Action</th>
+      <div className="table-responsive rounded border border-secondary shadow-sm mb-3">
+        {loading && !leagues.length ? (
+          <div className="text-center py-4"><Spinner animation="border" variant="danger" /></div>
+        ) : leagues.length > 0 ? (
+          <Table variant="dark" hover className="mb-0">
+            <thead>
+              <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
+                <th className="ps-3 py-2">Name</th>
+                <th className="py-2">Code</th>
+                <th className="text-end pe-3 py-2">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leagues.map(league => (
+                <tr key={league.id} style={{ height: '45px', verticalAlign: 'middle' }}>
+                  <td className="ps-3 fw-bold text-white small">{league.name}</td>
+                  <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
+                  <td className="text-end pe-3">
+                    <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
+                      <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</HapticButton>
+                    </Link>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {leagues.map(league => (
-                  <tr key={league.id} style={{ height: '45px', verticalAlign: 'middle' }}>
-                    <td className="ps-3 fw-bold text-white small">{league.name}</td>
-                    <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
-                    <td className="text-end pe-3">
-                      <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
-                        <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</HapticButton>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          ) : (
-            <div className="text-center py-4 text-muted small">
-              <p className="mb-0">No active leagues.</p>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <div className="text-center py-4 text-muted small">
+            <p className="mb-0">No active leagues.</p>
+          </div>
+        )}
+      </div>
 
       {session && localGuests.length > 0 && (
         <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3">
@@ -393,20 +388,6 @@ function LeaguesContent() {
     );
   }
 
-  const splitLayout = (
-    <div className="w-100">
-      <FeedbackAlerts />
-      <Row className="g-4">
-        <Col xs={12} lg={7}>
-          <MyLeaguesView />
-        </Col>
-        <Col xs={12} lg={5}>
-          <ManageLeaguesView />
-        </Col>
-      </Row>
-    </div>
-  );
-
   return (
     <SwipeablePageLayout
       title="Leagues"
@@ -416,7 +397,7 @@ function LeaguesContent() {
       onTabChange={setActiveTab}
       onRefresh={undefined}
       splitOnWide={true}
-      customSplitLayout={splitLayout}
+      splitWidths={[7, 5]}
       tabs={[
         { id: 'my-leagues', label: 'My Leagues', icon: <Trophy size={16} /> },
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }

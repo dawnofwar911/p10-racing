@@ -346,6 +346,16 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   border-width: 2px !important;
 }
 
+.f1-dashboard-pane {
+  padding: 1rem;
+  border-left: 4px solid var(--f1-red) !important;
+  background-color: rgba(31, 31, 39, 0.25);
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  height: 100%;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
 /* Standings Tab Container */
 .f1-tab-container {
   background-color: var(--f1-dark-grey) !important;
