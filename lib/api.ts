@@ -145,7 +145,7 @@ export async function fetchConstructors(season: number): Promise<ConstructorStan
     if (!response.ok) return [];
     
     const data = await response.json();
-    const standings = data.MRData.StandingsTable.StandingsLists[0];
+    const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
     if (!standings || !standings.ConstructorStandings) return [];
 
     interface ApiConstructorStanding {

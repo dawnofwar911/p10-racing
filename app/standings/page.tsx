@@ -13,6 +13,8 @@ import { Flag, Trophy, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerSelectionHaptic } from '@/lib/utils/haptics';
 
+const SWIPE_THRESHOLD = 50;
+
 export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return [];
@@ -57,7 +59,7 @@ export default function StandingsPage() {
   useEffect(() => {
     const isFirstView = sessionTracker.isFirstView('standings');
     if (standings.length === 0 || constructorStandings.length === 0 || isFirstView) {
-      load(standings.length > 0 && constructorStandings.length > 0);
+      load(standings.length > 0 || constructorStandings.length > 0);
     }
   }, [standings.length, constructorStandings.length]);
 
@@ -70,10 +72,9 @@ export default function StandingsPage() {
 
   const swipeHandlers = {
     onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number } }) => {
-      const threshold = 50;
-      if (info.offset.x > threshold && activeView === 'constructors') {
+      if (info.offset.x > SWIPE_THRESHOLD && activeView === 'constructors') {
         handleTabChange('drivers');
-      } else if (info.offset.x < -threshold && activeView === 'drivers') {
+      } else if (info.offset.x < -SWIPE_THRESHOLD && activeView === 'drivers') {
         handleTabChange('constructors');
       }
     }
@@ -104,7 +105,7 @@ export default function StandingsPage() {
               <Nav.Link 
                 active={activeView === 'drivers'} 
                 onClick={() => handleTabChange('drivers')}
-                className={`rounded-pill px-4 py-2 d-flex align-items-center ${activeView === 'drivers' ? 'bg-danger text-white' : 'text-muted'}`}
+                className="rounded-pill px-4 py-2 d-flex align-items-center"
               >
                 <Users size={16} className="me-2" />
                 Drivers
@@ -114,7 +115,7 @@ export default function StandingsPage() {
               <Nav.Link 
                 active={activeView === 'constructors'} 
                 onClick={() => handleTabChange('constructors')}
-                className={`rounded-pill px-4 py-2 d-flex align-items-center ${activeView === 'constructors' ? 'bg-danger text-white' : 'text-muted'}`}
+                className="rounded-pill px-4 py-2 d-flex align-items-center"
               >
                 <Trophy size={16} className="me-2" />
                 Constructors
@@ -134,7 +135,7 @@ export default function StandingsPage() {
                 key={activeView}
                 initial={{ opacity: 0, x: activeView === 'drivers' ? -20 : 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: activeView === 'drivers' ? 20 : -20 }}
+                exit={{ opacity: 0, x: activeView === 'drivers' ? -20 : 20 }}
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
@@ -148,7 +149,7 @@ export default function StandingsPage() {
                         <th className="ps-4 py-3">Pos</th>
                         <th className="py-3">{activeView === 'drivers' ? 'Driver' : 'Team'}</th>
                         {activeView === 'drivers' && <th className="py-3">Team</th>}
-                        <th className="text-end py-3">PTS</th>
+                        <th className={`text-end py-3 ${activeView === 'constructors' ? 'pe-4' : ''}`}>PTS</th>
                         {activeView === 'drivers' && <th className="text-end pe-4 py-3">No.</th>}
                       </tr>
                     </thead>
