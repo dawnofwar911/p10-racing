@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { Row, Col, Card, Form, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
+import { Session } from '@supabase/supabase-js';
 import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
@@ -23,6 +24,163 @@ interface League {
   created_by: string;
   created_at: string;
 }
+
+// --- SUB-VIEWS MOVED OUTSIDE TO PREVENT RE-RENDERING LOOPS ---
+
+const MyLeaguesView = ({ 
+  loading, 
+  leagues, 
+  session, 
+  localGuests, 
+  actionLoading, 
+  handleImport 
+}: { 
+  loading: boolean, 
+  leagues: League[], 
+  session: Session | null, 
+  localGuests: string[], 
+  actionLoading: boolean, 
+  handleImport: (name: string) => void 
+}) => (
+  <>
+    <div className="table-responsive rounded border border-secondary shadow-sm mb-3">
+      {loading && !leagues.length ? (
+        <div className="text-center py-4"><Spinner animation="border" variant="danger" /></div>
+      ) : leagues.length > 0 ? (
+        <Table variant="dark" hover className="mb-0">
+          <thead>
+            <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
+              <th className="ps-3 py-2">Name</th>
+              <th className="py-2">Code</th>
+              <th className="text-end pe-3 py-2">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leagues.map(league => (
+              <tr key={league.id} style={{ height: '45px', verticalAlign: 'middle' }}>
+                <td className="ps-3 fw-bold text-white small">{league.name}</td>
+                <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
+                <td className="text-end pe-3">
+                  <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
+                    <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</HapticButton>
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      ) : (
+        <div className="text-center py-4 text-muted small">
+          <p className="mb-0">No active leagues.</p>
+        </div>
+      )}
+    </div>
+
+    {session && localGuests.length > 0 && (
+      <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3">
+        <Card.Body className="p-3">
+          <h3 className="extra-small mb-2 text-uppercase fw-bold text-warning letter-spacing-1" style={{ fontSize: '0.6rem' }}>Sync Local Data</h3>
+          <div className="d-flex flex-wrap gap-2">
+            {localGuests.map(guest => (
+              <div key={guest} className="d-flex align-items-center bg-dark p-1 px-2 rounded border border-secondary border-opacity-50">
+                <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
+                <HapticButton hapticStyle="medium" variant="warning" size="sm" className="fw-bold extra-small py-0" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
+              </div>
+            ))}
+          </div>
+        </Card.Body>
+      </Card>
+    )}
+  </>
+);
+
+const ManageLeaguesView = ({ 
+  newLeagueName, 
+  setNewLeagueName, 
+  handleCreateLeague, 
+  inviteCode, 
+  setInviteCode, 
+  handleJoinLeague, 
+  actionLoading 
+}: { 
+  newLeagueName: string, 
+  setNewLeagueName: (v: string) => void, 
+  handleCreateLeague: (e: React.FormEvent) => void, 
+  inviteCode: string, 
+  setInviteCode: (v: string) => void, 
+  handleJoinLeague: (e: React.FormEvent) => void, 
+  actionLoading: boolean 
+}) => (
+  <Row className="g-3">
+    <Col xs={12}>
+      <Card className="border-secondary shadow-sm">
+        <Card.Header className="bg-dark border-secondary py-2">
+          <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Create League</h3>
+        </Card.Header>
+        <Card.Body className="p-3">
+          <Form onSubmit={handleCreateLeague}>
+            <Form.Group className="mb-2">
+              <Form.Control 
+                type="text" 
+                placeholder="League Name" 
+                value={newLeagueName} 
+                onChange={(e) => setNewLeagueName(e.target.value)} 
+                required 
+                className="bg-dark text-white border-secondary py-1 small" 
+              />
+            </Form.Group>
+            <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-1 fw-bold small" disabled={actionLoading}>
+              {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
+            </HapticButton>
+          </Form>
+        </Card.Body>
+      </Card>
+    </Col>
+
+    <Col xs={12}>
+      <Card className="border-danger border-opacity-50 shadow-sm">
+        <Card.Header className="bg-dark border-danger border-opacity-25 py-2">
+          <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Join League</h3>
+        </Card.Header>
+        <Card.Body className="p-3">
+          <Form onSubmit={handleJoinLeague}>
+            <Form.Group className="mb-2">
+              <Form.Control 
+                type="text" 
+                placeholder="Invite Code" 
+                value={inviteCode} 
+                onChange={(e) => setInviteCode(e.target.value)} 
+                required 
+                className="bg-dark text-white border-secondary py-1 small" 
+                maxLength={8}
+              />
+            </Form.Group>
+            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-1 fw-bold small" disabled={actionLoading}>
+              JOIN
+            </HapticButton>
+          </Form>
+        </Card.Body>
+      </Card>
+    </Col>
+  </Row>
+);
+
+const FeedbackAlerts = ({ 
+  error, 
+  setError, 
+  success, 
+  setSuccess 
+}: { 
+  error: string | null, 
+  setError: (v: string | null) => void, 
+  success: string | null, 
+  setSuccess: (v: string | null) => void 
+}) => (
+  <>
+    {error && <Alert variant="danger" dismissible onClose={() => setError(null)} className="py-2 small">{error}</Alert>}
+    {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)} className="py-2 small">{success}</Alert>}
+  </>
+);
 
 function LeaguesContent() {
   const supabase = createClient();
@@ -64,8 +222,8 @@ function LeaguesContent() {
 
       if (fetchError) throw fetchError;
       
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUserId = session?.user?.id;
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const currentUserId = currentSession?.user?.id;
 
       const creatorIds = [...new Set((leaguesData || []).map(l => l.created_by).filter(Boolean))];
       const { data: profiles } = await supabase
@@ -195,13 +353,13 @@ function LeaguesContent() {
     setSuccess(null);
     triggerMediumHaptic();
     try {
-      const { data: leagues, error: leagueError } = await withTimeout(supabase
+      const { data: leaguesData, error: leagueError } = await withTimeout(supabase
         .from('leagues')
         .insert([{ name: newLeagueName.trim(), created_by: session.user.id }])
         .select());
 
       if (leagueError) throw leagueError;
-      const league = leagues?.[0];
+      const league = leaguesData?.[0];
       
       if (league) {
         await withTimeout(supabase
@@ -252,122 +410,6 @@ function LeaguesContent() {
     }
   };
 
-  // SUB-VIEWS FOR TABS
-  const MyLeaguesView = () => (
-    <>
-      <div className="table-responsive rounded border border-secondary shadow-sm mb-3">
-        {loading && !leagues.length ? (
-          <div className="text-center py-4"><Spinner animation="border" variant="danger" /></div>
-        ) : leagues.length > 0 ? (
-          <Table variant="dark" hover className="mb-0">
-            <thead>
-              <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
-                <th className="ps-3 py-2">Name</th>
-                <th className="py-2">Code</th>
-                <th className="text-end pe-3 py-2">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leagues.map(league => (
-                <tr key={league.id} style={{ height: '45px', verticalAlign: 'middle' }}>
-                  <td className="ps-3 fw-bold text-white small">{league.name}</td>
-                  <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
-                  <td className="text-end pe-3">
-                    <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
-                      <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</HapticButton>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        ) : (
-          <div className="text-center py-4 text-muted small">
-            <p className="mb-0">No active leagues.</p>
-          </div>
-        )}
-      </div>
-
-      {session && localGuests.length > 0 && (
-        <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3">
-          <Card.Body className="p-3">
-            <h3 className="extra-small mb-2 text-uppercase fw-bold text-warning letter-spacing-1" style={{ fontSize: '0.6rem' }}>Sync Local Data</h3>
-            <div className="d-flex flex-wrap gap-2">
-              {localGuests.map(guest => (
-                <div key={guest} className="d-flex align-items-center bg-dark p-1 px-2 rounded border border-secondary border-opacity-50">
-                  <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
-                  <HapticButton hapticStyle="medium" variant="warning" size="sm" className="fw-bold extra-small py-0" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
-                </div>
-              ))}
-            </div>
-          </Card.Body>
-        </Card>
-      )}
-    </>
-  );
-
-  const ManageLeaguesView = () => (
-    <Row className="g-3">
-      <Col xs={12}>
-        <Card className="border-secondary shadow-sm">
-          <Card.Header className="bg-dark border-secondary py-2">
-            <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Create League</h3>
-          </Card.Header>
-          <Card.Body className="p-3">
-            <Form onSubmit={handleCreateLeague}>
-              <Form.Group className="mb-2">
-                <Form.Control 
-                  type="text" 
-                  placeholder="League Name" 
-                  value={newLeagueName} 
-                  onChange={(e) => setNewLeagueName(e.target.value)} 
-                  required 
-                  className="bg-dark text-white border-secondary py-1 small" 
-                />
-              </Form.Group>
-              <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-1 fw-bold small" disabled={actionLoading}>
-                {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
-              </HapticButton>
-            </Form>
-          </Card.Body>
-        </Card>
-      </Col>
-
-      <Col xs={12}>
-        <Card className="border-danger border-opacity-50 shadow-sm">
-          <Card.Header className="bg-dark border-danger border-opacity-25 py-2">
-            <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Join League</h3>
-          </Card.Header>
-          <Card.Body className="p-3">
-            <Form onSubmit={handleJoinLeague}>
-              <Form.Group className="mb-2">
-                <Form.Control 
-                  type="text" 
-                  placeholder="Invite Code" 
-                  value={inviteCode} 
-                  onChange={(e) => setInviteCode(e.target.value)} 
-                  required 
-                  className="bg-dark text-white border-secondary py-1 small" 
-                  maxLength={8}
-                />
-              </Form.Group>
-              <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-1 fw-bold small" disabled={actionLoading}>
-                JOIN
-              </HapticButton>
-            </Form>
-          </Card.Body>
-        </Card>
-      </Col>
-    </Row>
-  );
-
-  const FeedbackAlerts = () => (
-    <>
-      {error && <Alert variant="danger" dismissible onClose={() => setError(null)} className="py-2 small">{error}</Alert>}
-      {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)} className="py-2 small">{success}</Alert>}
-    </>
-  );
-
   if (!session && !loading) {
     return (
       <SwipeablePageLayout
@@ -388,6 +430,29 @@ function LeaguesContent() {
     );
   }
 
+  const myLeaguesView = (
+    <MyLeaguesView 
+      loading={loading}
+      leagues={leagues}
+      session={session}
+      localGuests={localGuests}
+      actionLoading={actionLoading}
+      handleImport={handleImport}
+    />
+  );
+
+  const manageLeaguesView = (
+    <ManageLeaguesView 
+      newLeagueName={newLeagueName}
+      setNewLeagueName={setNewLeagueName}
+      handleCreateLeague={handleCreateLeague}
+      inviteCode={inviteCode}
+      setInviteCode={setInviteCode}
+      handleJoinLeague={handleJoinLeague}
+      actionLoading={actionLoading}
+    />
+  );
+
   return (
     <SwipeablePageLayout
       title="Leagues"
@@ -403,12 +468,17 @@ function LeaguesContent() {
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }
       ]}
       renderTabContent={(tabId) => (
-        tabId === 'my-leagues' ? <MyLeaguesView /> : <ManageLeaguesView />
+        tabId === 'my-leagues' ? myLeaguesView : manageLeaguesView
       )}
     >
       <div className="mt-3">
-        <FeedbackAlerts />
-        {activeTab === 'my-leagues' ? <MyLeaguesView /> : <ManageLeaguesView />}
+        <FeedbackAlerts 
+          error={error}
+          setError={setError}
+          success={success}
+          setSuccess={setSuccess}
+        />
+        {activeTab === 'my-leagues' ? myLeaguesView : manageLeaguesView}
       </div>
     </SwipeablePageLayout>
   );
