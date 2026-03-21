@@ -31,26 +31,16 @@ export default function SettingsPage() {
   useEffect(() => {
     mountedRef.current = true;
     
-    // Load haptics preference
-    const storedHaptics = localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED);
-    setHapticsEnabled(storedHaptics !== 'false');
-
-    // Load shake preference
-    const storedShake = localStorage.getItem(STORAGE_KEYS.SHAKE_TO_REPORT_ENABLED);
-    setShakeToReportEnabled(storedShake !== 'false');
+    // Load preferences
+    setHapticsEnabled(localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED) !== 'false');
+    setShakeToReportEnabled(localStorage.getItem(STORAGE_KEYS.SHAKE_TO_REPORT_ENABLED) !== 'false');
 
     return () => { mountedRef.current = false; };
   }, []);
 
-  const toggleHaptics = (enabled: boolean) => {
-    setHapticsEnabled(enabled);
-    setStorageItem(STORAGE_KEYS.HAPTICS_ENABLED, enabled.toString());
-    if (enabled) triggerLightHaptic();
-  };
-
-  const toggleShakeToReport = (enabled: boolean) => {
-    setShakeToReportEnabled(enabled);
-    setStorageItem(STORAGE_KEYS.SHAKE_TO_REPORT_ENABLED, enabled.toString());
+  const togglePreference = (key: keyof typeof STORAGE_KEYS, setter: (val: boolean) => void, enabled: boolean) => {
+    setter(enabled);
+    setStorageItem(STORAGE_KEYS[key], enabled.toString());
     if (enabled) triggerLightHaptic();
   };
 
@@ -111,8 +101,9 @@ export default function SettingsPage() {
               <Form.Check 
                 type="switch"
                 id="haptics-switch"
+                label={<span className="visually-hidden">Haptic Feedback</span>}
                 checked={hapticsEnabled}
-                onChange={(e) => toggleHaptics(e.target.checked)}
+                onChange={(e) => togglePreference('HAPTICS_ENABLED', setHapticsEnabled, e.target.checked)}
                 className="custom-switch-lg"
               />
             </div>
@@ -128,8 +119,9 @@ export default function SettingsPage() {
               <Form.Check 
                 type="switch"
                 id="shake-switch"
+                label={<span className="visually-hidden">Shake to Report</span>}
                 checked={shakeToReportEnabled}
-                onChange={(e) => toggleShakeToReport(e.target.checked)}
+                onChange={(e) => togglePreference('SHAKE_TO_REPORT_ENABLED', setShakeToReportEnabled, e.target.checked)}
                 className="custom-switch-lg"
               />
             </div>
