@@ -4,7 +4,7 @@ import React from 'react';
 import { Offcanvas } from 'react-bootstrap';
 import Link from 'next/link';
 import { triggerLightHaptic } from '@/lib/utils/haptics';
-import { Settings, LogOut, ShieldAlert, History, LogIn, User } from 'lucide-react';
+import { Settings, LogOut, ShieldAlert, History, LogIn, User, Coffee } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 import HapticButton from './HapticButton';
 
@@ -98,6 +98,18 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
 
         {/* Footer Actions */}
         <div className="p-4 border-top border-secondary border-opacity-25 mt-auto">
+          <HapticButton 
+            href="https://buymeacoffee.com/p10racing"
+            variant="outline-warning" 
+            className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center mb-3 border-secondary border-opacity-50"
+            onClick={onHide}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Coffee size={18} className="me-2" />
+            BUY ME A COFFEE
+          </HapticButton>
+
           {session ? (
             <HapticButton 
               hapticStyle="medium"
