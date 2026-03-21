@@ -587,12 +587,12 @@ function PredictPage() {
                   variant="outline-light" 
                   size="lg" 
                   onClick={() => { setIsEditing(true); }} 
-                  className="px-4"
+                  className="px-5 fw-bold"
                 >
                   Change Picks
                 </HapticButton>
               )}
-              <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5">Back Home</HapticButton></Link>
+              <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5 fw-bold">Back Home</HapticButton></Link>
             </div>
           </div>
         ) : (
