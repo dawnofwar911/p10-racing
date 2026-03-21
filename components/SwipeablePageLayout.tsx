@@ -3,7 +3,7 @@
 import React, { ReactNode } from 'react';
 import { Container, Row, Col, Nav } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
-import { triggerSelectionHaptic } from '@/lib/utils/haptics';
+import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import PullToRefresh from '@/components/PullToRefresh';
 import { ChevronLeft } from 'lucide-react';
 import HapticButton from './HapticButton';
@@ -49,7 +49,7 @@ export default function SwipeablePageLayout<T extends string>({
   
   const handleTabChange = (tabId: T) => {
     if (tabId !== activeTab) {
-      triggerSelectionHaptic();
+      triggerMediumHaptic();
       onTabChange(tabId);
     }
   };
