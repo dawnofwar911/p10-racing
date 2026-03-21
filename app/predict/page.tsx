@@ -312,28 +312,37 @@ function PredictPage() {
     return () => window.removeEventListener('p10:app_resume', handleResume);
   }, [init, triggerRefresh]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (p10Driver && dnfDriver && nextRace) {
+  const performSubmit = async (p10: string, dnf: string) => {
+    if (!p10 || !dnf || !nextRace) {
+      console.error('Predict: Attempted submit with missing data', { p10, dnf, nextRace });
+      return;
+    }
+
+    console.log('Predict: Submitting prediction...', { p10, dnf, raceId: nextRace.id });
+    
+    try {
       triggerHeavyHaptic();
-      const prediction = { username: username || 'User', p10: p10Driver, dnf: dnfDriver, raceId: nextRace.id, season: CURRENT_SEASON };
+      const prediction = { username: username || 'User', p10, dnf, raceId: nextRace.id, season: CURRENT_SEASON };
 
       if (session) {
         const { error } = await supabase.from('predictions').upsert({
           user_id: session.user.id,
           race_id: `${CURRENT_SEASON}_${nextRace.id}`,
-          p10_driver_id: p10Driver,
-          dnf_driver_id: dnfDriver,
+          p10_driver_id: p10,
+          dnf_driver_id: dnf,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id, race_id' });
         
         if (error) {
+          console.error('Predict: Supabase error:', error);
           showNotification('Error saving prediction: ' + error.message, 'error');
           return;
         }
+        console.log('Predict: Saved to Supabase successfully');
         const storageUser = username || session.user.id;
         setStorageItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id), JSON.stringify(prediction));
       } else {
+        console.log('Predict: Saving guest prediction to local storage');
         setStorageItem(getPredictionKey(CURRENT_SEASON, username, nextRace.id), JSON.stringify(prediction));
         const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
         if (!players.includes(username)) {
@@ -343,6 +352,8 @@ function PredictPage() {
       }
       setSubmitted(true);
       setIsEditing(false);
+    } catch (err) {
+      console.error('Predict: Submit catch block:', err);
     }
   };
 
@@ -405,20 +416,19 @@ function PredictPage() {
       if (mountedRef.current) setActiveTab('dnf');
     }, 300);
   };
-
-  const handleDnfSelect = (id: string) => {
-    triggerSelectionHaptic();
-    setDnfDriver(id);
-    // If we're not locked and have both picks, auto-submit after a small delay
-    if (!isLocked && p10Driver) {
-      setTimeout(() => {
-        if (mountedRef.current) {
-          const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-          handleSubmit(fakeEvent);
-        }
-      }, 300);
-    }
-  };
+const handleDnfSelect = (id: string) => {
+  triggerSelectionHaptic();
+  setDnfDriver(id);
+  // If we're not locked and have both picks, auto-submit after a small delay
+  if (!isLocked && p10Driver) {
+    setTimeout(() => {
+      if (mountedRef.current) {
+        // Pass 'id' directly to avoid closure/stale state issues
+        performSubmit(p10Driver, id);
+      }
+    }, 300);
+  }
+};
 
   if (!nextRace && (loadingRace || isAuthLoading)) {
     return <LoadingView />;
