@@ -203,9 +203,9 @@ function LeagueDetailContent() {
                 </div>
               </Col>
               <Col xs={12} md={5} className="text-md-end">
-                <div className="d-inline-flex align-items-center gap-2 bg-dark p-1 rounded border border-secondary shadow-sm">
-                  <code className="ps-3 text-white fw-bold letter-spacing-1" style={{ fontSize: '0.9rem' }}>{inviteCode}</code>
-                  <HapticButton variant="danger" size="sm" className="rounded px-3 fw-bold text-uppercase" style={{ fontSize: '0.7rem' }} onClick={handleShare}>
+                <div className="d-inline-flex align-items-center gap-2 bg-dark p-1 rounded-pill border border-secondary shadow-sm ps-3">
+                  <code className="text-white fw-bold letter-spacing-1" style={{ fontSize: '0.9rem' }}>{inviteCode}</code>
+                  <HapticButton variant="danger" className="rounded-pill px-4 py-2 fw-bold text-uppercase d-flex align-items-center" style={{ fontSize: '0.75rem' }} onClick={handleShare}>
                     SHARE
                   </HapticButton>
                 </div>

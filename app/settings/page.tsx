@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Container, Card, Modal, Spinner, Form, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Card, Modal, Spinner, Form, Badge } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic } from '@/lib/utils/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee } from 'lucide-react';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee, Settings } from 'lucide-react';
 import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
@@ -66,7 +66,19 @@ export default function SettingsPage() {
   return (
     <>
       <Container className="mt-4 mb-5 max-w-md mx-auto" style={{ maxWidth: '600px' }}>
-        <h1 className="h4 fw-bold text-uppercase letter-spacing-1 mb-4 text-white ps-1">Settings & Info</h1>
+        <Row className="mb-4 align-items-center">
+          <Col>
+            <div className="d-flex align-items-center">
+              <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px' }}>
+                <Settings size={24} className="text-white" />
+              </div>
+              <div>
+                <h1 className="h2 mb-0 f1-page-title text-white">Settings</h1>
+                <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>Preferences & Info</small>
+              </div>
+            </div>
+          </Col>
+        </Row>
 
         {isAdmin && (
           <Card className="border-secondary border-opacity-25 shadow-sm bg-dark mb-4">
