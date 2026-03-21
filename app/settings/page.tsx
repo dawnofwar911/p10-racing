@@ -66,7 +66,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Container className="mt-4 mb-5 max-w-md mx-auto" style={{ maxWidth: '600px' }}>
+      <Container className="mt-4 mb-4 max-w-md mx-auto" style={{ maxWidth: '600px' }}>
         <StandardPageHeader
           title="Settings"
           subtitle="Preferences & Info"
@@ -209,7 +209,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <div className="text-center mt-5 mb-4">
+          <div className="text-center mt-4 mb-2">
             <Image src="/logo.svg" alt="P10 Logo" width={40} height={40} className="mb-2 opacity-50" />
             <p className="text-white opacity-25 small fw-bold letter-spacing-1 mb-1">
               P10 RACING

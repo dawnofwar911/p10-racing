@@ -536,29 +536,29 @@ function PredictPage() {
               <Row className="text-start justify-content-center">
                 <Col lg={8} className="mb-4">
                   <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
-                    <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">
+                    <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1">
                       Your Selection {isLocked && '🔒'}
                     </h3>
                     {hasPicks ? (
-                      <Row className="g-3">
-                        <Col sm={6}>
-                          <div className="p-3 border border-secondary rounded bg-dark">
-                            <div className="text-muted small text-uppercase mb-1" style={{ fontSize: '0.65rem' }}>P10 Finisher</div>
-                            <div className="h4 mb-0 text-white fw-bold">{getDriverDisplayName(p10Driver, drivers)}</div>
+                      <Row className="g-2">
+                        <Col xs={12} sm={6}>
+                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
+                            <small className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem' }}>P10</small>
+                            <span className="text-white fw-bold">{getDriverDisplayName(p10Driver, drivers)}</span>
                           </div>
                         </Col>
-                        <Col sm={6}>
-                          <div className="p-3 border border-secondary rounded bg-dark">
-                            <div className="text-muted small text-uppercase mb-1" style={{ fontSize: '0.65rem' }}>First DNF</div>
-                            <div className="h4 mb-0 text-danger fw-bold">{getDriverDisplayName(dnfDriver, drivers)}</div>
+                        <Col xs={12} sm={6}>
+                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
+                            <small className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem' }}>DNF</small>
+                            <span className="text-danger fw-bold">{getDriverDisplayName(dnfDriver, drivers)}</span>
                           </div>
                         </Col>
                       </Row>
-                    ) : <p className="text-warning">No prediction submitted.</p>}
+                    ) : <p className="text-warning small mb-0">No prediction submitted.</p>}
                     
                     {!isSeasonFinished && hasPicks && (
-                      <div className="mt-4 pt-2">
-                        <HapticButton variant="success" className="w-100 py-2 fw-bold shadow-sm" onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
+                      <div className="mt-4">
+                        <HapticButton variant="success" className="w-100 py-2 fw-bold shadow-sm rounded-pill small" onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
                       </div>
                     )}
                   </div>
@@ -567,12 +567,22 @@ function PredictPage() {
                 {isLocked && (
                   <Col lg={8} className="mb-4">
                     <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
-                      <h3 className="h5 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger">Community</h3>
+                      <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1">Community</h3>
                       {communityPredictions.length > 0 ? (
                         <div className="table-responsive">
                           <table className="table table-dark table-hover mb-0 small">
-                            <thead><tr className="text-muted"><th>Player</th><th>P10</th><th>DNF</th></tr></thead>
-                            <tbody>{communityPredictions.map((pred, idx) => (<tr key={idx}><td className="text-white fw-bold">{pred.username}</td><td>{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</td><td className="text-danger">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</td></tr>))}</tbody>
+                            <thead><tr className="text-muted extra-small text-uppercase opacity-50"><th>Player</th><th className="text-center">P10</th><th className="text-center">DNF</th></tr></thead>
+                            <tbody>{communityPredictions.map((pred, idx) => (
+                              <tr key={idx} className="align-middle">
+                                <td className="text-white fw-bold py-2">{pred.username}</td>
+                                <td className="text-center">
+                                  <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
+                                </td>
+                                <td className="text-center">
+                                  <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
+                                </td>
+                              </tr>
+                            ))}</tbody>
                           </table>
                         </div>
                       ) : <p className="text-muted small">Only you so far!</p>}

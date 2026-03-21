@@ -471,21 +471,21 @@ export default function Home() {
                   <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
                     Your {nextRace.name} Picks {isLocked && '🔒'}
                   </h3>
-                  <div className="d-flex justify-content-center gap-4 mb-3">
-                    <div>
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-                      <span className="fw-bold text-white h6 mb-0">
+                  <div className="d-flex flex-column gap-2 mb-3">
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                      <span className="fw-bold text-white small">
                         {getDriverDisplayName(userPrediction.p10, allDrivers)}
                       </span>
                     </div>
-                    <div className="border-start border-secondary border-opacity-25 ps-4">
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-                      <span className="fw-bold text-danger h6 mb-0">
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-between">
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                      <span className="fw-bold text-danger small">
                         {getDriverDisplayName(userPrediction.dnf, allDrivers)}
                       </span>
                     </div>
                   </div>
-                  <HapticButton variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
+                  <HapticButton variant="success" size="sm" className="rounded-pill px-4 fw-bold w-100 py-2 small" onClick={handleShare}>
                     SHARE PICKS ↗
                   </HapticButton>
                 </motion.div>
