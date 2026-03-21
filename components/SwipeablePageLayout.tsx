@@ -99,24 +99,23 @@ export default function SwipeablePageLayout<T extends string>({
       </div>
 
       {/* 3. Swipeable Content Area */}
-      <div className="position-relative" style={{ minHeight: '400px' }}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.15}
-            onDragEnd={swipeHandlers.onDragEnd}
-            className="w-100"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.15}
+          onDragEnd={swipeHandlers.onDragEnd}
+          className="w-100 flex-grow-1 d-flex flex-column"
+          style={{ minHeight: 'calc(100vh - 250px)' }}
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
     </Container>
   );
 
