@@ -7,7 +7,6 @@ import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, 
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic, triggerSelectionHaptic } from '@/lib/utils/haptics';
-import { getContrastColor } from '@/lib/utils/colors';
 import { createClient } from '@/lib/supabase/client';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -22,6 +21,8 @@ import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorage
 import { useAuth } from '@/components/AuthProvider';
 import { sessionTracker } from '@/lib/utils/session';
 import HapticButton from '@/components/HapticButton';
+import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
+import { LayoutGrid, Target, Flame } from 'lucide-react';
 
 interface PredictRace {
   id: string;
@@ -43,6 +44,8 @@ interface CommunityPredictionData {
   p10_driver_id: string;
   dnf_driver_id: string;
 }
+
+type PredictTab = 'grid' | 'p10' | 'dnf';
 
 function PredictPage() {
   const supabase = createClient();
@@ -106,6 +109,8 @@ function PredictPage() {
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<PredictTab>('p10');
+
   // Lifecycle status
   useEffect(() => {
     mountedRef.current = true;
@@ -130,8 +135,11 @@ function PredictPage() {
           cachedRace = JSON.parse(cachedRaceStr) as PredictRace;
           const cachedGrid = localStorage.getItem(getGridKey(cachedRace.round));
           if (cachedGrid) {
-            setStartingGrid(JSON.parse(cachedGrid));
-            hasCachedGrid = true;
+            const parsedGrid = JSON.parse(cachedGrid);
+            setStartingGrid(parsedGrid);
+            hasCachedGrid = parsedGrid.length > 0;
+            // If we have a grid, default to grid tab, otherwise keep p10
+            if (hasCachedGrid) setActiveTab('grid');
           }
 
           const cachedCommunity = localStorage.getItem(getCommunityKey(cachedRace.round));
@@ -145,8 +153,6 @@ function PredictPage() {
     const isFirstView = sessionTracker.isFirstView('predict', fingerprint);
     const hasData = (nextRace || cachedRace) && (drivers.length >= 20) && (startingGrid.length > 0 || hasCachedGrid);
     
-    // Skip full background fetch if we've already synced this page for this user AND have data
-    // EXCEPT if we are missing the current user's predictions in state
     if (!isFirstView && hasData && p10Driver && dnfDriver) {
       if (mountedRef.current) setLoadingRace(false);
       return;
@@ -223,10 +229,10 @@ function PredictPage() {
           if (mountedRef.current) {
             setStartingGrid(finalGrid);
             localStorage.setItem(getGridKey(currentRace.round), JSON.stringify(finalGrid));
+            if (finalGrid.length > 0 && !hasCachedGrid) setActiveTab('grid');
           }
 
-          // Fetch User Prediction - Only if we don't have picks or it's the first view
-          // And NEVER if the user is currently editing
+          // Fetch User Prediction
           if (!isEditing) {
             let finalP10 = '';
             let finalDnf = '';
@@ -355,11 +361,11 @@ function PredictPage() {
       const parsed = JSON.parse(finalized);
       setP10Driver(parsed.p10);
       setDnfDriver(parsed.dnf);
-      setIsEditing(false); // Switch to summary if they already have picks
+      setIsEditing(false);
     } else {
       setP10Driver('');
       setDnfDriver('');
-      setIsEditing(true); // Switch to editing if they don't
+      setIsEditing(true);
     }
   };
 
@@ -391,11 +397,20 @@ function PredictPage() {
       await Share.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app/predict', dialogTitle: 'Share your Picks' });
     } catch (error) {
       console.log('Share dismissed or failed:', error);
-      // Only fallback to clipboard on web where native sharing might be missing
       if (!Capacitor.isNativePlatform() && !navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app/predict');
         showNotification('Picks copied to clipboard!', 'success');
       }
+    }
+  };
+
+  const handleP10Select = (id: string) => {
+    triggerSelectionHaptic();
+    setP10Driver(id);
+    if (!isEditing) {
+      setTimeout(() => {
+        if (mountedRef.current) setActiveTab('dnf');
+      }, 300);
     }
   };
 
@@ -406,18 +421,14 @@ function PredictPage() {
   // Pre-auth selection summary check
   const getGuestSelection = () => {
     if (typeof window === 'undefined' || !nextRace) return null;
-    
     try {
       const players: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
       for (const player of players) {
         const key = getPredictionKey(CURRENT_SEASON, player, nextRace.id);
         const val = localStorage.getItem(key);
-        if (val) {
-          return JSON.parse(val) as CommunityPrediction;
-        }
+        if (val) return JSON.parse(val) as CommunityPrediction;
       }
     } catch { return null; }
-    
     return null;
   };
   const guestSelection = getGuestSelection();
@@ -496,42 +507,40 @@ function PredictPage() {
   const hasPicks = p10Driver && dnfDriver;
   const showSummary = (submitted || hasPicks) && !isEditing;
 
+  const tabs: TabOption<PredictTab>[] = [];
+  if (startingGrid.length > 0) {
+    tabs.push({ id: 'grid', label: 'Grid', icon: <LayoutGrid size={16} /> });
+  }
+  tabs.push({ id: 'p10', label: 'Pick P10', icon: <Target size={16} /> });
+  tabs.push({ id: 'dnf', label: 'Pick DNF', icon: <Flame size={16} /> });
+
   return (
     <>
-      <Container className="mt-4 mb-3 user-select-none">
-        <Row className="mb-4 align-items-center">
-          <Col xs={12} md="auto" className="mb-2 mb-md-0 me-auto">
-            <div className="d-flex align-items-center gap-3">
-              <h1 className="h2 mb-1 fw-bold text-uppercase text-truncate">{nextRace?.name}</h1>
-              <HowToPlayButton onClick={() => { triggerLightHaptic(); setShowHowToPlay(true); }} />
-            </div>
-            <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
-          </Col>
-          <Col xs="auto" className="d-flex gap-2 ms-auto">
+      <SwipeablePageLayout
+        title={nextRace?.name || 'Grand Prix'}
+        subtitle={session ? `Logged in as: ${username}` : `Playing as Guest: ${username}`}
+        icon={<Target size={24} className="text-white" />}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        tabs={tabs}
+        onRefresh={() => init()}
+        rightElement={
+          <div className="d-flex gap-2 align-items-center">
             {isEditing && (
-              <HapticButton 
-                variant="outline-danger" 
-                size="sm" 
-                onClick={() => { setIsEditing(false); }} 
-                className="rounded-pill px-3 fw-bold"
-              >
-                Cancel
-              </HapticButton>
+              <HapticButton variant="outline-danger" size="sm" onClick={() => setIsEditing(false)} className="rounded-pill px-3 fw-bold small">Cancel</HapticButton>
             )}
-            {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</HapticButton>)}
-          </Col>
-        </Row>
-
+            {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill small">Switch</HapticButton>)}
+            <HowToPlayButton onClick={() => { triggerLightHaptic(); setShowHowToPlay(true); }} />
+          </div>
+        }
+      >
         {showSummary || isLocked ? (
-          <div className="text-center">
-            <Card className={`p-4 p-md-5 border-${isLocked ? 'danger' : 'success'} bg-dark mb-4 shadow`}>
-              <div className="display-4 mb-3">{isSeasonFinished ? '🏆' : (isLocked ? '🔒' : '✅')}</div>
-              <h2 className="mb-4 fw-bold">
+          <div className="text-center mt-3">
+            <Card className={`p-4 border-${isLocked ? 'danger' : 'success'} bg-dark mb-4 shadow-sm`}>
+              <div className="display-6 mb-2">{isSeasonFinished ? '🏆' : (isLocked ? '🔒' : '✅')}</div>
+              <h2 className="h4 mb-3 fw-bold">
                 {isSeasonFinished ? 'Season Finished' : (isLocked ? 'Predictions Closed' : (submitted ? 'Locked and Loaded!' : 'Current Picks'))}
               </h2>
-              <p className="lead mb-4 text-muted">
-                {isSeasonFinished ? `The ${CURRENT_SEASON} season has concluded.` : (isLocked ? `The ${nextRace?.name} is underway. Good luck!` : `Good luck for the ${nextRace?.name}, ${username}!`)}
-              </p>
               
               <Row className="text-start justify-content-center">
                 <Col lg={8} className="mb-4">
@@ -540,20 +549,16 @@ function PredictPage() {
                       Your Selection {isLocked && '🔒'}
                     </h3>
                     {hasPicks ? (
-                      <Row className="g-2 justify-content-center">
-                        <Col xs={12} sm="auto">
-                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '180px' }}>
-                            <small className="text-muted text-uppercase fw-bold me-3" style={{ fontSize: '0.55rem' }}>P10</small>
-                            <span className="text-white fw-bold small">{getDriverDisplayName(p10Driver, drivers)}</span>
-                          </div>
-                        </Col>
-                        <Col xs={12} sm="auto">
-                          <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '180px' }}>
-                            <small className="text-muted text-uppercase fw-bold me-3" style={{ fontSize: '0.55rem' }}>DNF</small>
-                            <span className="text-danger fw-bold small">{getDriverDisplayName(dnfDriver, drivers)}</span>
-                          </div>
-                        </Col>
-                      </Row>
+                      <div className="d-flex flex-column gap-2 mb-3 align-items-center">
+                        <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '220px', width: 'fit-content' }}>
+                          <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>P10</small>
+                          <span className="text-white fw-bold small">{getDriverDisplayName(p10Driver, drivers)}</span>
+                        </div>
+                        <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '220px', width: 'fit-content' }}>
+                          <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>DNF</small>
+                          <span className="text-danger fw-bold small">{getDriverDisplayName(dnfDriver, drivers)}</span>
+                        </div>
+                      </div>
                     ) : <p className="text-warning small mb-0">No prediction submitted.</p>}
                     
                     {!isSeasonFinished && hasPicks && (
@@ -593,121 +598,100 @@ function PredictPage() {
             </Card>
             <div className="d-flex justify-content-center gap-3">
               {!isLocked && (
-                <HapticButton 
-                  variant="outline-danger" 
-                  size="lg" 
-                  onClick={() => { setIsEditing(true); }} 
-                  className="px-5 fw-bold"
-                >
+                <HapticButton variant="outline-danger" size="lg" onClick={() => { setIsEditing(true); setActiveTab('p10'); }} className="px-5 fw-bold rounded-pill">
                   Change Picks
                 </HapticButton>
               )}
-              <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5 fw-bold">Back Home</HapticButton></Link>
+              <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5 fw-bold rounded-pill">Back Home</HapticButton></Link>
             </div>
           </div>
         ) : (
-          <>
-            {startingGrid.length > 0 && (
+          <div className="mt-3">
+            {activeTab === 'grid' && startingGrid.length > 0 && (
               <Row className="mb-4">
                 <Col>
                   <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm overflow-hidden">
                     <Card.Header className="bg-dark border-secondary py-2 d-flex justify-content-between align-items-center">
-                      <div className="d-flex align-items-center gap-2">
-                        <h3 className="h6 mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Starting Grid</h3>
-                      </div>
+                      <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-1" style={{ fontSize: '0.65rem' }}>Starting Grid</h3>
                       <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
                     </Card.Header>
-                    <Card.Body className="p-2 bg-black bg-opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 1px, transparent 1px, transparent 10px)', minHeight: '200px' }}>
-                      <div className="position-relative py-2 px-1">
-                        <div className="mb-3 pb-2 border-bottom border-secondary border-opacity-50 text-center">
-                          <span className="extra-small fw-bold text-muted text-uppercase letter-spacing-2" style={{ fontSize: '0.55rem' }}>START / FINISH LINE</span>
-                        </div>
-                        <div className="position-absolute start-50 top-0 bottom-0 border-start border-secondary border-opacity-20 d-none d-sm-block" style={{ transform: 'translateX(-50%)', borderStyle: 'dashed !important' }}></div>
-                        <div className="row g-2">
-                          {startingGrid.map((result) => {
-                            const pos = parseInt(result.position);
-                            const isLeft = pos % 2 !== 0;
-                            const isP10 = result.position === "10";
-                            const driverInfo = drivers.find(d => d.id === result.Driver.driverId);
-                            const teamColor = driverInfo?.color || '#B6BABD';
-                            return (
-                              <div key={result.Driver.driverId} className="col-6 mb-1">
-                                <div className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(12px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
-                                  <div style={{ height: '3px', backgroundColor: teamColor }}></div>
-                                  <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
-                                    <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
-                                    <div className="flex-grow-1 overflow-hidden">
-                                      <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
-                                      <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
-                                    </div>
-                                    {isP10 && (<div className="ms-1"><span style={{ fontSize: '0.6rem' }}>🎯</span></div>)}
+                    <Card.Body className="p-2 bg-black bg-opacity-40">
+                      <div className="row g-2">
+                        {startingGrid.map((result) => {
+                          const pos = parseInt(result.position);
+                          const isLeft = pos % 2 !== 0;
+                          const isP10 = result.position === "10";
+                          const driverInfo = drivers.find(d => d.id === result.Driver.driverId);
+                          const teamColor = driverInfo?.color || '#B6BABD';
+                          return (
+                            <div key={result.Driver.driverId} className="col-6">
+                              <div className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
+                                <div style={{ height: '3px', backgroundColor: teamColor }}></div>
+                                <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
+                                  <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
+                                  <div className="flex-grow-1 overflow-hidden">
+                                    <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
+                                    <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
                                   </div>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </Card.Body>
                   </Card>
                 </Col>
               </Row>
             )}
-            
-            <Form onSubmit={handleSubmit}>
-              <Row className="g-3">
-                <Col md={6}>
-                  <Card className="shadow-sm border-secondary mb-3">
-                    <Card.Body className="p-3">
-                      <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">P10 Finisher</h3>
-                      <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
-                        {drivers.map((driver) => (
-                          <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { triggerSelectionHaptic(); setP10Driver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                            <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                            <div className="flex-grow-1">
-                              <div className="fw-bold text-white">{driver.name}</div>
-                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span>
-                            </div>
-                            {p10Driver === driver.id && <div className="text-danger">●</div>}
-                          </div>
-                        ))}
+
+            {activeTab === 'p10' && (
+              <div className="mx-auto" style={{ maxWidth: '500px' }}>
+                <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase letter-spacing-1">P10 Finisher</h3>
+                <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
+                  {drivers.map((driver) => (
+                    <div key={`p10-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${p10Driver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => handleP10Select(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+                      <div className="driver-number ms-3 me-3 text-white fw-bold" style={{ width: '25px', fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</div>
+                      <div className="flex-grow-1">
+                        <div className="fw-bold text-white small">{driver.name}</div>
+                        <div className="text-muted extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
                       </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-                <Col md={6}>
-                  <Card className="shadow-sm border-secondary mb-3">
-                    <Card.Body className="p-3">
-                      <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase">First DNF</h3>
-                      <div className="driver-list-scroll" style={{ maxHeight: '450px', minHeight: '450px', overflowY: 'auto', paddingRight: '8px', overscrollBehavior: 'contain' }}>
-                        {drivers.map((driver) => (
-                          <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-3 mb-2 rounded border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-25 shadow-sm' : 'border-secondary opacity-75'}`} onClick={() => { triggerSelectionHaptic(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-                            <div className="driver-number me-3 text-white fw-bold" style={{ width: '30px', fontSize: '1.2rem' }}>{driver.number}</div>
-                            <div className="flex-grow-1">
-                              <div className="fw-bold text-white">{driver.name}</div>
-                              <span className="team-pill" style={{ backgroundColor: driver.color, color: getContrastColor(driver.color), fontSize: '0.6rem' }}>{driver.team}</span>
-                            </div>
-                            {dnfDriver === driver.id && <div className="text-danger">●</div>}
-                          </div>
-                        ))}
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
-              <div className="d-grid gap-2 mt-4">
-                <HapticButton hapticStyle="heavy" type="submit" size="lg" className="btn-f1 py-3 fw-bold shadow-sm" disabled={!p10Driver || !dnfDriver}>
-                  LOCK IN PREDICTION
-                </HapticButton>
+                      {p10Driver === driver.id && <div className="text-danger me-3">●</div>}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </Form>
-          </>
+            )}
+
+            {activeTab === 'dnf' && (
+              <div className="mx-auto" style={{ maxWidth: '500px' }}>
+                <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase letter-spacing-1">First DNF</h3>
+                <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
+                  {drivers.map((driver) => (
+                    <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => { triggerSelectionHaptic(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+                      <div className="driver-number ms-3 me-3 text-white fw-bold" style={{ width: '25px', fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</div>
+                      <div className="flex-grow-1">
+                        <div className="fw-bold text-white small">{driver.name}</div>
+                        <div className="text-muted extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
+                      </div>
+                      {dnfDriver === driver.id && <div className="text-danger me-3">●</div>}
+                    </div>
+                  ))}
+                </div>
+                <div className="d-grid gap-2 mt-4">
+                  <HapticButton hapticStyle="heavy" type="button" size="lg" className="btn-f1 py-3 fw-bold shadow-sm rounded-pill" disabled={!p10Driver || !dnfDriver} onClick={handleSubmit}>
+                    LOCK IN PREDICTION
+                  </HapticButton>
+                </div>
+              </div>
+            )}
+          </div>
         )}
-      </Container>
+      </SwipeablePageLayout>
 
       <Modal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} centered size="lg" contentClassName="bg-dark border-secondary">
         <Modal.Header closeButton closeVariant="white" className="border-secondary">
-          <Modal.Title className="fw-bold text-uppercase letter-spacing-1">How to <span className="text-danger">Play</span></Modal.Title>
+          <Modal.Title className="fw-bold text-uppercase letter-spacing-1 fs-5">How to <span className="text-danger">Play</span></Modal.Title>
         </Modal.Header>
         <Modal.Body className="px-4 py-4">
           <section className="mb-4">
@@ -716,21 +700,14 @@ function PredictPage() {
           </section>
           <section className="mb-4">
             <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-3">Scoring: P10 Finisher</h3>
-            <p className="text-white opacity-75 extra-small mb-3">Points are awarded based on how close your pick is to 10th place:</p>
             <div className="bg-black bg-opacity-50 border border-secondary border-opacity-25 rounded overflow-hidden">
               <table className="table table-dark table-sm mb-0 extra-small">
                 <thead><tr className="text-uppercase opacity-50" style={{ fontSize: '0.6rem' }}><th className="ps-3 py-2">Actual Finish</th><th className="pe-3 py-2 text-end">Points</th></tr></thead>
                 <tbody>
                   <tr className="table-active fw-bold"><td className="ps-3 py-1">P10 (Exact)</td><td className="pe-3 py-1 text-end text-danger">25</td></tr>
-                  <tr><td className="ps-3 py-1">P9 or P11</td><td className="pe-3 py-1 text-end">18</td></tr>
-                  <tr><td className="ps-3 py-1">P8 or P12</td><td className="pe-3 py-1 text-end">15</td></tr>
-                  <tr><td className="ps-3 py-1">P7 or P13</td><td className="pe-3 py-1 text-end">12</td></tr>
-                  <tr><td className="ps-3 py-1">P6 or P14</td><td className="pe-3 py-1 text-end">10</td></tr>
-                  <tr><td className="ps-3 py-1">P5 or P15</td><td className="pe-3 py-1 text-end">8</td></tr>
-                  <tr><td className="ps-3 py-1">P4 or P16</td><td className="pe-3 py-1 text-end">6</td></tr>
-                  <tr><td className="ps-3 py-1">P3 or P17</td><td className="pe-3 py-1 text-end">4</td></tr>
-                  <tr><td className="ps-3 py-1">P2 or P18</td><td className="pe-3 py-1 text-end">2</td></tr>
-                  <tr><td className="ps-3 py-1">P1 or P19+</td><td className="pe-3 py-1 text-end">1</td></tr>
+                  {['18', '15', '12', '10', '8', '6', '4', '2', '1'].map((pts, i) => (
+                    <tr key={pts}><td className="ps-3 py-1">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td><td className="pe-3 py-1 text-end">{pts}</td></tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -741,7 +718,7 @@ function PredictPage() {
           </section>
         </Modal.Body>
         <Modal.Footer className="border-secondary">
-          <HapticButton variant="danger" className="w-100 fw-bold py-2" onClick={() => setShowHowToPlay(false)}>GOT IT</HapticButton>
+          <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill" onClick={() => setShowHowToPlay(false)}>GOT IT</HapticButton>
         </Modal.Footer>
       </Modal>
     </>

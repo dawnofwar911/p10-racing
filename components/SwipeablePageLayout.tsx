@@ -27,6 +27,7 @@ interface SwipeablePageLayoutProps<T extends string> {
   onRefresh?: () => Promise<void>;
   badge?: ReactNode;
   onBack?: () => void;
+  rightElement?: ReactNode;
 }
 
 /**
@@ -43,7 +44,8 @@ export default function SwipeablePageLayout<T extends string>({
   children,
   onRefresh,
   badge,
-  onBack
+  onBack,
+  rightElement
 }: SwipeablePageLayoutProps<T>) {
   
   const handleTabChange = (tabId: T) => {
@@ -78,6 +80,7 @@ export default function SwipeablePageLayout<T extends string>({
         icon={icon}
         badge={badge}
         onBack={onBack}
+        rightElement={rightElement}
       />
 
       {/* 2. Standardized F1 Tab Switcher */}
