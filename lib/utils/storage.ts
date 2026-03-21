@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   CACHE_STANDINGS: 'p10_cache_standings',
   CACHE_CONSTRUCTORS: 'p10_cache_constructors',
   CACHE_LEADERBOARD: 'p10_cache_leaderboard',
+  CACHE_LOCAL_LEADERBOARD: 'p10_cache_local_leaderboard',
   CACHE_LEAGUES: 'p10_cache_leagues',
   IS_ADMIN: 'p10_is_admin',
   SYNC_QUEUE: 'p10_sync_queue',
