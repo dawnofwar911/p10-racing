@@ -174,7 +174,7 @@ export default function SettingsPage() {
         <h2 className="small fw-bold text-uppercase text-muted letter-spacing-1 mb-2 ps-1">Support & Legal</h2>
         <Card className="border-secondary shadow-sm mb-4">
           <div className="list-group list-group-flush bg-dark rounded">
-            <a href="https://buymeacoffee.com/f1alex" className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
+            <a href="https://buymeacoffee.com/p10racing" className="list-group-item list-group-item-action bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
               <div className="d-flex align-items-center">
                 <Coffee size={18} className="me-3 text-warning" />
                 <span className="fw-bold">Buy me a coffee</span>
