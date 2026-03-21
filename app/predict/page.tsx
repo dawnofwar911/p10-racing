@@ -508,17 +508,6 @@ function PredictPage() {
             <p className="text-muted mb-0">{session ? 'Logged in as: ' : 'Playing as Guest: '}<strong className="text-white">{username}</strong></p>
           </Col>
           <Col xs="auto" className="d-flex gap-2 ms-auto">
-            {!isLocked && (
-              <HapticButton 
-                variant={showSummary ? "outline-danger" : "outline-success"} 
-                size="sm" 
-                onClick={() => { setIsEditing(!isEditing); }} 
-                className="rounded-pill px-3 fw-bold"
-                disabled={!showSummary && !hasPicks}
-              >
-                {showSummary ? 'Change Picks' : (hasPicks ? 'View Summary' : 'Cancel')}
-              </HapticButton>
-            )}
             {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill">Switch Guest</HapticButton>)}
           </Col>
         </Row>
@@ -583,6 +572,16 @@ function PredictPage() {
               </Row>
             </Card>
             <div className="d-flex justify-content-center gap-3">
+              {!isLocked && (
+                <HapticButton 
+                  variant="outline-light" 
+                  size="lg" 
+                  onClick={() => { setIsEditing(true); }} 
+                  className="px-4"
+                >
+                  Change Picks
+                </HapticButton>
+              )}
               <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5">Back Home</HapticButton></Link>
             </div>
           </div>
