@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import BugReportModal from './BugReportModal';
 import { triggerMediumHaptic } from '@/lib/utils/haptics';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 /**
  * Global component that listens for shake events and navigation changes
@@ -22,6 +23,10 @@ export default function GlobalBugTrigger() {
 
   useEffect(() => {
     const handleShake = () => {
+      // Respect the user preference for shake to report
+      const stored = localStorage.getItem(STORAGE_KEYS.SHAKE_TO_REPORT_ENABLED);
+      if (stored === 'false') return;
+
       if (!showModal) {
         triggerMediumHaptic();
         setShowModal(true);
