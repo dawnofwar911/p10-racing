@@ -25,7 +25,7 @@ export default function StandingsPage() {
   });
 
   const [loading, setLoading] = useState(!standings.length && !constructorStandings.length);
-  const [activeView, setActiveView] = useState<'drivers' | 'constructors'>('drivers');
+  const [view, setView] = useState<'drivers' | 'constructors'>('drivers');
 
   async function load(quiet = false) {
     if (!quiet) setLoading(true);
@@ -59,14 +59,83 @@ export default function StandingsPage() {
     }
   }, [standings.length, constructorStandings.length]);
 
+  const DriversTable = () => (
+    <div className="table-responsive rounded border border-secondary shadow-sm">
+      <Table variant="dark" hover className="mb-0">
+        <thead>
+          <tr className="f1-table-header">
+            <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
+            <th className="py-3">Driver</th>
+            <th className="py-3">Team</th>
+            <th className="text-end py-3" style={{ width: '80px' }}>PTS</th>
+            <th className="text-end pe-4 py-3" style={{ width: '80px' }}>No.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.map((d, i) => (
+            <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }}>
+              <td className="ps-4 fw-bold text-muted">{i + 1}</td>
+              <td className="fw-bold text-white fs-5 text-nowrap">
+                <div className="d-flex align-items-center">
+                  <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: d.color }}></div>
+                  {d.name}
+                </div>
+              </td>
+              <td className="text-nowrap">
+                <span className="team-pill" style={{ 
+                  backgroundColor: d.color, 
+                  color: getContrastColor(d.color),
+                  fontSize: '0.6rem' 
+                }}>
+                  {d.team}
+                </span>
+              </td>
+              <td className="text-end f1-total-points">{d.points}</td>
+              <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>{d.number}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  );
+
+  const ConstructorsTable = () => (
+    <div className="table-responsive rounded border border-secondary shadow-sm">
+      <Table variant="dark" hover className="mb-0">
+        <thead>
+          <tr className="f1-table-header">
+            <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
+            <th className="py-3">Team</th>
+            <th className="text-end pe-4 py-3" style={{ width: '80px' }}>PTS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {constructorStandings.map((c, i) => (
+            <tr key={c.id} style={{ height: '70px', verticalAlign: 'middle' }}>
+              <td className="ps-4 fw-bold text-muted">{i + 1}</td>
+              <td className="fw-bold text-white fs-5 text-nowrap">
+                <div className="d-flex align-items-center">
+                  <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: c.color }}></div>
+                  {c.name}
+                </div>
+              </td>
+              <td className="text-end f1-total-points pe-4">{c.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  );
+
   return (
     <SwipeablePageLayout
       title="World Championship"
-      subtitle={activeView === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}
+      subtitle={view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}
       icon={<Flag size={24} className="text-white" />}
-      activeTab={activeView}
-      onTabChange={setActiveView}
+      activeTab={view}
+      onTabChange={setView}
       onRefresh={() => load(true)}
+      splitOnWide={true}
       tabs={[
         { id: 'drivers', label: 'Drivers', icon: <Users size={16} /> },
         { id: 'constructors', label: 'Constructors', icon: <Trophy size={16} /> }
@@ -77,64 +146,7 @@ export default function StandingsPage() {
           <Spinner animation="border" variant="danger" />
         </div>
       ) : (
-        <div className="table-responsive rounded border border-secondary shadow-sm">
-          <Table variant="dark" hover className="mb-0">
-            <thead>
-              <tr className="f1-table-header">
-                <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
-                <th className="py-3">{activeView === 'drivers' ? 'Driver' : 'Team'}</th>
-                {activeView === 'drivers' && <th className="py-3">Team</th>}
-                <th className={`text-end py-3 ${activeView === 'constructors' ? 'pe-4' : ''}`} style={{ width: '80px' }}>PTS</th>
-                {activeView === 'drivers' && <th className="text-end pe-4 py-3" style={{ width: '80px' }}>No.</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {activeView === 'drivers' ? (
-                standings.map((d, i) => (
-                  <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }}>
-                    <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                    <td className="fw-bold text-white fs-5 text-nowrap">
-                      <div className="d-flex align-items-center">
-                        <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: d.color }}></div>
-                        {d.name}
-                      </div>
-                    </td>
-                    <td className="text-nowrap">
-                      <span className="team-pill" style={{ 
-                        backgroundColor: d.color, 
-                        color: getContrastColor(d.color),
-                        fontSize: '0.6rem' 
-                      }}>
-                        {d.team}
-                      </span>
-                    </td>
-                    <td className="text-end f1-total-points">
-                      {d.points}
-                    </td>
-                    <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>
-                      {d.number}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                constructorStandings.map((c, i) => (
-                  <tr key={c.id} style={{ height: '70px', verticalAlign: 'middle' }}>
-                    <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                    <td className="fw-bold text-white fs-5 text-nowrap">
-                      <div className="d-flex align-items-center">
-                        <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: c.color }}></div>
-                        {c.name}
-                      </div>
-                    </td>
-                    <td className="text-end f1-total-points pe-4">
-                      {c.points}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </Table>
-        </div>
+        view === 'drivers' ? <DriversTable /> : <ConstructorsTable />
       )}
     </SwipeablePageLayout>
   );

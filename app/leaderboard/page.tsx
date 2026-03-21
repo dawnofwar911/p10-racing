@@ -156,6 +156,7 @@ export default function LeaderboardPage() {
       activeTab={view}
       onTabChange={setView}
       onRefresh={() => calculate(true)}
+      splitOnWide={true}
       badge={isSeasonComplete && <Badge bg="warning" text="dark" className="rounded-pill fw-bold" style={{ fontSize: '0.6rem' }}>FINAL</Badge>}
       tabs={[
         { id: 'global', label: 'Global', icon: <Globe size={16} /> },

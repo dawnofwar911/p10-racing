@@ -97,9 +97,9 @@ export default function HistoryPage() {
             <Spinner animation="border" variant="danger" />
           </div>
         ) : (
-          <Row>
+          <Row className="g-4">
             {history.map(race => (
-              <Col md={6} lg={4} key={race.round} className="mb-4">
+              <Col xs={12} md={6} xl={4} key={race.round}>
                 <Card className="h-100 border-secondary shadow-sm overflow-hidden" style={{ borderLeft: '4px solid var(--f1-red)' }}>
                   <Card.Header className="bg-dark border-secondary d-flex justify-content-between align-items-center py-3">
                     <span className="fw-bold text-danger">ROUND {race.round}</span>
