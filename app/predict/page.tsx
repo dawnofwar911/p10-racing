@@ -728,9 +728,8 @@ function PredictPage() {
                     </div>
                     <div className="flex-grow-1">
                       <div className="fw-bold text-white small">{driver.name}</div>
-                      <div className="text-muted extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
-                    </div>
-                    {p10Driver === driver.id && <div className="text-danger me-3">●</div>}
+                      <div className="extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem', color: driver.color }}>{driver.team}</div>
+                    </div>                    {p10Driver === driver.id && <div className="text-danger me-3">●</div>}
                   </div>
                 ))}              </div>
             </div>
@@ -748,9 +747,8 @@ function PredictPage() {
                     </div>
                     <div className="flex-grow-1">
                       <div className="fw-bold text-white small">{driver.name}</div>
-                      <div className="text-muted extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
-                    </div>
-                    {dnfDriver === driver.id && <div className="text-danger me-3">●</div>}
+                      <div className="extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem', color: driver.color }}>{driver.team}</div>
+                    </div>                    {dnfDriver === driver.id && <div className="text-danger me-3">●</div>}
                   </div>
                 ))}              </div>
               <div className="d-grid gap-2 mt-4">
