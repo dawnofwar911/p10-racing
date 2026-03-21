@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Offcanvas, Button } from 'react-bootstrap';
+import { Offcanvas } from 'react-bootstrap';
 import Link from 'next/link';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { Settings, LogOut, ShieldAlert, History, LogIn, User } from 'lucide-react';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
+import { Settings, LogOut, ShieldAlert, History, LogIn, User, Coffee } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
+import HapticButton from './HapticButton';
 
 interface UserDrawerProps {
   show: boolean;
@@ -17,12 +18,8 @@ interface UserDrawerProps {
 }
 
 export default function UserDrawer({ show, onHide, currentUser, session, isAdmin, onLogout }: UserDrawerProps) {
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
-  };
-
   const handleLinkClick = () => {
-    triggerHaptic();
+    triggerLightHaptic();
     onHide();
   };
 
@@ -34,7 +31,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
       className="bg-dark border-start border-secondary text-white user-drawer-offcanvas"
       style={{ width: '300px' }}
     >
-      <Offcanvas.Header closeButton closeVariant="white" className="border-bottom border-secondary border-opacity-50 pb-3">
+      <Offcanvas.Header closeButton closeVariant="white" className="border-bottom border-secondary border-opacity-50 py-4">
         <Offcanvas.Title className="fw-bold text-uppercase letter-spacing-1 h6 mb-0">
           Player Profile
         </Offcanvas.Title>
@@ -64,45 +61,58 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
           <div className="d-flex flex-column gap-2">
             {isAdmin && (
               <Link href="/admin" passHref legacyBehavior>
-                <Button 
+                <HapticButton 
                   variant="outline-warning" 
                   className="w-100 text-start d-flex align-items-center border-0 p-3 rounded"
                   onClick={handleLinkClick}
                 >
                   <ShieldAlert size={20} className="me-3" />
                   <span className="fw-bold letter-spacing-1 text-uppercase small">Admin Panel</span>
-                </Button>
+                </HapticButton>
               </Link>
             )}
 
             <Link href="/history" passHref legacyBehavior>
-              <Button 
+              <HapticButton 
                 variant="outline-light" 
                 className="w-100 text-start d-flex align-items-center border-0 p-3 rounded opacity-75 hover-opacity-100"
                 onClick={handleLinkClick}
               >
                 <History size={20} className="me-3" />
                 <span className="fw-bold letter-spacing-1 text-uppercase small">Season History</span>
-              </Button>
+              </HapticButton>
             </Link>
 
             <Link href="/settings" passHref legacyBehavior>
-              <Button 
+              <HapticButton 
                 variant="outline-light" 
                 className="w-100 text-start d-flex align-items-center border-0 p-3 rounded opacity-75 hover-opacity-100"
                 onClick={handleLinkClick}
               >
                 <Settings size={20} className="me-3" />
                 <span className="fw-bold letter-spacing-1 text-uppercase small">Settings & Info</span>
-              </Button>
+              </HapticButton>
             </Link>
           </div>
         </div>
 
         {/* Footer Actions */}
         <div className="p-4 border-top border-secondary border-opacity-25 mt-auto">
+          <HapticButton 
+            href="https://buymeacoffee.com/p10racing"
+            variant="outline-warning" 
+            className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center mb-3 border-secondary border-opacity-50"
+            onClick={onHide}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Coffee size={18} className="me-2" />
+            BUY ME A COFFEE
+          </HapticButton>
+
           {session ? (
-            <Button 
+            <HapticButton 
+              hapticStyle="medium"
               variant="danger" 
               className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center"
               onClick={() => {
@@ -112,17 +122,17 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
             >
               <LogOut size={18} className="me-2" />
               SIGN OUT
-            </Button>
+            </HapticButton>
           ) : (
             <Link href="/auth" passHref legacyBehavior>
-              <Button 
+              <HapticButton 
                 variant="primary" 
                 className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center rounded-pill"
                 onClick={handleLinkClick}
               >
                 <LogIn size={18} className="me-2" />
                 SIGN IN
-              </Button>
+              </HapticButton>
             </Link>
           )}
         </div>

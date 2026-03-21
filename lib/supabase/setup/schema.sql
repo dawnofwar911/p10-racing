@@ -63,6 +63,7 @@ CREATE TABLE public.bug_reports (
   user_id UUID REFERENCES auth.users ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
+  severity TEXT DEFAULT 'Minor',
   device_info JSONB,
   image_url TEXT,
   status TEXT DEFAULT 'open',
@@ -182,12 +183,25 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Trigger for Race Results
 CREATE OR REPLACE FUNCTION public.on_verified_results_published()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_start_time TIMESTAMP WITH TIME ZONE;
+  v_is_recent BOOLEAN;
 BEGIN
-  IF NEW.id LIKE '%_24' THEN
-    PERFORM public.send_broadcast_notification('Season Finale Results!', 'The final results are in! Check the leaderboard to see the season champion.', 'season', '/leaderboard');
-  ELSE
-    PERFORM public.send_broadcast_notification('Race Results Published!', 'The scores for the latest race are now available. See how you performed!', 'race', '/history');
+  -- Get the start time for the race from our races calendar table
+  SELECT start_time INTO v_start_time FROM public.races WHERE id = NEW.id;
+
+  -- Only notify if the results are published within 48 hours of the race start
+  -- or if we don't have a start time yet (safety fallback for manual entry)
+  v_is_recent := (v_start_time IS NULL) OR (now() < (v_start_time + INTERVAL '48 hours'));
+
+  IF v_is_recent THEN
+    IF NEW.id LIKE '%_24' THEN
+      PERFORM public.send_broadcast_notification('Season Finale Results!', 'The final results are in! Check the leaderboard to see the season champion.', 'season', '/leaderboard');
+    ELSE
+      PERFORM public.send_broadcast_notification('Race Results Published!', 'The scores for the latest race are now available. See how you performed!', 'race', '/history');
+    END IF;
   END IF;
+  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

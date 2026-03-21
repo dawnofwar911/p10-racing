@@ -2,15 +2,14 @@
 
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { useRouter } from 'next/navigation';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
 import Link from 'next/link';
-// import AppNavbar from '@/components/AppNavbar'; // Removed
 
 export default function PrivacyPage() {
   const router = useRouter();
 
   const handleBack = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
+    triggerLightHaptic();
     router.back();
   };
 

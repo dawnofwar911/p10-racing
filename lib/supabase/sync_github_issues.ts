@@ -41,15 +41,37 @@ async function sync() {
 
   for (const bug of bugs) {
     const deviceInfo = bug.device_info || {};
+    const storage = deviceInfo.storage_summary || {};
+    
     const body = `
 ### Bug Description
 ${bug.description}
 
 ### Device Info
 - **Platform:** ${deviceInfo.platform || 'unknown'}
-- **App Version:** v${deviceInfo.version || 'unknown'}
-- **User Agent:** ${deviceInfo.userAgent || 'unknown'}
-- **URL:** ${deviceInfo.url || 'unknown'}
+- **App Version:** v${deviceInfo.app_version || 'unknown'}
+- **OS Version:** ${deviceInfo.os_version || 'unknown'}
+- **Device:** ${(deviceInfo.manufacturer ? deviceInfo.manufacturer + ' ' : '') + (deviceInfo.model || 'unknown')}`.trim() + ` ${deviceInfo.is_virtual ? '(Emulator)' : ''}
+- **Screen:** ${deviceInfo.screen || 'unknown'}
+- **Network:** ${deviceInfo.network_status || 'unknown'} (${deviceInfo.connection_type || 'unknown'})
+- **Battery:** ${typeof deviceInfo.battery_level === 'number' ? Math.round(deviceInfo.battery_level * 100) + '%' : 'unknown'} ${deviceInfo.is_charging ? '⚡' : ''}
+- **User Agent:** ${deviceInfo.user_agent || 'unknown'}
+- **Source URL:** ${deviceInfo.source_url || deviceInfo.url || 'unknown'}
+- **Report URL:** ${deviceInfo.url || 'unknown'}
+
+### Storage Diagnostics
+- **Local Keys:** ${storage.total_keys || 0}
+- **Session:** ${storage.has_session ? '✅ Active' : '❌ None'}
+- **Predictions:** ${storage.has_predictions ? '✅ Cached' : '❌ None'}
+- **Drivers:** ${storage.has_drivers ? '✅ Cached' : '❌ None'}
+${storage.all_keys ? `- **All Keys:** \`${storage.all_keys.join(', ')}\`` : ''}
+
+${Array.isArray(deviceInfo.recent_errors) && deviceInfo.recent_errors.length > 0 ? `
+### Recent Console Errors
+\`\`\`
+${deviceInfo.recent_errors.join('\n')}
+\`\`\`
+` : ''}
 
 ### Attachments
 ${bug.image_url ? `![Screenshot](${bug.image_url})` : '*No screenshot provided*'}

@@ -70,6 +70,12 @@ Deno.serve(async () => {
     const round = roundToProcess || races[activeIndex].round;
     const upcomingRace = raceToProcess || races[activeIndex];
 
+    // --- NEW: Calculate Recency for Notifications ---
+    const raceTime = new Date(`${upcomingRace.date}T${upcomingRace.time || '00:00:00Z'}`);
+    const fortyEightHoursAgo = new Date(now.getTime() - (48 * 60 * 60 * 1000));
+    const isRecent = raceTime > fortyEightHoursAgo;
+    // --- END RECENCY ---
+
     // --- NEW: Sync Calendar ---
     // Every time we check, let's sync the next few races to the DB to ensure locking works
     const racesToSync = races.slice(activeIndex, activeIndex + 3);
@@ -97,13 +103,17 @@ Deno.serve(async () => {
       const { data: wasMarked } = await supabase.rpc('check_and_mark_notification_sent', { p_id: notificationId });
 
       if (wasMarked) {
-        console.log('Qualifying results found! Sending broadcast...');
-        await supabase.rpc('send_broadcast_notification', {
-          p_title: 'Qualifying Results Are In!',
-          p_body: `The grid for the ${upcomingRace.raceName} is ready. Make your P10 picks now!`,
-          p_type: 'quali',
-          p_url: '/predict'
-        });
+        if (isRecent) {
+          console.log('Qualifying results found! Sending broadcast...');
+          await supabase.rpc('send_broadcast_notification', {
+            p_title: 'Qualifying Results Are In!',
+            p_body: `The grid for the ${upcomingRace.raceName} is ready. Make your P10 picks now!`,
+            p_type: 'quali',
+            p_url: '/predict'
+          });
+        } else {
+          console.log(`Silencing old qualifying notification for ${upcomingRace.raceName}`);
+        }
       }
     }
 
@@ -136,7 +146,13 @@ Deno.serve(async () => {
           return !isFinished && !isLapped && !isDns && hasLaps;
         });
         
-        retirements.sort((a: RaceResultItem, b: RaceResultItem) => parseInt(a.laps) - parseInt(b.laps));
+        retirements.sort((a: RaceResultItem, b: RaceResultItem) => {
+          const lapsA = parseInt(a.laps);
+          const lapsB = parseInt(b.laps);
+          if (lapsA !== lapsB) return lapsA - lapsB;
+          // Tie-breaker: higher position (numeric string) usually means earlier DNF in Ergast
+          return parseInt(b.position) - parseInt(a.position);
+        });
         const firstDnf = retirements[0]?.Driver.driverId || '';
 
         const positions: { [driverId: string]: number } = {};

@@ -3,9 +3,9 @@
 import { Navbar, Nav } from 'react-bootstrap';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { User } from 'lucide-react';
 import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
@@ -17,16 +17,25 @@ export default function AppNavbar() {
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    Haptics.impact({ style: ImpactStyle.Medium });
+    triggerMediumHaptic();
     await logout();
-  };
-
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Light });
   };
 
   const isOnAdminPage = pathname === '/admin';
   const isOnResetPage = pathname === '/auth/reset-password';
+
+  // Support hardware back button closing the drawer
+  useEffect(() => {
+    if (!showDrawer) return;
+
+    const handleBack = (e: CustomEvent) => {
+      triggerLightHaptic();
+      setShowDrawer(false);
+      e.preventDefault(); // Stop default navigation behavior
+    };
+    window.addEventListener('backbutton', handleBack as EventListener);
+    return () => window.removeEventListener('backbutton', handleBack as EventListener);
+  }, [showDrawer]);
 
   return (
     <>
@@ -37,7 +46,7 @@ export default function AppNavbar() {
       style={{ backgroundColor: '#15151e' }}
     >
       <Link href="/" passHref legacyBehavior>
-        <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center" onClick={triggerHaptic}>
+        <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center" onClick={triggerLightHaptic}>
           <Image 
             src="/logo.svg" 
             alt="Logo" 
@@ -56,7 +65,7 @@ export default function AppNavbar() {
           <div className="d-flex align-items-center ms-auto order-lg-last">
             {!isAuthLoading ? (
               <button 
-                onClick={() => { triggerHaptic(); setShowDrawer(true); }}
+                onClick={() => { triggerLightHaptic(); setShowDrawer(true); }}
                 className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
               >
                 <div className="d-flex flex-column align-items-end me-2 d-none d-sm-flex">
@@ -81,7 +90,7 @@ export default function AppNavbar() {
               <Link 
                 key={item.href}
                 href={item.href} 
-                onClick={triggerHaptic} 
+                onClick={triggerLightHaptic} 
                 className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === item.href ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} 
                 style={{ fontSize: '0.75rem' }}
               >
@@ -91,7 +100,7 @@ export default function AppNavbar() {
             {isAdmin && (
               <Link 
                 href="/admin" 
-                onClick={triggerHaptic} 
+                onClick={triggerLightHaptic} 
                 className={`nav-link text-uppercase fw-bold letter-spacing-1 ${isOnAdminPage ? 'text-warning border-bottom border-warning border-2' : 'text-warning opacity-75'}`} 
                 style={{ fontSize: '0.75rem' }}
               >

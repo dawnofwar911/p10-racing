@@ -1,4 +1,11 @@
-# 1. Run tests first
+# 1. Quality Gates (Lint, Type Check, Test)
+echo "🔍 Running Linting..."
+npm run lint
+
+echo "⌨️ Running Type Checks..."
+npm run type-check
+
+echo "🧪 Running Tests..."
 npm test
 
 # 2. Sync package-lock.json if package.json is staged

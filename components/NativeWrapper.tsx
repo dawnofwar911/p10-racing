@@ -7,9 +7,102 @@ import { App } from '@capacitor/app';
 import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
+import { Motion } from '@capacitor/motion';
+
+// Declare global for console logs
+declare global {
+  interface Window {
+    __P10_ERROR_LOGS__: string[];
+    __P10_LAST_URL__?: string;
+  }
+}
 
 export default function NativeWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+
+  // Global console error interceptor
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    window.__P10_ERROR_LOGS__ = window.__P10_ERROR_LOGS__ || [];
+    const originalError = console.error;
+
+    // Safe stringify to avoid circular reference crashes
+    const safeStringify = (obj: unknown): string => {
+      try {
+        if (typeof obj !== 'object' || obj === null) return String(obj);
+        const cache = new Set();
+        return JSON.stringify(obj, (key, value) => {
+          if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) return '[Circular]';
+            cache.add(value);
+          }
+          return value;
+        });
+      } catch {
+        return '[Unstringifiable Object]';
+      }
+    };
+
+    console.error = (...args: unknown[]) => {
+      const timestamp = new Date().toLocaleTimeString();
+      const message = `[${timestamp}] ` + args.map(arg => safeStringify(arg)).join(' ');
+      window.__P10_ERROR_LOGS__ = [message, ...window.__P10_ERROR_LOGS__].slice(0, 10);
+      originalError.apply(console, args);
+    };
+
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
+
+  // Shake Detection Logic
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let lastUpdate = 0;
+    let lastX = 0, lastY = 0, lastZ = 0;
+    // Sensitivity threshold for shake detection (lower is more sensitive)
+    const SHAKE_THRESHOLD = Number(process.env.NEXT_PUBLIC_SHAKE_THRESHOLD) || 800;
+    const COOLDOWN = 2000; // 2 seconds between triggers
+    let lastShakeTime = 0;
+
+    const listener = Motion.addListener('accel', (event) => {
+      const curTime = Date.now();
+      if ((curTime - lastUpdate) > 100) {
+        const diffTime = (curTime - lastUpdate);
+        lastUpdate = curTime;
+
+        const { x, y, z } = event.acceleration;
+        // Check for undefined or null rather than falsy, as 0 is a valid acceleration value
+        if (x === undefined || x === null || y === undefined || y === null || z === undefined || z === null) return;
+
+        // Use more standard shake detection: sum of absolute differences to avoid cancellation
+        const speed = (Math.abs(x - lastX) + Math.abs(y - lastY) + Math.abs(z - lastZ)) / diffTime * 10000;
+
+        // Optional: Debugging in development
+        if (process.env.NODE_ENV === 'development' && speed > 20) {
+          console.debug(`Shake speed: ${speed.toFixed(2)}, Threshold: ${SHAKE_THRESHOLD}`);
+        }
+
+        if (speed > SHAKE_THRESHOLD) {
+          if ((curTime - lastShakeTime) > COOLDOWN) {
+            lastShakeTime = curTime;
+            // Dispatch custom event for app to handle
+            window.dispatchEvent(new CustomEvent('p10:shake_detected'));
+          }
+        }
+
+        lastX = x;
+        lastY = y;
+        lastZ = z;
+      }
+    });
+
+    return () => {
+      listener.then(l => l.remove());
+    };
+  }, []);
 
   useEffect(() => {
     async function initNative() {
@@ -60,13 +153,25 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
         });
 
         // 3. Handle Hardware Back Button (Android)
-        App.addListener('backButton', ({ canGoBack }) => {
+        App.addListener('backButton', (data) => {
+          // Check if any component wants to consume the back button
+          // This is useful for closing drawers/modals before navigating
+          const backEvent = new CustomEvent('backbutton', {
+            cancelable: true,
+            detail: data
+          });
+          window.dispatchEvent(backEvent);
+
+          if (backEvent.defaultPrevented) {
+            return;
+          }
+
           const path = window.location.pathname;
           
           // Only exit the app if we are on the root home page
           if (path === '/') {
             App.exitApp();
-          } else if (canGoBack) {
+          } else if (data.canGoBack) {
             // If we have history (e.g. went from Home -> Predict), go back
             router.back();
           } else {

@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { Capacitor } from '@capacitor/core';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
 import { RefreshCw } from 'lucide-react';
 
 interface PullToRefreshProps {
@@ -57,9 +56,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
         controls.set({ y });
 
         if (progress >= 1 && !hasTriggeredHaptic.current) {
-          if (Capacitor.isNativePlatform()) {
-            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
-          }
+          triggerLightHaptic();
           hasTriggeredHaptic.current = true;
         } else if (progress < 1) {
           hasTriggeredHaptic.current = false;

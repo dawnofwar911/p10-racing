@@ -5,6 +5,7 @@ import {
   fetchRaceResults, 
   fetchCalendar, 
   fetchDrivers, 
+  fetchConstructors,
   fetchDriversFromOpenF1,
   fetchQualifyingResults,
   getP10DriverId,
@@ -136,6 +137,50 @@ describe('API Logic Tests', () => {
     });
   });
 
+  describe('fetchConstructors', () => {
+    it('should fetch constructor standings', async () => {
+      server.use(
+        http.get(`${BASE_URL}/2026/constructorStandings.json`, () => {
+          return HttpResponse.json({
+            MRData: {
+              StandingsTable: {
+                StandingsLists: [{
+                  ConstructorStandings: [
+                    {
+                      points: '100',
+                      Constructor: { constructorId: 'red_bull', name: 'Red Bull' }
+                    },
+                    {
+                      points: '80',
+                      Constructor: { constructorId: 'ferrari', name: 'Ferrari' }
+                    }
+                  ]
+                }]
+              }
+            }
+          });
+        })
+      );
+
+      const constructors = await fetchConstructors(2026);
+      expect(constructors).toHaveLength(2);
+      expect(constructors[0].id).toBe('red_bull');
+      expect(constructors[0].points).toBe(100);
+      expect(constructors[1].id).toBe('ferrari');
+    });
+
+    it('should return empty array on failure', async () => {
+      server.use(
+        http.get(`${BASE_URL}/2026/constructorStandings.json`, () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+
+      const constructors = await fetchConstructors(2026);
+      expect(constructors).toHaveLength(0);
+    });
+  });
+
   describe('fetchDriversFromOpenF1', () => {
     it('should fetch and map OpenF1 drivers', async () => {
       server.use(
@@ -247,6 +292,19 @@ describe('API Logic Tests', () => {
 
       const dnf = getFirstDnfDriver(mockRace);
       expect(dnf?.driverId).toBe('dnf1');
+    });
+
+    it('should use position as a tie-breaker if laps are equal (higher position = earlier retiree)', () => {
+      const mockRace = {
+        Results: [
+          { status: 'Engine', laps: '5', position: '20', Driver: { driverId: 'dnf_early' } },
+          { status: 'Accident', laps: '5', position: '19', Driver: { driverId: 'dnf_late' } },
+          { status: 'Finished', laps: '50', position: '1', Driver: { driverId: 'winner' } }
+        ]
+      } as unknown as ApiRace;
+
+      const dnf = getFirstDnfDriver(mockRace);
+      expect(dnf?.driverId).toBe('dnf_early');
     });
 
     it('should return null if everyone finished or was lapped', () => {

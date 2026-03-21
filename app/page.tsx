@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { Driver, DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -20,6 +21,7 @@ import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } 
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
+import HapticButton from '@/components/HapticButton';
 
 interface HomeRace {
   id: string;
@@ -79,8 +81,17 @@ export default function Home() {
 
       let finalPrediction: HomePrediction | null = null;
       
-      // Try DB first if logged in
-      if (session) {
+      // 1. Try local cache FIRST for immediate sync
+      const storageUser = session?.user?.id || currentUser || '';
+      if (storageUser) {
+        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
+        if (cachedPred) {
+          finalPrediction = JSON.parse(cachedPred);
+        }
+      }
+
+      // 2. Try DB as fallback if no cache or to ensure fresh data
+      if (!finalPrediction && session) {
         const { data: pred } = await supabase
           .from('predictions')
           .select('*')
@@ -91,12 +102,6 @@ export default function Home() {
         if (pred) {
           finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
         }
-      }
-
-      // If no DB result or not logged in, try cache
-      if (!finalPrediction && currentUser) {
-        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser, nextRace.id));
-        if (cachedPred) finalPrediction = JSON.parse(cachedPred);
       }
 
       if (mountedRef.current) {
@@ -112,7 +117,8 @@ export default function Home() {
     // UNLESS the user has changed (detected by currentUser dependency change)
     if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
       // Small check to ensure the prediction in state matches the current user's cache
-      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace?.id || ''));
+      const storageUser = session?.user?.id || currentUser || '';
+      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
       if (cached) {
           const parsed = JSON.parse(cached);
           if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
@@ -127,15 +133,21 @@ export default function Home() {
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ key: string }>;
       const updatedKey = customEvent.detail?.key;
-      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, currentUser || '', nextRace.id) : null;
+      
+      // Re-calculate the current active user exactly how it's done in loadPrediction
+      const activeUserId = session?.user?.id;
+      const localUsername = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const storageUser = activeUserId || localUsername || '';
+      
+      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id) : null;
 
-      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER) {
-        const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      // Update if the prediction for the current user changed, or if the current user itself changed
+      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER || updatedKey === STORAGE_KEYS.CACHE_USERNAME) {
         const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-        if (cachedRaceStr && user) {
+        if (cachedRaceStr && storageUser) {
           try {
             const raceObj = JSON.parse(cachedRaceStr);
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
             if (predStr) {
               const parsed = JSON.parse(predStr);
               setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
@@ -149,7 +161,7 @@ export default function Home() {
 
     window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
     return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace, syncVersion]);
+  }, [currentUser, nextRace, syncVersion, session]);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -290,7 +302,9 @@ export default function Home() {
     } catch (error) {
       console.error('Home: Init error:', error);
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [supabase, nextRace, allDrivers.length, session, currentUser, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -336,13 +350,9 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [nextRace]);
 
-  const triggerHaptic = () => {
-    Haptics.impact({ style: ImpactStyle.Medium });
-  };
-
   const handleShare = async () => {
     if (!userPrediction || !nextRace) return;
-    triggerHaptic();
+    triggerMediumHaptic();
     const p10Name = getDriverDisplayName(userPrediction.p10, allDrivers);
     const dnfName = getDriverDisplayName(userPrediction.dnf, allDrivers);
     const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
@@ -356,7 +366,8 @@ export default function Home() {
       });
     } catch (error) {
       console.log('Share dismissed or failed:', error);
-      if (!navigator.share && navigator.clipboard) {
+      // Only fallback to clipboard on web where native sharing might be missing
+      if (!Capacitor.isNativePlatform() && !navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
         showNotification('Picks copied to clipboard!', 'success');
       }
@@ -383,7 +394,7 @@ export default function Home() {
                 </h2>
                 <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
                 <Link href="/leaderboard" passHref legacyBehavior>
-                  <Button variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</Button>
+                  <HapticButton hapticStyle="medium" variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</HapticButton>
                 </Link>
               </div>
             )}
@@ -432,29 +443,29 @@ export default function Home() {
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
               {!isSeasonFinished ? (
                 <Link href="/predict" passHref legacyBehavior>
-                  <Button size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic} suppressHydrationWarning>
+                  <HapticButton hapticStyle="medium" size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} suppressHydrationWarning>
                     {isLocked 
                       ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
                       : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
-                  </Button>
+                  </HapticButton>
                 </Link>
               ) : (
                 <Link href="/history" passHref legacyBehavior>
-                  <Button size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                  <HapticButton hapticStyle="medium" size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }}>
                     VIEW SEASON RECAP
-                  </Button>
+                  </HapticButton>
                 </Link>
               )}
               <Link href="/leaderboard" passHref legacyBehavior>
-                <Button variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }} onClick={triggerHaptic}>
+                <HapticButton hapticStyle="medium" variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }}>
                   {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
-                </Button>
+                </HapticButton>
               </Link>
             </div>
             
             <div className="mb-4">
               <HowToPlayButton 
-                onClick={() => { triggerHaptic(); router.push('/predict?howto=true'); }}
+                onClick={() => { triggerLightHaptic(); router.push('/predict?howto=true'); }}
               />
             </div>
 
@@ -470,23 +481,29 @@ export default function Home() {
                   <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
                     Your {nextRace.name} Picks {isLocked && '🔒'}
                   </h3>
-                  <div className="d-flex justify-content-center gap-4 mb-3">
-                    <div>
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-                      <span className="fw-bold text-white h6 mb-0">
+                  <div className="d-flex flex-column gap-2 mb-3 align-items-center">
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.p10)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
+                      </div>
+                      <span className="fw-bold text-white small flex-grow-1 text-start ps-2">
                         {getDriverDisplayName(userPrediction.p10, allDrivers)}
                       </span>
                     </div>
-                    <div className="border-start border-secondary border-opacity-25 ps-4">
-                      <small className="text-white opacity-50 d-block text-uppercase mb-0 fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-                      <span className="fw-bold text-danger h6 mb-0">
+                    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
+                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
+                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.dnf)?.color || '#B6BABD' }}></div>
+                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
+                      </div>
+                      <span className="fw-bold text-danger small flex-grow-1 text-start ps-2">
                         {getDriverDisplayName(userPrediction.dnf, allDrivers)}
                       </span>
                     </div>
                   </div>
-                  <Button variant="outline-danger" size="sm" className="rounded-pill px-4 fw-bold w-100" style={{ fontSize: '0.65rem' }} onClick={handleShare}>
+                  <HapticButton variant="success" size="sm" className="rounded-pill px-4 fw-bold w-100 py-2 small" onClick={handleShare}>
                     SHARE PICKS ↗
-                  </Button>
+                  </HapticButton>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -521,7 +538,7 @@ export default function Home() {
                 <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
                 <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Compete with Friends</p>
               </div>
-              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start" style={{ fontSize: '0.65rem' }} onClick={triggerHaptic}>
+              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start" onClick={triggerMediumHaptic}>
                 View Leagues →
               </Link>
             </div>
@@ -542,7 +559,7 @@ export default function Home() {
                     <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
                     <Link href="/auth" passHref legacyBehavior>
-                      <Button variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }} onClick={triggerHaptic}>GET STARTED</Button>
+                      <HapticButton hapticStyle="medium" variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }}>GET STARTED</HapticButton>
                     </Link>
                   </div>
                 </Col>

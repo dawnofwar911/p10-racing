@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from './setup';
-import { createServerClient } from '@/lib/supabase/client';
+import { createServerClient, createClient } from '@/lib/supabase/client';
 
 // Mock environment variables for Supabase Client initialization
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://mock-project.supabase.co';
@@ -9,6 +9,17 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key';
 
 describe('Supabase Client & API Integration', () => {
   const supabase = createServerClient();
+
+  it('should initialize browser client with createClient', () => {
+    // In JSDOM, window is defined, so this will exercise the browser singleton branch
+    const client = createClient();
+    expect(client).toBeDefined();
+    expect(client.auth).toBeDefined();
+    
+    // Check singleton behavior
+    const secondCall = createClient();
+    expect(secondCall).toBe(client);
+  });
 
   it('should fetch predictions and return mock data', async () => {
     // 1. Setup MSW handler for the specific Supabase select call
