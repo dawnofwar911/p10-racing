@@ -1,4 +1,4 @@
-import { Driver, ConstructorStanding, TEAM_COLORS } from '@/lib/types';
+import { Driver, ConstructorStanding, TEAM_COLORS, TEAM_CODES } from '@/lib/types';
 
 export interface ApiDriver {
   driverId: string;
@@ -160,7 +160,8 @@ export async function fetchConstructors(season: number): Promise<ConstructorStan
       id: s.Constructor.constructorId,
       name: s.Constructor.name,
       points: parseFloat(s.points) || 0,
-      color: TEAM_COLORS[s.Constructor.constructorId] || '#B6BABD'
+      color: TEAM_COLORS[s.Constructor.constructorId] || '#B6BABD',
+      code: TEAM_CODES[s.Constructor.constructorId] || s.Constructor.constructorId.substring(0, 3).toUpperCase()
     }));
   } catch (error) {
     console.error('Error fetching constructor standings:', error);

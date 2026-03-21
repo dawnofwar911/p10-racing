@@ -157,8 +157,8 @@ export default function StandingsPage() {
                         <th className="ps-4 py-3">Pos</th>
                         <th className="py-3">{activeView === 'drivers' ? 'Driver' : 'Team'}</th>
                         {activeView === 'drivers' && <th className="py-3">Team</th>}
-                        <th className={`text-end py-3 ${activeView === 'constructors' ? 'pe-4' : ''}`}>PTS</th>
-                        {activeView === 'drivers' && <th className="text-end pe-4 py-3">No.</th>}
+                        <th className="text-end py-3">PTS</th>
+                        <th className="text-end pe-4 py-3">{activeView === 'drivers' ? 'No.' : 'Code'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -166,7 +166,12 @@ export default function StandingsPage() {
                         standings.map((d, i) => (
                           <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }}>
                             <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-                            <td className="fw-bold text-white fs-5">{d.name}</td>
+                            <td className="fw-bold text-white fs-5">
+                              <div className="d-flex align-items-center">
+                                <div className="me-3" style={{ width: '4px', height: '24px', backgroundColor: d.color }}></div>
+                                {d.name}
+                              </div>
+                            </td>
                             <td>
                               <span className="team-pill" style={{ 
                                 backgroundColor: d.color, 
@@ -194,8 +199,11 @@ export default function StandingsPage() {
                                 {c.name}
                               </div>
                             </td>
-                            <td className="text-end f1-total-points pe-4">
+                            <td className="text-end f1-total-points">
                               {c.points}
+                            </td>
+                            <td className="text-end pe-4 driver-number fs-4" style={{ color: c.color, opacity: 0.8 }}>
+                              {c.code}
                             </td>
                           </tr>
                         ))
