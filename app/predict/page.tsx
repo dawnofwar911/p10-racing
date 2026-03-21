@@ -406,6 +406,21 @@ function PredictPage() {
     }, 300);
   };
 
+  const handleDnfSelect = (id: string) => {
+    triggerSelectionHaptic();
+    setDnfDriver(id);
+    // If we're not locked and have both picks, auto-submit after a small delay
+    if (!isLocked && p10Driver) {
+      setTimeout(() => {
+        if (mountedRef.current) {
+          // Trigger the submit logic
+          const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+          handleSubmit(fakeEvent);
+        }
+      }, 300);
+    }
+  };
+
   if (!nextRace && (loadingRace || isAuthLoading)) {
     return <LoadingView />;
   }
@@ -640,7 +655,7 @@ function PredictPage() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         tabs={tabs}
-        onRefresh={() => init()}
+        onRefresh={undefined}
         rightElement={
           <div className="d-flex gap-2 align-items-center">
             {isEditing && (
@@ -713,7 +728,7 @@ function PredictPage() {
               <h3 className="h6 mb-3 border-start border-4 border-danger ps-2 fw-bold text-uppercase letter-spacing-1">First DNF</h3>
               <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
                 {drivers.map((driver) => (
-                  <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => { triggerSelectionHaptic(); setDnfDriver(driver.id); }} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
+                  <div key={`dnf-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${dnfDriver === driver.id ? 'border-danger bg-danger bg-opacity-20' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => handleDnfSelect(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
                     <div className="driver-number ms-3 me-3 text-white fw-bold" style={{ width: '25px', fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</div>
                     <div className="flex-grow-1">
                       <div className="fw-bold text-white small">{driver.name}</div>
