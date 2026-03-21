@@ -386,6 +386,19 @@ function LeaguesContent() {
     );
   }
 
+  const splitLayout = (
+    <div className="w-100">
+      <Row className="g-4">
+        <Col xs={12} lg={7}>
+          <MyLeaguesView />
+        </Col>
+        <Col xs={12} lg={5}>
+          <ManageLeaguesView />
+        </Col>
+      </Row>
+    </div>
+  );
+
   return (
     <SwipeablePageLayout
       title="Leagues"
@@ -395,6 +408,7 @@ function LeaguesContent() {
       onTabChange={setActiveTab}
       onRefresh={undefined}
       splitOnWide={true}
+      customSplitLayout={splitLayout}
       tabs={[
         { id: 'my-leagues', label: 'My Leagues', icon: <Trophy size={16} /> },
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }

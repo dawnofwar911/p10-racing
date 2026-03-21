@@ -783,7 +783,8 @@ const handleDnfSelect = (id: string) => {
       <Modal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} centered size="lg" contentClassName="bg-dark border-secondary">
         <Modal.Header closeButton closeVariant="white" className="border-secondary">
           <Modal.Title className="fw-bold text-uppercase letter-spacing-1 fs-5">How to <span className="text-danger">Play</span></Modal.Title>
-          <Modal.Body className="px-4 py-4">
+        </Modal.Header>
+        <Modal.Body className="px-4 py-4">
             <section className="mb-4">
               <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">The Objective</h3>
               <p className="text-white opacity-75 small">Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
@@ -810,7 +811,6 @@ const handleDnfSelect = (id: string) => {
           <Modal.Footer className="border-secondary">
             <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill" onClick={() => setShowHowToPlay(false)}>GOT IT</HapticButton>
           </Modal.Footer>
-        </Modal.Header>
       </Modal>
     </>
   );
