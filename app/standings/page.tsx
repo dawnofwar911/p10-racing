@@ -154,11 +154,11 @@ export default function StandingsPage() {
                   <Table variant="dark" hover className="mb-0">
                     <thead>
                       <tr className="f1-table-header">
-                        <th className="ps-4 py-3">Pos</th>
+                        <th className="ps-4 py-3" style={{ width: '80px' }}>Pos</th>
                         <th className="py-3">{activeView === 'drivers' ? 'Driver' : 'Team'}</th>
                         {activeView === 'drivers' && <th className="py-3">Team</th>}
-                        <th className="text-end py-3">PTS</th>
-                        <th className="text-end pe-4 py-3">{activeView === 'drivers' ? 'No.' : 'Code'}</th>
+                        <th className={`text-end py-3 ${activeView === 'constructors' ? 'pe-4' : ''}`} style={{ width: '120px' }}>PTS</th>
+                        {activeView === 'drivers' && <th className="text-end pe-4 py-3" style={{ width: '100px' }}>No.</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -199,11 +199,8 @@ export default function StandingsPage() {
                                 {c.name}
                               </div>
                             </td>
-                            <td className="text-end f1-total-points">
+                            <td className="text-end f1-total-points pe-4">
                               {c.points}
-                            </td>
-                            <td className="text-end pe-4 driver-number fs-4" style={{ color: c.color, opacity: 0.8 }}>
-                              {c.code}
                             </td>
                           </tr>
                         ))

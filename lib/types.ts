@@ -14,27 +14,7 @@ export interface ConstructorStanding {
   name: string;
   points: number;
   color: string;
-  code: string;
 }
-
-export const TEAM_CODES: { [id: string]: string } = {
-  red_bull: 'RBR',
-  ferrari: 'FER',
-  mclaren: 'MCL',
-  mercedes: 'MER',
-  aston_martin: 'AMR',
-  alpine: 'ALP',
-  williams: 'WIL',
-  rb: 'VCB',
-  vcarb: 'VCB',
-  racing_bulls: 'VCB',
-  alphatauri: 'VCB',
-  audi: 'AUD',
-  sauber: 'SAU',
-  kick_sauber: 'SAU',
-  haas: 'HAS',
-  haas_f1_team: 'HAS'
-};
 
 export const TEAM_COLORS: { [id: string]: string } = {
   red_bull: '#3671C6',
