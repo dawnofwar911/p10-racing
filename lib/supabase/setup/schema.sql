@@ -164,6 +164,28 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Format: "reminder_[race_id]_[user_id]"
+CREATE OR REPLACE FUNCTION public.mark_reminder_sent(p_race_id TEXT, p_user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_id TEXT;
+BEGIN
+  v_id := 'reminder_' || p_race_id || '_' || p_user_id::text;
+  
+  -- Use ON CONFLICT DO NOTHING for an atomic, race-condition safe operation
+  INSERT INTO public.sent_notifications (id, sent_at) 
+  VALUES (v_id, now())
+  ON CONFLICT (id) DO NOTHING;
+  
+  -- FOUND is true if the INSERT actually happened
+  IF FOUND THEN
+    RETURN TRUE;
+  END IF;
+  
+  RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 CREATE OR REPLACE FUNCTION public.send_broadcast_notification(p_title TEXT, p_body TEXT, p_type TEXT, p_url TEXT DEFAULT NULL)
 RETURNS VOID AS $$
 BEGIN
@@ -208,6 +230,43 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS tr_on_verified_results_published ON public.verified_results;
 CREATE TRIGGER tr_on_verified_results_published AFTER INSERT OR UPDATE ON public.verified_results FOR EACH ROW EXECUTE FUNCTION public.on_verified_results_published();
+
+-- Trigger for League Joins
+CREATE OR REPLACE FUNCTION public.on_league_member_joined()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_league_name TEXT;
+  v_creator_id UUID;
+  v_new_member_name TEXT;
+BEGIN
+  -- Get league name and creator
+  SELECT name, created_by INTO v_league_name, v_creator_id 
+  FROM public.leagues WHERE id = NEW.league_id;
+
+  -- Get new member username
+  SELECT username INTO v_new_member_name 
+  FROM public.profiles WHERE id = NEW.user_id;
+
+  -- Notify creator if they aren't the one joining
+  IF v_creator_id IS NOT NULL AND v_creator_id != NEW.user_id THEN
+    INSERT INTO public.notifications (user_id, title, body, type, data)
+    VALUES (
+      v_creator_id, 
+      'New League Member! 🏎️', 
+      v_new_member_name || ' just joined ' || v_league_name || '.', 
+      'league', 
+      jsonb_build_object('url', '/leagues/view?id=' || NEW.league_id)
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_on_league_member_joined ON public.league_members;
+CREATE TRIGGER tr_on_league_member_joined 
+AFTER INSERT ON public.league_members 
+FOR EACH ROW EXECUTE FUNCTION public.on_league_member_joined();
 
 -- Locking Trigger: Prevent predictions after race start
 CREATE OR REPLACE FUNCTION public.ensure_prediction_not_locked()
