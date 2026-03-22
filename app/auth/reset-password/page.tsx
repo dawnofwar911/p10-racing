@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { triggerLightHaptic, triggerMediumHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import LoadingView from '@/components/LoadingView';
 import HapticButton from '@/components/HapticButton';
+import HapticLink from '@/components/HapticLink';
 
 const supabase = createClient();
 
@@ -265,13 +266,12 @@ export default function ResetPasswordPage() {
 
               {error && (
                 <div className="text-center mt-3">
-                  <HapticButton 
-                    variant="link" 
+                  <HapticLink 
+                    href="/auth"
                     className="text-danger text-decoration-none small fw-bold"
-                    onClick={() => router.push('/auth')}
                   >
                     BACK TO LOGIN
-                  </HapticButton>
+                  </HapticLink>
                 </div>
               )}
             </Card.Body>

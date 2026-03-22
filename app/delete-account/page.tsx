@@ -1,11 +1,11 @@
 'use client';
 
 import { Container, Row, Col, Card } from 'react-bootstrap';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import HapticButton from '@/components/HapticButton';
+import { triggerLightHaptic } from '@/lib/utils/haptics';
 
 export default function DeleteAccountPage() {
-  const router = useRouter();
 
   return (
     <Container className="py-5 mt-5">
@@ -28,9 +28,17 @@ export default function DeleteAccountPage() {
                 <li className="mb-2">Your historical scores and placements.</li>
               </ul>
 
-              <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">How to request deletion</h2>
+              <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">How to delete your account</h2>
               <p className="mb-4">
-                You can delete your account directly within the mobile app by navigating to the navigation menu while signed in.
+                You can delete your account and all associated data directly within the app by navigating to the{' '}
+                <Link 
+                  href="/settings" 
+                  onClick={triggerLightHaptic}
+                  className="text-danger p-0 d-inline fw-bold text-decoration-none"
+                >
+                  Settings
+                </Link>{' '}
+                page while signed in and selecting the <strong>&quot;Delete Account Data&quot;</strong> option.
               </p>
               
               <p className="mb-4">
@@ -45,9 +53,11 @@ export default function DeleteAccountPage() {
               </p>
               
               <div className="text-center mt-5">
-                <HapticButton variant="outline-light" onClick={() => router.push('/')} className="rounded-pill px-4">
-                  RETURN HOME
-                </HapticButton>
+                <Link href="/" passHref legacyBehavior>
+                  <HapticButton variant="outline-light" className="rounded-pill px-4">
+                    RETURN HOME
+                  </HapticButton>
+                </Link>
               </div>
             </Card.Body>
           </Card>

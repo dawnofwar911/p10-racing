@@ -12,7 +12,6 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
@@ -39,7 +38,6 @@ interface HomePrediction {
 
 export default function Home() {
   const supabase = createClient();
-  const router = useRouter();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
   
@@ -464,9 +462,9 @@ export default function Home() {
             </div>
             
             <div className="mb-4">
-              <HowToPlayButton 
-                onClick={() => { triggerLightHaptic(); router.push('/predict?howto=true'); }}
-              />
+              <Link href="/predict?howto=true" passHref legacyBehavior>
+                <HowToPlayButton onClick={triggerLightHaptic} />
+              </Link>
             </div>
 
             <AnimatePresence>
