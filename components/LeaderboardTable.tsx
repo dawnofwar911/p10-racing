@@ -102,32 +102,32 @@ export default function LeaderboardTable({
                 <td className="text-end pe-4 f1-total-points fw-bold fs-5">{entry.points}</td>
               </tr>
               {expandedPlayer === entry.player && (
-                <tr className="bg-white bg-opacity-5 border-0">
+                <tr className="bg-black bg-opacity-40 border-0">
                   <td colSpan={4} className="p-0 border-0">
                     <div className="p-3 p-md-4 rounded-0 border-bottom border-secondary border-opacity-25 shadow-inner">
                       {entry.breakdown && (
                         <div className="row g-4 text-white mb-4 border-bottom border-secondary border-opacity-10 pb-4">
                           <div className="col-12 col-md-6 border-md-end border-secondary border-opacity-10">
-                            <small className="text-muted text-uppercase d-block mb-3 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: P10 Result</small>
+                            <small className="text-danger text-uppercase d-block mb-3 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: P10 Result</small>
                             <div className="d-flex justify-content-between align-items-start">
                               <div className="d-flex align-items-center">
                                 <div className="f1-driver-line me-2" style={{ height: '24px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.p10Driver)?.color || '#B6BABD' }}></div>
                                 <div>
-                                  <span className="fw-bold fs-5 text-uppercase letter-spacing-1 d-block">{entry.breakdown?.p10Driver.replace(/_/g, ' ')}</span>
+                                  <span className="fw-bold fs-5 text-uppercase letter-spacing-1 d-block text-white">{entry.breakdown?.p10Driver.replace(/_/g, ' ')}</span>
                                   <span className="text-danger fw-bold extra-small">+{entry.breakdown?.p10Points} PTS</span>
                                 </div>
                               </div>
-                              <Badge bg="danger" className="rounded-pill px-3 py-2" style={{ fontSize: '0.7rem' }}>ACTUAL P{entry.breakdown?.actualP10Pos}</Badge>
+                              <Badge bg="danger" className="rounded-pill px-3 py-2 fw-bold" style={{ fontSize: '0.7rem' }}>ACTUAL P{entry.breakdown?.actualP10Pos}</Badge>
                             </div>
                           </div>
                           
                           <div className="col-12 col-md-6 ps-md-4">
-                            <small className="text-muted text-uppercase d-block mb-3 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: First DNF Bonus</small>
+                            <small className="text-danger text-uppercase d-block mb-3 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: First DNF Bonus</small>
                             <div className="d-flex justify-content-between align-items-start">
                               <div className="d-flex align-items-center">
                                 <div className="f1-driver-line me-2" style={{ height: '24px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.dnfDriver)?.color || '#B6BABD' }}></div>
                                 <div>
-                                  <span className="fw-bold fs-5 text-uppercase letter-spacing-1 d-block">{entry.breakdown?.dnfDriver.replace(/_/g, ' ')}</span>
+                                  <span className="fw-bold fs-5 text-uppercase letter-spacing-1 d-block text-white">{entry.breakdown?.dnfDriver.replace(/_/g, ' ')}</span>
                                   {entry.breakdown?.dnfPoints && entry.breakdown.dnfPoints > 0 ? (
                                     <span className="text-success fw-bold extra-small">+25 PTS (CORRECT)</span>
                                   ) : (
@@ -135,7 +135,7 @@ export default function LeaderboardTable({
                                   )}
                                 </div>
                               </div>
-                              <div className="fs-3 opacity-50">
+                              <div className="fs-3 opacity-75">
                                 {entry.breakdown?.dnfPoints && entry.breakdown.dnfPoints > 0 ? '🏎️💨' : '🏁'}
                               </div>
                             </div>
@@ -147,9 +147,9 @@ export default function LeaderboardTable({
                         <h4 className="h6 text-uppercase fw-bold text-danger letter-spacing-2 mb-3" style={{ fontSize: '0.7rem' }}>Season History</h4>
                         {entry.history && entry.history.length > 0 ? (
                           <div className="table-responsive" style={{ margin: '0 -0.5rem' }}>
-                            <Table variant="dark" size="sm" className="mb-0 extra-small opacity-75" style={{ minWidth: '300px' }}>
+                            <Table variant="dark" size="sm" className="mb-0 extra-small" style={{ minWidth: '300px' }}>
                               <thead>
-                                <tr className="text-muted border-bottom border-secondary border-opacity-25 text-uppercase" style={{ fontSize: '0.55rem' }}>
+                                <tr className="text-white opacity-50 border-bottom border-secondary border-opacity-25 text-uppercase" style={{ fontSize: '0.55rem' }}>
                                   <th className="py-2 px-2">Round</th>
                                   <th className="py-2 px-2">P10 Pick</th>
                                   <th className="py-2 px-2">DNF Pick</th>
@@ -159,13 +159,13 @@ export default function LeaderboardTable({
                               <tbody>
                                 {entry.history.map((h, idx) => (
                                   <tr key={idx} className="border-bottom border-secondary border-opacity-10">
-                                    <td className="py-2 px-2 fw-bold text-nowrap">R{h.round}</td>
+                                    <td className="py-2 px-2 fw-bold text-nowrap text-white">R{h.round}</td>
                                     <td className="py-2 px-2 text-uppercase letter-spacing-1">
                                       <div className="d-flex align-items-center">
                                         <div className="f1-driver-line me-2" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === h.p10Driver)?.color || '#B6BABD' }}></div>
                                         <div className="d-flex flex-column">
-                                          <span className="text-white">{h.p10Driver.replace(/_/g, ' ')}</span>
-                                          <small className="text-muted">(P{h.p10Pos})</small>
+                                          <span className="text-white fw-bold">{h.p10Driver.replace(/_/g, ' ')}</span>
+                                          <small className="text-muted" style={{ fontSize: '0.5rem' }}>(P{h.p10Pos})</small>
                                         </div>
                                       </div>
                                     </td>
@@ -173,7 +173,7 @@ export default function LeaderboardTable({
                                       <div className="d-flex align-items-center">
                                         <div className="f1-driver-line me-2" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === h.dnfDriver)?.color || '#B6BABD' }}></div>
                                         <div className="d-flex align-items-center">
-                                          <span className={h.dnfCorrect ? 'text-success' : 'text-white opacity-50'}>{h.dnfDriver.replace(/_/g, ' ')}</span>
+                                          <span className={h.dnfCorrect ? 'text-success fw-bold' : 'text-white opacity-50'}>{h.dnfDriver.replace(/_/g, ' ')}</span>
                                           {h.dnfCorrect && <span className="ms-1 text-success small">✓</span>}
                                         </div>
                                       </div>
@@ -185,7 +185,7 @@ export default function LeaderboardTable({
                             </Table>
                           </div>
                         ) : (
-                          <p className="text-muted small mb-0 opacity-50">No history available for this season.</p>
+                          <p className="text-muted small mb-0 opacity-50 text-center py-2">No history available for this season.</p>
                         )}
                       </div>
                     </div>
