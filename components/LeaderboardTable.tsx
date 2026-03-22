@@ -102,11 +102,11 @@ export default function LeaderboardTable({
                 <td className="text-end pe-4 f1-total-points fw-bold fs-5">{entry.points}</td>
               </tr>
               {expandedPlayer === entry.player && (
-                <tr className="bg-black bg-opacity-40 border-0">
+                <tr className="bg-black bg-opacity-20 border-0">
                   <td colSpan={4} className="p-0 border-0">
-                    <div className="p-3 p-md-4 rounded-0 border-bottom border-secondary border-opacity-25 shadow-inner">
+                    <div className="p-3 p-md-4 rounded-0 border-bottom border-secondary border-opacity-25 shadow-inner" style={{ backgroundColor: 'rgba(21, 21, 30, 0.6)' }}>
                       {entry.breakdown && (
-                        <div className="row g-4 text-white mb-4 border-bottom border-secondary border-opacity-10 pb-4">
+                        <div className="row g-4 mb-4 border-bottom border-secondary border-opacity-10 pb-4">
                           <div className="col-12 col-md-6 border-md-end border-secondary border-opacity-10">
                             <small className="text-danger text-uppercase d-block mb-3 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: P10 Result</small>
                             <div className="d-flex justify-content-between align-items-start">
@@ -131,11 +131,11 @@ export default function LeaderboardTable({
                                   {entry.breakdown?.dnfPoints && entry.breakdown.dnfPoints > 0 ? (
                                     <span className="text-success fw-bold extra-small">+25 PTS (CORRECT)</span>
                                   ) : (
-                                    <span className="text-muted fw-bold extra-small">+0 PTS (INCORRECT)</span>
+                                    <span className="text-white opacity-50 fw-bold extra-small">+0 PTS (INCORRECT)</span>
                                   )}
                                 </div>
                               </div>
-                              <div className="fs-3 opacity-75">
+                              <div className="fs-3">
                                 {entry.breakdown?.dnfPoints && entry.breakdown.dnfPoints > 0 ? '🏎️💨' : '🏁'}
                               </div>
                             </div>
@@ -165,7 +165,7 @@ export default function LeaderboardTable({
                                         <div className="f1-driver-line me-2" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === h.p10Driver)?.color || '#B6BABD' }}></div>
                                         <div className="d-flex flex-column">
                                           <span className="text-white fw-bold">{h.p10Driver.replace(/_/g, ' ')}</span>
-                                          <small className="text-muted" style={{ fontSize: '0.5rem' }}>(P{h.p10Pos})</small>
+                                          <small className="text-white opacity-50" style={{ fontSize: '0.5rem' }}>(P{h.p10Pos})</small>
                                         </div>
                                       </div>
                                     </td>
@@ -185,7 +185,7 @@ export default function LeaderboardTable({
                             </Table>
                           </div>
                         ) : (
-                          <p className="text-muted small mb-0 opacity-50 text-center py-2">No history available for this season.</p>
+                          <p className="text-white opacity-50 small mb-0 text-center py-2">No history available for this season.</p>
                         )}
                       </div>
                     </div>
