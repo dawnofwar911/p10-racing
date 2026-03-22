@@ -164,29 +164,20 @@ jobs:
           mkdir -p distribution/whatsnew
           touch distribution/whatsnew/whatsnew-en-GB
           
-          if [[ "${{ github.ref }}" == "refs/heads/stable" ]]; then
-            # Attempt to get PR description for stable releases
-            git log -1 --pretty=format:"%s" | grep -oE "#[0-9]+" | head -1 | tr -d '#' > pr_number.txt || true
-            read -r PR_NUMBER < pr_number.txt || true
-            if [ -n "$PR_NUMBER" ]; then
-              gh pr view "$PR_NUMBER" --json body --template '{{.body}}' | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
-            fi
+          # We only generate notes for internal (main) track automatically.
+          # Stable releases use manual promotion.
+          if [[ "${{ steps.set_env.outputs.TAG_SUFFIX }}" == "-internal" ]]; then
+            git describe --tags --match "v*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
+          else
+            # Fallback for non-internal tracks if ever enabled
+            git describe --tags --match "v*" --exclude "*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
           fi
           
-          # Fallback if stable PR not found or on main
-          if [ ! -s distribution/whatsnew/whatsnew-en-GB ]; then
-            if [[ "${{ steps.set_env.outputs.TAG_SUFFIX }}" == "-internal" ]]; then
-              git describe --tags --match "v*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
-            else
-              git describe --tags --match "v*" --exclude "*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
-            fi
-            
-            read -r LAST_TAG < last_tag.txt || true
-            if [ -z "$LAST_TAG" ]; then
-              git log -5 --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
-            else
-              git log "$LAST_TAG"..HEAD --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
-            fi
+          read -r LAST_TAG < last_tag.txt || true
+          if [ -z "$LAST_TAG" ]; then
+            git log -5 --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
+          else
+            git log "$LAST_TAG"..HEAD --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
           fi
           
           if [ ! -s distribution/whatsnew/whatsnew-en-GB ]; then

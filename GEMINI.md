@@ -28,7 +28,6 @@ We use a dual-track release process with **Branch Protection** enforced on `main
 *   **Branch:** `stable`
 *   **Workflow:** Pull Request from `main`.
 *   **Android:** GitHub Actions automatically tags the release as `vX.X.X`. The build is **NOT** uploaded; instead, the maintainer manually promotes the successful Internal Testing build to the Closed Testing track in the Google Play Console.
-*   **Tagging:** Automatically tagged as `vX.X.X`.
 
 ---
 
