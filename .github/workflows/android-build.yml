@@ -101,6 +101,7 @@ jobs:
           fi
 
       - name: Build Static Site
+        if: steps.set_env.outputs.TRACK == 'internal'
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -108,14 +109,17 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor
+        if: steps.set_env.outputs.TRACK == 'internal'
         run: npx cap sync android
 
       - name: Create google-services.json
+        if: steps.set_env.outputs.TRACK == 'internal'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Build Release AAB
+        if: steps.set_env.outputs.TRACK == 'internal'
         env:
           VERSION_CODE: ${{ github.run_number }}
         run: |
@@ -124,6 +128,7 @@ jobs:
           ./gradlew bundleRelease
 
       - name: Sign Android Release AAB
+        if: steps.set_env.outputs.TRACK == 'internal'
         uses: r0adkll/sign-android-release@v1
         id: sign_aab
         with:
@@ -151,6 +156,7 @@ jobs:
           fi
 
       - name: Generate Release Notes
+        if: steps.set_env.outputs.TRACK == 'internal'
         id: release_notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -188,6 +194,7 @@ jobs:
           fi
 
       - name: Upload to Google Play
+        if: steps.set_env.outputs.TRACK == 'internal'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
