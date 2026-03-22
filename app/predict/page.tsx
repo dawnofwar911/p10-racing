@@ -132,36 +132,36 @@ const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void })
     onHide={onHide} 
     centered 
     scrollable 
-    size="lg" 
-    contentClassName="f1-glass-modal border-secondary border-opacity-50"
+    contentClassName="f1-glass-modal border-secondary border-opacity-50 mx-auto"
+    style={{ maxWidth: '400px', margin: '0 auto' }}
   >
-    <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-4 py-3">
-      <Modal.Title className="fw-bold text-uppercase letter-spacing-1 text-white">How to <span className="text-danger">Play</span></Modal.Title>
+    <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-3 py-2">
+      <Modal.Title className="fw-bold text-uppercase letter-spacing-1 text-white fs-6">How to <span className="text-danger">Play</span></Modal.Title>
     </Modal.Header>
-    <Modal.Body className="p-3 p-md-4">
+    <Modal.Body className="p-3">
       <section className="mb-3">
-        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2" style={{ fontSize: '0.75rem' }}>The Objective</h3>
-        <p className="text-white opacity-75 small">Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
+        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-1" style={{ fontSize: '0.65rem' }}>The Objective</h3>
+        <p className="text-white opacity-75 extra-small mb-0">Predict the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
       </section>
       <section className="mb-3">
-        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2" style={{ fontSize: '0.75rem' }}>Scoring: P10 Finisher</h3>
+        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-2" style={{ fontSize: '0.65rem' }}>Scoring: P10 Finisher</h3>
         <div className="f1-premium-table-container">
-          <Table variant="dark" size="sm" className="f1-premium-table mb-0 extra-small">
+          <Table variant="dark" size="sm" className="f1-premium-table f1-premium-table-sm mb-0 extra-small">
             <thead>
               <tr>
-                <th className="ps-3 py-2 border-0">Actual Finish</th>
-                <th className="pe-3 py-2 text-end border-0">Points</th>
+                <th className="ps-3 border-0">Actual Finish</th>
+                <th className="pe-3 text-end border-0">Points</th>
               </tr>
             </thead>
             <tbody>
               <tr className="bg-danger bg-opacity-10 fw-bold border-secondary border-opacity-10">
-                <td className="ps-3 py-1">P10 (Exact)</td>
-                <td className="pe-3 py-1 text-end text-danger">+25</td>
+                <td className="ps-3">P10 (Exact)</td>
+                <td className="pe-3 text-end text-danger">+25</td>
               </tr>
               {['18', '15', '12', '10', '8', '6', '4', '2', '1'].map((pts, i) => (
                 <tr key={pts} className="border-secondary border-opacity-10">
-                  <td className="ps-3 py-1 opacity-75">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td>
-                  <td className="pe-3 py-1 text-end text-white fw-bold">+{pts}</td>
+                  <td className="ps-3 opacity-75">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td>
+                  <td className="pe-3 text-end text-white fw-bold">+{pts}</td>
                 </tr>
               ))}
             </tbody>
@@ -169,12 +169,12 @@ const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void })
         </div>
       </section>
       <section>
-        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2" style={{ fontSize: '0.75rem' }}>Scoring: First DNF</h3>
-        <p className="text-white opacity-75 small mb-0">Get the first driver to retire correctly and earn a massive <span className="fw-bold text-danger">+25 Points</span>.</p>
+        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-1" style={{ fontSize: '0.65rem' }}>Scoring: First DNF</h3>
+        <p className="text-white opacity-75 extra-small mb-0">Get the first retirement correctly and earn <span className="fw-bold text-danger">+25 Points</span>.</p>
       </section>
     </Modal.Body>
     <Modal.Footer className="border-secondary border-opacity-25 p-2">
-      <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill shadow-sm" onClick={onHide}>GOT IT</HapticButton>
+      <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill shadow-sm small" onClick={onHide}>GOT IT</HapticButton>
     </Modal.Footer>
   </Modal>
 );
