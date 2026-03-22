@@ -16,24 +16,26 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
     <Table variant="dark" hover className="f1-premium-table mb-0">
       <thead>
         <tr>
-          <th className="ps-4 border-0" style={{ width: '60px' }}>Pos</th>
+          <th className="ps-3 border-0" style={{ width: '50px' }}>Pos</th>
           <th className="border-0">Driver</th>
-          <th className="border-0">Team</th>
-          <th className="text-end border-0" style={{ width: '80px' }}>PTS</th>
-          <th className="text-end pe-4 border-0" style={{ width: '80px' }}>No.</th>
+          <th className="border-0 d-none d-sm-table-cell">Team</th>
+          <th className="text-end pe-4 border-0" style={{ width: '80px' }}>PTS</th>
         </tr>
       </thead>
       <tbody>
         {data.map((d, i) => (
           <tr key={d.id} className="border-secondary border-opacity-10">
-            <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-            <td className="fw-bold text-white fs-5 text-nowrap">
+            <td className="ps-3 fw-bold text-muted">{i + 1}</td>
+            <td className="fw-bold text-white fs-6 text-nowrap">
               <div className="d-flex align-items-center">
-                <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: d.color }}></div>
-                {d.name}
+                <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '20px', backgroundColor: d.color }}></div>
+                <div className="d-flex flex-column">
+                  <span>{d.name}</span>
+                  <span className="d-sm-none text-muted extra-small text-uppercase mt-1">{d.team}</span>
+                </div>
               </div>
             </td>
-            <td className="text-nowrap">
+            <td className="text-nowrap d-none d-sm-table-cell">
               <span className="team-pill fw-bold text-uppercase" style={{ 
                 backgroundColor: d.color, 
                 color: getContrastColor(d.color),
@@ -43,8 +45,7 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
                 {d.team}
               </span>
             </td>
-            <td className="text-end f1-total-points">{d.points}</td>
-            <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>{d.number}</td>
+            <td className="text-end pe-4 f1-total-points fs-5">{d.points}</td>
           </tr>
         ))}
       </tbody>
@@ -57,7 +58,7 @@ const ConstructorsTable = ({ data }: { data: ConstructorStanding[] }) => (
     <Table variant="dark" hover className="f1-premium-table mb-0">
       <thead>
         <tr>
-          <th className="ps-4 border-0" style={{ width: '60px' }}>Pos</th>
+          <th className="ps-3 border-0" style={{ width: '50px' }}>Pos</th>
           <th className="border-0">Team</th>
           <th className="text-end pe-4 border-0" style={{ width: '80px' }}>PTS</th>
         </tr>
@@ -65,14 +66,14 @@ const ConstructorsTable = ({ data }: { data: ConstructorStanding[] }) => (
       <tbody>
         {data.map((c, i) => (
           <tr key={c.id} className="border-secondary border-opacity-10">
-            <td className="ps-4 fw-bold text-muted">{i + 1}</td>
+            <td className="ps-3 fw-bold text-muted">{i + 1}</td>
             <td className="fw-bold text-white fs-5 text-nowrap">
               <div className="d-flex align-items-center">
-                <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: c.color }}></div>
+                <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '20px', backgroundColor: c.color }}></div>
                 {c.name}
               </div>
             </td>
-            <td className="text-end f1-total-points pe-4">{c.points}</td>
+            <td className="text-end f1-total-points pe-4 fs-5">{c.points}</td>
           </tr>
         ))}
       </tbody>
