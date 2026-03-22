@@ -97,7 +97,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-black bg-opacity-20 border-top border-secondary border-opacity-25 mt-auto">
+        <div className="p-4 border-top border-secondary border-opacity-25 mt-auto">
           <HapticButton 
             href="https://buymeacoffee.com/p10racing"
             variant="outline-warning" 

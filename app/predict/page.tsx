@@ -127,11 +127,11 @@ const SummaryPills = ({ drivers, p10Driver, dnfDriver, isSideBySide = false }: {
 );
 
 const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void }) => (
-  <Modal show={show} onHide={onHide} centered scrollable size="lg" contentClassName="f1-glass-card border-secondary border-opacity-50">
+  <Modal show={show} onHide={onHide} scrollable size="lg" contentClassName="f1-glass-card border-secondary border-opacity-50">
     <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-4 py-3">
       <Modal.Title className="fw-bold text-uppercase letter-spacing-1 text-white">How to <span className="text-danger">Play</span></Modal.Title>
     </Modal.Header>
-    <Modal.Body className="p-3 p-md-4 bg-black bg-opacity-20">
+    <Modal.Body className="p-3 p-md-4">
       <section className="mb-3">
         <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2" style={{ fontSize: '0.75rem' }}>The Objective</h3>
         <p className="text-white opacity-75 small">Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
@@ -166,7 +166,7 @@ const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void })
         <p className="text-white opacity-75 small mb-0">Get the first driver to retire correctly and earn a massive <span className="fw-bold text-danger">+25 Points</span>.</p>
       </section>
     </Modal.Body>
-    <Modal.Footer className="border-secondary border-opacity-25 bg-black bg-opacity-20 p-2">
+    <Modal.Footer className="border-secondary border-opacity-25 p-2">
       <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill shadow-sm" onClick={onHide}>GOT IT</HapticButton>
     </Modal.Footer>
   </Modal>
