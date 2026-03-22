@@ -5,7 +5,6 @@ import { Table, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { Driver, ConstructorStanding } from '@/lib/types';
 import { fetchDrivers, fetchConstructors } from '@/lib/api';
-import { getContrastColor } from '@/lib/utils/colors';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { Flag, Trophy, Users } from 'lucide-react';
@@ -17,8 +16,7 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
       <thead>
         <tr>
           <th className="ps-3 border-0" style={{ width: '50px' }}>Pos</th>
-          <th className="border-0">Driver</th>
-          <th className="border-0 d-none d-sm-table-cell">Team</th>
+          <th className="border-0">Driver / Team</th>
           <th className="text-end pe-4 border-0" style={{ width: '80px' }}>PTS</th>
         </tr>
       </thead>
@@ -28,22 +26,12 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
             <td className="ps-3 fw-bold text-muted">{i + 1}</td>
             <td className="fw-bold text-white fs-6 text-nowrap">
               <div className="d-flex align-items-center">
-                <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '20px', backgroundColor: d.color }}></div>
+                <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: d.color }}></div>
                 <div className="d-flex flex-column">
-                  <span>{d.name}</span>
-                  <span className="d-sm-none text-muted extra-small text-uppercase mt-1">{d.team}</span>
+                  <span className="fw-bold fs-6">{d.name}</span>
+                  <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{d.team}</span>
                 </div>
               </div>
-            </td>
-            <td className="text-nowrap d-none d-sm-table-cell">
-              <span className="team-pill fw-bold text-uppercase" style={{ 
-                backgroundColor: d.color, 
-                color: getContrastColor(d.color),
-                fontSize: '0.55rem',
-                letterSpacing: '0.5px'
-              }}>
-                {d.team}
-              </span>
             </td>
             <td className="text-end pe-4 f1-total-points fs-5">{d.points}</td>
           </tr>
@@ -52,7 +40,6 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
     </Table>
   </div>
 );
-
 const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], drivers: Driver[] }) => (
   <div className="f1-premium-table-container">
     <Table variant="dark" hover className="f1-premium-table mb-0">
