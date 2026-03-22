@@ -30,6 +30,10 @@ Create a `.env.local` file in the root directory:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional: Threshold for shake-to-refresh debug logs (Native Only)
+# Default is 800. Lower is more sensitive.
+NEXT_PUBLIC_SHAKE_THRESHOLD=800
 ```
 
 ### 3. Web & Privacy Policy Hosting (Vercel)
@@ -84,10 +88,16 @@ npx cap open android
 - **External API**: [Jolpica (Ergast) F1 API](https://jolpica.github.io/jolpica-f1/ergast/f1) for real-time race data.
 
 ### Automated Results Ingestion
-The app uses **Supabase Edge Functions** to automate the season:
-1. **Checker Function**: A scheduled Edge Function (`check-f1-results`) periodically polls the Jolpica API.
+The app uses **Supabase Edge Functions** (located in `lib/supabase/`) to automate the season:
+1. **Checker Function**: A scheduled Deno function (`check-f1-results`) periodically polls the Jolpica API, syncs the race calendar to the database, and sends prediction reminders.
 2. **Auto-Publication**: Once official race results are available, the function extracts the finishing positions and the first DNF, then `upserts` this data into the `verified_results` table.
 3. **Manual Override**: The Admin page allows manual adjustments to `verified_results` if the API is delayed or incorrect.
+4. **Push Notifications**: Triggered by database changes to send real-time updates to users via Firebase (FCM) using the `push-notifications-sender` function.
+
+### Native Features
+- **Shake Detection**: Shaking the device in development builds will trigger a debug event (logged to `window.__P10_ERROR_LOGS__`). Configurable via `NEXT_PUBLIC_SHAKE_THRESHOLD`.
+- **Edge-to-Edge**: Android 15+ (API 35+) is natively supported with automated status bar management in `NativeWrapper.tsx`.
+- **Deep Linking**: Supports `p10racing://` and standard web links for automated navigation and authentication flows.
 
 ### Scoring Engine
 - **Client-Side Calculation**: To support both logged-in users and "Guest" players, the final point calculation happens on the **Frontend**.
