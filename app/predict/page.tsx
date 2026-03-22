@@ -112,12 +112,12 @@ const SelectionList = ({ type, currentPick, onSelect, drivers, isHighlighted = f
 const SummaryPills = ({ drivers, p10Driver, dnfDriver, isSideBySide = false }: { drivers: Driver[], p10Driver: string, dnfDriver: string, isSideBySide?: boolean }) => (
   <div className={`d-flex flex-column ${isSideBySide ? 'flex-md-row' : ''} gap-2 mb-3 align-items-center justify-content-center`}>
     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>P10</small>
+      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>P10</small>
       <div className="f1-driver-line me-2" style={{ backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
       <span className="fw-bold text-white small flex-grow-1 text-start ps-1">{getDriverDisplayName(p10Driver, drivers)}</span>
     </div>
     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-3" style={{ fontSize: '0.55rem' }}>DNF</small>
+      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>DNF</small>
       <div className="f1-driver-line me-2" style={{ backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
       <span className="text-danger fw-bold small flex-grow-1 text-start ps-1">{getDriverDisplayName(dnfDriver, drivers)}</span>
     </div>
