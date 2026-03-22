@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge, Spinner } from 'react-bootstrap';
-import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
+import { LeaderboardEntry, CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
-import { DbPrediction } from '@/lib/types';
-import { fetchCalendar } from '@/lib/api';
+import { DbPrediction, Driver } from '@/lib/types';
+import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
@@ -19,7 +19,13 @@ import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout
 export default function LeaderboardPage() {
   const supabase = createClient();
   const mountedRef = useRef(true);
-  const { session, syncVersion, triggerRefresh } = useAuth();
+  const { session, currentUser, syncVersion, triggerRefresh } = useAuth();
+
+  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
+    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+  });
 
   // 1. Separate Cache Initialization
   const [globalLeaderboard, setGlobalLeaderboard] = useState<LeaderboardEntry[]>(() => {
@@ -47,10 +53,16 @@ export default function LeaderboardPage() {
   const calculate = useCallback(async (quiet = false) => {
     if (!quiet && mountedRef.current) setLoading(true);
     try {
-      const [raceResultsMap, races] = await Promise.all([
+      const [raceResultsMap, races, driversData] = await Promise.all([
         fetchAllSimplifiedResults(),
-        fetchCalendar(CURRENT_SEASON)
+        fetchCalendar(CURRENT_SEASON),
+        fetchDrivers(CURRENT_SEASON)
       ]);
+      
+      if (driversData.length > 0 && mountedRef.current) {
+        setAllDrivers(driversData);
+        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(driversData));
+      }
       
       const resultsFoundCount = Object.keys(raceResultsMap).length;
       if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount >= races.length);
@@ -174,8 +186,9 @@ export default function LeaderboardPage() {
           <LeaderboardTable 
             entries={tabId === 'global' ? globalLeaderboard : localLeaderboard} 
             loading={false} 
-            currentUser={session?.user?.id || undefined}
+            currentUser={currentUser || undefined}
             isSeasonComplete={isSeasonComplete}
+            drivers={allDrivers}
             emptyMessage={tabId === 'global' ? "No global players found." : "No guest data found on this device."}
           />
         )

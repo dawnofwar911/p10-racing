@@ -5,75 +5,74 @@ import { Table, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { Driver, ConstructorStanding } from '@/lib/types';
 import { fetchDrivers, fetchConstructors } from '@/lib/api';
-import { getContrastColor } from '@/lib/utils/colors';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { Flag, Trophy, Users } from 'lucide-react';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 
 const DriversTable = ({ data }: { data: Driver[] }) => (
-  <div className="table-responsive rounded border border-secondary shadow-sm">
-    <Table variant="dark" hover className="mb-0">
+  <div className="f1-premium-table-container">
+    <Table variant="dark" hover className="f1-premium-table mb-0">
       <thead>
-        <tr className="f1-table-header">
-          <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
-          <th className="py-3">Driver</th>
-          <th className="py-3">Team</th>
-          <th className="text-end py-3" style={{ width: '80px' }}>PTS</th>
-          <th className="text-end pe-4 py-3" style={{ width: '80px' }}>No.</th>
+        <tr>
+          <th className="ps-3 border-0" style={{ width: '50px' }}>Pos</th>
+          <th className="border-0">Driver / Team</th>
+          <th className="text-end pe-4 border-0" style={{ width: '80px' }}>PTS</th>
         </tr>
       </thead>
       <tbody>
         {data.map((d, i) => (
-          <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }}>
-            <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-            <td className="fw-bold text-white fs-5 text-nowrap">
+          <tr key={d.id} className="border-secondary border-opacity-10">
+            <td className="ps-3 fw-bold text-muted">{i + 1}</td>
+            <td className="fw-bold text-white fs-6 text-nowrap">
               <div className="d-flex align-items-center">
-                <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: d.color }}></div>
-                {d.name}
+                <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: d.color }}></div>
+                <div className="d-flex flex-column">
+                  <span className="fw-bold fs-6">{d.name}</span>
+                  <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{d.team}</span>
+                </div>
               </div>
             </td>
-            <td className="text-nowrap">
-              <span className="team-pill" style={{ 
-                backgroundColor: d.color, 
-                color: getContrastColor(d.color),
-                fontSize: '0.6rem' 
-              }}>
-                {d.team}
-              </span>
-            </td>
-            <td className="text-end f1-total-points">{d.points}</td>
-            <td className="text-end pe-4 driver-number fs-4" style={{ color: d.color, opacity: 0.8 }}>{d.number}</td>
+            <td className="text-end pe-4 f1-total-points fs-5">{d.points}</td>
           </tr>
         ))}
       </tbody>
     </Table>
   </div>
 );
-
-const ConstructorsTable = ({ data }: { data: ConstructorStanding[] }) => (
-  <div className="table-responsive rounded border border-secondary shadow-sm">
-    <Table variant="dark" hover className="mb-0">
+const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], drivers: Driver[] }) => (
+  <div className="f1-premium-table-container">
+    <Table variant="dark" hover className="f1-premium-table mb-0">
       <thead>
-        <tr className="f1-table-header">
-          <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
-          <th className="py-3">Team</th>
-          <th className="text-end pe-4 py-3" style={{ width: '80px' }}>PTS</th>
+        <tr>
+          <th className="ps-3 border-0" style={{ width: '50px' }}>Pos</th>
+          <th className="border-0">Team</th>
+          <th className="text-end pe-4 border-0" style={{ width: '80px' }}>PTS</th>
         </tr>
       </thead>
       <tbody>
-        {data.map((c, i) => (
-          <tr key={c.id} style={{ height: '70px', verticalAlign: 'middle' }}>
-            <td className="ps-4 fw-bold text-muted">{i + 1}</td>
-            <td className="fw-bold text-white fs-5 text-nowrap">
-              <div className="d-flex align-items-center">
-                <div className="me-3 flex-shrink-0" style={{ width: '4px', height: '24px', backgroundColor: c.color }}></div>
-                {c.name}
-              </div>
-            </td>
-            <td className="text-end f1-total-points pe-4">{c.points}</td>
-          </tr>
-        ))}
+        {data.map((c, i) => {
+          const teamDrivers = drivers.filter(d => d.teamId === c.id);
+          return (
+            <tr key={c.id} className="border-secondary border-opacity-10">
+              <td className="ps-3 fw-bold text-muted">{i + 1}</td>
+              <td className="fw-bold text-white fs-5 text-nowrap">
+                <div className="d-flex align-items-center">
+                  <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: c.color }}></div>
+                  <div className="d-flex flex-column">
+                    <span>{c.name}</span>
+                    {teamDrivers.length > 0 && (
+                      <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>
+                        {teamDrivers.map(d => d.name.split(' ').pop()).join(' • ')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </td>
+              <td className="text-end f1-total-points pe-4 fs-5">{c.points}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </Table>
   </div>
@@ -146,7 +145,7 @@ export default function StandingsPage() {
         ) : tabId === 'drivers' ? (
           <DriversTable data={standings} />
         ) : (
-          <ConstructorsTable data={constructorStandings} />
+          <ConstructorsTable data={constructorStandings} drivers={standings} />
         )
       )}
     >

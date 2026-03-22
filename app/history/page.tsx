@@ -14,7 +14,9 @@ interface HistoryEntry {
   round: string;
   name: string;
   p10: string;
+  p10Color: string;
   dnf: string;
+  dnfColor: string;
   winner: string;
 }
 
@@ -60,7 +62,9 @@ export default function HistoryPage() {
           round: round,
           name: raceInfo?.raceName || `Round ${round}`,
           p10: p10Driver ? p10Driver.name : 'Unknown',
+          p10Color: p10Driver?.color || '#B6BABD',
           dnf: dnfDriver ? dnfDriver.name : (data.firstDnf === 'None' ? 'None' : 'None'),
+          dnfColor: dnfDriver?.color || '#B6BABD',
           winner: winnerDriver ? winnerDriver.name : 'Unknown'
         };
       });
@@ -90,23 +94,29 @@ export default function HistoryPage() {
           <Row className="g-4">
             {history.map(race => (
               <Col xs={12} md={6} xl={4} key={race.round}>
-                <Card className="h-100 border-secondary shadow-sm overflow-hidden" style={{ borderLeft: '4px solid var(--f1-red)' }}>
-                  <Card.Header className="bg-dark border-secondary d-flex justify-content-between align-items-center py-3">
-                    <span className="fw-bold text-danger">ROUND {race.round}</span>
-                    <span className="text-muted small text-uppercase fw-bold">{race.name}</span>
-                  </Card.Header>
+                <Card className="f1-accent-card border-secondary border-opacity-50">
+                  <div className="f1-card-header d-flex justify-content-between align-items-center">
+                    <span className="fw-bold text-danger letter-spacing-1">ROUND {race.round}</span>
+                    <span className="text-white opacity-75 small fw-bold letter-spacing-1">{race.name}</span>
+                  </div>
                   <Card.Body className="p-4">
                     <div className="mb-4">
-                      <small className="text-muted text-uppercase d-block mb-1 letter-spacing-1 fw-bold" style={{ fontSize: '0.65rem' }}>P10 Finisher</small>
-                      <span className="fs-4 fw-bold text-white">{race.p10}</span>
+                      <small className="text-muted text-uppercase d-block mb-1 letter-spacing-2 fw-bold" style={{ fontSize: '0.65rem' }}>P10 Finisher</small>
+                      <div className="d-flex align-items-center">
+                        <div className="f1-driver-line me-2" style={{ backgroundColor: race.p10Color }}></div>
+                        <span className="fs-4 fw-bold text-white">{race.p10}</span>
+                      </div>
                     </div>
                     <div className="mb-4">
-                      <small className="text-muted text-uppercase d-block mb-1 letter-spacing-1 fw-bold" style={{ fontSize: '0.65rem' }}>First DNF</small>
-                      <span className="fs-4 fw-bold text-danger">{race.dnf}</span>
+                      <small className="text-muted text-uppercase d-block mb-1 letter-spacing-2 fw-bold" style={{ fontSize: '0.65rem' }}>First DNF</small>
+                      <div className="d-flex align-items-center">
+                        <div className="f1-driver-line me-2" style={{ backgroundColor: race.dnfColor }}></div>
+                        <span className="fs-4 fw-bold text-danger">{race.dnf}</span>
+                      </div>
                     </div>
-                    <div className="pt-3 border-top border-secondary border-opacity-50">
-                      <small className="text-muted text-uppercase d-block mb-1 fw-bold" style={{ fontSize: '0.6rem' }}>Race Winner</small>
-                      <span className="text-white fw-semibold">{race.winner}</span>
+                    <div className="pt-3 border-top border-secondary border-opacity-10">
+                      <small className="text-muted text-uppercase d-block mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Race Winner</small>
+                      <span className="text-white fw-semibold small opacity-75">{race.winner}</span>
                     </div>
                   </Card.Body>
                 </Card>

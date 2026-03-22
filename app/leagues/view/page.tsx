@@ -4,12 +4,13 @@ import React, { useState, useEffect, useCallback, Suspense, useRef } from 'react
 import { Spinner, Badge } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { fetchCalendar } from '@/lib/api';
-import { DbPrediction } from '@/lib/types';
-import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
+import { fetchCalendar, fetchDrivers } from '@/lib/api';
+import { DbPrediction, Driver } from '@/lib/types';
+import { CURRENT_SEASON, LeaderboardEntry, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 import LoadingView from '@/components/LoadingView';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Share } from '@capacitor/share';
@@ -32,6 +33,11 @@ function LeagueDetailContent() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
+  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
+    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+  });
 
   useEffect(() => {
     mountedRef.current = true;
@@ -77,7 +83,14 @@ function LeagueDetailContent() {
 
       // 2. Fetch Race Results
       const raceResultsMap = await fetchAllSimplifiedResults();
-      const races = await fetchCalendar(CURRENT_SEASON);
+      const [races, driversData] = await Promise.all([
+        fetchCalendar(CURRENT_SEASON),
+        fetchDrivers(CURRENT_SEASON)
+      ]);
+      
+      if (driversData.length > 0 && mountedRef.current) {
+        setAllDrivers(driversData);
+      }
       const resultsFoundCount = Object.keys(raceResultsMap).length;
 
       if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
@@ -192,14 +205,19 @@ function LeagueDetailContent() {
       tabs={[{ id: 'standings', label: 'Standings', icon: <Users size={16} /> }]}
     >
       <div className="mt-2">
-        <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 shadow-sm">
-          <div>
-            <small className="text-muted text-uppercase fw-bold letter-spacing-1 d-block mb-1" style={{ fontSize: '0.6rem' }}>Invite your friends</small>
-            <code className="text-white fw-bold letter-spacing-2 fs-5">{inviteCode}</code>
+        <div className="f1-glass-card mb-4 p-3 border-secondary border-opacity-50">
+          {/* Subtle accent line */}
+          <div className="position-absolute top-0 start-0 w-100 bg-danger opacity-50" style={{ height: '2px' }}></div>
+          
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <small className="text-muted text-uppercase fw-bold letter-spacing-2 d-block mb-1" style={{ fontSize: '0.6rem' }}>League Invite Code</small>
+              <code className="text-white fw-bold letter-spacing-2 fs-4" style={{ fontFamily: 'monospace' }}>{inviteCode}</code>
+            </div>
+            <HapticButton variant="danger" className="rounded-pill px-4 py-2 fw-bold text-uppercase d-flex align-items-center gap-2 shadow-sm" style={{ fontSize: '0.75rem' }} onClick={handleShare}>
+              SHARE LINK
+            </HapticButton>
           </div>
-          <HapticButton variant="danger" className="rounded-pill px-4 py-2 fw-bold text-uppercase d-flex align-items-center" style={{ fontSize: '0.75rem' }} onClick={handleShare}>
-            SHARE LINK
-          </HapticButton>
         </div>
         
         {loading ? (
@@ -209,6 +227,7 @@ function LeagueDetailContent() {
             entries={leaderboard} 
             loading={loading} 
             isSeasonComplete={isSeasonComplete}
+            drivers={allDrivers}
             emptyMessage="No members in this league yet."
           />
         )}

@@ -387,7 +387,7 @@ export default function Home() {
             </p>
             
             {nextRace && !loading && isSeasonFinished && (
-              <div className="mb-4 p-4 border border-warning rounded bg-warning bg-opacity-10 shadow-lg">
+              <div className="f1-accent-card mb-4 p-4 border-warning border-opacity-50">
                 <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
                 <h2 className="display-6 fw-bold text-white mb-2">
                   {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
@@ -475,7 +475,7 @@ export default function Home() {
                   initial={isColdStart ? { opacity: 0, scale: 0.95 } : false}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="mb-4 p-3 border border-danger border-opacity-20 rounded bg-dark bg-opacity-50 shadow-sm mx-auto" 
+                  className="f1-accent-card mb-4 p-3 border-danger border-opacity-20 mx-auto" 
                   style={{ maxWidth: '400px' }}
                 >
                   <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-3" style={{ fontSize: '0.65rem' }}>
@@ -483,20 +483,16 @@ export default function Home() {
                   </h3>
                   <div className="d-flex flex-column gap-2 mb-3 align-items-center">
                     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
-                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.p10)?.color || '#B6BABD' }}></div>
-                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-                      </div>
-                      <span className="fw-bold text-white small flex-grow-1 text-start ps-2">
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>P10</small>
+                      <div className="f1-driver-line me-2" style={{ backgroundColor: allDrivers.find(d => d.id === userPrediction.p10)?.color || '#B6BABD' }}></div>
+                      <span className="fw-bold text-white small flex-grow-1 text-start ps-1">
                         {getDriverDisplayName(userPrediction.p10, allDrivers)}
                       </span>
                     </div>
                     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-                      <div className="d-flex align-items-center" style={{ width: '45px' }}>
-                        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: allDrivers.find(d => d.id === userPrediction.dnf)?.color || '#B6BABD' }}></div>
-                        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-                      </div>
-                      <span className="fw-bold text-danger small flex-grow-1 text-start ps-2">
+                      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>DNF</small>
+                      <div className="f1-driver-line me-2" style={{ backgroundColor: allDrivers.find(d => d.id === userPrediction.dnf)?.color || '#B6BABD' }}></div>
+                      <span className="fw-bold text-danger small flex-grow-1 text-start ps-1">
                         {getDriverDisplayName(userPrediction.dnf, allDrivers)}
                       </span>
                     </div>
@@ -513,7 +509,7 @@ export default function Home() {
 
         <Row className="mt-2 g-3 px-1">
           <Col md={6}>
-            <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm" style={{ minHeight: '110px' }}>
+            <div className="f1-glass-card p-3 border-secondary border-opacity-25 h-100" style={{ minHeight: '110px' }}>
               <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
               {loading && !nextRace ? (
                 <Spinner animation="border" size="sm" variant="danger" />
@@ -533,12 +529,12 @@ export default function Home() {
           </Col>
 
           <Col md={6}>
-            <div className="p-3 border border-secondary border-opacity-25 rounded h-100 bg-dark bg-opacity-50 shadow-sm d-flex flex-column justify-content-between">
+            <div className="f1-glass-card p-3 border-secondary border-opacity-25 h-100 d-flex flex-column justify-content-between">
               <div>
                 <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
                 <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Compete with Friends</p>
               </div>
-              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start" onClick={triggerMediumHaptic}>
+              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start d-inline-flex" onClick={triggerMediumHaptic}>
                 View Leagues →
               </Link>
             </div>
@@ -555,7 +551,7 @@ export default function Home() {
             >
               <Row className="mt-4 justify-content-center">
                 <Col md={6}>
-                  <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
+                  <div className="f1-glass-card p-3 border-primary border-opacity-20 text-center shadow-sm bg-primary bg-opacity-5">
                     <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
                     <Link href="/auth" passHref legacyBehavior>

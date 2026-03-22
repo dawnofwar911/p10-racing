@@ -162,25 +162,26 @@ export default function AuthPage() {
       <Container className="mt-5">
         <Row className="justify-content-center">
           <Col md={6} lg={5}>
-            <Card className="border-secondary shadow-lg overflow-hidden">
-              <div className="bg-danger py-2 px-4 text-white fw-bold text-uppercase letter-spacing-1 small">
-                {isResetPassword ? 'Reset Password' : (isSignUp ? 'New Player Registration' : 'Player Login')}
+            <Card className="f1-glass-card border-secondary border-opacity-50">
+              <div className="bg-danger py-2 px-4 text-white fw-bold text-uppercase letter-spacing-2 small d-flex align-items-center justify-content-between">
+                <span>{isResetPassword ? 'Reset Password' : (isSignUp ? 'Registration' : 'Player Login')}</span>
+                <span className="opacity-50" style={{ fontSize: '0.6rem' }}>P10 RACING</span>
               </div>
               <Card.Body className="p-4 p-md-5">
                 <div className="text-center mb-4">
-                  <h1 className="h3 fw-bold text-white mb-2">P10 RACING</h1>
-                  <p className="text-muted small">
-                    {isResetPassword ? 'Get back in the race.' : 'Enter the midfield battle.'}
+                  <h1 className="h3 fw-bold text-white mb-2 letter-spacing-1">GRID <span className="text-danger">ACCESS</span></h1>
+                  <p className="text-muted small px-3 opacity-75">
+                    {isResetPassword ? 'Get back in the race.' : 'Enter the midfield battle and prove your racing IQ.'}
                   </p>
                 </div>
 
-                {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
-                {message && <Alert variant="success" className="py-2 small">{message}</Alert>}
+                {error && <Alert variant="danger" className="py-2 small border-0 bg-danger bg-opacity-10 text-danger">{error}</Alert>}
+                {message && <Alert variant="success" className="py-2 small border-0 bg-success bg-opacity-10 text-success">{message}</Alert>}
 
                 <Form onSubmit={handleAuth}>
                   {isSignUp && (
                     <Form.Group className="mb-3">
-                      <Form.Label className="text-white small text-uppercase fw-bold">Username</Form.Label>
+                      <Form.Label className="text-white small text-uppercase fw-bold opacity-75 letter-spacing-1">Username</Form.Label>
                       <Form.Control 
                         type="text" 
                         placeholder="e.g. LandoFan4" 
@@ -188,33 +189,33 @@ export default function AuthPage() {
                         onChange={(e) => setUsername(e.target.value)}
                         required
                         minLength={3}
-                        className="bg-dark text-white border-secondary py-2"
+                        className="f1-input-dark py-2 rounded-3"
                       />
                     </Form.Group>
                   )}
 
                   <Form.Group className="mb-3">
-                    <Form.Label className="text-white small text-uppercase fw-bold">Email Address</Form.Label>
+                    <Form.Label className="text-white small text-uppercase fw-bold opacity-75 letter-spacing-1">Email Address</Form.Label>
                     <Form.Control 
                       type="email" 
                       placeholder="name@example.com" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-dark text-white border-secondary py-2"
+                      className="f1-input-dark py-2 rounded-3"
                     />
                   </Form.Group>
 
                   {!isResetPassword && (
                     <Form.Group className="mb-4">
-                      <Form.Label className="text-white small text-uppercase fw-bold">Password</Form.Label>
+                      <Form.Label className="text-white small text-uppercase fw-bold opacity-75 letter-spacing-1">Password</Form.Label>
                       <Form.Control 
                         type="password" 
                         placeholder="••••••••" 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="bg-dark text-white border-secondary py-2"
+                        className="f1-input-dark py-2 rounded-3"
                       />
                       {!isSignUp && (
                         <div className="text-end mt-1">
@@ -234,7 +235,7 @@ export default function AuthPage() {
                   <HapticButton 
                     hapticStyle="medium"
                     type="submit" 
-                    className="btn-f1 w-100 py-3 fw-bold mb-3" 
+                    className="btn-f1 w-100 py-3 fw-bold mb-3 rounded-pill" 
                     disabled={loading}
                   >
                     {loading ? <Spinner animation="border" size="sm" /> : (isResetPassword ? 'SEND RESET LINK' : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'))}

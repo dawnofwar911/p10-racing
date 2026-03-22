@@ -375,3 +375,109 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   background-color: var(--f1-red) !important;
   color: white !important;
 }
+
+/* P10 DESIGN SYSTEM - Reusable Premium Styles */
+
+.f1-glass-card {
+  background-color: rgba(31, 31, 39, 0.75) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 1rem !important; /* rounded-4 equivalent */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden;
+  position: relative;
+}
+
+.f1-glass-modal {
+  background-color: rgba(31, 31, 39, 0.85) !important;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5) !important;
+  /* NO overflow: hidden here to allow modal-body to scroll */
+}
+
+.f1-accent-card {
+  background-color: rgba(31, 31, 39, 0.75) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-left: 4px solid var(--f1-red) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden;
+  position: relative;
+}
+
+.f1-card-header {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  padding: 0.75rem 1.25rem !important;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 800;
+  font-size: 0.65rem;
+}
+
+.f1-premium-table-container {
+  background-color: rgba(31, 31, 39, 0.75) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden;
+}
+
+.f1-premium-table thead tr {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.f1-premium-table th, .f1-premium-table td {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.f1-premium-table tbody tr {
+  height: 70px;
+  vertical-align: middle;
+}
+
+.f1-premium-table-sm tbody tr {
+  height: 35px !important;
+  vertical-align: middle;
+}
+
+.f1-premium-table-sm th, .f1-premium-table-sm td {
+  padding: 0.5rem 1rem !important;
+}
+
+.f1-input-dark {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  border-radius: 0.5rem !important;
+}
+
+.f1-input-dark:focus {
+  border-color: var(--f1-red) !important;
+  box-shadow: 0 0 0 0.25rem rgba(225, 6, 0, 0.25) !important;
+  outline: none;
+}
+
+.f1-driver-line {
+  width: 3px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.letter-spacing-1 { letter-spacing: 1px; }
+.letter-spacing-2 { letter-spacing: 2px; }
+.extra-small { font-size: 0.65rem; }

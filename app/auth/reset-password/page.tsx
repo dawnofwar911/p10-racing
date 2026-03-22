@@ -194,65 +194,66 @@ export default function ResetPasswordPage() {
     <Container className="mt-5">
       <Row className="justify-content-center">
         <Col md={6} lg={5}>
-          <Card className="border-secondary shadow-lg overflow-hidden">
-            <div className={`py-2 px-4 text-white fw-bold text-uppercase letter-spacing-1 small ${isProfileUpdate ? 'bg-secondary bg-opacity-50' : 'bg-danger'}`}>
-              {isProfileUpdate ? 'Change Password' : 'Set New Password'}
+          <Card className="f1-glass-card border-secondary border-opacity-50">
+            <div className={`py-2 px-4 text-white fw-bold text-uppercase letter-spacing-2 small d-flex align-items-center justify-content-between ${isProfileUpdate ? 'bg-secondary bg-opacity-25' : 'bg-danger'}`}>
+              <span>{isProfileUpdate ? 'Change Password' : 'Set New Password'}</span>
+              <span className="opacity-50" style={{ fontSize: '0.6rem' }}>P10 RACING</span>
             </div>
             <Card.Body className="p-4 p-md-5">
               <div className="text-center mb-4">
-                <h1 className="h3 fw-bold text-white mb-2">P10 RACING</h1>
-                <p className="text-muted small">
+                <h1 className="h3 fw-bold text-white mb-2 letter-spacing-1">GRID <span className="text-danger">SECURITY</span></h1>
+                <p className="text-muted small opacity-75">
                   {isProfileUpdate ? 'Update your account security.' : 'Account verified via recovery link.'}
                 </p>
                 {!isProfileUpdate && (
-                  <div className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-2 rounded-pill small fw-bold">
+                  <div className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20 px-3 py-2 rounded-pill extra-small fw-bold mt-2">
                     ACTION REQUIRED: SET NEW PASSWORD
                   </div>
                 )}
               </div>
 
-              {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
-              {message && <Alert variant="success" className="py-2 small">{message}</Alert>}
+              {error && <Alert variant="danger" className="py-2 small border-0 bg-danger bg-opacity-10 text-danger mb-4">{error}</Alert>}
+              {message && <Alert variant="success" className="py-2 small border-0 bg-success bg-opacity-10 text-success mb-4">{message}</Alert>}
 
               {!message && (
                 <Form onSubmit={handleUpdatePassword}>
                   <Form.Group className="mb-3">
-                    <Form.Label className="text-muted small text-uppercase fw-bold">New Password</Form.Label>
+                    <Form.Label className="text-white small text-uppercase fw-bold opacity-75 letter-spacing-1">New Password</Form.Label>
                     <Form.Control 
                       type="password" 
                       placeholder="••••••••" 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="bg-dark text-white border-secondary py-2"
+                      className="f1-input-dark py-2 rounded-3"
                     />
                   </Form.Group>
 
                   <Form.Group className="mb-4">
-                    <Form.Label className="text-muted small text-uppercase fw-bold">Confirm Password</Form.Label>
+                    <Form.Label className="text-white small text-uppercase fw-bold opacity-75 letter-spacing-1">Confirm Password</Form.Label>
                     <Form.Control 
                       type="password" 
                       placeholder="••••••••" 
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      className="bg-dark text-white border-secondary py-2"
+                      className="f1-input-dark py-2 rounded-3"
                     />
                   </Form.Group>
 
                   <HapticButton 
                     hapticStyle="medium"
                     type="submit" 
-                    className="btn-f1 w-100 py-3 fw-bold mb-3" 
+                    className="btn-f1 w-100 py-3 fw-bold mb-3 rounded-pill" 
                     disabled={loading || !!error}
                   >
                     {loading ? <Spinner animation="border" size="sm" /> : isProfileUpdate ? 'CHANGE PASSWORD' : 'UPDATE PASSWORD'}
                   </HapticButton>
 
-                  <div className="text-center mt-3 pt-3 border-top border-secondary border-opacity-25">
+                  <div className="text-center mt-3 pt-3 border-top border-secondary border-opacity-10">
                     <button 
                       type="button" 
-                      className="btn btn-link text-muted text-decoration-none small fw-bold opacity-75 hover-opacity-100"
+                      className="btn btn-link text-muted text-decoration-none extra-small fw-bold opacity-50 hover-opacity-100"
                       onClick={handleCancel}
                       disabled={loading}
                     >
@@ -263,7 +264,7 @@ export default function ResetPasswordPage() {
               )}
 
               {error && (
-                <div className="text-center">
+                <div className="text-center mt-3">
                   <HapticButton 
                     variant="link" 
                     className="text-danger text-decoration-none small fw-bold"

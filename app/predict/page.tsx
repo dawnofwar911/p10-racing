@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { Container, Row, Col, Form, Card, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Form, Card, Modal, Table } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -51,12 +51,12 @@ type PredictTab = 'grid' | 'p10' | 'dnf';
 // --- SUB-COMPONENTS MOVED OUTSIDE TO PREVENT RE-RENDERING LOOPS ---
 
 const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], drivers: Driver[] }) => (
-  <Card className="border-secondary bg-dark bg-opacity-50 shadow-sm overflow-hidden h-100">
-    <Card.Header className="bg-dark border-secondary py-2 d-flex justify-content-between align-items-center">
-      <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-1" style={{ fontSize: '0.65rem' }}>Starting Grid</h3>
-      <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.6rem' }}>Target: P10</span>
-    </Card.Header>
-    <Card.Body className="p-2 bg-black bg-opacity-40">
+  <Card className="f1-glass-card border-secondary border-opacity-50 h-100">
+    <div className="f1-card-header d-flex justify-content-between align-items-center">
+      <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-1">Starting Grid</h3>
+      <span className="extra-small text-muted text-uppercase fw-bold">Target: P10</span>
+    </div>
+    <Card.Body className="p-2 bg-black bg-opacity-20">
       <div className="row g-2">
         {startingGrid.map((result) => {
           const pos = parseInt(result.position);
@@ -66,7 +66,7 @@ const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], driver
           const teamColor = driverInfo?.color || '#B6BABD';
           return (
             <div key={result.Driver.driverId} className="col-6">
-              <div className={`position-relative p-0 rounded overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
+              <div className={`position-relative p-0 rounded-3 overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
                 <div style={{ height: '3px', backgroundColor: teamColor }}></div>
                 <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
                   <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
@@ -91,16 +91,18 @@ const SelectionList = ({ type, currentPick, onSelect, drivers, isHighlighted = f
     </h3>
     <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '80px' }}>
       {drivers.map((driver) => (
-        <div key={`${type}-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${currentPick === driver.id ? 'border-danger bg-danger bg-opacity-20 shadow-sm' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => onSelect(driver.id)} style={{ borderLeft: `6px solid ${driver.color} !important` }}>
-          <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '45px' }}>
-            <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: driver.color }}></div>
+        <div key={`${type}-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${currentPick === driver.id ? 'border-danger bg-danger bg-opacity-20 shadow-sm' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => onSelect(driver.id)}>
+          <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '35px' }}>
             <span style={{ fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</span>
           </div>
-          <div className="flex-grow-1">
-            <div className="fw-bold text-white small">{driver.name}</div>
-            <div className="extra-small text-uppercase fw-bold opacity-75" style={{ fontSize: '0.55rem', color: driver.color }}>{driver.team}</div>
+          <div className="flex-grow-1 d-flex align-items-center">
+            <div className="f1-driver-line me-3" style={{ backgroundColor: driver.color }}></div>
+            <div>
+              <div className="fw-bold text-white small">{driver.name}</div>
+              <div className="extra-small text-uppercase fw-bold text-muted opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
+            </div>
           </div>
-          {currentPick === driver.id && <div className="text-danger me-3">●</div>}
+          {currentPick === driver.id && <div className="text-danger me-3 fw-bold">✓</div>}
         </div>
       ))}
     </div>
@@ -110,53 +112,67 @@ const SelectionList = ({ type, currentPick, onSelect, drivers, isHighlighted = f
 const SummaryPills = ({ drivers, p10Driver, dnfDriver, isSideBySide = false }: { drivers: Driver[], p10Driver: string, dnfDriver: string, isSideBySide?: boolean }) => (
   <div className={`d-flex flex-column ${isSideBySide ? 'flex-md-row' : ''} gap-2 mb-3 align-items-center justify-content-center`}>
     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-      <div className="d-flex align-items-center" style={{ width: '45px' }}>
-        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
-        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>P10</small>
-      </div>
-      <span className="fw-bold text-white small flex-grow-1 text-start ps-2">{getDriverDisplayName(p10Driver, drivers)}</span>
+      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>P10</small>
+      <div className="f1-driver-line me-2" style={{ backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
+      <span className="fw-bold text-white small flex-grow-1 text-start ps-1">{getDriverDisplayName(p10Driver, drivers)}</span>
     </div>
     <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-      <div className="d-flex align-items-center" style={{ width: '45px' }}>
-        <div className="flex-shrink-0 rounded-circle me-2" style={{ width: '8px', height: '8px', backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
-        <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.55rem' }}>DNF</small>
-      </div>
-      <span className="text-danger fw-bold small flex-grow-1 text-start ps-2">{getDriverDisplayName(dnfDriver, drivers)}</span>
+      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>DNF</small>
+      <div className="f1-driver-line me-2" style={{ backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
+      <span className="text-danger fw-bold small flex-grow-1 text-start ps-1">{getDriverDisplayName(dnfDriver, drivers)}</span>
     </div>
   </div>
 );
 
 const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void }) => (
-  <Modal show={show} onHide={onHide} centered size="lg" contentClassName="bg-dark border-secondary">
-    <Modal.Header closeButton closeVariant="white" className="border-secondary">
-      <Modal.Title className="fw-bold text-uppercase letter-spacing-1 fs-5">How to <span className="text-danger">Play</span></Modal.Title>
+  <Modal 
+    show={show} 
+    onHide={onHide} 
+    centered 
+    scrollable 
+    contentClassName="f1-glass-modal border-secondary border-opacity-50 mx-auto"
+    style={{ maxWidth: '400px', margin: '0 auto' }}
+  >
+    <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-3 py-2">
+      <Modal.Title className="fw-bold text-uppercase letter-spacing-1 text-white fs-6">How to <span className="text-danger">Play</span></Modal.Title>
     </Modal.Header>
-    <Modal.Body className="px-4 py-4">
-      <section className="mb-4">
-        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">The Objective</h3>
-        <p className="text-white opacity-75 small">Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
+    <Modal.Body className="p-3">
+      <section className="mb-3">
+        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-1" style={{ fontSize: '0.65rem' }}>The Objective</h3>
+        <p className="text-white opacity-75 extra-small mb-0">Predict the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
       </section>
-      <section className="mb-4">
-        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-3">Scoring: P10 Finisher</h3>
-        <div className="bg-black bg-opacity-50 border border-secondary border-opacity-25 rounded overflow-hidden">
-          <table className="table table-dark table-sm mb-0 extra-small">
-            <thead><tr className="text-uppercase opacity-50" style={{ fontSize: '0.6rem' }}><th className="ps-3 py-2">Actual Finish</th><th className="pe-3 py-2 text-end">Points</th></tr></thead>
+      <section className="mb-3">
+        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-2" style={{ fontSize: '0.65rem' }}>Scoring: P10 Finisher</h3>
+        <div className="f1-premium-table-container">
+          <Table variant="dark" size="sm" className="f1-premium-table f1-premium-table-sm mb-0 extra-small">
+            <thead>
+              <tr>
+                <th className="ps-3 border-0">Actual Finish</th>
+                <th className="pe-3 text-end border-0">Points</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr className="table-active fw-bold"><td className="ps-3 py-1">P10 (Exact)</td><td className="pe-3 py-1 text-end text-danger">25</td></tr>
+              <tr className="bg-danger bg-opacity-10 fw-bold border-secondary border-opacity-10">
+                <td className="ps-3">P10 (Exact)</td>
+                <td className="pe-3 text-end text-danger">+25</td>
+              </tr>
               {['18', '15', '12', '10', '8', '6', '4', '2', '1'].map((pts, i) => (
-                <tr key={pts}><td className="ps-3 py-1">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td><td className="pe-3 py-1 text-end">{pts}</td></tr>
+                <tr key={pts} className="border-secondary border-opacity-10">
+                  <td className="ps-3 opacity-75">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td>
+                  <td className="pe-3 text-end text-white fw-bold">+{pts}</td>
+                </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
       </section>
       <section>
-        <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">Scoring: First DNF</h3>
-        <p className="text-white opacity-75 small mb-0">Get the first driver to retire correctly and earn a massive <span className="fw-bold text-danger">+25 Points</span>.</p>
+        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-1" style={{ fontSize: '0.65rem' }}>Scoring: First DNF</h3>
+        <p className="text-white opacity-75 extra-small mb-0">Get the first retirement correctly and earn <span className="fw-bold text-danger">+25 Points</span>.</p>
       </section>
     </Modal.Body>
-    <Modal.Footer className="border-secondary">
-      <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill" onClick={onHide}>GOT IT</HapticButton>
+    <Modal.Footer className="border-secondary border-opacity-25 p-2">
+      <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill shadow-sm small" onClick={onHide}>GOT IT</HapticButton>
     </Modal.Footer>
   </Modal>
 );
@@ -679,35 +695,44 @@ function PredictPage() {
 
             {isLocked && (
               <Col xs={12} lg={6} className="mb-4">
-                <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
-                  <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">Community</h3>
-                  {communityPredictions.length > 0 ? (
-                    <div className="table-responsive">
-                      <table className="table table-dark table-hover mb-0 small">
-                        <thead><tr className="text-muted extra-small text-uppercase opacity-50"><th>Player</th><th className="text-center">P10</th><th className="text-center">DNF</th></tr></thead>
-                        <tbody>{communityPredictions.map((pred, idx) => (
-                          <tr key={idx} className="align-middle">
-                            <td className="text-white fw-bold py-2">{pred.username}</td>
-                            <td className="text-center">
-                              <div className="d-flex align-items-center justify-content-center gap-2">
-                                <div className="rounded-circle" style={{ width: '6px', height: '6px', backgroundColor: drivers.find(d => d.id === pred.p10)?.color || '#B6BABD' }}></div>
-                                <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
-                              </div>
-                            </td>
-                            <td className="text-center">
-                              <div className="d-flex align-items-center justify-content-center gap-2">
-                                <div className="rounded-circle" style={{ width: '6px', height: '6px', backgroundColor: drivers.find(d => d.id === pred.dnf)?.color || '#B6BABD' }}></div>
-                                <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}</tbody>
-                      </table>
-                    </div>
-                  ) : <p className="text-muted small text-center">Only you so far!</p>}
+                <div className="f1-glass-card border-secondary border-opacity-50 h-100">
+                  <div className="f1-card-header text-center text-danger">Community</div>
+                  <div className="p-3">
+                    {communityPredictions.length > 0 ? (
+                      <div className="table-responsive">
+                        <Table variant="dark" hover className="f1-premium-table f1-premium-table-sm mb-0">
+                          <thead>
+                            <tr>
+                              <th className="ps-3 border-0">Player</th>
+                              <th className="text-center border-0">P10</th>
+                              <th className="text-center border-0">DNF</th>
+                            </tr>
+                          </thead>
+                          <tbody>{communityPredictions.map((pred, idx) => (
+                            <tr key={idx}>
+                              <td className="ps-3 text-white fw-bold small">{pred.username}</td>
+                              <td className="text-center">
+                                <div className="d-flex align-items-center justify-content-center gap-2">
+                                  <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.p10)?.color || '#B6BABD' }}></div>
+                                  <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1 extra-small">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
+                                </div>
+                              </td>
+                              <td className="text-center">
+                                <div className="d-flex align-items-center justify-content-center gap-2">
+                                  <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.dnf)?.color || '#B6BABD' }}></div>
+                                  <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25 extra-small">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}</tbody>
+                        </Table>
+                      </div>
+                    ) : <p className="text-muted small text-center py-4">Only you so far!</p>}
+                  </div>
                 </div>
               </Col>
             )}
+
           </Row>
         </Card>
         <div className="d-flex justify-content-center gap-3">
