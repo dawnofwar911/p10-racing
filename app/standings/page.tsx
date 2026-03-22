@@ -53,7 +53,7 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
   </div>
 );
 
-const ConstructorsTable = ({ data }: { data: ConstructorStanding[] }) => (
+const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], drivers: Driver[] }) => (
   <div className="f1-premium-table-container">
     <Table variant="dark" hover className="f1-premium-table mb-0">
       <thead>
@@ -64,18 +64,28 @@ const ConstructorsTable = ({ data }: { data: ConstructorStanding[] }) => (
         </tr>
       </thead>
       <tbody>
-        {data.map((c, i) => (
-          <tr key={c.id} className="border-secondary border-opacity-10">
-            <td className="ps-3 fw-bold text-muted">{i + 1}</td>
-            <td className="fw-bold text-white fs-5 text-nowrap">
-              <div className="d-flex align-items-center">
-                <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '20px', backgroundColor: c.color }}></div>
-                {c.name}
-              </div>
-            </td>
-            <td className="text-end f1-total-points pe-4 fs-5">{c.points}</td>
-          </tr>
-        ))}
+        {data.map((c, i) => {
+          const teamDrivers = drivers.filter(d => d.teamId === c.id);
+          return (
+            <tr key={c.id} className="border-secondary border-opacity-10">
+              <td className="ps-3 fw-bold text-muted">{i + 1}</td>
+              <td className="fw-bold text-white fs-5 text-nowrap">
+                <div className="d-flex align-items-center">
+                  <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: c.color }}></div>
+                  <div className="d-flex flex-column">
+                    <span>{c.name}</span>
+                    {teamDrivers.length > 0 && (
+                      <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>
+                        {teamDrivers.map(d => d.name.split(' ').pop()).join(' • ')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </td>
+              <td className="text-end f1-total-points pe-4 fs-5">{c.points}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </Table>
   </div>
@@ -148,7 +158,7 @@ export default function StandingsPage() {
         ) : tabId === 'drivers' ? (
           <DriversTable data={standings} />
         ) : (
-          <ConstructorsTable data={constructorStandings} />
+          <ConstructorsTable data={constructorStandings} drivers={standings} />
         )
       )}
     >
