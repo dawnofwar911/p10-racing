@@ -268,29 +268,121 @@ export default function AdminPage() {
   return (
     <>
       <Container className="mt-4 mb-5">
-        {status && (<Alert variant={status.variant} onClose={() => setStatus(null)} dismissible className="sticky-top mt-2 shadow-sm border-secondary">{status.message}</Alert>)}
+        {status && (<Alert variant={status.variant} onClose={() => setStatus(null)} dismissible className="sticky-top mt-2 shadow-sm border-0 bg-opacity-10 fw-bold text-uppercase letter-spacing-1 small">{status.message}</Alert>)}
         <Row className="mb-4">
-          <Col><h1 className="h2 fw-bold text-uppercase letter-spacing-1">Admin Results Entry</h1><div className="d-flex gap-3 align-items-end mt-3 flex-wrap"><Form.Group style={{ maxWidth: '150px' }}><Form.Label className="small text-muted text-uppercase fw-bold">Season</Form.Label><Form.Control type="number" value={season} onChange={(e) => setSeason(parseInt(e.target.value))} className="bg-dark text-white border-secondary" /></Form.Group><Form.Group style={{ maxWidth: '300px' }}><Form.Label className="small text-muted text-uppercase fw-bold">Select Race</Form.Label><Dropdown onSelect={(k) => { triggerLightHaptic(); setSelectedRace(k || ''); }} className="w-100"><Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-dark text-white fw-bold">{availableRaces.find(r => r.round === selectedRace)?.raceName || 'Select Race'}{selectedRace ? ` (R${selectedRace})` : ''}</Dropdown.Toggle><Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg" style={{ maxHeight: '300px', overflowY: 'auto' }}>{availableRaces.map(race => (<Dropdown.Item key={race.round} eventKey={race.round} active={selectedRace === race.round}>{race.raceName} (R{race.round})</Dropdown.Item>))}</Dropdown.Menu></Dropdown></Form.Group>
-
-
-<HapticButton variant="outline-info" onClick={handleFetchFromApi} disabled={loading} className="px-4 fw-bold">{loading ? <Spinner animation="border" size="sm" /> : 'FETCH API'}</HapticButton></div>{error && <Alert variant="danger" className="mt-3 py-2">{error}</Alert>}</Col>
+          <Col>
+            <h1 className="h2 fw-bold text-uppercase letter-spacing-1 text-white">Admin <span className="text-danger">Results</span></h1>
+            <div className="d-flex gap-3 align-items-end mt-3 flex-wrap">
+              <Form.Group style={{ maxWidth: '120px' }}>
+                <Form.Label className="extra-small text-muted text-uppercase fw-bold letter-spacing-1">Season</Form.Label>
+                <Form.Control type="number" value={season} onChange={(e) => setSeason(parseInt(e.target.value))} className="f1-input-dark" />
+              </Form.Group>
+              <Form.Group style={{ maxWidth: '300px' }}>
+                <Form.Label className="extra-small text-muted text-uppercase fw-bold letter-spacing-1">Select Race</Form.Label>
+                <Dropdown onSelect={(k) => { triggerLightHaptic(); setSelectedRace(k || ''); }} className="w-100">
+                  <Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-black bg-opacity-50 text-white fw-bold py-2 rounded-3">
+                    {availableRaces.find(r => r.round === selectedRace)?.raceName || 'Select Race'}{selectedRace ? ` (R${selectedRace})` : ''}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg f1-glass-card" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {availableRaces.map(race => (
+                      <Dropdown.Item key={race.round} eventKey={race.round} active={selectedRace === race.round}>{race.raceName} (R{race.round})</Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Form.Group>
+              <HapticButton variant="outline-info" onClick={handleFetchFromApi} disabled={loading} className="px-4 fw-bold rounded-pill h-100 py-2" style={{ minHeight: '42px' }}>
+                {loading ? <Spinner animation="border" size="sm" /> : 'FETCH API'}
+              </HapticButton>
+            </div>
+            {error && <Alert variant="danger" className="mt-3 py-2 small border-0 bg-danger bg-opacity-10">{error}</Alert>}
+          </Col>
         </Row>
-        <Row>
+        <Row className="g-4">
           <Col lg={8}>
-            <Card className="border-secondary shadow-sm">
-              <Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Finishing Order</h3></Card.Header>
-              <Card.Body className="p-0"><Table variant="dark" hover responsive className="mb-0"><thead><tr className="bg-dark bg-opacity-50 small text-uppercase"><th className="ps-4 py-3">Driver</th><th>Team</th><th className="pe-4 text-end" style={{ width: '120px' }}>Position</th></tr></thead><tbody>{drivers.map((driver) => (<tr key={driver.id} style={{ height: '60px', verticalAlign: 'middle' }}><td className="ps-4 fw-bold text-white">{driver.name}</td><td className="text-muted small">{driver.team}</td><td className="pe-4"><Form.Control type="number" min="1" max="22" value={results[driver.id] || ''} onChange={(e) => handlePositionChange(driver.id, parseInt(e.target.value))} className="bg-dark text-white border-secondary text-end" /></td></tr>))}</tbody></Table></Card.Body>
-            </Card>
+            <div className="f1-premium-table-container h-100">
+              <div className="f1-card-header text-white">Finishing Order</div>
+              <div className="table-responsive">
+                <Table variant="dark" hover className="f1-premium-table mb-0">
+                  <thead>
+                    <tr>
+                      <th className="ps-4 border-0">Driver</th>
+                      <th className="border-0">Team</th>
+                      <th className="pe-4 text-end border-0" style={{ width: '120px' }}>Pos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drivers.map((driver) => (
+                      <tr key={driver.id} className="border-secondary border-opacity-10">
+                        <td className="ps-4 fw-bold text-white">
+                          <div className="d-flex align-items-center">
+                            <div className="f1-driver-line me-2" style={{ height: '16px', backgroundColor: driver.color }}></div>
+                            {driver.name}
+                          </div>
+                        </td>
+                        <td className="text-muted small">{driver.team}</td>
+                        <td className="pe-4">
+                          <Form.Control type="number" min="1" max="22" value={results[driver.id] || ''} onChange={(e) => handlePositionChange(driver.id, parseInt(e.target.value))} className="f1-input-dark text-end py-1" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            </div>
           </Col>
           <Col lg={4}>
-            {existingResult && (<Card className="border-warning border-opacity-50 mb-4 shadow-sm bg-dark"><Card.Header className="bg-warning bg-opacity-10 border-warning border-opacity-25 py-2"><h3 className="h6 mb-0 text-uppercase fw-bold text-warning" style={{ fontSize: '0.65rem' }}>Existing Verified Data</h3></Card.Header><Card.Body className="p-3"><div className="d-flex justify-content-between mb-2"><span className="small text-white opacity-50 text-uppercase">Current P10:</span><span className="small fw-bold text-white text-uppercase">{existingResult.p10.replace('_', ' ')}</span></div><div className="d-flex justify-content-between"><span className="small text-white opacity-50 text-uppercase">Current DNF:</span><span className="small fw-bold text-danger text-uppercase">{existingResult.dnf.replace('_', ' ')}</span></div></Card.Body></Card>)}
-            <Card className="border-secondary mb-4 shadow-sm">
-              <Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Verification</h3></Card.Header>
-              <Card.Body className="p-4"><Form.Group className="mb-4"><Form.Label className="small text-muted text-uppercase fw-bold">First DNF</Form.Label><Dropdown onSelect={(k) => { triggerLightHaptic(); setFirstDnf(k || ''); }} className="w-100"><Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-dark text-white fw-bold">{drivers.find(d => d.id === firstDnf)?.name || 'None / All Finished'}</Dropdown.Toggle><Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg" style={{ maxHeight: '300px', overflowY: 'auto' }}><Dropdown.Item eventKey="" active={firstDnf === ''}>None / All Finished</Dropdown.Item>{drivers.map(driver => (<Dropdown.Item key={driver.id} eventKey={driver.id} active={firstDnf === driver.id}>{driver.name}</Dropdown.Item>))}</Dropdown.Menu></Dropdown></Form.Group>
-<div className="d-grid gap-3"><HapticButton hapticStyle="medium" variant={existingResult ? "warning" : "danger"} size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className={`fw-bold py-3 ${existingResult ? 'text-dark' : ''}`}>{existingResult ? 'CORRECT & RE-CALCULATE' : 'PUBLISH GLOBALLY'}</HapticButton><HapticButton variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2">PUBLISH LOCALLY</HapticButton></div>{existingResult && (<div className="mt-3 extra-small text-warning text-center fw-bold opacity-75">⚠️ THIS WILL RE-CALCULATE ALL PLAYER SCORES</div>)}</Card.Body>
+            {existingResult && (
+              <Card className="f1-accent-card border-warning border-opacity-50 mb-4">
+                <div className="f1-card-header text-warning border-warning border-opacity-10">Existing Verified Data</div>
+                <Card.Body className="p-3">
+                  <div className="d-flex justify-content-between mb-2 small">
+                    <span className="text-white opacity-50 text-uppercase fw-bold">Current P10:</span>
+                    <span className="fw-bold text-white text-uppercase">{existingResult.p10.replace('_', ' ')}</span>
+                  </div>
+                  <div className="d-flex justify-content-between small">
+                    <span className="text-white opacity-50 text-uppercase fw-bold">Current DNF:</span>
+                    <span className="fw-bold text-danger text-uppercase">{existingResult.dnf.replace('_', ' ')}</span>
+                  </div>
+                </Card.Body>
+              </Card>
+            )}
+            <Card className="f1-glass-card border-secondary border-opacity-50 mb-4">
+              <div className="f1-card-header text-white">Verification</div>
+              <Card.Body className="p-4">
+                <Form.Group className="mb-4">
+                  <Form.Label className="extra-small text-muted text-uppercase fw-bold letter-spacing-1">First DNF</Form.Label>
+                  <Dropdown onSelect={(k) => { triggerLightHaptic(); setFirstDnf(k || ''); }} className="w-100">
+                    <Dropdown.Toggle variant="dark" className="w-100 text-start border-secondary d-flex justify-content-between align-items-center bg-black bg-opacity-50 text-white fw-bold py-2 rounded-3">
+                      {drivers.find(d => d.id === firstDnf)?.name || 'None / All Finished'}
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu variant="dark" className="w-100 border-secondary shadow-lg f1-glass-card" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      <Dropdown.Item eventKey="" active={firstDnf === ''}>None / All Finished</Dropdown.Item>
+                      {drivers.map(driver => (<Dropdown.Item key={driver.id} eventKey={driver.id} active={firstDnf === driver.id}>{driver.name}</Dropdown.Item>))}
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </Form.Group>
+                <div className="d-grid gap-3">
+                  <HapticButton hapticStyle="medium" variant={existingResult ? "warning" : "danger"} size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className={`fw-bold py-3 rounded-pill shadow-sm ${existingResult ? 'text-dark' : ''}`}>
+                    {existingResult ? 'CORRECT & RE-CALCULATE' : 'PUBLISH GLOBALLY'}
+                  </HapticButton>
+                  <HapticButton variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2 rounded-pill opacity-75">
+                    PUBLISH LOCALLY
+                  </HapticButton>
+                </div>
+                {existingResult && (<div className="mt-3 extra-small text-warning text-center fw-bold opacity-75">⚠️ THIS WILL RE-CALCULATE ALL PLAYER SCORES</div>)}
+              </Card.Body>
             </Card>
-            <Card className="border-secondary mb-4 shadow-sm bg-dark"><Card.Header className="bg-dark border-secondary py-3"><h3 className="h6 mb-0 text-uppercase fw-bold text-white">Push Notifications</h3></Card.Header><Card.Body className="p-4"><div className="d-grid gap-2"><HapticButton variant="warning" onClick={() => setShowNotifyModal(true)} disabled={loading} className="fw-bold text-dark">NOTIFY QUALI FINISHED</HapticButton><HapticButton variant="outline-info" onClick={handleSendTestNotification} disabled={loading} className="fw-bold">SEND TEST TO ME</HapticButton></div><div className="mt-3 small text-muted">Note: Broadcast sends to ALL users with registered tokens.</div></Card.Body></Card>
-            <div className="text-center mt-4 opacity-25"><small className="text-uppercase letter-spacing-1">Admin Mode Active</small></div>
+            <Card className="f1-glass-card border-secondary border-opacity-50 mb-4">
+              <div className="f1-card-header text-white">Push Notifications</div>
+              <Card.Body className="p-4">
+                <div className="d-grid gap-2">
+                  <HapticButton variant="warning" onClick={() => setShowNotifyModal(true)} disabled={loading} className="fw-bold text-dark rounded-pill py-2">NOTIFY QUALI FINISHED</HapticButton>
+                  <HapticButton variant="outline-info" onClick={handleSendTestNotification} disabled={loading} className="fw-bold rounded-pill py-2">SEND TEST TO ME</HapticButton>
+                </div>
+                <div className="mt-3 extra-small text-muted text-center opacity-75">Broadcast sends to ALL users with push tokens.</div>
+              </Card.Body>
+            </Card>
+            <div className="text-center mt-4 opacity-25"><small className="text-uppercase letter-spacing-2 fw-bold" style={{ fontSize: '0.6rem' }}>Admin Mode Active</small></div>
           </Col>
         </Row>
       </Container>

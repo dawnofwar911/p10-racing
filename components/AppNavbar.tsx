@@ -76,7 +76,7 @@ export default function AppNavbar() {
                     {currentUser || 'Profile'}
                   </span>
                 </div>
-                <div className="bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center text-white fw-bold border border-secondary border-opacity-50" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
+                <div className="bg-secondary bg-opacity-25 rounded-3 d-flex justify-content-center align-items-center text-white fw-bold border border-secondary border-opacity-50" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
                   {(session || currentUser) ? (currentUser?.charAt(0).toUpperCase() || '?') : <User size={18} />}
                 </div>
               </button>

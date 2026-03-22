@@ -53,11 +53,10 @@ export default function PWAInstallHint() {
       }}
     >
       <Card 
-        className="bg-dark border border-secondary border-opacity-50 shadow-lg text-white mx-auto overflow-hidden animate-slide-up"
+        className="f1-glass-card border-secondary border-opacity-50 mx-auto animate-slide-up"
         style={{ 
           maxWidth: '400px', 
-          pointerEvents: 'auto',
-          borderRadius: '16px'
+          pointerEvents: 'auto'
         }}
       >
         <Card.Body className="p-3">

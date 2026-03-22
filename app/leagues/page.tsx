@@ -43,26 +43,26 @@ const MyLeaguesView = ({
   handleImport: (name: string) => void 
 }) => (
   <>
-    <div className="table-responsive rounded border border-secondary shadow-sm mb-3">
+    <div className="f1-premium-table-container mb-3">
       {loading && !leagues.length ? (
-        <div className="text-center py-4"><Spinner animation="border" variant="danger" /></div>
+        <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
       ) : leagues.length > 0 ? (
-        <Table variant="dark" hover className="mb-0">
+        <Table variant="dark" hover className="f1-premium-table mb-0">
           <thead>
-            <tr className="bg-dark bg-opacity-50 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
-              <th className="ps-3 py-2">Name</th>
-              <th className="py-2">Code</th>
-              <th className="text-end pe-3 py-2">Action</th>
+            <tr>
+              <th className="ps-3 border-0">Name</th>
+              <th className="border-0">Code</th>
+              <th className="text-end pe-3 border-0">Action</th>
             </tr>
           </thead>
           <tbody>
             {leagues.map(league => (
-              <tr key={league.id} style={{ height: '45px', verticalAlign: 'middle' }}>
+              <tr key={league.id}>
                 <td className="ps-3 fw-bold text-white small">{league.name}</td>
-                <td><code className="text-danger fw-bold extra-small">{league.invite_code}</code></td>
+                <td><code className="text-danger fw-bold extra-small" style={{ letterSpacing: '1px' }}>{league.invite_code}</code></td>
                 <td className="text-end pe-3">
                   <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
-                    <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-0 fw-bold extra-small" style={{ fontSize: '0.6rem' }}>VIEW</HapticButton>
+                    <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-1 fw-bold extra-small" style={{ fontSize: '0.65rem' }}>VIEW</HapticButton>
                   </Link>
                 </td>
               </tr>
@@ -70,21 +70,21 @@ const MyLeaguesView = ({
           </tbody>
         </Table>
       ) : (
-        <div className="text-center py-4 text-muted small">
-          <p className="mb-0">No active leagues.</p>
+        <div className="text-center py-5 text-muted small">
+          <p className="mb-0 opacity-50">No active leagues.</p>
         </div>
       )}
     </div>
 
     {session && localGuests.length > 0 && (
-      <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3">
+      <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3 rounded-4 overflow-hidden">
         <Card.Body className="p-3">
-          <h3 className="extra-small mb-2 text-uppercase fw-bold text-warning letter-spacing-1" style={{ fontSize: '0.6rem' }}>Sync Local Data</h3>
+          <h3 className="extra-small mb-2 text-uppercase fw-bold text-warning letter-spacing-2" style={{ fontSize: '0.6rem' }}>Sync Local Data</h3>
           <div className="d-flex flex-wrap gap-2">
             {localGuests.map(guest => (
-              <div key={guest} className="d-flex align-items-center bg-dark p-1 px-2 rounded border border-secondary border-opacity-50">
+              <div key={guest} className="d-flex align-items-center bg-dark bg-opacity-50 p-1 px-2 rounded-pill border border-secondary border-opacity-50">
                 <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
-                <HapticButton hapticStyle="medium" variant="warning" size="sm" className="fw-bold extra-small py-0" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
+                <HapticButton hapticStyle="medium" variant="warning" size="sm" className="fw-bold extra-small py-0 rounded-pill" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
               </div>
             ))}
           </div>
@@ -113,24 +113,22 @@ const ManageLeaguesView = ({
 }) => (
   <Row className="g-3">
     <Col xs={12}>
-      <Card className="border-secondary shadow-sm">
-        <Card.Header className="bg-dark border-secondary py-2">
-          <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Create League</h3>
-        </Card.Header>
+      <Card className="f1-glass-card border-secondary border-opacity-50">
+        <div className="f1-card-header text-white">Create League</div>
         <Card.Body className="p-3">
           <Form onSubmit={handleCreateLeague}>
-            <Form.Group className="mb-2">
+            <Form.Group className="mb-3">
               <Form.Control 
                 type="text" 
                 placeholder="League Name" 
                 value={newLeagueName} 
                 onChange={(e) => setNewLeagueName(e.target.value)} 
                 required 
-                className="bg-dark text-white border-secondary py-1 small" 
+                className="f1-input-dark py-2 small" 
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-1 fw-bold small" disabled={actionLoading}>
-              {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE'}
+            <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+              {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE NEW LEAGUE'}
             </HapticButton>
           </Form>
         </Card.Body>
@@ -138,25 +136,23 @@ const ManageLeaguesView = ({
     </Col>
 
     <Col xs={12}>
-      <Card className="border-danger border-opacity-50 shadow-sm">
-        <Card.Header className="bg-dark border-danger border-opacity-25 py-2">
-          <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-1" style={{ fontSize: '0.65rem' }}>Join League</h3>
-        </Card.Header>
+      <Card className="f1-glass-card border-danger border-opacity-50">
+        <div className="f1-card-header text-white border-danger border-opacity-10">Join League</div>
         <Card.Body className="p-3">
           <Form onSubmit={handleJoinLeague}>
-            <Form.Group className="mb-2">
+            <Form.Group className="mb-3">
               <Form.Control 
                 type="text" 
                 placeholder="Invite Code" 
                 value={inviteCode} 
                 onChange={(e) => setInviteCode(e.target.value)} 
                 required 
-                className="bg-dark text-white border-secondary py-1 small" 
+                className="f1-input-dark py-2 small" 
                 maxLength={8}
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-1 fw-bold small" disabled={actionLoading}>
-              JOIN
+            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+              JOIN WITH CODE
             </HapticButton>
           </Form>
         </Card.Body>
