@@ -39,7 +39,7 @@ export default function StandardPageHeader({
               <ChevronLeft size={28} />
             </HapticButton>
           )}
-          <div className="bg-danger rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px', flexShrink: 0 }}>
+          <div className="bg-danger rounded-3 p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px', flexShrink: 0 }}>
             {icon}
           </div>
           <div>
