@@ -60,7 +60,7 @@ jobs:
   release-android:
     name: Android Release Build
     needs: validate
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable')
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable')
     runs-on: ubuntu-latest
     permissions:
       contents: write
