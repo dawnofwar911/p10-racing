@@ -184,9 +184,7 @@ export default function SettingsPage() {
             <div className="list-group list-group-flush bg-transparent">
               <a href="https://buymeacoffee.com/p10racing" className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
                 <div className="d-flex align-items-center">
-                  <div className="bg-warning bg-opacity-10 p-1 rounded-circle me-3">
-                    <Coffee size={18} className="text-warning" />
-                  </div>
+                  <Coffee size={18} className="me-3 text-warning opacity-75" />
                   <span className="fw-bold small">Buy me a coffee</span>
                 </div>
                 <Badge bg="danger" className="rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>TIP</Badge>
@@ -196,9 +194,7 @@ export default function SettingsPage() {
                 onClick={() => { triggerLightHaptic(); setShowBugReport(true); }}
               >
                 <div className="d-flex align-items-center">
-                  <div className="bg-white bg-opacity-10 p-1 rounded-circle me-3">
-                    <Bug size={18} className="opacity-75 text-white" />
-                  </div>
+                  <Bug size={18} className="me-3 opacity-75" />
                   <span className="fw-bold small">Report an Issue</span>
                 </div>
                 <ChevronRight size={18} className="opacity-50" />
