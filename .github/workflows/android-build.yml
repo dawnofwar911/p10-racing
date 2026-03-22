@@ -60,10 +60,14 @@ jobs:
   release-android:
     name: Android Release Build
     needs: validate
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -80,6 +84,21 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Extract Version
+        id: get_version
+        run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+
+      - name: Set Release Environment
+        id: set_env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "TRACK=internal" >> $GITHUB_OUTPUT
+            echo "TAG_SUFFIX=-internal" >> $GITHUB_OUTPUT
+          else
+            echo "TRACK=closed" >> $GITHUB_OUTPUT
+            echo "TAG_SUFFIX=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build Static Site
         env:
@@ -114,18 +133,64 @@ jobs:
           keyStorePassword: ${{ secrets.PLAYSTORE_KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.PLAYSTORE_KEY_PASSWORD }}
 
+      - name: Create and Push Tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          TAG="v${VERSION}${{ steps.set_env.outputs.TAG_SUFFIX }}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists. Skipping tagging."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
       - name: Generate Release Notes
+        id: release_notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p distribution/whatsnew
-          # Capture the latest commit message, limit to 500 chars (Play Store limit)
-          git log -1 --pretty=%B | head -c 500 > distribution/whatsnew/whatsnew-en-GB
+          
+          NOTES=""
+          if [[ "${{ github.ref }}" == "refs/heads/stable" ]]; then
+            # Attempt to get PR description for stable releases
+            PR_NUMBER=$(git log -1 --pretty=format:"%s" | grep -oE "#[0-9]+" | head -1 | tr -d '#')
+            if [ -n "$PR_NUMBER" ]; then
+              NOTES=$(gh pr view "$PR_NUMBER" --json body --template '{{.body}}' | head -c 500)
+            fi
+          fi
+          
+          # Fallback if stable PR not found or on main
+          if [ -z "$NOTES" ]; then
+            if [[ "${{ steps.set_env.outputs.TAG_SUFFIX }}" == "-internal" ]]; then
+              LAST_TAG=$(git describe --tags --match "v*-internal" --abbrev=0 2>/dev/null || echo "")
+            else
+              LAST_TAG=$(git describe --tags --match "v*" --exclude "*-internal" --abbrev=0 2>/dev/null || echo "")
+            fi
+            
+            if [ -z "$LAST_TAG" ]; then
+              NOTES=$(git log -5 --pretty=format:"- %s" | head -c 500)
+            else
+              NOTES=$(git log $LAST_TAG..HEAD --pretty=format:"- %s" | head -c 500)
+            fi
+          fi
+          
+          [ -z "$NOTES" ] && NOTES=$(git log -1 --pretty=format:"- %s" | head -c 500)
+          
+          echo "$NOTES" > distribution/whatsnew/whatsnew-en-GB
 
-      - name: Upload to Google Play (Internal Testing)
+      - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
           packageName: com.p10racing.app
           releaseFiles: ${{steps.sign_aab.outputs.signedReleaseFile}}
-          track: internal
+          track: ${{ steps.set_env.outputs.TRACK }}
           status: completed
           whatsNewDirectory: distribution/whatsnew
