@@ -555,7 +555,7 @@ export default function Home() {
             >
               <Row className="mt-4 justify-content-center">
                 <Col md={6}>
-                  <div className="p-3 border border-primary border-opacity-20 rounded bg-primary bg-opacity-5 text-center shadow-sm">
+                  <div className="f1-glass-card p-3 border-primary border-opacity-20 text-center shadow-sm bg-primary bg-opacity-5">
                     <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
                     <Link href="/auth" passHref legacyBehavior>

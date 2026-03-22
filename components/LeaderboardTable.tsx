@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Table, Badge, Spinner } from 'react-bootstrap';
 import { LeaderboardEntry } from '@/lib/data';
+import { Driver } from '@/lib/types';
 import { triggerSelectionHaptic } from '@/lib/utils/haptics';
 
 interface LeaderboardTableProps {
@@ -11,6 +12,7 @@ interface LeaderboardTableProps {
   currentUser?: string;
   isSeasonComplete?: boolean;
   emptyMessage?: string;
+  drivers?: Driver[];
 }
 
 export default function LeaderboardTable({ 
@@ -18,8 +20,10 @@ export default function LeaderboardTable({
   loading, 
   currentUser, 
   isSeasonComplete = false,
-  emptyMessage = "No entries found."
+  emptyMessage = "No entries yet.",
+  drivers = []
 }: LeaderboardTableProps) {
+
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const toggleExpand = (player: string) => {
@@ -106,23 +110,32 @@ export default function LeaderboardTable({
                           <div className="col-12 col-md-6 border-md-end border-secondary border-opacity-10 mb-3 mb-md-0">
                             <small className="text-muted text-uppercase d-block mb-2 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: P10 Result</small>
                             <div className="d-flex justify-content-between align-items-center">
-                              <span className="fw-bold fs-6 text-uppercase letter-spacing-1">{entry.breakdown.p10Driver.replace(/_/g, ' ')}</span>
-                              <Badge bg="danger" className="rounded-pill" style={{ fontSize: '0.65rem' }}>P{entry.breakdown.actualP10Pos}</Badge>
+                              <div className="d-flex align-items-center">
+                                <div className="f1-driver-line me-2" style={{ height: '16px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.p10Driver)?.color || '#B6BABD' }}></div>
+                                <span className="fw-bold fs-6 text-uppercase letter-spacing-1">{entry.breakdown?.p10Driver.replace(/_/g, ' ')}</span>
+                              </div>
+                              <Badge bg="danger" className="rounded-pill" style={{ fontSize: '0.65rem' }}>P{entry.breakdown?.actualP10Pos}</Badge>
                             </div>
-                            <div className="mt-2 text-danger fw-bold extra-small">+{entry.breakdown.p10Points} PTS</div>
+                            <div className="mt-2 text-danger fw-bold extra-small">+{entry.breakdown?.p10Points} PTS</div>
                           </div>
                           <div className="col-12 col-md-6 ps-md-4">
                             <small className="text-muted text-uppercase d-block mb-2 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: First DNF Bonus</small>
-                            <div className="mt-1">
-                              {entry.breakdown.dnfPoints > 0 ? (
-                                <div className="text-success fw-bold d-flex align-items-center extra-small">
-                                  <span className="fs-6 me-2">🏎️💨</span> Correct (+25 PTS)
+                            <div className="d-flex justify-content-between align-items-center">
+                              <div className="d-flex align-items-center">
+                                <div className="f1-driver-line me-2" style={{ height: '16px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.dnfDriver)?.color || '#B6BABD' }}></div>
+                                <div className="mt-1">
+                                  {entry.breakdown?.dnfPoints && entry.breakdown.dnfPoints > 0 ? (
+                                    <div className="text-success fw-bold d-flex align-items-center extra-small">
+                                      <span className="fs-6 me-2">🏎️💨</span> Correct (+25 PTS)
+                                    </div>
+                                  ) : (
+                                    <div className="text-muted d-flex align-items-center opacity-50 extra-small">
+                                      <span className="fs-6 me-2">🏁</span> Incorrect (+0 PTS)
+                                    </div>
+                                  )}
                                 </div>
-                              ) : (
-                                <div className="text-muted d-flex align-items-center opacity-50 extra-small">
-                                  <span className="fs-6 me-2">🏁</span> Incorrect (+0 PTS)
-                                </div>
-                              )}
+                              </div>
+                              <span className="text-white opacity-50 extra-small fw-bold text-uppercase">{entry.breakdown?.dnfDriver.replace(/_/g, ' ')}</span>
                             </div>
                           </div>
                         </div>

@@ -4,12 +4,13 @@ import React, { useState, useEffect, useCallback, Suspense, useRef } from 'react
 import { Spinner, Badge } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { fetchCalendar } from '@/lib/api';
-import { DbPrediction } from '@/lib/types';
-import { CURRENT_SEASON, LeaderboardEntry } from '@/lib/data';
+import { fetchCalendar, fetchDrivers } from '@/lib/api';
+import { DbPrediction, Driver } from '@/lib/types';
+import { CURRENT_SEASON, LeaderboardEntry, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 import LoadingView from '@/components/LoadingView';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Share } from '@capacitor/share';
@@ -32,6 +33,11 @@ function LeagueDetailContent() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
+  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
+    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
+    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+  });
 
   useEffect(() => {
     mountedRef.current = true;
@@ -77,7 +83,14 @@ function LeagueDetailContent() {
 
       // 2. Fetch Race Results
       const raceResultsMap = await fetchAllSimplifiedResults();
-      const races = await fetchCalendar(CURRENT_SEASON);
+      const [races, driversData] = await Promise.all([
+        fetchCalendar(CURRENT_SEASON),
+        fetchDrivers(CURRENT_SEASON)
+      ]);
+      
+      if (driversData.length > 0 && mountedRef.current) {
+        setAllDrivers(driversData);
+      }
       const resultsFoundCount = Object.keys(raceResultsMap).length;
 
       if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount === races.length);
@@ -214,6 +227,7 @@ function LeagueDetailContent() {
             entries={leaderboard} 
             loading={loading} 
             isSeasonComplete={isSeasonComplete}
+            drivers={allDrivers}
             emptyMessage="No members in this league yet."
           />
         )}
