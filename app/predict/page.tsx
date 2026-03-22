@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { Container, Row, Col, Form, Card, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Form, Card, Modal, Table } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
 import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -127,27 +127,38 @@ const SummaryPills = ({ drivers, p10Driver, dnfDriver, isSideBySide = false }: {
 );
 
 const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void }) => (
-  <Modal show={show} onHide={onHide} centered size="lg" contentClassName="bg-dark border-secondary">
-    <Modal.Header closeButton closeVariant="white" className="border-secondary">
-      <Modal.Title className="fw-bold text-uppercase letter-spacing-1 fs-5">How to <span className="text-danger">Play</span></Modal.Title>
+  <Modal show={show} onHide={onHide} centered size="lg" contentClassName="f1-glass-card border-secondary border-opacity-50">
+    <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-4 py-3">
+      <Modal.Title className="fw-bold text-uppercase letter-spacing-1 text-white">How to <span className="text-danger">Play</span></Modal.Title>
     </Modal.Header>
-    <Modal.Body className="px-4 py-4">
+    <Modal.Body className="p-4 bg-black bg-opacity-20">
       <section className="mb-4">
         <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-2">The Objective</h3>
         <p className="text-white opacity-75 small">Predict the chaos of the F1 midfield! You need to pick the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
       </section>
       <section className="mb-4">
         <h3 className="h6 fw-bold text-danger text-uppercase letter-spacing-2 mb-3">Scoring: P10 Finisher</h3>
-        <div className="bg-black bg-opacity-50 border border-secondary border-opacity-25 rounded overflow-hidden">
-          <table className="table table-dark table-sm mb-0 extra-small">
-            <thead><tr className="text-uppercase opacity-50" style={{ fontSize: '0.6rem' }}><th className="ps-3 py-2">Actual Finish</th><th className="pe-3 py-2 text-end">Points</th></tr></thead>
+        <div className="f1-premium-table-container">
+          <Table variant="dark" size="sm" className="f1-premium-table mb-0 extra-small">
+            <thead>
+              <tr>
+                <th className="ps-3 py-2 border-0">Actual Finish</th>
+                <th className="pe-3 py-2 text-end border-0">Points</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr className="table-active fw-bold"><td className="ps-3 py-1">P10 (Exact)</td><td className="pe-3 py-1 text-end text-danger">25</td></tr>
+              <tr className="bg-danger bg-opacity-10 fw-bold border-secondary border-opacity-10">
+                <td className="ps-3 py-2">P10 (Exact)</td>
+                <td className="pe-3 py-2 text-end text-danger">+25</td>
+              </tr>
               {['18', '15', '12', '10', '8', '6', '4', '2', '1'].map((pts, i) => (
-                <tr key={pts}><td className="ps-3 py-1">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td><td className="pe-3 py-1 text-end">{pts}</td></tr>
+                <tr key={pts} className="border-secondary border-opacity-10">
+                  <td className="ps-3 py-2 opacity-75">{i === 8 ? 'P1 or P19+' : `P${9-i} or P${11+i}`}</td>
+                  <td className="pe-3 py-2 text-end text-white fw-bold">+{pts}</td>
+                </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
       </section>
       <section>
@@ -155,8 +166,8 @@ const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void })
         <p className="text-white opacity-75 small mb-0">Get the first driver to retire correctly and earn a massive <span className="fw-bold text-danger">+25 Points</span>.</p>
       </section>
     </Modal.Body>
-    <Modal.Footer className="border-secondary">
-      <HapticButton variant="danger" className="w-100 fw-bold py-2 rounded-pill" onClick={onHide}>GOT IT</HapticButton>
+    <Modal.Footer className="border-secondary border-opacity-25 bg-black bg-opacity-20 p-3">
+      <HapticButton variant="danger" className="w-100 fw-bold py-3 rounded-pill shadow-sm" onClick={onHide}>GOT IT</HapticButton>
     </Modal.Footer>
   </Modal>
 );
