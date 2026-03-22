@@ -192,14 +192,19 @@ function LeagueDetailContent() {
       tabs={[{ id: 'standings', label: 'Standings', icon: <Users size={16} /> }]}
     >
       <div className="mt-2">
-        <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 shadow-sm">
-          <div>
-            <small className="text-muted text-uppercase fw-bold letter-spacing-1 d-block mb-1" style={{ fontSize: '0.6rem' }}>Invite your friends</small>
-            <code className="text-white fw-bold letter-spacing-2 fs-5">{inviteCode}</code>
+        <div className="mb-4 p-3 bg-dark bg-opacity-75 rounded-4 border border-secondary border-opacity-50 shadow-lg position-relative overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
+          {/* Subtle accent line */}
+          <div className="position-absolute top-0 start-0 w-100 bg-danger opacity-50" style={{ height: '2px' }}></div>
+          
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <small className="text-muted text-uppercase fw-bold letter-spacing-2 d-block mb-1" style={{ fontSize: '0.6rem' }}>League Invite Code</small>
+              <code className="text-white fw-bold letter-spacing-2 fs-4" style={{ fontFamily: 'monospace' }}>{inviteCode}</code>
+            </div>
+            <HapticButton variant="danger" className="rounded-pill px-4 py-2 fw-bold text-uppercase d-flex align-items-center gap-2 shadow-sm" style={{ fontSize: '0.75rem' }} onClick={handleShare}>
+              SHARE LINK
+            </HapticButton>
           </div>
-          <HapticButton variant="danger" className="rounded-pill px-4 py-2 fw-bold text-uppercase d-flex align-items-center" style={{ fontSize: '0.75rem' }} onClick={handleShare}>
-            SHARE LINK
-          </HapticButton>
         </div>
         
         {loading ? (
