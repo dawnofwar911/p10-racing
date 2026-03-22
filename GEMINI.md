@@ -45,5 +45,6 @@ We use a dual-track release process with **Branch Protection** enforced on `main
     *   **Client-Side Scoring:** Point calculation MUST happen on the frontend using `lib/scoring.ts` for consistency across Guest and Auth users.
 *   **Versioning Mandates:**
     *   **Source of Truth:** Always use `package.json` version for all release-related versioning.
-    *   **Increment Policy:** You **MUST** increment the version in `package.json` before finishing any task that includes a bug fix (patch) or new feature (minor).
+    *   **Increment Policy:** You **MUST** increment `package.json` for any bug fix (`patch`), new feature (`minor`), or breaking change (`major`).
+    *   **Exemption:** Purely internal CI/CD or workflow changes that do not affect app code or behavior do not require a version bump.
 *   **Android API Mandate:** You MUST NOT use deprecated Android APIs or parameters (e.g., `setStatusBarColor`) that conflict with Android 15's default edge-to-edge enforcement. Rely on `androidx.activity.EdgeToEdge` and CSS `safe-area-insets`.

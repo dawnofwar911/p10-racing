@@ -34,10 +34,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Optional: Threshold for shake-to-refresh debug logs (Native Only)
 # Default is 800. Lower is more sensitive.
 NEXT_PUBLIC_SHAKE_THRESHOLD=800
-
-# Required for CI/CD Issue Syncing
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-GITHUB_TOKEN=your_github_token
 ```
 
 ### 3. Web & Privacy Policy Hosting (Vercel)
