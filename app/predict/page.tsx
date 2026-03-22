@@ -127,7 +127,14 @@ const SummaryPills = ({ drivers, p10Driver, dnfDriver, isSideBySide = false }: {
 );
 
 const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void }) => (
-  <Modal show={show} onHide={onHide} scrollable size="lg" contentClassName="f1-glass-card border-secondary border-opacity-50">
+  <Modal 
+    show={show} 
+    onHide={onHide} 
+    centered 
+    scrollable 
+    size="lg" 
+    contentClassName="f1-glass-modal border-secondary border-opacity-50"
+  >
     <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-4 py-3">
       <Modal.Title className="fw-bold text-uppercase letter-spacing-1 text-white">How to <span className="text-danger">Play</span></Modal.Title>
     </Modal.Header>
