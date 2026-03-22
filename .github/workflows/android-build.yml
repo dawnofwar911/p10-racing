@@ -101,6 +101,7 @@ jobs:
           fi
 
       - name: Build Static Site
+        if: steps.set_env.outputs.TRACK == 'internal'
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -108,14 +109,17 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor
+        if: steps.set_env.outputs.TRACK == 'internal'
         run: npx cap sync android
 
       - name: Create google-services.json
+        if: steps.set_env.outputs.TRACK == 'internal'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Build Release AAB
+        if: steps.set_env.outputs.TRACK == 'internal'
         env:
           VERSION_CODE: ${{ github.run_number }}
         run: |
@@ -124,6 +128,7 @@ jobs:
           ./gradlew bundleRelease
 
       - name: Sign Android Release AAB
+        if: steps.set_env.outputs.TRACK == 'internal'
         uses: r0adkll/sign-android-release@v1
         id: sign_aab
         with:
@@ -151,6 +156,7 @@ jobs:
           fi
 
       - name: Generate Release Notes
+        if: steps.set_env.outputs.TRACK == 'internal'
         id: release_notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -158,29 +164,20 @@ jobs:
           mkdir -p distribution/whatsnew
           touch distribution/whatsnew/whatsnew-en-GB
           
-          if [[ "${{ github.ref }}" == "refs/heads/stable" ]]; then
-            # Attempt to get PR description for stable releases
-            git log -1 --pretty=format:"%s" | grep -oE "#[0-9]+" | head -1 | tr -d '#' > pr_number.txt || true
-            read -r PR_NUMBER < pr_number.txt || true
-            if [ -n "$PR_NUMBER" ]; then
-              gh pr view "$PR_NUMBER" --json body --template '{{.body}}' | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
-            fi
+          # We only generate notes for internal (main) track automatically.
+          # Stable releases use manual promotion.
+          if [[ "${{ steps.set_env.outputs.TAG_SUFFIX }}" == "-internal" ]]; then
+            git describe --tags --match "v*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
+          else
+            # Fallback for non-internal tracks if ever enabled
+            git describe --tags --match "v*" --exclude "*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
           fi
           
-          # Fallback if stable PR not found or on main
-          if [ ! -s distribution/whatsnew/whatsnew-en-GB ]; then
-            if [[ "${{ steps.set_env.outputs.TAG_SUFFIX }}" == "-internal" ]]; then
-              git describe --tags --match "v*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
-            else
-              git describe --tags --match "v*" --exclude "*-internal" --abbrev=0 2>/dev/null > last_tag.txt || true
-            fi
-            
-            read -r LAST_TAG < last_tag.txt || true
-            if [ -z "$LAST_TAG" ]; then
-              git log -5 --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
-            else
-              git log "$LAST_TAG"..HEAD --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
-            fi
+          read -r LAST_TAG < last_tag.txt || true
+          if [ -z "$LAST_TAG" ]; then
+            git log -5 --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
+          else
+            git log "$LAST_TAG"..HEAD --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
           fi
           
           if [ ! -s distribution/whatsnew/whatsnew-en-GB ]; then
@@ -188,6 +185,7 @@ jobs:
           fi
 
       - name: Upload to Google Play
+        if: steps.set_env.outputs.TRACK == 'internal'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
