@@ -14,7 +14,9 @@ interface HistoryEntry {
   round: string;
   name: string;
   p10: string;
+  p10Color: string;
   dnf: string;
+  dnfColor: string;
   winner: string;
 }
 
@@ -60,7 +62,9 @@ export default function HistoryPage() {
           round: round,
           name: raceInfo?.raceName || `Round ${round}`,
           p10: p10Driver ? p10Driver.name : 'Unknown',
+          p10Color: p10Driver?.color || '#B6BABD',
           dnf: dnfDriver ? dnfDriver.name : (data.firstDnf === 'None' ? 'None' : 'None'),
+          dnfColor: dnfDriver?.color || '#B6BABD',
           winner: winnerDriver ? winnerDriver.name : 'Unknown'
         };
       });
@@ -98,11 +102,17 @@ export default function HistoryPage() {
                   <Card.Body className="p-4">
                     <div className="mb-4">
                       <small className="text-muted text-uppercase d-block mb-1 letter-spacing-2 fw-bold" style={{ fontSize: '0.65rem' }}>P10 Finisher</small>
-                      <span className="fs-4 fw-bold text-white">{race.p10}</span>
+                      <div className="d-flex align-items-center">
+                        <div className="f1-driver-line me-2" style={{ backgroundColor: race.p10Color }}></div>
+                        <span className="fs-4 fw-bold text-white">{race.p10}</span>
+                      </div>
                     </div>
                     <div className="mb-4">
                       <small className="text-muted text-uppercase d-block mb-1 letter-spacing-2 fw-bold" style={{ fontSize: '0.65rem' }}>First DNF</small>
-                      <span className="fs-4 fw-bold text-danger">{race.dnf}</span>
+                      <div className="d-flex align-items-center">
+                        <div className="f1-driver-line me-2" style={{ backgroundColor: race.dnfColor }}></div>
+                        <span className="fs-4 fw-bold text-danger">{race.dnf}</span>
+                      </div>
                     </div>
                     <div className="pt-3 border-top border-secondary border-opacity-10">
                       <small className="text-muted text-uppercase d-block mb-1 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Race Winner</small>

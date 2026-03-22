@@ -159,15 +159,21 @@ export default function LeaderboardTable({
                                   <tr key={idx} className="border-bottom border-secondary border-opacity-10">
                                     <td className="py-2 px-2 fw-bold text-nowrap">R{h.round}</td>
                                     <td className="py-2 px-2 text-uppercase letter-spacing-1">
-                                      <div className="d-flex flex-column">
-                                        <span className="text-white">{h.p10Driver.replace(/_/g, ' ')}</span>
-                                        <small className="text-muted">(P{h.p10Pos})</small>
+                                      <div className="d-flex align-items-center">
+                                        <div className="f1-driver-line me-2" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === h.p10Driver)?.color || '#B6BABD' }}></div>
+                                        <div className="d-flex flex-column">
+                                          <span className="text-white">{h.p10Driver.replace(/_/g, ' ')}</span>
+                                          <small className="text-muted">(P{h.p10Pos})</small>
+                                        </div>
                                       </div>
                                     </td>
                                     <td className="py-2 px-2 text-uppercase letter-spacing-1">
                                       <div className="d-flex align-items-center">
-                                        <span className={h.dnfCorrect ? 'text-success' : 'text-white opacity-50'}>{h.dnfDriver.replace(/_/g, ' ')}</span>
-                                        {h.dnfCorrect && <span className="ms-1 text-success small">✓</span>}
+                                        <div className="f1-driver-line me-2" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === h.dnfDriver)?.color || '#B6BABD' }}></div>
+                                        <div className="d-flex align-items-center">
+                                          <span className={h.dnfCorrect ? 'text-success' : 'text-white opacity-50'}>{h.dnfDriver.replace(/_/g, ' ')}</span>
+                                          {h.dnfCorrect && <span className="ms-1 text-success small">✓</span>}
+                                        </div>
                                       </div>
                                     </td>
                                     <td className="py-2 px-2 text-end fw-bold text-white text-nowrap">+{h.points}</td>

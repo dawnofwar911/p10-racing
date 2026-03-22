@@ -315,7 +315,7 @@ export default function AdminPage() {
                       <tr key={driver.id} className="border-secondary border-opacity-10">
                         <td className="ps-4 fw-bold text-white">
                           <div className="d-flex align-items-center">
-                            <div className="me-2" style={{ width: '4px', height: '16px', backgroundColor: driver.color }}></div>
+                            <div className="f1-driver-line me-2" style={{ height: '16px', backgroundColor: driver.color }}></div>
                             {driver.name}
                           </div>
                         </td>
