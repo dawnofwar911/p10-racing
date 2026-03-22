@@ -148,7 +148,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered className="bug-report-modal" size="lg" contentClassName="f1-glass-card border-secondary border-opacity-50">
+    <Modal show={show} onHide={onHide} centered scrollable className="bug-report-modal" size="lg" contentClassName="f1-glass-card border-secondary border-opacity-50">
       <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-4 py-3">
         <Modal.Title className="h5 fw-bold text-uppercase letter-spacing-1 text-white">Report a <span className="text-danger">Bug</span> 🏎️</Modal.Title>
       </Modal.Header>
