@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
         <div className="mt-3">
           {isAdmin && (
-            <Card className="border-warning border-opacity-50 shadow-lg bg-dark bg-opacity-75 mb-4 rounded-4 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
+            <Card className="f1-accent-card mb-4 border-warning border-opacity-50">
               <Link href="/admin" passHref legacyBehavior>
                 <a className="text-decoration-none" onClick={triggerLightHaptic}>
                   <Card.Body className="p-3 d-flex align-items-center justify-content-between cursor-pointer">
@@ -96,7 +96,7 @@ export default function SettingsPage() {
           )}
 
           <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Preferences</h2>
-          <Card className="border-secondary border-opacity-50 shadow-lg mb-4 rounded-4 overflow-hidden bg-dark bg-opacity-75" style={{ backdropFilter: 'blur(10px)' }}>
+          <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
             <div className="list-group list-group-flush bg-transparent">
               <div className="list-group-item bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center">
@@ -139,7 +139,7 @@ export default function SettingsPage() {
           {session && (
             <>
               <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Account</h2>
-              <Card className="border-secondary border-opacity-50 shadow-lg mb-4 rounded-4 overflow-hidden bg-dark bg-opacity-75" style={{ backdropFilter: 'blur(10px)' }}>
+              <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
                 <div className="list-group list-group-flush bg-transparent">
                   <Link href="/auth/reset-password" passHref legacyBehavior>
                     <a className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between" onClick={triggerLightHaptic}>
@@ -165,7 +165,7 @@ export default function SettingsPage() {
           )}
 
           <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Season</h2>
-          <Card className="border-secondary border-opacity-50 shadow-lg mb-4 rounded-4 overflow-hidden bg-dark bg-opacity-75" style={{ backdropFilter: 'blur(10px)' }}>
+          <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
             <div className="list-group list-group-flush bg-transparent">
               <Link href="/history" passHref legacyBehavior>
                 <a className="list-group-item list-group-item-action bg-transparent text-white border-0 p-3 d-flex align-items-center justify-content-between" onClick={triggerLightHaptic}>
@@ -180,7 +180,7 @@ export default function SettingsPage() {
           </Card>
 
           <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Support & Legal</h2>
-          <Card className="border-secondary border-opacity-50 shadow-lg mb-4 rounded-4 overflow-hidden bg-dark bg-opacity-75" style={{ backdropFilter: 'blur(10px)' }}>
+          <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
             <div className="list-group list-group-flush bg-transparent">
               <a href="https://buymeacoffee.com/p10racing" className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
                 <div className="d-flex align-items-center">

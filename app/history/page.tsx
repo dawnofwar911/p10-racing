@@ -90,11 +90,11 @@ export default function HistoryPage() {
           <Row className="g-4">
             {history.map(race => (
               <Col xs={12} md={6} xl={4} key={race.round}>
-                <Card className="h-100 border-secondary border-opacity-50 shadow-lg rounded-4 overflow-hidden bg-dark bg-opacity-75" style={{ backdropFilter: 'blur(10px)', borderLeft: '4px solid var(--f1-red) !important' }}>
-                  <Card.Header className="bg-black bg-opacity-40 border-secondary border-opacity-10 d-flex justify-content-between align-items-center py-3">
-                    <span className="fw-bold text-danger letter-spacing-1 small">ROUND {race.round}</span>
-                    <span className="text-white opacity-75 small text-uppercase fw-bold letter-spacing-1">{race.name}</span>
-                  </Card.Header>
+                <Card className="f1-accent-card border-secondary border-opacity-50">
+                  <div className="f1-card-header d-flex justify-content-between align-items-center">
+                    <span className="fw-bold text-danger letter-spacing-1">ROUND {race.round}</span>
+                    <span className="text-white opacity-75 small fw-bold letter-spacing-1">{race.name}</span>
+                  </div>
                   <Card.Body className="p-4">
                     <div className="mb-4">
                       <small className="text-muted text-uppercase d-block mb-1 letter-spacing-2 fw-bold" style={{ fontSize: '0.65rem' }}>P10 Finisher</small>

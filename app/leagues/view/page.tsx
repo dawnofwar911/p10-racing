@@ -192,7 +192,7 @@ function LeagueDetailContent() {
       tabs={[{ id: 'standings', label: 'Standings', icon: <Users size={16} /> }]}
     >
       <div className="mt-2">
-        <div className="mb-4 p-3 bg-dark bg-opacity-75 rounded-4 border border-secondary border-opacity-50 shadow-lg position-relative overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
+        <div className="f1-glass-card mb-4 p-3 border-secondary border-opacity-50">
           {/* Subtle accent line */}
           <div className="position-absolute top-0 start-0 w-100 bg-danger opacity-50" style={{ height: '2px' }}></div>
           

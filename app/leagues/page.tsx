@@ -43,21 +43,21 @@ const MyLeaguesView = ({
   handleImport: (name: string) => void 
 }) => (
   <>
-    <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg mb-3 bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
+    <div className="f1-premium-table-container mb-3">
       {loading && !leagues.length ? (
         <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
       ) : leagues.length > 0 ? (
-        <Table variant="dark" hover className="mb-0">
+        <Table variant="dark" hover className="f1-premium-table mb-0">
           <thead>
-            <tr className="bg-black bg-opacity-40 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
-              <th className="ps-3 py-3 border-0">Name</th>
-              <th className="py-3 border-0">Code</th>
-              <th className="text-end pe-3 py-3 border-0">Action</th>
+            <tr>
+              <th className="ps-3 border-0">Name</th>
+              <th className="border-0">Code</th>
+              <th className="text-end pe-3 border-0">Action</th>
             </tr>
           </thead>
           <tbody>
             {leagues.map(league => (
-              <tr key={league.id} style={{ height: '55px', verticalAlign: 'middle' }} className="border-secondary border-opacity-10">
+              <tr key={league.id}>
                 <td className="ps-3 fw-bold text-white small">{league.name}</td>
                 <td><code className="text-danger fw-bold extra-small" style={{ letterSpacing: '1px' }}>{league.invite_code}</code></td>
                 <td className="text-end pe-3">
@@ -113,10 +113,8 @@ const ManageLeaguesView = ({
 }) => (
   <Row className="g-3">
     <Col xs={12}>
-      <Card className="border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 rounded-4 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
-        <Card.Header className="bg-dark border-secondary border-opacity-25 py-2">
-          <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-2" style={{ fontSize: '0.65rem' }}>Create League</h3>
-        </Card.Header>
+      <Card className="f1-glass-card border-secondary border-opacity-50">
+        <div className="f1-card-header text-white">Create League</div>
         <Card.Body className="p-3">
           <Form onSubmit={handleCreateLeague}>
             <Form.Group className="mb-3">
@@ -126,7 +124,7 @@ const ManageLeaguesView = ({
                 value={newLeagueName} 
                 onChange={(e) => setNewLeagueName(e.target.value)} 
                 required 
-                className="bg-black bg-opacity-50 text-white border-secondary border-opacity-50 py-2 small" 
+                className="f1-input-dark py-2 small" 
               />
             </Form.Group>
             <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
@@ -138,10 +136,8 @@ const ManageLeaguesView = ({
     </Col>
 
     <Col xs={12}>
-      <Card className="border-danger border-opacity-50 shadow-lg bg-dark bg-opacity-75 rounded-4 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
-        <Card.Header className="bg-dark border-danger border-opacity-10 py-2">
-          <h3 className="extra-small mb-0 text-uppercase fw-bold text-white letter-spacing-2" style={{ fontSize: '0.65rem' }}>Join League</h3>
-        </Card.Header>
+      <Card className="f1-glass-card border-danger border-opacity-50">
+        <div className="f1-card-header text-white border-danger border-opacity-10">Join League</div>
         <Card.Body className="p-3">
           <Form onSubmit={handleJoinLeague}>
             <Form.Group className="mb-3">
@@ -151,7 +147,7 @@ const ManageLeaguesView = ({
                 value={inviteCode} 
                 onChange={(e) => setInviteCode(e.target.value)} 
                 required 
-                className="bg-black bg-opacity-50 text-white border-secondary border-opacity-50 py-2 small" 
+                className="f1-input-dark py-2 small" 
                 maxLength={8}
               />
             </Form.Group>

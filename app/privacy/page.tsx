@@ -30,7 +30,7 @@ export default function PrivacyPage() {
               <h1 className="h2 fw-bold text-uppercase letter-spacing-1 mb-0 text-white">Privacy Policy</h1>
             </div>
 
-            <Card className="border-secondary bg-dark shadow-sm">
+            <Card className="f1-glass-card border-secondary border-opacity-50">
               <Card.Body className="p-4 p-md-5 text-white opacity-75">
                 <p className="small text-danger fw-bold text-uppercase letter-spacing-1 mb-4">Last Updated: March 8, 2026</p>
 

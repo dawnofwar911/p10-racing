@@ -12,20 +12,20 @@ import { Flag, Trophy, Users } from 'lucide-react';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 
 const DriversTable = ({ data }: { data: Driver[] }) => (
-  <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
-    <Table variant="dark" hover className="mb-0">
+  <div className="f1-premium-table-container">
+    <Table variant="dark" hover className="f1-premium-table mb-0">
       <thead>
-        <tr className="bg-black bg-opacity-40 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
-          <th className="ps-4 py-3 border-0" style={{ width: '60px' }}>Pos</th>
-          <th className="py-3 border-0">Driver</th>
-          <th className="py-3 border-0">Team</th>
-          <th className="text-end py-3 border-0" style={{ width: '80px' }}>PTS</th>
-          <th className="text-end pe-4 py-3 border-0" style={{ width: '80px' }}>No.</th>
+        <tr>
+          <th className="ps-4 border-0" style={{ width: '60px' }}>Pos</th>
+          <th className="border-0">Driver</th>
+          <th className="border-0">Team</th>
+          <th className="text-end border-0" style={{ width: '80px' }}>PTS</th>
+          <th className="text-end pe-4 border-0" style={{ width: '80px' }}>No.</th>
         </tr>
       </thead>
       <tbody>
         {data.map((d, i) => (
-          <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }} className="border-secondary border-opacity-10">
+          <tr key={d.id} className="border-secondary border-opacity-10">
             <td className="ps-4 fw-bold text-muted">{i + 1}</td>
             <td className="fw-bold text-white fs-5 text-nowrap">
               <div className="d-flex align-items-center">
@@ -53,18 +53,18 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
 );
 
 const ConstructorsTable = ({ data }: { data: ConstructorStanding[] }) => (
-  <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
-    <Table variant="dark" hover className="mb-0">
+  <div className="f1-premium-table-container">
+    <Table variant="dark" hover className="f1-premium-table mb-0">
       <thead>
-        <tr className="bg-black bg-opacity-40 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
-          <th className="ps-4 py-3 border-0" style={{ width: '60px' }}>Pos</th>
-          <th className="py-3 border-0">Team</th>
-          <th className="text-end pe-4 py-3 border-0" style={{ width: '80px' }}>PTS</th>
+        <tr>
+          <th className="ps-4 border-0" style={{ width: '60px' }}>Pos</th>
+          <th className="border-0">Team</th>
+          <th className="text-end pe-4 border-0" style={{ width: '80px' }}>PTS</th>
         </tr>
       </thead>
       <tbody>
         {data.map((c, i) => (
-          <tr key={c.id} style={{ height: '70px', verticalAlign: 'middle' }} className="border-secondary border-opacity-10">
+          <tr key={c.id} className="border-secondary border-opacity-10">
             <td className="ps-4 fw-bold text-muted">{i + 1}</td>
             <td className="fw-bold text-white fs-5 text-nowrap">
               <div className="d-flex align-items-center">

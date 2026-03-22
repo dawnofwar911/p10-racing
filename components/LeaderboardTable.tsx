@@ -29,8 +29,8 @@ export default function LeaderboardTable({
 
   if (loading) {
     return (
-      <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
-        <Table variant="dark" className="mb-0">
+      <div className="f1-premium-table-container">
+        <Table variant="dark" className="f1-premium-table mb-0">
           <tbody>
             <tr>
               <td className="text-center py-5">
@@ -45,8 +45,8 @@ export default function LeaderboardTable({
 
   if (entries.length === 0) {
     return (
-      <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
-        <Table variant="dark" className="mb-0">
+      <div className="f1-premium-table-container">
+        <Table variant="dark" className="f1-premium-table mb-0">
           <tbody>
             <tr>
               <td className="text-center py-5 text-muted small opacity-50">
@@ -60,11 +60,11 @@ export default function LeaderboardTable({
   }
 
   return (
-    <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
-      <Table variant="dark" hover className="mb-0">
+    <div className="f1-premium-table-container">
+      <Table variant="dark" hover className="f1-premium-table mb-0">
         <thead>
-          <tr className="bg-black bg-opacity-40 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
-            <th className="ps-4 py-3 border-0">Pos</th>
+          <tr>
+            <th className="ps-4 border-0">Pos</th>
             <th className="py-3 border-0">Player</th>
             <th className="text-end py-3 border-0">Last Race</th>
             <th className="text-end pe-4 py-3 border-0">Total</th>
@@ -75,7 +75,7 @@ export default function LeaderboardTable({
             <React.Fragment key={entry.player}>
               <tr 
                 onClick={() => toggleExpand(entry.player)}
-                style={{ height: '70px', verticalAlign: 'middle', cursor: 'pointer' }}
+                style={{ cursor: 'pointer' }}
                 className={`${expandedPlayer === entry.player ? 'bg-danger bg-opacity-10' : ''} border-secondary border-opacity-10`}
               >
                 <td className="ps-4 fw-bold text-muted">
@@ -98,7 +98,7 @@ export default function LeaderboardTable({
                 <td className="text-end pe-4 f1-total-points fw-bold fs-5">{entry.points}</td>
               </tr>
               {expandedPlayer === entry.player && (
-                <tr className="bg-black bg-opacity-20">
+                <tr className="bg-black bg-opacity-20 border-0">
                   <td colSpan={4} className="p-0 border-0">
                     <div className="p-3 p-md-4 m-2 m-md-3 bg-dark bg-opacity-50 rounded-4 border border-secondary border-opacity-25 shadow-sm">
                       {entry.breakdown && (

@@ -13,7 +13,7 @@ export default function DeleteAccountPage() {
         <Col lg={8}>
           <h1 className="h2 fw-bold text-uppercase letter-spacing-1 mb-4 text-white">Account Deletion Request</h1>
           
-          <Card className="border-secondary bg-dark shadow-sm text-start">
+          <Card className="f1-glass-card border-secondary border-opacity-50 text-start">
             <Card.Body className="p-4 p-md-5 text-white opacity-75">
               <p className="mb-4">
                 At P10 Racing, we respect your privacy and your right to control your data. 
