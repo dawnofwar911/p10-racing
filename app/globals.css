@@ -472,6 +472,12 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   outline: none;
 }
 
+.f1-driver-line {
+  width: 3px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .letter-spacing-1 { letter-spacing: 1px; }
 .letter-spacing-2 { letter-spacing: 2px; }
 .extra-small { font-size: 0.65rem; }
