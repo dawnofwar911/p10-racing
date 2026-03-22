@@ -171,11 +171,18 @@ DECLARE
   v_id TEXT;
 BEGIN
   v_id := 'reminder_' || p_race_id || '_' || p_user_id::text;
-  IF EXISTS (SELECT 1 FROM public.sent_notifications WHERE id = v_id) THEN 
-    RETURN FALSE; 
+  
+  -- Use ON CONFLICT DO NOTHING for an atomic, race-condition safe operation
+  INSERT INTO public.sent_notifications (id, sent_at) 
+  VALUES (v_id, now())
+  ON CONFLICT (id) DO NOTHING;
+  
+  -- FOUND is true if the INSERT actually happened
+  IF FOUND THEN
+    RETURN TRUE;
   END IF;
-  INSERT INTO public.sent_notifications (id, sent_at) VALUES (v_id, now());
-  RETURN TRUE;
+  
+  RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

@@ -111,34 +111,34 @@ Deno.serve(async () => {
         // Unique user IDs
         const userIds = [...new Set(usersWithTokens.map(u => u.user_id))];
 
-        for (const uid of userIds) {
-          // 2. Check if user has already predicted for this race
-          const { data: prediction } = await supabase
-            .from('predictions')
-            .select('id')
-            .eq('user_id', uid)
-            .eq('race_id', raceId)
-            .maybeSingle();
+        // 2. Bulk fetch predictions for this race to avoid N+1 query timeout
+        const { data: existingPredictions } = await supabase
+          .from('predictions')
+          .select('user_id')
+          .eq('race_id', raceId);
 
-          if (!prediction) {
-            // 3. Try to mark reminder as sent (to avoid duplicates)
-            const { data: wasMarked } = await supabase.rpc('mark_reminder_sent', { 
-              p_race_id: raceId, 
-              p_user_id: uid 
+        const predictedUserIds = new Set(existingPredictions?.map(p => p.user_id) || []);
+        const usersNeedingReminder = userIds.filter(uid => !predictedUserIds.has(uid));
+
+        for (const uid of usersNeedingReminder) {
+          // 3. Try to mark reminder as sent (atomically via ON CONFLICT)
+          const { data: wasMarked } = await supabase.rpc('mark_reminder_sent', { 
+            p_race_id: raceId, 
+            p_user_id: uid 
+          });
+
+          if (wasMarked) {
+            console.log(`Sending prediction reminder to user ${uid}`);
+            await supabase.from('notifications').insert({
+              user_id: uid,
+              title: 'Don\'t Forget Your Picks! 🏎️',
+              body: `The ${upcomingRace.raceName} starts in less than 2 hours. Get your P10 and DNF picks in now!`,
+              type: 'reminder',
+              data: { url: '/predict' }
             });
-
-            if (wasMarked) {
-              console.log(`Sending prediction reminder to user ${uid}`);
-              await supabase.from('notifications').insert({
-                user_id: uid,
-                title: 'Don\'t Forget Your Picks! 🏎️',
-                body: `The ${upcomingRace.raceName} starts in less than 2 hours. Get your P10 and DNF picks in now!`,
-                type: 'reminder',
-                data: { url: '/predict' }
-              });
-            }
           }
         }
+
       }
     }
     // --- END REMINDERS ---
