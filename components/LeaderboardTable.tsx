@@ -100,27 +100,27 @@ export default function LeaderboardTable({
               {expandedPlayer === entry.player && (
                 <tr className="bg-black bg-opacity-20 border-0">
                   <td colSpan={4} className="p-0 border-0">
-                    <div className="p-3 p-md-4 m-2 m-md-3 bg-dark bg-opacity-50 rounded-4 border border-secondary border-opacity-25 shadow-sm">
+                    <div className="p-3 p-md-4 bg-dark bg-opacity-50 rounded-0 border-bottom border-secondary border-opacity-25 shadow-inner">
                       {entry.breakdown && (
                         <div className="row g-3 text-white mb-4 border-bottom border-secondary border-opacity-10 pb-4">
-                          <div className="col-md-6 border-md-end border-secondary border-opacity-10">
+                          <div className="col-12 col-md-6 border-md-end border-secondary border-opacity-10 mb-3 mb-md-0">
                             <small className="text-muted text-uppercase d-block mb-2 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: P10 Result</small>
                             <div className="d-flex justify-content-between align-items-center">
-                              <span className="fw-bold fs-5 text-uppercase letter-spacing-1">{entry.breakdown.p10Driver.replace(/_/g, ' ')}</span>
-                              <Badge bg="danger" className="rounded-pill">P{entry.breakdown.actualP10Pos}</Badge>
+                              <span className="fw-bold fs-6 text-uppercase letter-spacing-1">{entry.breakdown.p10Driver.replace(/_/g, ' ')}</span>
+                              <Badge bg="danger" className="rounded-pill" style={{ fontSize: '0.65rem' }}>P{entry.breakdown.actualP10Pos}</Badge>
                             </div>
-                            <div className="mt-2 text-danger fw-bold small">+{entry.breakdown.p10Points} PTS</div>
+                            <div className="mt-2 text-danger fw-bold extra-small">+{entry.breakdown.p10Points} PTS</div>
                           </div>
-                          <div className="col-md-6 ps-md-4">
+                          <div className="col-12 col-md-6 ps-md-4">
                             <small className="text-muted text-uppercase d-block mb-2 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: First DNF Bonus</small>
                             <div className="mt-1">
                               {entry.breakdown.dnfPoints > 0 ? (
-                                <div className="text-success fw-bold d-flex align-items-center small">
-                                  <span className="fs-5 me-2">🏎️💨</span> Correct (+25 PTS)
+                                <div className="text-success fw-bold d-flex align-items-center extra-small">
+                                  <span className="fs-6 me-2">🏎️💨</span> Correct (+25 PTS)
                                 </div>
                               ) : (
-                                <div className="text-muted d-flex align-items-center opacity-50 small">
-                                  <span className="fs-5 me-2">🏁</span> Incorrect (+0 PTS)
+                                <div className="text-muted d-flex align-items-center opacity-50 extra-small">
+                                  <span className="fs-6 me-2">🏁</span> Incorrect (+0 PTS)
                                 </div>
                               )}
                             </div>
@@ -131,31 +131,33 @@ export default function LeaderboardTable({
                       <div className="season-history">
                         <h4 className="h6 text-uppercase fw-bold text-danger letter-spacing-2 mb-3" style={{ fontSize: '0.7rem' }}>Season History</h4>
                         {entry.history && entry.history.length > 0 ? (
-                          <div className="table-responsive">
-                            <Table variant="dark" size="sm" className="mb-0 extra-small opacity-75">
+                          <div className="table-responsive" style={{ margin: '0 -0.5rem' }}>
+                            <Table variant="dark" size="sm" className="mb-0 extra-small opacity-75" style={{ minWidth: '300px' }}>
                               <thead>
                                 <tr className="text-muted border-bottom border-secondary border-opacity-25 text-uppercase" style={{ fontSize: '0.55rem' }}>
-                                  <th className="py-2">Race</th>
-                                  <th className="py-2">P10 Pick</th>
-                                  <th className="py-2">DNF Pick</th>
-                                  <th className="py-2 text-end">PTS</th>
-                                  <th className="py-2 text-end">Total</th>
+                                  <th className="py-2 px-2">Round</th>
+                                  <th className="py-2 px-2">P10 Pick</th>
+                                  <th className="py-2 px-2">DNF Pick</th>
+                                  <th className="py-2 px-2 text-end">PTS</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {entry.history.map((h, idx) => (
                                   <tr key={idx} className="border-bottom border-secondary border-opacity-10">
-                                    <td className="py-2 fw-bold">Round {h.round}</td>
-                                    <td className="py-2 text-uppercase letter-spacing-1">
-                                      {h.p10Driver.replace(/_/g, ' ')} 
-                                      <span className="ms-1 text-muted">(P{h.p10Pos})</span>
+                                    <td className="py-2 px-2 fw-bold text-nowrap">R{h.round}</td>
+                                    <td className="py-2 px-2 text-uppercase letter-spacing-1">
+                                      <div className="d-flex flex-column">
+                                        <span className="text-white">{h.p10Driver.replace(/_/g, ' ')}</span>
+                                        <small className="text-muted">(P{h.p10Pos})</small>
+                                      </div>
                                     </td>
-                                    <td className="py-2 text-uppercase letter-spacing-1">
-                                      {h.dnfDriver.replace(/_/g, ' ')}
-                                      {h.dnfCorrect ? <span className="ms-1 text-success">✓</span> : <span className="ms-1 text-muted">✗</span>}
+                                    <td className="py-2 px-2 text-uppercase letter-spacing-1">
+                                      <div className="d-flex align-items-center">
+                                        <span className={h.dnfCorrect ? 'text-success' : 'text-white opacity-50'}>{h.dnfDriver.replace(/_/g, ' ')}</span>
+                                        {h.dnfCorrect && <span className="ms-1 text-success small">✓</span>}
+                                      </div>
                                     </td>
-                                    <td className="py-2 text-end fw-bold text-white">+{h.points}</td>
-                                    <td className="py-2 text-end text-muted">{h.totalSoFar}</td>
+                                    <td className="py-2 px-2 text-end fw-bold text-white text-nowrap">+{h.points}</td>
                                   </tr>
                                 ))}
                               </tbody>
