@@ -28,9 +28,11 @@ export default function DeleteAccountPage() {
                 <li className="mb-2">Your historical scores and placements.</li>
               </ul>
 
-              <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">How to request deletion</h2>
+              <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">How to delete your account</h2>
               <p className="mb-4">
-                You can delete your account directly within the mobile app by navigating to the navigation menu while signed in.
+                You can delete your account and all associated data directly within the app by navigating to the 
+                <HapticButton variant="link" className="text-danger p-0 d-inline fw-bold text-decoration-none mx-1" onClick={() => router.push('/settings')}>Settings</HapticButton> 
+                page while signed in and selecting the <strong>&quot;Delete Account Data&quot;</strong> option.
               </p>
               
               <p className="mb-4">
