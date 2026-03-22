@@ -102,40 +102,42 @@ export default function LeaderboardTable({
                 <td className="text-end pe-4 f1-total-points fw-bold fs-5">{entry.points}</td>
               </tr>
               {expandedPlayer === entry.player && (
-                <tr className="bg-black bg-opacity-20 border-0">
+                <tr className="bg-white bg-opacity-5 border-0">
                   <td colSpan={4} className="p-0 border-0">
-                    <div className="p-3 p-md-4 bg-dark bg-opacity-50 rounded-0 border-bottom border-secondary border-opacity-25 shadow-inner">
+                    <div className="p-3 p-md-4 rounded-0 border-bottom border-secondary border-opacity-25 shadow-inner">
                       {entry.breakdown && (
-                        <div className="row g-3 text-white mb-4 border-bottom border-secondary border-opacity-10 pb-4">
-                          <div className="col-12 col-md-6 border-md-end border-secondary border-opacity-10 mb-3 mb-md-0">
-                            <small className="text-muted text-uppercase d-block mb-2 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: P10 Result</small>
-                            <div className="d-flex justify-content-between align-items-center">
+                        <div className="row g-4 text-white mb-4 border-bottom border-secondary border-opacity-10 pb-4">
+                          <div className="col-12 col-md-6 border-md-end border-secondary border-opacity-10">
+                            <small className="text-muted text-uppercase d-block mb-3 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: P10 Result</small>
+                            <div className="d-flex justify-content-between align-items-start">
                               <div className="d-flex align-items-center">
-                                <div className="f1-driver-line me-2" style={{ height: '16px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.p10Driver)?.color || '#B6BABD' }}></div>
-                                <span className="fw-bold fs-6 text-uppercase letter-spacing-1">{entry.breakdown?.p10Driver.replace(/_/g, ' ')}</span>
+                                <div className="f1-driver-line me-2" style={{ height: '24px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.p10Driver)?.color || '#B6BABD' }}></div>
+                                <div>
+                                  <span className="fw-bold fs-5 text-uppercase letter-spacing-1 d-block">{entry.breakdown?.p10Driver.replace(/_/g, ' ')}</span>
+                                  <span className="text-danger fw-bold extra-small">+{entry.breakdown?.p10Points} PTS</span>
+                                </div>
                               </div>
-                              <Badge bg="danger" className="rounded-pill" style={{ fontSize: '0.65rem' }}>P{entry.breakdown?.actualP10Pos}</Badge>
+                              <Badge bg="danger" className="rounded-pill px-3 py-2" style={{ fontSize: '0.7rem' }}>ACTUAL P{entry.breakdown?.actualP10Pos}</Badge>
                             </div>
-                            <div className="mt-2 text-danger fw-bold extra-small">+{entry.breakdown?.p10Points} PTS</div>
                           </div>
+                          
                           <div className="col-12 col-md-6 ps-md-4">
-                            <small className="text-muted text-uppercase d-block mb-2 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: First DNF Bonus</small>
-                            <div className="d-flex justify-content-between align-items-center">
+                            <small className="text-muted text-uppercase d-block mb-3 fw-bold letter-spacing-1" style={{ fontSize: '0.6rem' }}>Latest Race: First DNF Bonus</small>
+                            <div className="d-flex justify-content-between align-items-start">
                               <div className="d-flex align-items-center">
-                                <div className="f1-driver-line me-2" style={{ height: '16px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.dnfDriver)?.color || '#B6BABD' }}></div>
-                                <div className="mt-1">
+                                <div className="f1-driver-line me-2" style={{ height: '24px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.dnfDriver)?.color || '#B6BABD' }}></div>
+                                <div>
+                                  <span className="fw-bold fs-5 text-uppercase letter-spacing-1 d-block">{entry.breakdown?.dnfDriver.replace(/_/g, ' ')}</span>
                                   {entry.breakdown?.dnfPoints && entry.breakdown.dnfPoints > 0 ? (
-                                    <div className="text-success fw-bold d-flex align-items-center extra-small">
-                                      <span className="fs-6 me-2">🏎️💨</span> Correct (+25 PTS)
-                                    </div>
+                                    <span className="text-success fw-bold extra-small">+25 PTS (CORRECT)</span>
                                   ) : (
-                                    <div className="text-muted d-flex align-items-center opacity-50 extra-small">
-                                      <span className="fs-6 me-2">🏁</span> Incorrect (+0 PTS)
-                                    </div>
+                                    <span className="text-muted fw-bold extra-small">+0 PTS (INCORRECT)</span>
                                   )}
                                 </div>
                               </div>
-                              <span className="text-white opacity-50 extra-small fw-bold text-uppercase">{entry.breakdown?.dnfDriver.replace(/_/g, ' ')}</span>
+                              <div className="fs-3 opacity-50">
+                                {entry.breakdown?.dnfPoints && entry.breakdown.dnfPoints > 0 ? '🏎️💨' : '🏁'}
+                              </div>
                             </div>
                           </div>
                         </div>
