@@ -58,15 +58,15 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
 
         {/* Navigation Actions */}
         <div className="p-3 flex-grow-1">
-          <div className="d-flex flex-column gap-2">
+          <div className="d-flex flex-column gap-1">
             {isAdmin && (
               <Link href="/admin" passHref legacyBehavior>
                 <HapticButton 
                   variant="outline-warning" 
-                  className="w-100 text-start d-flex align-items-center border-0 p-3 rounded"
+                  className="w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100"
                   onClick={handleLinkClick}
                 >
-                  <ShieldAlert size={20} className="me-3" />
+                  <ShieldAlert size={18} className="me-3" />
                   <span className="fw-bold letter-spacing-1 text-uppercase small">Admin Panel</span>
                 </HapticButton>
               </Link>
@@ -75,10 +75,10 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
             <Link href="/history" passHref legacyBehavior>
               <HapticButton 
                 variant="outline-light" 
-                className="w-100 text-start d-flex align-items-center border-0 p-3 rounded opacity-75 hover-opacity-100"
+                className="w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100"
                 onClick={handleLinkClick}
               >
-                <History size={20} className="me-3" />
+                <History size={18} className="me-3" />
                 <span className="fw-bold letter-spacing-1 text-uppercase small">Season History</span>
               </HapticButton>
             </Link>
@@ -86,10 +86,10 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
             <Link href="/settings" passHref legacyBehavior>
               <HapticButton 
                 variant="outline-light" 
-                className="w-100 text-start d-flex align-items-center border-0 p-3 rounded opacity-75 hover-opacity-100"
+                className="w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100"
                 onClick={handleLinkClick}
               >
-                <Settings size={20} className="me-3" />
+                <Settings size={18} className="me-3" />
                 <span className="fw-bold letter-spacing-1 text-uppercase small">Settings & Info</span>
               </HapticButton>
             </Link>
@@ -97,16 +97,17 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-top border-secondary border-opacity-25 mt-auto">
+        <div className="p-4 bg-black bg-opacity-20 border-top border-secondary border-opacity-25 mt-auto">
           <HapticButton 
             href="https://buymeacoffee.com/p10racing"
             variant="outline-warning" 
-            className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center mb-3 border-secondary border-opacity-50"
+            className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center mb-3 rounded-pill border-opacity-50"
             onClick={onHide}
             target="_blank"
             rel="noopener noreferrer"
+            style={{ fontSize: '0.8rem', letterSpacing: '1px' }}
           >
-            <Coffee size={18} className="me-2" />
+            <Coffee size={18} className="me-2 opacity-75" />
             BUY ME A COFFEE
           </HapticButton>
 
@@ -114,13 +115,14 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
             <HapticButton 
               hapticStyle="medium"
               variant="danger" 
-              className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center"
+              className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center rounded-pill"
               onClick={() => {
                 onLogout();
                 onHide();
               }}
+              style={{ fontSize: '0.8rem', letterSpacing: '1px' }}
             >
-              <LogOut size={18} className="me-2" />
+              <LogOut size={18} className="me-2 opacity-75" />
               SIGN OUT
             </HapticButton>
           ) : (
@@ -129,8 +131,9 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
                 variant="primary" 
                 className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center rounded-pill"
                 onClick={handleLinkClick}
+                style={{ fontSize: '0.8rem', letterSpacing: '1px' }}
               >
-                <LogIn size={18} className="me-2" />
+                <LogIn size={18} className="me-2 opacity-75" />
                 SIGN IN
               </HapticButton>
             </Link>
