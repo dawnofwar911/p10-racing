@@ -12,20 +12,20 @@ import { Flag, Trophy, Users } from 'lucide-react';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 
 const DriversTable = ({ data }: { data: Driver[] }) => (
-  <div className="table-responsive rounded border border-secondary shadow-sm">
+  <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
     <Table variant="dark" hover className="mb-0">
       <thead>
-        <tr className="f1-table-header">
-          <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
-          <th className="py-3">Driver</th>
-          <th className="py-3">Team</th>
-          <th className="text-end py-3" style={{ width: '80px' }}>PTS</th>
-          <th className="text-end pe-4 py-3" style={{ width: '80px' }}>No.</th>
+        <tr className="bg-black bg-opacity-40 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
+          <th className="ps-4 py-3 border-0" style={{ width: '60px' }}>Pos</th>
+          <th className="py-3 border-0">Driver</th>
+          <th className="py-3 border-0">Team</th>
+          <th className="text-end py-3 border-0" style={{ width: '80px' }}>PTS</th>
+          <th className="text-end pe-4 py-3 border-0" style={{ width: '80px' }}>No.</th>
         </tr>
       </thead>
       <tbody>
         {data.map((d, i) => (
-          <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }}>
+          <tr key={d.id} style={{ height: '70px', verticalAlign: 'middle' }} className="border-secondary border-opacity-10">
             <td className="ps-4 fw-bold text-muted">{i + 1}</td>
             <td className="fw-bold text-white fs-5 text-nowrap">
               <div className="d-flex align-items-center">
@@ -34,10 +34,11 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
               </div>
             </td>
             <td className="text-nowrap">
-              <span className="team-pill" style={{ 
+              <span className="team-pill fw-bold text-uppercase" style={{ 
                 backgroundColor: d.color, 
                 color: getContrastColor(d.color),
-                fontSize: '0.6rem' 
+                fontSize: '0.55rem',
+                letterSpacing: '0.5px'
               }}>
                 {d.team}
               </span>
@@ -52,18 +53,18 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
 );
 
 const ConstructorsTable = ({ data }: { data: ConstructorStanding[] }) => (
-  <div className="table-responsive rounded border border-secondary shadow-sm">
+  <div className="table-responsive rounded-4 border border-secondary border-opacity-50 shadow-lg bg-dark bg-opacity-75 overflow-hidden" style={{ backdropFilter: 'blur(10px)' }}>
     <Table variant="dark" hover className="mb-0">
       <thead>
-        <tr className="f1-table-header">
-          <th className="ps-4 py-3" style={{ width: '60px' }}>Pos</th>
-          <th className="py-3">Team</th>
-          <th className="text-end pe-4 py-3" style={{ width: '80px' }}>PTS</th>
+        <tr className="bg-black bg-opacity-40 text-uppercase letter-spacing-1 small" style={{ fontSize: '0.6rem' }}>
+          <th className="ps-4 py-3 border-0" style={{ width: '60px' }}>Pos</th>
+          <th className="py-3 border-0">Team</th>
+          <th className="text-end pe-4 py-3 border-0" style={{ width: '80px' }}>PTS</th>
         </tr>
       </thead>
       <tbody>
         {data.map((c, i) => (
-          <tr key={c.id} style={{ height: '70px', verticalAlign: 'middle' }}>
+          <tr key={c.id} style={{ height: '70px', verticalAlign: 'middle' }} className="border-secondary border-opacity-10">
             <td className="ps-4 fw-bold text-muted">{i + 1}</td>
             <td className="fw-bold text-white fs-5 text-nowrap">
               <div className="d-flex align-items-center">
