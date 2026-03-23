@@ -193,36 +193,45 @@ function PredictPage() {
   // 1. Synchronous Cache Initialization
   const [nextRace, setNextRace] = useState<PredictRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    return cached ? JSON.parse(cached) : null;
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      console.warn('Predict: Failed to parse race cache', e);
+      return null;
+    }
   });
 
   const [tempUsername, setTempUsername] = useState('');
   
   const [p10Driver, setP10Driver] = useState(() => {
     if (typeof window === 'undefined') return '';
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && user) {
-      try {
+    try {
+      const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      if (cachedRaceStr && user) {
         const raceObj = JSON.parse(cachedRaceStr);
         const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
         return predStr ? JSON.parse(predStr).p10 : '';
-      } catch { return ''; }
+      }
+    } catch (e) {
+      console.warn('Predict: Failed to parse p10 cache', e);
     }
     return '';
   });
 
   const [dnfDriver, setDnfDriver] = useState(() => {
     if (typeof window === 'undefined') return '';
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && user) {
-      try {
+    try {
+      const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      if (cachedRaceStr && user) {
         const raceObj = JSON.parse(cachedRaceStr);
         const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
         return predStr ? JSON.parse(predStr).dnf : '';
-      } catch { return ''; }
+      }
+    } catch (e) {
+      console.warn('Predict: Failed to parse dnf cache', e);
     }
     return '';
   });
@@ -266,15 +275,25 @@ function PredictPage() {
           cachedRace = JSON.parse(cachedRaceStr) as PredictRace;
           const cachedGrid = localStorage.getItem(getGridKey(cachedRace.round));
           if (cachedGrid) {
-            const parsedGrid = JSON.parse(cachedGrid);
-            setStartingGrid(parsedGrid);
-            hasCachedGrid = parsedGrid.length > 0;
-            if (hasCachedGrid) setActiveTab('grid');
+            try {
+              const parsedGrid = JSON.parse(cachedGrid);
+              setStartingGrid(parsedGrid);
+              hasCachedGrid = (Array.isArray(parsedGrid) && parsedGrid.length > 0);
+              if (hasCachedGrid) setActiveTab('grid');
+            } catch (e) {
+              console.warn('Predict: Failed to parse cached grid', e);
+            }
           }
 
           const cachedCommunity = localStorage.getItem(getCommunityKey(cachedRace.round));
-          if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
-        } catch (e) { console.error('Predict: Error parsing cached race', e); }
+          if (cachedCommunity) {
+            try {
+              setCommunityPredictions(JSON.parse(cachedCommunity));
+            } catch (e) {
+              console.warn('Predict: Failed to parse cached community picks', e);
+            }
+          }
+        } catch (e) { console.error('Predict: Error parsing cached race or community', e); }
       }
     }
 
@@ -397,10 +416,23 @@ function PredictPage() {
           }
 
           const otherDbPreds = formattedDbPreds.filter(p => p.username !== username);
-          const playersList: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
-          const localPreds = playersList.filter((p: string) => p !== username).map((p: string) => {
-            const pred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, p, currentRace.id));
-            return pred ? JSON.parse(pred) : null;
+          
+          let playersList: string[] = [];
+          try {
+            const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+            playersList = stored ? JSON.parse(stored) : [];
+          } catch (e) {
+            console.warn('Predict: Failed to parse players list during init', e);
+          }
+
+          const localPreds = (Array.isArray(playersList) ? playersList : []).filter((p: string) => p !== username).map((p: string) => {
+            try {
+              const pred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, p, currentRace.id));
+              return pred ? JSON.parse(pred) : null;
+            } catch (e) {
+              console.warn(`Predict: Failed to parse prediction for ${p}`, e);
+              return null;
+            }
           }).filter(p => p !== null);
           
           const combinedCommunity = [...otherDbPreds, ...localPreds.map(p => ({ username: p.username, p10: p.p10, dnf: p.dnf }))];
@@ -419,9 +451,16 @@ function PredictPage() {
       }
     }
 
-    const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+    let parsedPlayers: string[] = [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+      parsedPlayers = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.warn('Predict: Failed to parse players list at end of init', e);
+    }
+    
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, currentUser, f1Loading, calendar, drivers, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session, username, currentUser, f1Loading, calendar.length, drivers.length, JSON.stringify(nextRace), startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
@@ -468,8 +507,16 @@ function PredictPage() {
       } else {
         console.log('Predict: Saving guest prediction to local storage');
         setStorageItem(getPredictionKey(CURRENT_SEASON, username, nextRace.id), JSON.stringify(prediction));
-        const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
-        if (!players.includes(username)) {
+        
+        let players: string[] = [];
+        try {
+          const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+          players = stored ? JSON.parse(stored) : [];
+        } catch (e) {
+          console.warn('Predict: Failed to parse players list during submit', e);
+        }
+
+        if (Array.isArray(players) && !players.includes(username)) {
           players.push(username);
           localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(players));
         }
@@ -562,13 +609,25 @@ function PredictPage() {
   const getGuestSelection = () => {
     if (typeof window === 'undefined' || !nextRace) return null;
     try {
-      const players: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+      const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+      const players: string[] = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(players)) return null;
+
       for (const player of players) {
         const key = getPredictionKey(CURRENT_SEASON, player, nextRace.id);
         const val = localStorage.getItem(key);
-        if (val) return JSON.parse(val) as CommunityPrediction;
+        if (val) {
+          try {
+            return JSON.parse(val) as CommunityPrediction;
+          } catch (e) {
+            console.warn(`Predict: Failed to parse guest selection for ${player}`, e);
+          }
+        }
       }
-    } catch { return null; }
+    } catch (e) { 
+      console.warn('Predict: Failed to parse players list in guest selection', e);
+      return null; 
+    }
     return null;
   };
   const guestSelection = getGuestSelection();

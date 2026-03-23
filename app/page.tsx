@@ -51,8 +51,13 @@ export default function Home() {
   // 1. Synchronous Cache Initialization (Zero Pop-in)
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    return cached ? JSON.parse(cached) : null;
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      console.warn('Home: Failed to parse race cache', e);
+      return null;
+    }
   });
 
   const [loading, setLoading] = useState(!nextRace);
@@ -65,7 +70,10 @@ export default function Home() {
         const raceObj = JSON.parse(cachedRaceStr);
         const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
         return predStr ? JSON.parse(predStr) : null;
-      } catch { return null; }
+      } catch (e) {
+        console.warn('Home: Failed to parse prediction cache', e);
+        return null;
+      }
     }
     return null;
   });
@@ -80,9 +88,13 @@ export default function Home() {
       // 1. Try local cache FIRST for immediate sync
       const storageUser = session?.user?.id || currentUser || '';
       if (storageUser) {
-        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
-        if (cachedPred) {
-          finalPrediction = JSON.parse(cachedPred);
+        try {
+          const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
+          if (cachedPred) {
+            finalPrediction = JSON.parse(cachedPred);
+          }
+        } catch (e) {
+          console.warn('Home: Failed to parse prediction during load', e);
         }
       }
 
@@ -112,10 +124,14 @@ export default function Home() {
     // Skip if we already performed initial load AND have a prediction (optimistic stability)
     if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
       const storageUser = session?.user?.id || currentUser || '';
-      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
-      if (cached) {
-          const parsed = JSON.parse(cached);
-          if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
+      try {
+        const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
+        }
+      } catch (e) {
+        console.warn('Home: Failed to parse prediction during stability check', e);
       }
     }
 
@@ -146,7 +162,10 @@ export default function Home() {
             } else {
               setUserPrediction(null);
             }
-          } catch { setUserPrediction(null); }
+          } catch (e) { 
+            console.warn('Home: Failed to parse data during storage update', e);
+            setUserPrediction(null); 
+          }
         }
       }
     };
@@ -237,12 +256,24 @@ export default function Home() {
                   }, {} as { [round: string]: { p10: string, dnf: string } })
               }));
 
-              const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+              const localPlayers: string[] = [];
+              try {
+                const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+                const parsed = stored ? JSON.parse(stored) : [];
+                if (Array.isArray(parsed)) localPlayers.push(...parsed);
+              } catch (e) {
+                console.warn('Home: Failed to parse players list', e);
+              }
+
               localPlayers.forEach(lp => {
                 const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
                 Object.keys(raceResultsMap).forEach(round => {
-                  const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, lp, round));
-                  if (predStr) lpPreds[round] = JSON.parse(predStr);
+                  try {
+                    const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, lp, round));
+                    if (predStr) lpPreds[round] = JSON.parse(predStr);
+                  } catch (e) {
+                    console.warn(`Home: Failed to parse prediction for ${lp} round ${round}`, e);
+                  }
                 });
                 players.push({ username: lp, predictions: lpPreds });
               });
@@ -285,7 +316,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [supabase, nextRace, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, JSON.stringify(nextRace), allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();

@@ -81,14 +81,24 @@ const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], dri
 export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_STANDINGS);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_STANDINGS);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.warn('Standings: Failed to parse drivers cache', e);
+      return [];
+    }
   });
   
   const [constructorStandings, setConstructorStandings] = useState<ConstructorStanding[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_CONSTRUCTORS);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_CONSTRUCTORS);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.warn('Standings: Failed to parse constructors cache', e);
+      return [];
+    }
   });
 
   const [loading, setLoading] = useState(!standings.length && !constructorStandings.length);

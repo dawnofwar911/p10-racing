@@ -7,10 +7,11 @@ const DEFAULT_TABLES = ['predictions', 'verified_results'];
 
 /**
  * Custom hook to subscribe to real-time changes in Supabase tables.
- * Triggers the provided callback whenever a change occurs.
+ * Triggers the provided callback whenever a change occurs in any of the specified tables.
  */
 export function useRealtimeSync(onUpdate: () => void, tables: string[] = DEFAULT_TABLES) {
   const supabase = createClient();
+  const tablesKey = JSON.stringify(tables);
 
   useEffect(() => {
     if (typeof supabase.channel !== 'function') {
@@ -18,17 +19,20 @@ export function useRealtimeSync(onUpdate: () => void, tables: string[] = DEFAULT
       return;
     }
 
-    const channel = supabase.channel('realtime-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'verified_results' }, () => {
-        if (tables.includes('verified_results')) onUpdate();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, () => {
-        if (tables.includes('predictions')) onUpdate();
-      })
-      .subscribe();
+    const activeTables = JSON.parse(tablesKey);
+    const channel = supabase.channel('realtime-sync');
+    
+    // Subscribe to each table
+    activeTables.forEach((table: string) => {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+        onUpdate();
+      });
+    });
+
+    channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, onUpdate, JSON.stringify(tables)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, onUpdate, tablesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 }

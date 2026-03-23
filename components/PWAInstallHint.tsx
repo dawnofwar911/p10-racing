@@ -6,6 +6,7 @@ import { Share, X, PlusSquare } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
 import HapticButton from './HapticButton';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export default function PWAInstallHint() {
   const [show, setShow] = useState(false);
@@ -24,7 +25,7 @@ export default function PWAInstallHint() {
     const isSafari = /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
     
     // 4. Don't show if user dismissed it in this session
-    const dismissed = sessionStorage.getItem('p10_pwa_hint_dismissed');
+    const dismissed = sessionStorage.getItem(STORAGE_KEYS.CACHE_PWA_HINT_DISMISSED);
     
     if (isIos && isSafari && !dismissed) {
       // Delay to avoid overwhelming
@@ -35,7 +36,7 @@ export default function PWAInstallHint() {
 
   const dismiss = () => {
     setShow(false);
-    sessionStorage.setItem('p10_pwa_hint_dismissed', 'true');
+    sessionStorage.setItem(STORAGE_KEYS.CACHE_PWA_HINT_DISMISSED, 'true');
   };
 
   if (!show) return null;

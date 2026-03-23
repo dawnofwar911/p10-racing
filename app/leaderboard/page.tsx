@@ -27,14 +27,24 @@ export default function LeaderboardPage() {
   // 1. Separate Cache Initialization
   const [globalLeaderboard, setGlobalLeaderboard] = useState<LeaderboardEntry[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LEADERBOARD);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LEADERBOARD);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.warn('Leaderboard: Failed to parse global cache', e);
+      return [];
+    }
   });
 
   const [localLeaderboard, setLocalLeaderboard] = useState<LeaderboardEntry[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LOCAL_LEADERBOARD);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LOCAL_LEADERBOARD);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.warn('Leaderboard: Failed to parse local cache', e);
+      return [];
+    }
   });
 
   const [loading, setLoading] = useState(!globalLeaderboard.length && !localLeaderboard.length);
@@ -103,12 +113,23 @@ export default function LeaderboardPage() {
       }
 
       // 2. LOCAL CALCULATION
-      const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
-      const localEntries: LeaderboardEntry[] = localPlayers.map((username) => {
+      let localPlayers: string[] = [];
+      try {
+        const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+        localPlayers = stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        console.warn('Leaderboard: Failed to parse players list', e);
+      }
+
+      const localEntries: LeaderboardEntry[] = (Array.isArray(localPlayers) ? localPlayers : []).map((username) => {
         const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
         Object.keys(raceResultsMap).forEach(round => {
-          const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, username, round));
-          if (predStr) playerPredictions[round] = JSON.parse(predStr);
+          try {
+            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, username, round));
+            if (predStr) playerPredictions[round] = JSON.parse(predStr);
+          } catch (e) {
+            console.warn(`Leaderboard: Failed to parse prediction for ${username} round ${round}`, e);
+          }
         });
         const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
         return { rank: 0, player: username, points: totalPoints, lastRacePoints, breakdown: latestBreakdown, history };

@@ -3,11 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import Home from '@/app/page';
 import { createClient } from '@/lib/supabase/client';
 import * as api from '@/lib/api';
+import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 
 // Mock useAuth
 vi.mock('@/components/AuthProvider', () => ({
   useAuth: () => ({
-    currentUser: localStorage.getItem('p10_current_user'),
+    currentUser: localStorage.getItem(STORAGE_KEYS.CURRENT_USER),
     session: null,
     hasSession: false,
     isAuthLoading: false,
@@ -124,9 +125,9 @@ describe('Home Page Prediction Card Visibility', () => {
     (api.fetchCalendar as any).mockResolvedValue([nextRace]);
     
     // Set current user and prediction in localStorage
-    localStorage.setItem('p10_current_user', 'testuser');
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, 'testuser');
     const prediction = { p10: 'max_verstappen', dnf: 'leclerc' };
-    localStorage.setItem('final_pred_2026_testuser_1', JSON.stringify(prediction));
+    localStorage.setItem(getPredictionKey(2026, 'testuser', '1'), JSON.stringify(prediction));
 
     // Mock date to BEFORE the race
     vi.setSystemTime(new Date('2026-03-14T12:00:00Z'));
@@ -160,9 +161,9 @@ describe('Home Page Prediction Card Visibility', () => {
     };
     (api.fetchCalendar as any).mockResolvedValue([race1, race2]);
     
-    localStorage.setItem('p10_current_user', 'testuser');
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, 'testuser');
     // Prediction for Race 1
-    localStorage.setItem('final_pred_2026_testuser_1', JSON.stringify({ p10: 'max_verstappen', dnf: 'leclerc' }));
+    localStorage.setItem(getPredictionKey(2026, 'testuser', '1'), JSON.stringify({ p10: 'max_verstappen', dnf: 'leclerc' }));
 
     // Mock date to 1 HOUR AFTER Race 1 start (still within 4 hour window)
     vi.setSystemTime(new Date('2026-03-15T06:00:00Z'));
@@ -196,8 +197,8 @@ describe('Home Page Prediction Card Visibility', () => {
     };
     (api.fetchCalendar as any).mockResolvedValue([race1, race2]);
     
-    localStorage.setItem('p10_current_user', 'testuser');
-    localStorage.setItem('final_pred_2026_testuser_1', JSON.stringify({ p10: 'max_verstappen', dnf: 'leclerc' }));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, 'testuser');
+    localStorage.setItem(getPredictionKey(2026, 'testuser', '1'), JSON.stringify({ p10: 'max_verstappen', dnf: 'leclerc' }));
 
     // Mock date to 5 HOURS AFTER Race 1 start (past 4 hour window)
     vi.setSystemTime(new Date('2026-03-15T10:00:00Z'));
@@ -238,7 +239,7 @@ describe('Home Page Prediction Card Visibility', () => {
     
     // Seed the race cache and user
     const testUser = 'testuser';
-    localStorage.setItem('p10_current_user', testUser);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, testUser);
     localStorage.setItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(nextRace));
 
     // Mock date to BEFORE the race
