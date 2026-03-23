@@ -39,15 +39,15 @@ body {
 
 /* Global link reset */
 a {
-  text-decoration: none !important;
+  text-decoration: none;
   color: inherit;
-  outline: none !important;
+  outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 a:focus, a:active, a:hover {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: none;
+  box-shadow: none;
 }
 
 /* Surgically disable selection on layout/navigation elements */

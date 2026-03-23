@@ -316,7 +316,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [supabase, JSON.stringify(nextRace), allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();

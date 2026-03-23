@@ -26,6 +26,7 @@ export function useRealtimeSync(onUpdate: () => void, tables: string[] = DEFAULT
       console.error('useRealtimeSync: Failed to parse tables key', e);
       return;
     }
+    
     const channel = supabase.channel('realtime-sync');
     
     // Subscribe to each table
