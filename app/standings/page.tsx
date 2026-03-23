@@ -24,11 +24,11 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
         {data.map((d, i) => (
           <tr key={d.id} className="border-secondary border-opacity-10">
             <td className="ps-3 fw-bold text-muted">{i + 1}</td>
-            <td className="fw-bold text-white fs-6 text-nowrap">
+            <td className="fw-bold text-white fs-5 text-nowrap">
               <div className="d-flex align-items-center">
                 <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: d.color }}></div>
                 <div className="d-flex flex-column">
-                  <span className="fw-bold fs-6">{d.name}</span>
+                  <span className="fw-bold fs-5">{d.name}</span>
                   <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{d.team}</span>
                 </div>
               </div>
@@ -56,11 +56,11 @@ const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], dri
           return (
             <tr key={c.id} className="border-secondary border-opacity-10">
               <td className="ps-3 fw-bold text-muted">{i + 1}</td>
-              <td className="fw-bold text-white fs-6 text-nowrap">
+              <td className="fw-bold text-white fs-5 text-nowrap">
                 <div className="d-flex align-items-center">
                   <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: c.color }}></div>
                   <div className="d-flex flex-column">
-                    <span className="fw-bold fs-6">{c.name}</span>
+                    <span className="fw-bold fs-5">{c.name}</span>
                     {teamDrivers.length > 0 && (
                       <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>
                         {teamDrivers.map(d => d.name.split(' ').pop()).join(' • ')}
