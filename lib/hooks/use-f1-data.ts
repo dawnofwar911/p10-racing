@@ -21,15 +21,25 @@ export interface UseF1DataReturn {
 export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
   const [drivers, setDrivers] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+      return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+    } catch (e) {
+      console.warn('Failed to parse cached drivers:', e);
+      return FALLBACK_DRIVERS as unknown as Driver[];
+    }
   });
 
   const [calendar, setCalendar] = useState<ApiCalendarRace[]>(() => {
     if (typeof window === 'undefined') return [];
-    // Note: If we don't have a full calendar cache key yet, we'll just start empty.
-    const fullCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR); 
-    return fullCalendar ? JSON.parse(fullCalendar) : [];
+    try {
+      // Note: If we don't have a full calendar cache key yet, we'll just start empty.
+      const fullCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR); 
+      return fullCalendar ? JSON.parse(fullCalendar) : [];
+    } catch (e) {
+      console.warn('Failed to parse cached calendar:', e);
+      return [];
+    }
   });
 
   const [loading, setLoading] = useState(true);
