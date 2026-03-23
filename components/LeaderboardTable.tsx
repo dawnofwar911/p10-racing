@@ -114,10 +114,16 @@ export default function LeaderboardTable({
                                 <div className="f1-driver-line me-2" style={{ height: '24px', backgroundColor: drivers.find(d => d.id === entry.breakdown?.p10Driver)?.color || '#B6BABD' }}></div>
                                 <div>
                                   <span className="fw-bold fs-5 text-uppercase letter-spacing-1 d-block text-white">{entry.breakdown?.p10Driver.replace(/_/g, ' ')}</span>
-                                  <span className="text-danger fw-bold extra-small">+{entry.breakdown?.p10Points} PTS</span>
+                                  {entry.breakdown?.p10Points === 25 ? (
+                                    <span className="text-success fw-bold extra-small">+25 PTS (EXACT)</span>
+                                  ) : (
+                                    <span className="text-danger fw-bold extra-small">+{entry.breakdown?.p10Points} PTS</span>
+                                  )}
                                 </div>
                               </div>
-                              <Badge bg="danger" className="rounded-pill px-3 py-2 fw-bold" style={{ fontSize: '0.7rem' }}>ACTUAL P{entry.breakdown?.actualP10Pos}</Badge>
+                              <Badge bg={entry.breakdown?.actualP10Pos === 10 ? "success" : "danger"} className="rounded-pill px-3 py-2 fw-bold" style={{ fontSize: '0.7rem' }}>
+                                ACTUAL P{entry.breakdown?.actualP10Pos}
+                              </Badge>
                             </div>
                           </div>
                           
@@ -164,7 +170,12 @@ export default function LeaderboardTable({
                                       <div className="d-flex align-items-center">
                                         <div className="f1-driver-line me-2" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === h.p10Driver)?.color || '#B6BABD' }}></div>
                                         <div className="d-flex flex-column">
-                                          <span className="text-white fw-bold">{h.p10Driver.replace(/_/g, ' ')}</span>
+                                          <div className="d-flex align-items-center">
+                                            <span className={`fw-bold ${h.p10Pos === 10 ? 'text-success' : 'text-white'}`}>
+                                              {h.p10Driver.replace(/_/g, ' ')}
+                                            </span>
+                                            {h.p10Pos === 10 && <span className="ms-1 text-success small">✓</span>}
+                                          </div>
                                           <small className="text-white opacity-50" style={{ fontSize: '0.5rem' }}>(P{h.p10Pos})</small>
                                         </div>
                                       </div>

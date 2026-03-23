@@ -1,15 +1,14 @@
 'use client';
 
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card } from 'react-bootstrap';
 import { useRouter } from 'next/navigation';
-import { triggerLightHaptic } from '@/lib/utils/haptics';
-import Link from 'next/link';
+import HapticLink from '@/components/HapticLink';
+import HapticButton from '@/components/HapticButton';
 
 export default function PrivacyPage() {
   const router = useRouter();
 
   const handleBack = () => {
-    triggerLightHaptic();
     router.back();
   };
 
@@ -19,14 +18,14 @@ export default function PrivacyPage() {
         <Row className="justify-content-center">
           <Col lg={8}>
             <div className="d-flex align-items-center mb-4">
-              <Button 
+              <HapticButton 
                 variant="outline-light" 
                 size="sm" 
                 onClick={handleBack}
                 className="rounded-pill px-3 me-3 opacity-75"
               >
                 ← BACK
-              </Button>
+              </HapticButton>
               <h1 className="h2 fw-bold text-uppercase letter-spacing-1 mb-0 text-white">Privacy Policy</h1>
             </div>
 
@@ -70,7 +69,7 @@ export default function PrivacyPage() {
                 <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">5. Contact Us</h2>
                 <p>If you have any questions about this Privacy Policy, please contact us at support@p10racing.app</p>
                 <p className="mt-4">
-                  For account deletion requests, visit our <Link href="/delete-account" className="text-danger text-decoration-underline">Deletion Request Page</Link>.
+                  For account deletion requests, visit our <HapticLink href="/delete-account" className="text-danger text-decoration-underline">Deletion Request Page</HapticLink>.
                 </p>
               </Card.Body>
             </Card>

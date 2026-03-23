@@ -24,11 +24,11 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
         {data.map((d, i) => (
           <tr key={d.id} className="border-secondary border-opacity-10">
             <td className="ps-3 fw-bold text-muted">{i + 1}</td>
-            <td className="fw-bold text-white fs-6 text-nowrap">
+            <td className="fw-bold text-white fs-5 text-nowrap">
               <div className="d-flex align-items-center">
                 <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: d.color }}></div>
                 <div className="d-flex flex-column">
-                  <span className="fw-bold fs-6">{d.name}</span>
+                  <span className="fw-bold fs-5">{d.name}</span>
                   <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{d.team}</span>
                 </div>
               </div>
@@ -60,7 +60,7 @@ const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], dri
                 <div className="d-flex align-items-center">
                   <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: c.color }}></div>
                   <div className="d-flex flex-column">
-                    <span>{c.name}</span>
+                    <span className="fw-bold fs-5">{c.name}</span>
                     {teamDrivers.length > 0 && (
                       <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>
                         {teamDrivers.map(d => d.name.split(' ').pop()).join(' • ')}
@@ -81,14 +81,24 @@ const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], dri
 export default function StandingsPage() {
   const [standings, setStandings] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_STANDINGS);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_STANDINGS);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.warn('Standings: Failed to parse drivers cache', e);
+      return [];
+    }
   });
   
   const [constructorStandings, setConstructorStandings] = useState<ConstructorStanding[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_CONSTRUCTORS);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_CONSTRUCTORS);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.warn('Standings: Failed to parse constructors cache', e);
+      return [];
+    }
   });
 
   const [loading, setLoading] = useState(!standings.length && !constructorStandings.length);

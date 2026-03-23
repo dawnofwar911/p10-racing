@@ -7,7 +7,8 @@ import {
   getResultsKey, 
   setStorageItem, 
   removeStorageItem,
-  STORAGE_UPDATE_EVENT 
+  STORAGE_UPDATE_EVENT,
+  STORAGE_KEYS
 } from '@/lib/utils/storage';
 
 describe('Color Utility Tests', () => {
@@ -51,15 +52,15 @@ describe('Storage Utility Tests', () => {
   });
 
   it('should generate correct prediction keys', () => {
-    expect(getPredictionKey(2026, 'user1', '1')).toBe('final_pred_2026_user1_1');
+    expect(getPredictionKey(2026, 'user1', '1')).toBe(`${STORAGE_KEYS.PRED_PREFIX}2026_user1_1`);
   });
 
   it('should generate correct grid keys', () => {
-    expect(getGridKey('1')).toBe('p10_cache_grid_1');
+    expect(getGridKey('1')).toBe(`${STORAGE_KEYS.GRID_PREFIX}1`);
   });
 
   it('should generate correct results keys', () => {
-    expect(getResultsKey(2026, '1')).toBe('results_2026_1');
+    expect(getResultsKey(2026, '1')).toBe(`${STORAGE_KEYS.RESULTS_PREFIX}2026_1`);
   });
 
   it('should set storage item and dispatch event', () => {

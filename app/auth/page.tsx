@@ -219,14 +219,14 @@ export default function AuthPage() {
                       />
                       {!isSignUp && (
                         <div className="text-end mt-1">
-                          <button 
-                            type="button" 
-                            className="btn btn-link text-danger text-decoration-none p-0 border-0 extra-small text-lowercase fw-bold opacity-75 hover-opacity-100"
+                          <HapticButton 
+                            variant="link" 
+                            className="text-danger text-decoration-none p-0 border-0 extra-small text-lowercase fw-bold opacity-75 hover-opacity-100"
                             onClick={() => setIsResetPassword(true)}
                             style={{ fontSize: '0.65rem' }}
                           >
                             Forgot your password?
-                          </button>
+                          </HapticButton>
                         </div>
                       )}
                     </Form.Group>
@@ -235,7 +235,8 @@ export default function AuthPage() {
                   <HapticButton 
                     hapticStyle="medium"
                     type="submit" 
-                    className="btn-f1 w-100 py-3 fw-bold mb-3 rounded-pill" 
+                    variant="danger"
+                    className="w-100 py-3 fw-bold mb-3 rounded-pill shadow-sm" 
                     disabled={loading}
                   >
                     {loading ? <Spinner animation="border" size="sm" /> : (isResetPassword ? 'SEND RESET LINK' : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'))}
@@ -243,21 +244,21 @@ export default function AuthPage() {
 
                   <div className="text-center">
                     {isResetPassword ? (
-                      <button 
-                        type="button"
-                        className="btn btn-link text-danger text-decoration-none small fw-bold"
+                      <HapticButton 
+                        variant="link"
+                        className="text-danger text-decoration-none small fw-bold"
                         onClick={() => setIsResetPassword(false)}
                       >
                         BACK TO LOGIN
-                      </button>
+                      </HapticButton>
                     ) : (
-                      <button 
-                        type="button"
-                        className="btn btn-link text-danger text-decoration-none small fw-bold"
+                      <HapticButton 
+                        variant="link"
+                        className="text-danger text-decoration-none small fw-bold"
                         onClick={() => setIsSignUp(!isSignUp)}
                       >
                         {isSignUp ? 'ALREADY HAVE AN ACCOUNT? LOGIN' : 'NEED AN ACCOUNT? SIGN UP'}
-                      </button>
+                      </HapticButton>
                     )}
                   </div>
                 </Form>

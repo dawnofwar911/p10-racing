@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import HapticLink from './HapticLink';
 import { usePathname } from 'next/navigation';
-import { triggerLightHaptic } from '@/lib/utils/haptics';
 import { NAV_ITEMS } from '@/lib/navigation';
 
 export default function MobileBottomNav() {
@@ -27,10 +26,9 @@ export default function MobileBottomNav() {
           const Icon = item.icon;
           
           return (
-            <Link 
+            <HapticLink 
               key={item.href}
               href={item.href}
-              onClick={triggerLightHaptic}
               className="d-flex flex-column align-items-center text-decoration-none"
               style={{ flex: '1 1 0', minWidth: 0 }}
             >
@@ -47,7 +45,7 @@ export default function MobileBottomNav() {
               >
                 {item.label}
               </span>
-            </Link>
+            </HapticLink>
           );
         })}
       </div>

@@ -37,8 +37,13 @@ export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: En
       const cachedData = isClient ? localStorage.getItem(getResultsKey(CURRENT_SEASON, round)) : null;
       
       if (cachedData) {
-        raceResultsMap[round] = { ...JSON.parse(cachedData), date: raceDate };
-      } else {
+        try {
+          raceResultsMap[round] = { ...JSON.parse(cachedData), date: raceDate };
+        } catch (e) {
+          console.warn(`Results: Failed to parse cached result for round ${round}`, e);
+        }
+      }
+ else {
         // Priority 3: Direct API fetch (Live fallback)
         const apiResults = await fetchRaceResults(CURRENT_SEASON, parseInt(round));
         if (apiResults && apiResults.Results && apiResults.Results.length > 0) {
