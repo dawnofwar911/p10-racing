@@ -28,7 +28,7 @@ const DriversTable = ({ data }: { data: Driver[] }) => (
               <div className="d-flex align-items-center">
                 <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: d.color }}></div>
                 <div className="d-flex flex-column">
-                  <span className="fw-bold fs-5">{d.name}</span>
+                  <span className="fw-bold">{d.name}</span>
                   <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{d.team}</span>
                 </div>
               </div>
@@ -60,7 +60,7 @@ const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], dri
                 <div className="d-flex align-items-center">
                   <div className="me-2 flex-shrink-0" style={{ width: '3px', height: '24px', backgroundColor: c.color }}></div>
                   <div className="d-flex flex-column">
-                    <span className="fw-bold fs-5">{c.name}</span>
+                    <span className="fw-bold">{c.name}</span>
                     {teamDrivers.length > 0 && (
                       <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>
                         {teamDrivers.map(d => d.name.split(' ').pop()).join(' • ')}

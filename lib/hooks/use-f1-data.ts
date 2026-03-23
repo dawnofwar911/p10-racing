@@ -16,34 +16,32 @@ export interface UseF1DataReturn {
 
 /**
  * Custom hook to fetch and cache F1 drivers and calendar data.
- * It provides immediate data from localStorage (if available) to avoid pop-in.
+ * To avoid hydration mismatches, we initialize with fallback data and load cache in an effect.
  */
 export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
-  const [drivers, setDrivers] = useState<Driver[]>(() => {
-    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
-    try {
-      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-      return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
-    } catch (e) {
-      console.warn('Failed to parse cached drivers:', e);
-      return FALLBACK_DRIVERS as unknown as Driver[];
-    }
-  });
-
-  const [calendar, setCalendar] = useState<ApiCalendarRace[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      // Note: If we don't have a full calendar cache key yet, we'll just start empty.
-      const fullCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR); 
-      return fullCalendar ? JSON.parse(fullCalendar) : [];
-    } catch (e) {
-      console.warn('Failed to parse cached calendar:', e);
-      return [];
-    }
-  });
-
+  const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS as unknown as Driver[]);
+  const [calendar, setCalendar] = useState<ApiCalendarRace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // 1. Initial Cache Load (Safe for hydration)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const cachedDrivers = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+      if (cachedDrivers) {
+        setDrivers(JSON.parse(cachedDrivers));
+      }
+      
+      const cachedCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR);
+      if (cachedCalendar) {
+        setCalendar(JSON.parse(cachedCalendar));
+      }
+    } catch (e) {
+      console.warn('useF1Data: Failed to load cache', e);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

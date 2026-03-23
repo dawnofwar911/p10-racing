@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 const DEFAULT_TABLES = ['predictions', 'verified_results'];
@@ -12,6 +12,12 @@ const DEFAULT_TABLES = ['predictions', 'verified_results'];
 export function useRealtimeSync(onUpdate: () => void, tables: string[] = DEFAULT_TABLES) {
   const supabase = createClient();
   const tablesKey = JSON.stringify(tables);
+  const onUpdateRef = useRef(onUpdate);
+
+  // Keep the ref updated with the latest callback
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  });
 
   useEffect(() => {
     if (typeof supabase.channel !== 'function') {
@@ -32,7 +38,7 @@ export function useRealtimeSync(onUpdate: () => void, tables: string[] = DEFAULT
     // Subscribe to each table
     activeTables.forEach((table: string) => {
       channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
-        onUpdate();
+        onUpdateRef.current();
       });
     });
 
@@ -41,5 +47,5 @@ export function useRealtimeSync(onUpdate: () => void, tables: string[] = DEFAULT
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, onUpdate, tablesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, tablesKey]); // removed onUpdate from dependencies
 }
