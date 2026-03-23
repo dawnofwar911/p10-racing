@@ -2,15 +2,14 @@
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { Container, Row, Col, Form, Card, Modal, Table } from 'react-bootstrap';
-import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
+import { CURRENT_SEASON } from '@/lib/data';
+import { fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic, triggerSelectionHaptic } from '@/lib/utils/haptics';
 import { createClient } from '@/lib/supabase/client';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
@@ -21,9 +20,12 @@ import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorage
 import { useAuth } from '@/components/AuthProvider';
 import { sessionTracker } from '@/lib/utils/session';
 import HapticButton from '@/components/HapticButton';
+import HapticLink from '@/components/HapticLink';
 import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
 import StandardPageHeader from '@/components/StandardPageHeader';
 import { LayoutGrid, Target, Flame } from 'lucide-react';
+import { useF1Data } from '@/lib/hooks/use-f1-data';
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
 interface PredictRace {
   id: string;
@@ -186,46 +188,50 @@ function PredictPage() {
   
   const { session, currentUser, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
   const username = currentUser || '';
+  const { drivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization
   const [nextRace, setNextRace] = useState<PredictRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    return cached ? JSON.parse(cached) : null;
-  });
-
-  const [drivers, setDrivers] = useState<Driver[]>(() => {
-    if (typeof window === 'undefined') return FALLBACK_DRIVERS;
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS;
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      console.warn('Predict: Failed to parse race cache', e);
+      return null;
+    }
   });
 
   const [tempUsername, setTempUsername] = useState('');
   
   const [p10Driver, setP10Driver] = useState(() => {
     if (typeof window === 'undefined') return '';
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && user) {
-      try {
+    try {
+      const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      if (cachedRaceStr && user) {
         const raceObj = JSON.parse(cachedRaceStr);
         const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
         return predStr ? JSON.parse(predStr).p10 : '';
-      } catch { return ''; }
+      }
+    } catch (e) {
+      console.warn('Predict: Failed to parse p10 cache', e);
     }
     return '';
   });
 
   const [dnfDriver, setDnfDriver] = useState(() => {
     if (typeof window === 'undefined') return '';
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && user) {
-      try {
+    try {
+      const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      if (cachedRaceStr && user) {
         const raceObj = JSON.parse(cachedRaceStr);
         const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
         return predStr ? JSON.parse(predStr).dnf : '';
-      } catch { return ''; }
+      }
+    } catch (e) {
+      console.warn('Predict: Failed to parse dnf cache', e);
     }
     return '';
   });
@@ -256,6 +262,8 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
+    if (f1Loading) return;
+    
     let cachedRace: PredictRace | null = null;
     let hasCachedGrid = false;
 
@@ -267,15 +275,25 @@ function PredictPage() {
           cachedRace = JSON.parse(cachedRaceStr) as PredictRace;
           const cachedGrid = localStorage.getItem(getGridKey(cachedRace.round));
           if (cachedGrid) {
-            const parsedGrid = JSON.parse(cachedGrid);
-            setStartingGrid(parsedGrid);
-            hasCachedGrid = parsedGrid.length > 0;
-            if (hasCachedGrid) setActiveTab('grid');
+            try {
+              const parsedGrid = JSON.parse(cachedGrid);
+              setStartingGrid(parsedGrid);
+              hasCachedGrid = (Array.isArray(parsedGrid) && parsedGrid.length > 0);
+              if (hasCachedGrid) setActiveTab('grid');
+            } catch (e) {
+              console.warn('Predict: Failed to parse cached grid', e);
+            }
           }
 
           const cachedCommunity = localStorage.getItem(getCommunityKey(cachedRace.round));
-          if (cachedCommunity) setCommunityPredictions(JSON.parse(cachedCommunity));
-        } catch (e) { console.error('Predict: Error parsing cached race', e); }
+          if (cachedCommunity) {
+            try {
+              setCommunityPredictions(JSON.parse(cachedCommunity));
+            } catch (e) {
+              console.warn('Predict: Failed to parse cached community picks', e);
+            }
+          }
+        } catch (e) { console.error('Predict: Error parsing cached race or community', e); }
       }
     }
 
@@ -289,24 +307,15 @@ function PredictPage() {
     }
 
     try {
-      const [races, apiDrivers, raceResultsMap] = await Promise.all([
-        fetchCalendar(CURRENT_SEASON),
-        fetchDrivers(CURRENT_SEASON),
-        fetchAllSimplifiedResults()
-      ]);
+      const raceResultsMap = await fetchAllSimplifiedResults();
 
       if (mountedRef.current) {
-        const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
-        setDrivers(finalDriverList);
-        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(finalDriverList));
-
-        if (races.length > 0) {
+        if (calendar.length > 0) {
           const now = new Date();
-          const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+          const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(calendar, raceResultsMap, now);
           setIsSeasonFinished(finished);
 
-          const upcoming = races[activeIndex];
+          const upcoming = calendar[activeIndex];
           const currentRace: PredictRace = {
             id: upcoming.round,
             name: upcoming.raceName,
@@ -336,7 +345,7 @@ function PredictPage() {
             const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
             if (qualiGrid && qualiGrid.length > 0) {
               const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
-              const missing = finalDriverList.filter(d => !presentIds.has(d.id));
+              const missing = drivers.filter(d => !presentIds.has(d.id));
               finalGrid = [...qualiGrid];
               missing.forEach((d, i) => {
                 finalGrid.push({
@@ -407,10 +416,23 @@ function PredictPage() {
           }
 
           const otherDbPreds = formattedDbPreds.filter(p => p.username !== username);
-          const playersList: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
-          const localPreds = playersList.filter((p: string) => p !== username).map((p: string) => {
-            const pred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, p, currentRace.id));
-            return pred ? JSON.parse(pred) : null;
+          
+          let playersList: string[] = [];
+          try {
+            const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+            playersList = stored ? JSON.parse(stored) : [];
+          } catch (e) {
+            console.warn('Predict: Failed to parse players list during init', e);
+          }
+
+          const localPreds = (Array.isArray(playersList) ? playersList : []).filter((p: string) => p !== username).map((p: string) => {
+            try {
+              const pred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, p, currentRace.id));
+              return pred ? JSON.parse(pred) : null;
+            } catch (e) {
+              console.warn(`Predict: Failed to parse prediction for ${p}`, e);
+              return null;
+            }
           }).filter(p => p !== null);
           
           const combinedCommunity = [...otherDbPreds, ...localPreds.map(p => ({ username: p.username, p10: p.p10, dnf: p.dnf }))];
@@ -429,9 +451,16 @@ function PredictPage() {
       }
     }
 
-    const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+    let parsedPlayers: string[] = [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+      parsedPlayers = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.warn('Predict: Failed to parse players list at end of init', e);
+    }
+    
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, currentUser, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session, username, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
@@ -442,6 +471,9 @@ function PredictPage() {
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
   }, [init, triggerRefresh]);
+
+  // Real-time subscription
+  useRealtimeSync(useCallback(() => init(), [init]));
 
   const performSubmit = async (p10: string, dnf: string) => {
     if (!p10 || !dnf || !nextRace) {
@@ -475,8 +507,16 @@ function PredictPage() {
       } else {
         console.log('Predict: Saving guest prediction to local storage');
         setStorageItem(getPredictionKey(CURRENT_SEASON, username, nextRace.id), JSON.stringify(prediction));
-        const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
-        if (!players.includes(username)) {
+        
+        let players: string[] = [];
+        try {
+          const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+          players = stored ? JSON.parse(stored) : [];
+        } catch (e) {
+          console.warn('Predict: Failed to parse players list during submit', e);
+        }
+
+        if (Array.isArray(players) && !players.includes(username)) {
           players.push(username);
           localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(players));
         }
@@ -569,13 +609,25 @@ function PredictPage() {
   const getGuestSelection = () => {
     if (typeof window === 'undefined' || !nextRace) return null;
     try {
-      const players: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+      const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+      const players: string[] = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(players)) return null;
+
       for (const player of players) {
         const key = getPredictionKey(CURRENT_SEASON, player, nextRace.id);
         const val = localStorage.getItem(key);
-        if (val) return JSON.parse(val) as CommunityPrediction;
+        if (val) {
+          try {
+            return JSON.parse(val) as CommunityPrediction;
+          } catch (e) {
+            console.warn(`Predict: Failed to parse guest selection for ${player}`, e);
+          }
+        }
       }
-    } catch { return null; }
+    } catch (e) { 
+      console.warn('Predict: Failed to parse players list in guest selection', e);
+      return null; 
+    }
     return null;
   };
   const guestSelection = getGuestSelection();
@@ -589,11 +641,12 @@ function PredictPage() {
               <Card className="p-4 border-secondary shadow-lg overflow-hidden">
                 <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
                 <div className="mb-4">
-                  <Link href="/auth" passHref legacyBehavior>
-                    <HapticButton variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
-                      SIGN IN / CREATE ACCOUNT
-                    </HapticButton>
-                  </Link>
+                  <HapticLink 
+                    href="/auth"
+                    className="btn btn-f1 w-100 py-3 fw-bold mb-2 shadow-sm text-decoration-none d-inline-flex align-items-center justify-content-center"
+                  >
+                    SIGN IN / CREATE ACCOUNT
+                  </HapticLink>
                   <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
                 </div>
 
@@ -643,7 +696,9 @@ function PredictPage() {
                       className="bg-dark text-white border-secondary py-2 shadow-sm" 
                     />
                   </Form.Group>
-                  <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</HapticButton>
+                  <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold shadow-sm rounded-pill">
+                    PLAY AS GUEST
+                  </HapticButton>
                 </Form>
               </Card>
             </Col>
@@ -741,7 +796,12 @@ function PredictPage() {
               Change Picks
             </HapticButton>
           )}
-          <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5 fw-bold rounded-pill">Back Home</HapticButton></Link>
+          <HapticLink 
+            href="/"
+            className="btn btn-outline-light btn-lg px-5 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
+          >
+            Back Home
+          </HapticLink>
         </div>
       </div>
     </Container>

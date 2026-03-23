@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Row, Col, Spinner } from 'react-bootstrap';
-import Link from 'next/link';
-import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
-import { fetchCalendar, fetchDrivers } from '@/lib/api';
-import { Driver, DbPrediction } from '@/lib/types';
+import { CURRENT_SEASON } from '@/lib/data';
+import { DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
-import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
+import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { calculateSeasonPoints } from '@/lib/scoring';
@@ -20,7 +18,11 @@ import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } 
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
+import { useRouter } from 'next/navigation';
 import HapticButton from '@/components/HapticButton';
+import HapticLink from '@/components/HapticLink';
+import { useF1Data } from '@/lib/hooks/use-f1-data';
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
 interface HomeRace {
   id: string;
@@ -40,15 +42,22 @@ export default function Home() {
   const supabase = createClient();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
+  const router = useRouter();
   
   // Use Global Auth Context
   const { currentUser, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
+  const { drivers: allDrivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization (Zero Pop-in)
   const [nextRace, setNextRace] = useState<HomeRace | null>(() => {
     if (typeof window === 'undefined') return null;
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    return cached ? JSON.parse(cached) : null;
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      console.warn('Home: Failed to parse race cache', e);
+      return null;
+    }
   });
 
   const [loading, setLoading] = useState(!nextRace);
@@ -61,15 +70,12 @@ export default function Home() {
         const raceObj = JSON.parse(cachedRaceStr);
         const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
         return predStr ? JSON.parse(predStr) : null;
-      } catch { return null; }
+      } catch (e) {
+        console.warn('Home: Failed to parse prediction cache', e);
+        return null;
+      }
     }
     return null;
-  });
-
-  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
-    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
   });
 
   // Reactive Prediction Load: Runs when auth status, sync version or next race changes
@@ -82,9 +88,13 @@ export default function Home() {
       // 1. Try local cache FIRST for immediate sync
       const storageUser = session?.user?.id || currentUser || '';
       if (storageUser) {
-        const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
-        if (cachedPred) {
-          finalPrediction = JSON.parse(cachedPred);
+        try {
+          const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
+          if (cachedPred) {
+            finalPrediction = JSON.parse(cachedPred);
+          }
+        } catch (e) {
+          console.warn('Home: Failed to parse prediction during load', e);
         }
       }
 
@@ -112,14 +122,16 @@ export default function Home() {
     };
 
     // Skip if we already performed initial load AND have a prediction (optimistic stability)
-    // UNLESS the user has changed (detected by currentUser dependency change)
     if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
-      // Small check to ensure the prediction in state matches the current user's cache
       const storageUser = session?.user?.id || currentUser || '';
-      const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
-      if (cached) {
-          const parsed = JSON.parse(cached);
-          if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
+      try {
+        const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
+        }
+      } catch (e) {
+        console.warn('Home: Failed to parse prediction during stability check', e);
       }
     }
 
@@ -132,14 +144,12 @@ export default function Home() {
       const customEvent = e as CustomEvent<{ key: string }>;
       const updatedKey = customEvent.detail?.key;
       
-      // Re-calculate the current active user exactly how it's done in loadPrediction
       const activeUserId = session?.user?.id;
       const localUsername = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
       const storageUser = activeUserId || localUsername || '';
       
       const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id) : null;
 
-      // Update if the prediction for the current user changed, or if the current user itself changed
       if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER || updatedKey === STORAGE_KEYS.CACHE_USERNAME) {
         const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
         if (cachedRaceStr && storageUser) {
@@ -152,7 +162,10 @@ export default function Home() {
             } else {
               setUserPrediction(null);
             }
-          } catch { setUserPrediction(null); }
+          } catch (e) { 
+            console.warn('Home: Failed to parse data during storage update', e);
+            setUserPrediction(null); 
+          }
         }
       }
     };
@@ -207,7 +220,8 @@ export default function Home() {
   }, []);
 
   const init = useCallback(async () => {
-    // Demand-Driven Sync: Skip if we've already synced this page for this user/session and have data
+    if (f1Loading) return;
+
     const fingerprint = session?.user.id || currentUser || 'guest';
     const isFirstView = sessionTracker.isFirstView('home', fingerprint);
     
@@ -217,28 +231,14 @@ export default function Home() {
     }
 
     try {
-      const [races, drivers] = await Promise.all([
-        fetchCalendar(CURRENT_SEASON),
-        fetchDrivers(CURRENT_SEASON)
-      ]);
-
       if (mountedRef.current) {
-        if (drivers.length > 0) {
-          const sortedDrivers = [...drivers].sort((a, b) => a.team.localeCompare(b.team));
-          setAllDrivers(prev => {
-            if (prev.length === sortedDrivers.length && prev[0]?.id === sortedDrivers[0]?.id) return prev;
-            return sortedDrivers;
-          });
-          localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(sortedDrivers));
-        }
-
-        if (races.length > 0) {
+        if (calendar.length > 0) {
           const now = new Date();
           const raceResultsMap = await fetchAllSimplifiedResults();
-          const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+          const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(calendar, raceResultsMap, now);
           setIsSeasonFinished(finished);
 
-          const upcoming = races[activeIndex];
+          const upcoming = calendar[activeIndex];
           
           if (finished) {
             const { data: profiles } = await supabase.from('profiles').select('id, username');
@@ -256,12 +256,24 @@ export default function Home() {
                   }, {} as { [round: string]: { p10: string, dnf: string } })
               }));
 
-              const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+              const localPlayers: string[] = [];
+              try {
+                const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+                const parsed = stored ? JSON.parse(stored) : [];
+                if (Array.isArray(parsed)) localPlayers.push(...parsed);
+              } catch (e) {
+                console.warn('Home: Failed to parse players list', e);
+              }
+
               localPlayers.forEach(lp => {
                 const lpPreds: { [round: string]: { p10: string, dnf: string } } = {};
                 Object.keys(raceResultsMap).forEach(round => {
-                  const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, lp, round));
-                  if (predStr) lpPreds[round] = JSON.parse(predStr);
+                  try {
+                    const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, lp, round));
+                    if (predStr) lpPreds[round] = JSON.parse(predStr);
+                  } catch (e) {
+                    console.warn(`Home: Failed to parse prediction for ${lp} round ${round}`, e);
+                  }
                 });
                 players.push({ username: lp, predictions: lpPreds });
               });
@@ -304,7 +316,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [supabase, nextRace, allDrivers.length, session, currentUser, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
@@ -317,6 +329,9 @@ export default function Home() {
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
   }, [init, triggerRefresh]);
+
+  // Real-time subscription
+  useRealtimeSync(useCallback(() => init(), [init]));
 
   useEffect(() => {
     if (!nextRace) return;
@@ -364,7 +379,6 @@ export default function Home() {
       });
     } catch (error) {
       console.log('Share dismissed or failed:', error);
-      // Only fallback to clipboard on web where native sharing might be missing
       if (!Capacitor.isNativePlatform() && !navigator.share && navigator.clipboard) {
         navigator.clipboard.writeText(text + '\n\nhttps://p10racing.app');
         showNotification('Picks copied to clipboard!', 'success');
@@ -391,9 +405,13 @@ export default function Home() {
                   {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
                 </h2>
                 <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
-                <Link href="/leaderboard" passHref legacyBehavior>
-                  <HapticButton hapticStyle="medium" variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</HapticButton>
-                </Link>
+                <HapticLink 
+                  href="/leaderboard"
+                  className="btn btn-warning fw-bold px-4 rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
+                  hapticStyle="medium"
+                >
+                  VIEW FINAL STANDINGS
+                </HapticLink>
               </div>
             )}
 
@@ -440,31 +458,39 @@ export default function Home() {
 
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
               {!isSeasonFinished ? (
-                <Link href="/predict" passHref legacyBehavior>
-                  <HapticButton hapticStyle="medium" size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} suppressHydrationWarning>
-                    {isLocked 
-                      ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
-                      : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
-                  </HapticButton>
-                </Link>
+                <HapticLink 
+                  href="/predict" 
+                  hapticStyle="medium"
+                  className="btn btn-f1 btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center"
+                  style={{ fontSize: '0.9rem', minWidth: '200px' }}
+                  suppressHydrationWarning
+                >
+                  {isLocked 
+                    ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
+                    : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
+                </HapticLink>
               ) : (
-                <Link href="/history" passHref legacyBehavior>
-                  <HapticButton hapticStyle="medium" size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }}>
-                    VIEW SEASON RECAP
-                  </HapticButton>
-                </Link>
+                <HapticLink 
+                  href="/history" 
+                  hapticStyle="medium"
+                  className="btn btn-danger btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center rounded-pill"
+                  style={{ fontSize: '0.9rem', minWidth: '200px' }}
+                >
+                  VIEW SEASON RECAP
+                </HapticLink>
               )}
-              <Link href="/leaderboard" passHref legacyBehavior>
-                <HapticButton hapticStyle="medium" variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }}>
-                  {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
-                </HapticButton>
-              </Link>
+              <HapticLink 
+                href="/leaderboard" 
+                hapticStyle="medium"
+                className="btn btn-outline-light btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center opacity-75"
+                style={{ fontSize: '0.9rem', minWidth: '200px' }}
+              >
+                {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
+              </HapticLink>
             </div>
             
             <div className="mb-4">
-              <Link href="/predict?howto=true" passHref legacyBehavior>
-                <HowToPlayButton onClick={triggerLightHaptic} />
-              </Link>
+              <HowToPlayButton onClick={() => router.push('/predict?howto=true')} />
             </div>
 
             <AnimatePresence>
@@ -532,9 +558,12 @@ export default function Home() {
                 <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
                 <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Compete with Friends</p>
               </div>
-              <Link href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start d-inline-flex" onClick={triggerMediumHaptic}>
+              <HapticLink 
+                href="/leagues" 
+                className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start d-inline-flex text-decoration-none"
+              >
                 View Leagues →
-              </Link>
+              </HapticLink>
             </div>
           </Col>
         </Row>
@@ -552,9 +581,14 @@ export default function Home() {
                   <div className="f1-glass-card p-3 border-primary border-opacity-20 text-center shadow-sm bg-primary bg-opacity-5">
                     <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
-                    <Link href="/auth" passHref legacyBehavior>
-                      <HapticButton hapticStyle="medium" variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }}>GET STARTED</HapticButton>
-                    </Link>
+                    <HapticLink 
+                      href="/auth" 
+                      hapticStyle="medium"
+                      className="btn btn-primary btn-sm px-4 py-1 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
+                      style={{ fontSize: '0.7rem' }}
+                    >
+                      GET STARTED
+                    </HapticLink>
                   </div>
                 </Col>
               </Row>

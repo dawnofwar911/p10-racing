@@ -245,21 +245,23 @@ export default function ResetPasswordPage() {
                   <HapticButton 
                     hapticStyle="medium"
                     type="submit" 
-                    className="btn-f1 w-100 py-3 fw-bold mb-3 rounded-pill" 
-                    disabled={loading || !!error}
+                    variant="danger"
+                    className="w-100 py-3 fw-bold mb-3 rounded-pill shadow-sm" 
+                    disabled={loading}
                   >
-                    {loading ? <Spinner animation="border" size="sm" /> : isProfileUpdate ? 'CHANGE PASSWORD' : 'UPDATE PASSWORD'}
+                    {loading ? <Spinner animation="border" size="sm" /> : (isProfileUpdate ? 'UPDATE PASSWORD' : 'RESET PASSWORD')}
                   </HapticButton>
 
+
                   <div className="text-center mt-3 pt-3 border-top border-secondary border-opacity-10">
-                    <button 
-                      type="button" 
-                      className="btn btn-link text-muted text-decoration-none extra-small fw-bold opacity-50 hover-opacity-100"
+                    <HapticButton 
+                      variant="link"
+                      className="text-muted text-decoration-none extra-small fw-bold opacity-50 hover-opacity-100"
                       onClick={handleCancel}
                       disabled={loading}
                     >
                       {isProfileUpdate ? 'CANCEL' : 'CANCEL & RETURN TO LOGIN'}
-                    </button>
+                    </HapticButton>
                   </div>
                 </Form>
               )}

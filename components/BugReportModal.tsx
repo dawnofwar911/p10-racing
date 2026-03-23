@@ -39,9 +39,9 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
         total_keys: keys.length,
         all_keys: keys,
         has_session: !!localStorage.getItem(STORAGE_KEYS.HAS_SESSION),
-        has_predictions: keys.some(k => k.startsWith('final_pred_')),
+        has_predictions: keys.some(k => k.startsWith(STORAGE_KEYS.PRED_PREFIX)),
         has_drivers: !!localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS),
-        has_grid: keys.some(k => k.startsWith('p10_cache_grid_')),
+        has_grid: keys.some(k => k.startsWith(STORAGE_KEYS.GRID_PREFIX)),
       };
       return summary;
     } catch {

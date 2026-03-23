@@ -6,14 +6,14 @@ import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { withTimeout } from '@/lib/utils/sync-queue';
-import { STORAGE_KEYS } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
 import HapticButton from '@/components/HapticButton';
+import HapticLink from '@/components/HapticLink';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import { Trophy, Settings as SettingsIcon } from 'lucide-react';
 
@@ -61,9 +61,13 @@ const MyLeaguesView = ({
                 <td className="ps-3 fw-bold text-white small">{league.name}</td>
                 <td><code className="text-danger fw-bold extra-small" style={{ letterSpacing: '1px' }}>{league.invite_code}</code></td>
                 <td className="text-end pe-3">
-                  <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
-                    <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-1 fw-bold extra-small" style={{ fontSize: '0.65rem' }}>VIEW</HapticButton>
-                  </Link>
+                  <HapticLink 
+                    href={`/leagues/view?id=${league.id}`}
+                    className="btn btn-outline-light btn-sm rounded-pill px-3 py-1 fw-bold extra-small text-decoration-none d-inline-flex align-items-center justify-content-center"
+                    style={{ fontSize: '0.65rem' }}
+                  >
+                    VIEW
+                  </HapticLink>
                 </td>
               </tr>
             ))}
@@ -127,7 +131,7 @@ const ManageLeaguesView = ({
                 className="f1-input-dark py-2 small" 
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
               {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE NEW LEAGUE'}
             </HapticButton>
           </Form>
@@ -187,8 +191,13 @@ function LeaguesContent() {
   // 1. Synchronous Cache Initialization
   const [leagues, setLeagues] = useState<League[]>(() => {
     if (typeof window === 'undefined') return [];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LEAGUES);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_LEAGUES);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.warn('Leagues: Failed to parse cache', e);
+      return [];
+    }
   });
 
   const [loading, setLoading] = useState(!leagues.length);
@@ -252,8 +261,15 @@ function LeaguesContent() {
       const fingerprint = session?.user.id || currentUser || 'guest';
       const isFirstView = sessionTracker.isFirstView('leagues', fingerprint);
       
-      const guestsData = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
-      const guests = (Array.isArray(guestsData) ? guestsData : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
+      let guests: string[] = [];
+      try {
+        const guestsData = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+        const parsed = guestsData ? JSON.parse(guestsData) : [];
+        guests = (Array.isArray(parsed) ? parsed : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
+      } catch (e) {
+        console.warn('Leagues: Failed to parse players list', e);
+      }
+      
       if (mountedRef.current) setLocalGuests(guests);
 
       if (session) {
@@ -295,20 +311,24 @@ function LeaguesContent() {
       let count = 0;
       const importPromises = [];
       for (let round = 1; round <= 24; round++) {
-        const key = `final_pred_${CURRENT_SEASON}_${guestName}_${round}`;
+        const key = getPredictionKey(CURRENT_SEASON, guestName, round);
         const predStr = localStorage.getItem(key);
         if (predStr) {
-          const pred = JSON.parse(predStr);
-          importPromises.push(
-            supabase.from('predictions').upsert({
-              user_id: session.user.id,
-              race_id: `${CURRENT_SEASON}_${round}`,
-              p10_driver_id: pred.p10,
-              dnf_driver_id: pred.dnf,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id, race_id' })
-          );
-          count++;
+          try {
+            const pred = JSON.parse(predStr);
+            importPromises.push(
+              supabase.from('predictions').upsert({
+                user_id: session.user.id,
+                race_id: `${CURRENT_SEASON}_${round}`,
+                p10_driver_id: pred.p10,
+                dnf_driver_id: pred.dnf,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'user_id, race_id' })
+            );
+            count++;
+          } catch (e) {
+            console.warn(`Leagues: Failed to parse prediction for import: ${guestName} round ${round}`, e);
+          }
         }
       }
 
@@ -326,13 +346,20 @@ function LeaguesContent() {
         triggerSuccessHaptic();
       }
 
-      const localPlayers: string[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
-      const updatedPlayers = localPlayers.filter(p => p !== guestName);
+      let localPlayers: string[] = [];
+      try {
+        const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
+        localPlayers = stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        console.warn('Leagues: Failed to parse players list during import cleanup', e);
+      }
+      
+      const updatedPlayers = (Array.isArray(localPlayers) ? localPlayers : []).filter(p => p !== guestName);
       localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
       if (mountedRef.current) setLocalGuests(updatedPlayers);
       
       for (let round = 1; round <= 24; round++) {
-        localStorage.removeItem(`final_pred_${CURRENT_SEASON}_${guestName}_${round}`);
+        localStorage.removeItem(getPredictionKey(CURRENT_SEASON, guestName, round));
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Import failed');
@@ -420,7 +447,12 @@ function LeaguesContent() {
           <div className="display-6 mb-3">🏆</div>
           <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
           <p className="text-muted small mb-4 px-4">Sign in to create or join private leagues and compete with your friends.</p>
-          <Link href="/auth" passHref legacyBehavior><HapticButton className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</HapticButton></Link>
+          <HapticLink 
+            href="/auth"
+            className="btn btn-f1 px-5 py-2 fw-bold small text-decoration-none d-inline-flex align-items-center justify-content-center"
+          >
+            SIGN IN TO PLAY
+          </HapticLink>
         </div>
       </SwipeablePageLayout>
     );

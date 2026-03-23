@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense, useRef } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
 import { Spinner, Badge } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -19,6 +19,7 @@ import { Users, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import HapticButton from '@/components/HapticButton';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
 const supabase = createClient();
 
@@ -35,8 +36,13 @@ function LeagueDetailContent() {
   const [isSeasonComplete, setIsSeasonComplete] = useState(false);
   const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+    try {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+      return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
+    } catch (e) {
+      console.warn('LeagueDetail: Failed to parse drivers cache', e);
+      return FALLBACK_DRIVERS as unknown as Driver[];
+    }
   });
 
   useEffect(() => {
@@ -165,18 +171,8 @@ function LeagueDetailContent() {
   }, [loadLeague]);
 
   // Real-time subscription
-  useEffect(() => {
-    if (!leagueId) return;
-
-    const channel = supabase
-      .channel(`league-${leagueId}-realtime`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'verified_results' }, () => loadLeague(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, () => loadLeague(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_members', filter: `league_id=eq.${leagueId}` }, () => loadLeague(true))
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [leagueId, loadLeague]);
+  const syncTables = useMemo(() => ['predictions', 'verified_results', 'league_members'], []);
+  useRealtimeSync(useCallback(() => loadLeague(true), [loadLeague]), syncTables);
 
   if (!leagueId) {
     return (

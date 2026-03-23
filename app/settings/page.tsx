@@ -6,13 +6,13 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic } from '@/lib/utils/haptics';
 import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee, Settings } from 'lucide-react';
-import Link from 'next/link';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { useAuth } from '@/components/AuthProvider';
 import HapticButton from '@/components/HapticButton';
+import HapticLink from '@/components/HapticLink';
 import { STORAGE_KEYS, setStorageItem } from '@/lib/utils/storage';
 import StandardPageHeader from '@/components/StandardPageHeader';
 
@@ -75,23 +75,21 @@ export default function SettingsPage() {
 
         <div className="mt-3">
           {isAdmin && (
-            <Card className="f1-accent-card mb-4 border-warning border-opacity-50">
-              <Link href="/admin" passHref legacyBehavior>
-                <a className="text-decoration-none" onClick={triggerLightHaptic}>
-                  <Card.Body className="p-3 d-flex align-items-center justify-content-between cursor-pointer">
-                    <div className="d-flex align-items-center">
-                      <div className="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
-                        <ShieldAlert size={20} className="text-warning" />
-                      </div>
-                      <div>
-                        <h3 className="h6 mb-0 fw-bold text-white text-uppercase letter-spacing-1">System Admin</h3>
-                        <p className="extra-small text-muted mb-0">Race Results & Verification</p>
-                      </div>
+            <Card className="f1-accent-card mb-4 border-warning border-opacity-50 overflow-hidden">
+              <HapticLink href="/admin" className="text-decoration-none">
+                <Card.Body className="p-3 d-flex align-items-center justify-content-between cursor-pointer">
+                  <div className="d-flex align-items-center">
+                    <div className="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
+                      <ShieldAlert size={20} className="text-warning" />
                     </div>
-                    <ChevronRight size={18} className="text-white opacity-25" />
-                  </Card.Body>
-                </a>
-              </Link>
+                    <div>
+                      <h3 className="h6 mb-0 fw-bold text-white text-uppercase letter-spacing-1">System Admin</h3>
+                      <p className="extra-small text-muted mb-0">Race Results & Verification</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-white opacity-25" />
+                </Card.Body>
+              </HapticLink>
             </Card>
           )}
 
@@ -141,24 +139,23 @@ export default function SettingsPage() {
               <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Account</h2>
               <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
                 <div className="list-group list-group-flush bg-transparent">
-                  <Link href="/auth/reset-password" passHref legacyBehavior>
-                    <a className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between" onClick={triggerLightHaptic}>
-                      <div className="d-flex align-items-center">
-                        <KeyRound size={18} className="me-3 opacity-75" />
-                        <span className="fw-bold small">Change Password</span>
-                      </div>
-                      <ChevronRight size={18} className="opacity-50" />
-                    </a>
-                  </Link>
-                  <button 
+                  <HapticLink href="/auth/reset-password" className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center">
+                      <KeyRound size={18} className="me-3 opacity-75" />
+                      <span className="fw-bold small">Change Password</span>
+                    </div>
+                    <ChevronRight size={18} className="opacity-50" />
+                  </HapticLink>
+                  <HapticButton 
+                    variant="link"
                     className="list-group-item list-group-item-action bg-transparent text-danger border-0 p-3 d-flex align-items-center justify-content-between"
-                    onClick={() => { triggerLightHaptic(); setShowDeleteModal(true); }}
+                    onClick={() => setShowDeleteModal(true)}
                   >
                     <div className="d-flex align-items-center">
                       <Trash2 size={18} className="me-3 opacity-75" />
                       <span className="fw-bold small">Delete Account Data</span>
                     </div>
-                  </button>
+                  </HapticButton>
                 </div>
               </Card>
             </>
@@ -167,49 +164,53 @@ export default function SettingsPage() {
           <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Season</h2>
           <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
             <div className="list-group list-group-flush bg-transparent">
-              <Link href="/history" passHref legacyBehavior>
-                <a className="list-group-item list-group-item-action bg-transparent text-white border-0 p-3 d-flex align-items-center justify-content-between" onClick={triggerLightHaptic}>
-                  <div className="d-flex align-items-center">
-                    <History size={18} className="me-3 opacity-75" />
-                    <span className="fw-bold small">Season History</span>
-                  </div>
-                  <ChevronRight size={18} className="opacity-50" />
-                </a>
-              </Link>
+              <HapticLink href="/history" className="list-group-item list-group-item-action bg-transparent text-white border-0 p-3 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center">
+                  <History size={18} className="me-3 opacity-75" />
+                  <span className="fw-bold small">Season History</span>
+                </div>
+                <ChevronRight size={18} className="opacity-50" />
+              </HapticLink>
             </div>
           </Card>
 
           <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Support & Legal</h2>
           <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
             <div className="list-group list-group-flush bg-transparent">
-              <a href="https://buymeacoffee.com/p10racing" className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between" target="_blank" rel="noopener noreferrer" onClick={triggerLightHaptic}>
+              <HapticButton 
+                variant="link"
+                href="https://buymeacoffee.com/p10racing" 
+                className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between text-decoration-none" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
                 <div className="d-flex align-items-center">
                   <Coffee size={18} className="me-3 text-warning opacity-75" />
                   <span className="fw-bold small">Buy me a coffee</span>
                 </div>
                 <Badge bg="danger" className="rounded-pill px-2 py-1" style={{ fontSize: '0.6rem' }}>TIP</Badge>
-              </a>
-              <button 
-                className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between"
-                onClick={() => { triggerLightHaptic(); setShowBugReport(true); }}
+              </HapticButton>
+              <HapticButton 
+                variant="link"
+                className="list-group-item list-group-item-action bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between text-decoration-none"
+                onClick={() => setShowBugReport(true)}
               >
                 <div className="d-flex align-items-center">
                   <Bug size={18} className="me-3 opacity-75" />
                   <span className="fw-bold small">Report an Issue</span>
                 </div>
                 <ChevronRight size={18} className="opacity-50" />
-              </button>
-              <Link href="/privacy" passHref legacyBehavior>
-                <a className="list-group-item list-group-item-action bg-transparent text-white border-0 p-3 d-flex align-items-center justify-content-between" onClick={triggerLightHaptic}>
-                  <div className="d-flex align-items-center">
-                    <FileText size={18} className="me-3 opacity-75" />
-                    <span className="fw-bold small">Privacy Policy</span>
-                  </div>
-                  <ChevronRight size={18} className="opacity-50" />
-                </a>
-              </Link>
+              </HapticButton>
+              <HapticLink href="/privacy" className="list-group-item list-group-item-action bg-transparent text-white border-0 p-3 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center">
+                  <FileText size={18} className="me-3 opacity-75" />
+                  <span className="fw-bold small">Privacy Policy</span>
+                </div>
+                <ChevronRight size={18} className="opacity-50" />
+              </HapticLink>
             </div>
           </Card>
+
 
           <div className="text-center mt-4 mb-2">
             <Image src="/logo.svg" alt="P10 Logo" width={40} height={40} className="mb-2 opacity-50" />

@@ -14,11 +14,17 @@ export const STORAGE_KEYS = {
   CACHE_LEADERBOARD: 'p10_cache_leaderboard',
   CACHE_LOCAL_LEADERBOARD: 'p10_cache_local_leaderboard',
   CACHE_LEAGUES: 'p10_cache_leagues',
+  CACHE_CALENDAR: 'p10_cache_calendar',
   IS_ADMIN: 'p10_is_admin',
   SYNC_QUEUE: 'p10_sync_queue',
   HAPTICS_ENABLED: 'p10_haptics_enabled',
   SHAKE_TO_REPORT_ENABLED: 'p10_shake_to_report_enabled',
   HAS_SESSION: 'p10_has_session',
+  CACHE_PWA_HINT_DISMISSED: 'p10_pwa_hint_dismissed',
+  PRED_PREFIX: 'final_pred_',
+  GRID_PREFIX: 'p10_cache_grid_',
+  COMMUNITY_PREFIX: 'p10_cache_community_',
+  RESULTS_PREFIX: 'results_',
 } as const;
 
 export const STORAGE_UPDATE_EVENT = 'p10:storage_update'; // Restored from old version
@@ -42,17 +48,17 @@ export function removeStorageItem(key: string) {
 }
 
 export function getPredictionKey(season: number | string, userId: string, raceId: string | number): string {
-  return `final_pred_${season}_${userId}_${raceId}`;
+  return `${STORAGE_KEYS.PRED_PREFIX}${season}_${userId}_${raceId}`;
 }
 
 export function getGridKey(round: string | number): string {
-  return `p10_cache_grid_${round}`;
+  return `${STORAGE_KEYS.GRID_PREFIX}${round}`;
 }
 
 export function getCommunityKey(round: string | number): string {
-  return `p10_cache_community_${round}`;
+  return `${STORAGE_KEYS.COMMUNITY_PREFIX}${round}`;
 }
 
 export function getResultsKey(season: number | string, round: string | number): string {
-  return `results_${season}_${round}`;
+  return `${STORAGE_KEYS.RESULTS_PREFIX}${season}_${round}`;
 }

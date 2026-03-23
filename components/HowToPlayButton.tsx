@@ -2,7 +2,7 @@ import React from 'react';
 import HapticButton from './HapticButton';
 
 interface HowToPlayButtonProps {
-  onClick: () => void;
+  onClick?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
