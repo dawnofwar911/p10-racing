@@ -696,7 +696,7 @@ function PredictPage() {
                       className="bg-dark text-white border-secondary py-2 shadow-sm" 
                     />
                   </Form.Group>
-                  <HapticButton hapticStyle="medium" type="submit" className="btn btn-outline-light w-100 py-2 fw-bold shadow-sm rounded-pill">
+                  <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold shadow-sm rounded-pill">
                     PLAY AS GUEST
                   </HapticButton>
                 </Form>

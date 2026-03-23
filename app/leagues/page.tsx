@@ -131,7 +131,7 @@ const ManageLeaguesView = ({
                 className="f1-input-dark py-2 small" 
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" variant="outline-light" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
               {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE NEW LEAGUE'}
             </HapticButton>
           </Form>
