@@ -38,7 +38,7 @@ export default function HapticLink({
       {...props} 
       onClick={handleClick} 
       suppressHydrationWarning={suppressHydrationWarning}
-      className={className}
+      className={`text-decoration-none ${className || ''}`}
     >
       {children}
     </Link>
