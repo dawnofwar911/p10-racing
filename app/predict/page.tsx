@@ -584,7 +584,7 @@ function PredictPage() {
                 <div className="mb-4">
                   <HapticLink 
                     href="/auth"
-                    className="btn btn-danger w-100 py-3 fw-bold mb-2 shadow-sm text-decoration-none d-inline-flex align-items-center justify-content-center"
+                    className="btn btn-f1 w-100 py-3 fw-bold mb-2 shadow-sm text-decoration-none d-inline-flex align-items-center justify-content-center"
                   >
                     SIGN IN / CREATE ACCOUNT
                   </HapticLink>
@@ -637,7 +637,9 @@ function PredictPage() {
                       className="bg-dark text-white border-secondary py-2 shadow-sm" 
                     />
                   </Form.Group>
-                  <HapticButton hapticStyle="medium" type="submit" className="btn-f1 w-100 py-2 fw-bold shadow-sm">PLAY AS GUEST</HapticButton>
+                  <HapticButton hapticStyle="medium" type="submit" className="btn btn-outline-light w-100 py-2 fw-bold shadow-sm rounded-pill">
+                    PLAY AS GUEST
+                  </HapticButton>
                 </Form>
               </Card>
             </Col>
@@ -735,7 +737,12 @@ function PredictPage() {
               Change Picks
             </HapticButton>
           )}
-          <HapticLink href="/"><HapticButton variant="outline-light" size="lg" className="px-5 fw-bold rounded-pill">Back Home</HapticButton></HapticLink>
+          <HapticLink 
+            href="/"
+            className="btn btn-outline-light btn-lg px-5 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
+          >
+            Back Home
+          </HapticLink>
         </div>
       </div>
     </Container>

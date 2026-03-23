@@ -235,7 +235,8 @@ export default function AuthPage() {
                   <HapticButton 
                     hapticStyle="medium"
                     type="submit" 
-                    className="btn-f1 w-100 py-3 fw-bold mb-3 rounded-pill" 
+                    variant="danger"
+                    className="w-100 py-3 fw-bold mb-3 rounded-pill shadow-sm" 
                     disabled={loading}
                   >
                     {loading ? <Spinner animation="border" size="sm" /> : (isResetPassword ? 'SEND RESET LINK' : (isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'))}

@@ -19,15 +19,17 @@ test.describe('Mobile Navigation and Core Flow', () => {
   });
 
   test('should navigate to all core pages via bottom nav', async ({ page }) => {
+    const bottomNav = page.locator('.mobile-bottom-nav');
+
     // 1. Navigate to Predict (Guest/Login Wall)
-    await page.getByRole('link', { name: /Predict/i }).click();
+    await bottomNav.getByRole('link', { name: /Predict/i }).click();
     await expect(page).toHaveURL(/\/predict/);
     
     // Use specific role to avoid strict mode ambiguity
     await expect(page.getByRole('heading', { name: /Who's Predicting/i })).toBeVisible();
 
     // 2. Navigate to Leagues
-    await page.getByRole('link', { name: /Leagues/i }).click();
+    await bottomNav.getByRole('link', { name: /Leagues/i }).click();
     await expect(page).toHaveURL(/\/leagues/);
     // Unauthenticated view
     await expect(page.getByText(/Multiplayer Leagues/i).or(page.getByText(/Active Competitions/i))).toBeVisible();
@@ -37,8 +39,8 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await expect(leaguesPtr).not.toBeVisible();
 
     // 2b. Navigate to a specific league (if any exists)
-    // We try to find the first "VIEW" button
-    const viewButton = page.getByRole('button', { name: /VIEW/i }).first();
+    // We try to find the first "VIEW" link (using locator instead of role if ambiguous)
+    const viewButton = page.locator('a:has-text("VIEW")').first();
     if (await viewButton.isVisible()) {
       await viewButton.click();
       await expect(page).toHaveURL(/\/leagues\/view/);
@@ -50,7 +52,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
     }
 
     // 3. Navigate to Leaderboard
-    await page.getByRole('link', { name: /Leaderboard/i }).click();
+    await bottomNav.getByRole('link', { name: /Leaderboard/i }).click();
     await expect(page).toHaveURL(/\/leaderboard/);
     // Check for Global/Guests pills in the tab container
     await expect(page.locator('.f1-tab-container').getByText(/GLOBAL/i)).toBeVisible();
@@ -59,7 +61,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
     }
 
     // 4. Navigate to Standings
-    await page.getByRole('link', { name: /Standings/i }).click();
+    await bottomNav.getByRole('link', { name: /Standings/i }).click();
     await expect(page).toHaveURL(/\/standings/);
     await expect(page.getByText(/World Championship/i).first()).toBeVisible();
     // Check for Drivers/Constructors pills specifically in the tab container
@@ -93,8 +95,8 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // Wait for redirect to home
     await expect(page).toHaveURL(/\/$/, { timeout: 15000 });
     
-    // Click Predict from the UI
-    await page.getByRole('link', { name: /Predict/i }).click();
+    // Click Predict from the UI (specifically bottom nav to avoid ambiguity)
+    await page.locator('.mobile-bottom-nav').getByRole('link', { name: /Predict/i }).click();
     
     // Check for "Grand Prix" which is part of the race heading (e.g. "Japanese Grand Prix")
     // or the login wall if session dropped. 
