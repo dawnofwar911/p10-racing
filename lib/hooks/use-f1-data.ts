@@ -26,20 +26,22 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
 
   // 1. Initial Cache Load (Safe for hydration)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
     try {
       const cachedDrivers = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
       if (cachedDrivers) {
         setDrivers(JSON.parse(cachedDrivers));
       }
-      
+    } catch (e) {
+      console.warn('useF1Data: Failed to load cached drivers', e);
+    }
+
+    try {
       const cachedCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR);
       if (cachedCalendar) {
         setCalendar(JSON.parse(cachedCalendar));
       }
     } catch (e) {
-      console.warn('useF1Data: Failed to load cache', e);
+      console.warn('useF1Data: Failed to load cached calendar', e);
     }
   }, []);
 
