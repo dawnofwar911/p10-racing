@@ -37,6 +37,19 @@ body {
   flex-direction: column;
 }
 
+/* Global link reset */
+a {
+  text-decoration: none !important;
+  color: inherit;
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a:focus, a:active, a:hover {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 /* Surgically disable selection on layout/navigation elements */
 .navbar, .mobile-bottom-nav, .btn, .nav-link, .cursor-pointer {
   user-select: none;
