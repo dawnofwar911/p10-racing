@@ -2,31 +2,38 @@
 
 import React from 'react';
 import Link, { LinkProps } from 'next/link';
-import { triggerLightHaptic } from '@/lib/utils/haptics';
+import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic } from '@/lib/utils/haptics';
 
 interface HapticLinkProps extends LinkProps {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  hapticStyle?: 'light' | 'medium' | 'heavy';
+  suppressHydrationWarning?: boolean;
 }
 
 /**
- * A wrapper for next/link that triggers a light haptic feedback on click.
+ * A wrapper for next/link that triggers haptic feedback on click.
  */
 export default function HapticLink({ 
   children, 
   onClick, 
+  hapticStyle = 'light',
+  suppressHydrationWarning,
   ...props 
 }: HapticLinkProps) {
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    triggerLightHaptic();
+    if (hapticStyle === 'light') triggerLightHaptic();
+    else if (hapticStyle === 'medium') triggerMediumHaptic();
+    else if (hapticStyle === 'heavy') triggerHeavyHaptic();
+    
     if (onClick) onClick(e);
   };
 
   return (
-    <Link {...props} onClick={handleClick}>
+    <Link {...props} onClick={handleClick} suppressHydrationWarning={suppressHydrationWarning}>
       {children}
     </Link>
   );

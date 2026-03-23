@@ -582,10 +582,11 @@ function PredictPage() {
               <Card className="p-4 border-secondary shadow-lg overflow-hidden">
                 <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
                 <div className="mb-4">
-                  <HapticLink href="/auth">
-                    <HapticButton variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
-                      SIGN IN / CREATE ACCOUNT
-                    </HapticButton>
+                  <HapticLink 
+                    href="/auth"
+                    className="btn btn-danger w-100 py-3 fw-bold mb-2 shadow-sm text-decoration-none d-inline-flex align-items-center justify-content-center"
+                  >
+                    SIGN IN / CREATE ACCOUNT
                   </HapticLink>
                   <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
                 </div>

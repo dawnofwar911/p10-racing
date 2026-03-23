@@ -61,8 +61,12 @@ const MyLeaguesView = ({
                 <td className="ps-3 fw-bold text-white small">{league.name}</td>
                 <td><code className="text-danger fw-bold extra-small" style={{ letterSpacing: '1px' }}>{league.invite_code}</code></td>
                 <td className="text-end pe-3">
-                  <HapticLink href={`/leagues/view?id=${league.id}`}>
-                    <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-1 fw-bold extra-small" style={{ fontSize: '0.65rem' }}>VIEW</HapticButton>
+                  <HapticLink 
+                    href={`/leagues/view?id=${league.id}`}
+                    className="btn btn-outline-light btn-sm rounded-pill px-3 py-1 fw-bold extra-small text-decoration-none d-inline-flex align-items-center justify-content-center"
+                    style={{ fontSize: '0.65rem' }}
+                  >
+                    VIEW
                   </HapticLink>
                 </td>
               </tr>
@@ -420,8 +424,11 @@ function LeaguesContent() {
           <div className="display-6 mb-3">🏆</div>
           <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
           <p className="text-muted small mb-4 px-4">Sign in to create or join private leagues and compete with your friends.</p>
-          <HapticLink href="/auth">
-            <HapticButton className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</HapticButton>
+          <HapticLink 
+            href="/auth"
+            className="btn btn-f1 px-5 py-2 fw-bold small text-decoration-none d-inline-flex align-items-center justify-content-center"
+          >
+            SIGN IN TO PLAY
           </HapticLink>
         </div>
       </SwipeablePageLayout>

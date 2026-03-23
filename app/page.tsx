@@ -5,7 +5,7 @@ import { Container, Row, Col, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
-import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
+import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { calculateSeasonPoints } from '@/lib/scoring';
@@ -18,6 +18,7 @@ import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } 
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
+import { useRouter } from 'next/navigation';
 import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
@@ -41,6 +42,7 @@ export default function Home() {
   const supabase = createClient();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
+  const router = useRouter();
   
   // Use Global Auth Context
   const { currentUser, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
@@ -372,8 +374,12 @@ export default function Home() {
                   {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
                 </h2>
                 <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
-                <HapticLink href="/leaderboard">
-                  <HapticButton hapticStyle="medium" variant="warning" className="fw-bold px-4 rounded-pill">VIEW FINAL STANDINGS</HapticButton>
+                <HapticLink 
+                  href="/leaderboard"
+                  className="btn btn-warning fw-bold px-4 rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
+                  hapticStyle="medium"
+                >
+                  VIEW FINAL STANDINGS
                 </HapticLink>
               </div>
             )}
@@ -421,31 +427,39 @@ export default function Home() {
 
             <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mb-2 px-4 px-sm-0">
               {!isSeasonFinished ? (
-                <HapticLink href="/predict">
-                  <HapticButton hapticStyle="medium" size="lg" className="btn-f1 px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }} suppressHydrationWarning>
-                    {isLocked 
-                      ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
-                      : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
-                  </HapticButton>
+                <HapticLink 
+                  href="/predict" 
+                  hapticStyle="medium"
+                  className="btn btn-f1 btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center"
+                  style={{ fontSize: '0.9rem', minWidth: '200px' }}
+                  suppressHydrationWarning
+                >
+                  {isLocked 
+                    ? (userPrediction ? 'VIEW RACE CENTER' : 'PREDICTIONS CLOSED') 
+                    : (userPrediction ? 'UPDATE PREDICTION' : 'MAKE PREDICTION')}
                 </HapticLink>
               ) : (
-                <HapticLink href="/history">
-                  <HapticButton hapticStyle="medium" size="lg" variant="danger" className="px-4 py-2 fw-bold" style={{ fontSize: '0.9rem' }}>
-                    VIEW SEASON RECAP
-                  </HapticButton>
+                <HapticLink 
+                  href="/history" 
+                  hapticStyle="medium"
+                  className="btn btn-danger btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center rounded-pill"
+                  style={{ fontSize: '0.9rem', minWidth: '200px' }}
+                >
+                  VIEW SEASON RECAP
                 </HapticLink>
               )}
-              <HapticLink href="/leaderboard">
-                <HapticButton hapticStyle="medium" variant="outline-light" size="lg" className="px-4 py-2 fw-bold opacity-75" style={{ fontSize: '0.9rem' }}>
-                  {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
-                </HapticButton>
+              <HapticLink 
+                href="/leaderboard" 
+                hapticStyle="medium"
+                className="btn btn-outline-light btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center opacity-75"
+                style={{ fontSize: '0.9rem', minWidth: '200px' }}
+              >
+                {isSeasonFinished ? 'FINAL STANDINGS' : 'LEADERBOARD'}
               </HapticLink>
             </div>
             
             <div className="mb-4">
-              <HapticLink href="/predict?howto=true">
-                <HowToPlayButton onClick={triggerLightHaptic} />
-              </HapticLink>
+              <HowToPlayButton onClick={() => router.push('/predict?howto=true')} />
             </div>
 
             <AnimatePresence>
@@ -513,7 +527,10 @@ export default function Home() {
                 <h3 className="text-uppercase fw-bold text-white opacity-50 letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Your Leagues</h3>
                 <p className="fw-bold mb-1 text-white" style={{ fontSize: '1.1rem' }}>Compete with Friends</p>
               </div>
-              <HapticLink href="/leagues" className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start d-inline-flex">
+              <HapticLink 
+                href="/leagues" 
+                className="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold mt-2 align-self-start d-inline-flex text-decoration-none"
+              >
                 View Leagues →
               </HapticLink>
             </div>
@@ -533,8 +550,13 @@ export default function Home() {
                   <div className="f1-glass-card p-3 border-primary border-opacity-20 text-center shadow-sm bg-primary bg-opacity-5">
                     <h2 className="fw-bold text-white mb-1" style={{ fontSize: '1rem' }}>Join the Grid</h2>
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
-                    <HapticLink href="/auth">
-                      <HapticButton hapticStyle="medium" variant="primary" size="sm" className="px-4 py-1 fw-bold rounded-pill" style={{ fontSize: '0.7rem' }}>GET STARTED</HapticButton>
+                    <HapticLink 
+                      href="/auth" 
+                      hapticStyle="medium"
+                      className="btn btn-primary btn-sm px-4 py-1 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
+                      style={{ fontSize: '0.7rem' }}
+                    >
+                      GET STARTED
                     </HapticLink>
                   </div>
                 </Col>

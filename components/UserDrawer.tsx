@@ -58,35 +58,32 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
         <div className="p-3 flex-grow-1">
           <div className="d-flex flex-column gap-1">
             {isAdmin && (
-              <HapticLink href="/admin" className="text-decoration-none" onClick={handleLinkClick}>
-                <HapticButton 
-                  variant="outline-warning" 
-                  className="w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100"
-                >
-                  <ShieldAlert size={18} className="me-3" />
-                  <span className="fw-bold letter-spacing-1 text-uppercase small">Admin Panel</span>
-                </HapticButton>
+              <HapticLink 
+                href="/admin" 
+                className="btn btn-outline-warning w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100 text-decoration-none" 
+                onClick={handleLinkClick}
+              >
+                <ShieldAlert size={18} className="me-3" />
+                <span className="fw-bold letter-spacing-1 text-uppercase small">Admin Panel</span>
               </HapticLink>
             )}
 
-            <HapticLink href="/history" className="text-decoration-none" onClick={handleLinkClick}>
-              <HapticButton 
-                variant="outline-light" 
-                className="w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100"
-              >
-                <History size={18} className="me-3" />
-                <span className="fw-bold letter-spacing-1 text-uppercase small">Season History</span>
-              </HapticButton>
+            <HapticLink 
+              href="/history" 
+              className="btn btn-outline-light w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100 text-decoration-none" 
+              onClick={handleLinkClick}
+            >
+              <History size={18} className="me-3" />
+              <span className="fw-bold letter-spacing-1 text-uppercase small">Season History</span>
             </HapticLink>
 
-            <HapticLink href="/settings" className="text-decoration-none" onClick={handleLinkClick}>
-              <HapticButton 
-                variant="outline-light" 
-                className="w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100"
-              >
-                <Settings size={18} className="me-3" />
-                <span className="fw-bold letter-spacing-1 text-uppercase small">Settings & Info</span>
-              </HapticButton>
+            <HapticLink 
+              href="/settings" 
+              className="btn btn-outline-light w-100 text-start d-flex align-items-center border-0 p-3 rounded-3 opacity-75 hover-opacity-100 text-decoration-none" 
+              onClick={handleLinkClick}
+            >
+              <Settings size={18} className="me-3" />
+              <span className="fw-bold letter-spacing-1 text-uppercase small">Settings & Info</span>
             </HapticLink>
           </div>
         </div>
@@ -121,15 +118,14 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
               SIGN OUT
             </HapticButton>
           ) : (
-            <HapticLink href="/auth" className="text-decoration-none" onClick={handleLinkClick}>
-              <HapticButton 
-                variant="primary" 
-                className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center rounded-pill"
-                style={{ fontSize: '0.8rem', letterSpacing: '1px' }}
-              >
-                <LogIn size={18} className="me-2 opacity-75" />
-                SIGN IN
-              </HapticButton>
+            <HapticLink 
+              href="/auth" 
+              className="btn btn-primary w-100 fw-bold py-3 d-flex align-items-center justify-content-center rounded-pill text-decoration-none" 
+              onClick={handleLinkClick}
+              style={{ fontSize: '0.8rem', letterSpacing: '1px' }}
+            >
+              <LogIn size={18} className="me-2 opacity-75" />
+              SIGN IN
             </HapticLink>
           )}
         </div>

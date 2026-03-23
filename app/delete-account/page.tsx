@@ -2,7 +2,6 @@
 
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import HapticLink from '@/components/HapticLink';
-import HapticButton from '@/components/HapticButton';
 
 export default function DeleteAccountPage() {
 
@@ -51,10 +50,11 @@ export default function DeleteAccountPage() {
               </p>
               
               <div className="text-center mt-5">
-                <HapticLink href="/">
-                  <HapticButton variant="outline-light" className="rounded-pill px-4">
-                    RETURN HOME
-                  </HapticButton>
+                <HapticLink 
+                  href="/"
+                  className="btn btn-outline-light rounded-pill px-4 text-decoration-none d-inline-flex align-items-center justify-content-center"
+                >
+                  RETURN HOME
                 </HapticLink>
               </div>
             </Card.Body>
