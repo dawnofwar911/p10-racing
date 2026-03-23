@@ -3,11 +3,13 @@
 import { useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+const DEFAULT_TABLES = ['predictions', 'verified_results'];
+
 /**
  * Custom hook to subscribe to real-time changes in Supabase tables.
  * Triggers the provided callback whenever a change occurs.
  */
-export function useRealtimeSync(onUpdate: () => void, tables: string[] = ['predictions', 'verified_results']) {
+export function useRealtimeSync(onUpdate: () => void, tables: string[] = DEFAULT_TABLES) {
   const supabase = createClient();
 
   useEffect(() => {
@@ -28,5 +30,5 @@ export function useRealtimeSync(onUpdate: () => void, tables: string[] = ['predi
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, onUpdate, tables]);
+  }, [supabase, onUpdate, JSON.stringify(tables)]); // eslint-disable-line react-hooks/exhaustive-deps
 }

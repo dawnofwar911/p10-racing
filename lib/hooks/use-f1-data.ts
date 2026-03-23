@@ -28,7 +28,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
   const [calendar, setCalendar] = useState<ApiCalendarRace[]>(() => {
     if (typeof window === 'undefined') return [];
     // Note: If we don't have a full calendar cache key yet, we'll just start empty.
-    const fullCalendar = localStorage.getItem('p10_cache_calendar'); 
+    const fullCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR); 
     return fullCalendar ? JSON.parse(fullCalendar) : [];
   });
 
@@ -50,7 +50,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
 
       if (calendarData.length > 0) {
         setCalendar(calendarData);
-        localStorage.setItem('p10_cache_calendar', JSON.stringify(calendarData));
+        localStorage.setItem(STORAGE_KEYS.CACHE_CALENDAR, JSON.stringify(calendarData));
       }
 
       setError(null);
