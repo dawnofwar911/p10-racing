@@ -1,9 +1,8 @@
 'use client';
 
 import { Container, Row, Col, Card } from 'react-bootstrap';
-import Link from 'next/link';
+import HapticLink from '@/components/HapticLink';
 import HapticButton from '@/components/HapticButton';
-import { triggerLightHaptic } from '@/lib/utils/haptics';
 
 export default function DeleteAccountPage() {
 
@@ -31,13 +30,12 @@ export default function DeleteAccountPage() {
               <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">How to delete your account</h2>
               <p className="mb-4">
                 You can delete your account and all associated data directly within the app by navigating to the{' '}
-                <Link 
+                <HapticLink 
                   href="/settings" 
-                  onClick={triggerLightHaptic}
                   className="text-danger p-0 d-inline fw-bold text-decoration-none"
                 >
                   Settings
-                </Link>{' '}
+                </HapticLink>{' '}
                 page while signed in and selecting the <strong>&quot;Delete Account Data&quot;</strong> option.
               </p>
               
@@ -53,11 +51,11 @@ export default function DeleteAccountPage() {
               </p>
               
               <div className="text-center mt-5">
-                <Link href="/" passHref legacyBehavior>
+                <HapticLink href="/">
                   <HapticButton variant="outline-light" className="rounded-pill px-4">
                     RETURN HOME
                   </HapticButton>
-                </Link>
+                </HapticLink>
               </div>
             </Card.Body>
           </Card>

@@ -2,15 +2,14 @@
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { Container, Row, Col, Form, Card, Modal, Table } from 'react-bootstrap';
-import { DRIVERS as FALLBACK_DRIVERS, CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers, fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
+import { CURRENT_SEASON } from '@/lib/data';
+import { fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic, triggerSelectionHaptic } from '@/lib/utils/haptics';
 import { createClient } from '@/lib/supabase/client';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
@@ -21,9 +20,12 @@ import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorage
 import { useAuth } from '@/components/AuthProvider';
 import { sessionTracker } from '@/lib/utils/session';
 import HapticButton from '@/components/HapticButton';
+import HapticLink from '@/components/HapticLink';
 import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
 import StandardPageHeader from '@/components/StandardPageHeader';
 import { LayoutGrid, Target, Flame } from 'lucide-react';
+import { useF1Data } from '@/lib/hooks/use-f1-data';
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
 interface PredictRace {
   id: string;
@@ -186,18 +188,13 @@ function PredictPage() {
   
   const { session, currentUser, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
   const username = currentUser || '';
+  const { drivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization
   const [nextRace, setNextRace] = useState<PredictRace | null>(() => {
     if (typeof window === 'undefined') return null;
     const cached = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
     return cached ? JSON.parse(cached) : null;
-  });
-
-  const [drivers, setDrivers] = useState<Driver[]>(() => {
-    if (typeof window === 'undefined') return FALLBACK_DRIVERS;
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS;
   });
 
   const [tempUsername, setTempUsername] = useState('');
@@ -256,6 +253,8 @@ function PredictPage() {
   }, [searchParams]);
 
   const init = useCallback(async () => {
+    if (f1Loading) return;
+    
     let cachedRace: PredictRace | null = null;
     let hasCachedGrid = false;
 
@@ -289,24 +288,15 @@ function PredictPage() {
     }
 
     try {
-      const [races, apiDrivers, raceResultsMap] = await Promise.all([
-        fetchCalendar(CURRENT_SEASON),
-        fetchDrivers(CURRENT_SEASON),
-        fetchAllSimplifiedResults()
-      ]);
+      const raceResultsMap = await fetchAllSimplifiedResults();
 
       if (mountedRef.current) {
-        const finalDriverList = apiDrivers.length > 0 ? apiDrivers : FALLBACK_DRIVERS;
-        finalDriverList.sort((a: Driver, b: Driver) => a.team.localeCompare(b.team));
-        setDrivers(finalDriverList);
-        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(finalDriverList));
-
-        if (races.length > 0) {
+        if (calendar.length > 0) {
           const now = new Date();
-          const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(races, raceResultsMap, now);
+          const { index: activeIndex, isSeasonFinished: finished } = getActiveRaceIndex(calendar, raceResultsMap, now);
           setIsSeasonFinished(finished);
 
-          const upcoming = races[activeIndex];
+          const upcoming = calendar[activeIndex];
           const currentRace: PredictRace = {
             id: upcoming.round,
             name: upcoming.raceName,
@@ -336,7 +326,7 @@ function PredictPage() {
             const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
             if (qualiGrid && qualiGrid.length > 0) {
               const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
-              const missing = finalDriverList.filter(d => !presentIds.has(d.id));
+              const missing = drivers.filter(d => !presentIds.has(d.id));
               finalGrid = [...qualiGrid];
               missing.forEach((d, i) => {
                 finalGrid.push({
@@ -431,7 +421,7 @@ function PredictPage() {
 
     const parsedPlayers = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, currentUser, drivers.length, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session, username, currentUser, f1Loading, calendar, drivers, nextRace, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
@@ -442,6 +432,9 @@ function PredictPage() {
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
   }, [init, triggerRefresh]);
+
+  // Real-time subscription
+  useRealtimeSync(useCallback(() => init(), [init]));
 
   const performSubmit = async (p10: string, dnf: string) => {
     if (!p10 || !dnf || !nextRace) {
@@ -589,11 +582,11 @@ function PredictPage() {
               <Card className="p-4 border-secondary shadow-lg overflow-hidden">
                 <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
                 <div className="mb-4">
-                  <Link href="/auth" passHref legacyBehavior>
+                  <HapticLink href="/auth">
                     <HapticButton variant="danger" className="w-100 py-3 fw-bold mb-2 shadow-sm">
                       SIGN IN / CREATE ACCOUNT
                     </HapticButton>
-                  </Link>
+                  </HapticLink>
                   <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
                 </div>
 
@@ -741,7 +734,7 @@ function PredictPage() {
               Change Picks
             </HapticButton>
           )}
-          <Link href="/" passHref legacyBehavior><HapticButton variant="outline-light" size="lg" className="px-5 fw-bold rounded-pill">Back Home</HapticButton></Link>
+          <HapticLink href="/"><HapticButton variant="outline-light" size="lg" className="px-5 fw-bold rounded-pill">Back Home</HapticButton></HapticLink>
         </div>
       </div>
     </Container>

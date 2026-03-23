@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Row, Col, Card, Spinner } from 'react-bootstrap';
+import { Row, Col, Card } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
-import { fetchCalendar, fetchDrivers } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { History } from 'lucide-react';
 import { triggerLightHaptic } from '@/lib/utils/haptics';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
+import LoadingView from '@/components/LoadingView';
+import EmptyState from '@/components/EmptyState';
+import { useF1Data } from '@/lib/hooks/use-f1-data';
 
 interface HistoryEntry {
   round: string;
@@ -24,31 +26,27 @@ const supabase = createClient();
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dbLoading, setDbLoading] = useState(true);
+  const { drivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
   const router = useRouter();
 
   useEffect(() => {
     async function loadHistory() {
-      // 1. Fetch all verified results from Supabase (filtered by current season)
+      if (f1Loading) return;
+
       const { data: dbResults } = await supabase
         .from('verified_results')
         .select('*')
         .like('id', `${CURRENT_SEASON}_%`);
 
       if (!dbResults || dbResults.length === 0) {
-        setLoading(false);
+        setDbLoading(false);
         return;
       }
 
-      // 2. Fetch Drivers and Calendar to map names
-      const [drivers, races] = await Promise.all([
-        fetchDrivers(CURRENT_SEASON),
-        fetchCalendar(CURRENT_SEASON)
-      ]);
-
       const historyData: HistoryEntry[] = dbResults.map(res => {
         const round = res.id.split('_')[1];
-        const raceInfo = races.find(r => r.round === round);
+        const raceInfo = calendar.find(r => r.round === round);
         const data = res.data as { positions: { [id: string]: number }, firstDnf: string | null };
 
         const p10Id = Object.entries(data.positions).find(([, pos]) => pos === 10)?.[0];
@@ -70,10 +68,12 @@ export default function HistoryPage() {
       });
 
       setHistory(historyData.sort((a, b) => parseInt(b.round) - parseInt(a.round)));
-      setLoading(false);
+      setDbLoading(false);
     }
     loadHistory();
-  }, []);
+  }, [drivers, calendar, f1Loading]);
+
+  const loading = f1Loading || dbLoading;
 
   return (
     <SwipeablePageLayout
@@ -87,10 +87,8 @@ export default function HistoryPage() {
     >
       <div className="mt-3">
         {loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="danger" />
-          </div>
-        ) : (
+          <LoadingView text="Loading Season History..." />
+        ) : history.length > 0 ? (
           <Row className="g-4">
             {history.map(race => (
               <Col xs={12} md={6} xl={4} key={race.round}>
@@ -122,12 +120,12 @@ export default function HistoryPage() {
                 </Card>
               </Col>
             ))}
-            {history.length === 0 && (
-              <Col className="text-center py-5">
-                <p className="text-muted">No race results available yet for the {CURRENT_SEASON} season.</p>
-              </Col>
-            )}
           </Row>
+        ) : (
+          <EmptyState 
+            icon={<History size={48} className="text-secondary opacity-25 mb-3" />}
+            message={`No race results available yet for the ${CURRENT_SEASON} season.`}
+          />
         )}
       </div>
     </SwipeablePageLayout>

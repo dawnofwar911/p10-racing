@@ -1,7 +1,8 @@
 'use client';
 
 import { Navbar, Nav } from 'react-bootstrap';
-import Link from 'next/link';
+import HapticLink from './HapticLink';
+import HapticButton from './HapticButton';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
@@ -45,8 +46,8 @@ export default function AppNavbar() {
       className="px-3 border-bottom border-secondary border-opacity-25" 
       style={{ backgroundColor: '#15151e' }}
     >
-      <Link href="/" passHref legacyBehavior>
-        <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center" onClick={triggerLightHaptic}>
+      <HapticLink href="/">
+        <Navbar.Brand className="fw-bold cursor-pointer d-flex align-items-center">
           <Image 
             src="/logo.svg" 
             alt="Logo" 
@@ -58,15 +59,16 @@ export default function AppNavbar() {
           <span className="d-inline d-sm-none letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>R</span></span>
           {isOnAdminPage && <span className="ms-2 badge bg-danger" style={{ fontSize: '0.6rem' }}>ADMIN</span>}
         </Navbar.Brand>
-      </Link>
+      </HapticLink>
       
       {!isOnResetPage && (
         <>
           <div className="d-flex align-items-center ms-auto order-lg-last">
             {!isAuthLoading ? (
-              <button 
-                onClick={() => { triggerLightHaptic(); setShowDrawer(true); }}
-                className="btn btn-link p-0 text-decoration-none d-flex align-items-center border-0"
+              <HapticButton 
+                variant="link"
+                onClick={() => setShowDrawer(true)}
+                className="p-0 text-decoration-none d-flex align-items-center border-0"
               >
                 <div className="d-flex flex-column align-items-end me-2 d-none d-sm-flex">
                   <span className="text-light small text-uppercase letter-spacing-1 opacity-75" style={{ fontSize: '0.6rem', lineHeight: 1 }}>
@@ -79,7 +81,7 @@ export default function AppNavbar() {
                 <div className="bg-secondary bg-opacity-25 rounded-3 d-flex justify-content-center align-items-center text-white fw-bold border border-secondary border-opacity-50" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}>
                   {(session || currentUser) ? (currentUser?.charAt(0).toUpperCase() || '?') : <User size={18} />}
                 </div>
-              </button>
+              </HapticButton>
             ) : (
               <div style={{ height: '31px', width: '80px' }}></div>
             )}
@@ -87,25 +89,23 @@ export default function AppNavbar() {
 
           <Nav className="me-auto ms-xl-4 d-none d-xl-flex gap-2">
             {NAV_ITEMS.map((item) => (
-              <Link 
+              <HapticLink 
                 key={item.href}
                 href={item.href} 
-                onClick={triggerLightHaptic} 
                 className={`nav-link text-uppercase fw-bold letter-spacing-1 ${pathname === item.href ? 'text-danger border-bottom border-danger border-2' : 'text-light opacity-75'}`} 
                 style={{ fontSize: '0.75rem' }}
               >
                 {item.label}
-              </Link>
+              </HapticLink>
             ))}
             {isAdmin && (
-              <Link 
+              <HapticLink 
                 href="/admin" 
-                onClick={triggerLightHaptic} 
                 className={`nav-link text-uppercase fw-bold letter-spacing-1 ${isOnAdminPage ? 'text-warning border-bottom border-warning border-2' : 'text-warning opacity-75'}`} 
                 style={{ fontSize: '0.75rem' }}
               >
                 ADMIN
-              </Link>
+              </HapticLink>
             )}
           </Nav>
         </>

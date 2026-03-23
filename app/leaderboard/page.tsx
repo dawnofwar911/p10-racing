@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Badge, Spinner } from 'react-bootstrap';
-import { LeaderboardEntry, CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
+import { Badge } from 'react-bootstrap';
+import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
-import { DbPrediction, Driver } from '@/lib/types';
-import { fetchCalendar, fetchDrivers } from '@/lib/api';
+import { DbPrediction } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
@@ -15,17 +14,15 @@ import { useAuth } from '@/components/AuthProvider';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy, Globe, Users } from 'lucide-react';
 import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
+import LoadingView from '@/components/LoadingView';
+import { useF1Data } from '@/lib/hooks/use-f1-data';
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
 export default function LeaderboardPage() {
   const supabase = createClient();
   const mountedRef = useRef(true);
   const { session, currentUser, syncVersion, triggerRefresh } = useAuth();
-
-  const [allDrivers, setAllDrivers] = useState<Driver[]>(() => {
-    if (typeof window === 'undefined') return FALLBACK_DRIVERS as unknown as Driver[];
-    const cached = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-    return cached ? JSON.parse(cached) : FALLBACK_DRIVERS as unknown as Driver[];
-  });
+  const { drivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Separate Cache Initialization
   const [globalLeaderboard, setGlobalLeaderboard] = useState<LeaderboardEntry[]>(() => {
@@ -51,21 +48,14 @@ export default function LeaderboardPage() {
   }, []);
 
   const calculate = useCallback(async (quiet = false) => {
+    if (f1Loading) return;
     if (!quiet && mountedRef.current) setLoading(true);
+    
     try {
-      const [raceResultsMap, races, driversData] = await Promise.all([
-        fetchAllSimplifiedResults(),
-        fetchCalendar(CURRENT_SEASON),
-        fetchDrivers(CURRENT_SEASON)
-      ]);
-      
-      if (driversData.length > 0 && mountedRef.current) {
-        setAllDrivers(driversData);
-        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(driversData));
-      }
+      const raceResultsMap = await fetchAllSimplifiedResults();
       
       const resultsFoundCount = Object.keys(raceResultsMap).length;
-      if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount >= races.length);
+      if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount >= calendar.length);
 
       const currentUserId = session?.user?.id;
 
@@ -137,7 +127,7 @@ export default function LeaderboardPage() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase, session?.user?.id, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session?.user?.id, syncVersion, f1Loading, calendar.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const hasData = globalLeaderboard.length > 0 || localLeaderboard.length > 0;
@@ -152,13 +142,7 @@ export default function LeaderboardPage() {
   }, [triggerRefresh]);
 
   // Real-time subscription
-  useEffect(() => {
-    const channel = supabase.channel('leaderboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'verified_results' }, () => calculate(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, () => calculate(true))
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, calculate]);
+  useRealtimeSync(useCallback(() => calculate(true), [calculate]));
 
   const tabs: TabOption<'global' | 'local'>[] = [
     { id: 'global', label: 'Global', icon: <Globe size={16} /> }
@@ -181,23 +165,21 @@ export default function LeaderboardPage() {
       tabs={tabs}
       renderTabContent={(tabId) => (
         loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+          <LoadingView text="Calculating Leaderboard..." />
         ) : (
           <LeaderboardTable 
             entries={tabId === 'global' ? globalLeaderboard : localLeaderboard} 
             loading={false} 
             currentUser={currentUser || undefined}
             isSeasonComplete={isSeasonComplete}
-            drivers={allDrivers}
+            drivers={drivers}
             emptyMessage={tabId === 'global' ? "No global players found." : "No guest data found on this device."}
           />
         )
       )}
     >
       {loading ? (
-        <div className="text-center py-5">
-          <Spinner animation="border" variant="danger" />
-        </div>
+        <LoadingView text="Calculating Leaderboard..." />
       ) : null}
     </SwipeablePageLayout>
   );

@@ -252,14 +252,14 @@ export default function ResetPasswordPage() {
                   </HapticButton>
 
                   <div className="text-center mt-3 pt-3 border-top border-secondary border-opacity-10">
-                    <button 
-                      type="button" 
-                      className="btn btn-link text-muted text-decoration-none extra-small fw-bold opacity-50 hover-opacity-100"
+                    <HapticButton 
+                      variant="link"
+                      className="text-muted text-decoration-none extra-small fw-bold opacity-50 hover-opacity-100"
                       onClick={handleCancel}
                       disabled={loading}
                     >
                       {isProfileUpdate ? 'CANCEL' : 'CANCEL & RETURN TO LOGIN'}
-                    </button>
+                    </HapticButton>
                   </div>
                 </Form>
               )}

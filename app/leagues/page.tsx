@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Session } from '@supabase/supabase-js';
 import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { withTimeout } from '@/lib/utils/sync-queue';
@@ -14,6 +13,7 @@ import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
 import HapticButton from '@/components/HapticButton';
+import HapticLink from '@/components/HapticLink';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import { Trophy, Settings as SettingsIcon } from 'lucide-react';
 
@@ -61,9 +61,9 @@ const MyLeaguesView = ({
                 <td className="ps-3 fw-bold text-white small">{league.name}</td>
                 <td><code className="text-danger fw-bold extra-small" style={{ letterSpacing: '1px' }}>{league.invite_code}</code></td>
                 <td className="text-end pe-3">
-                  <Link href={`/leagues/view?id=${league.id}`} passHref legacyBehavior>
+                  <HapticLink href={`/leagues/view?id=${league.id}`}>
                     <HapticButton variant="outline-light" size="sm" className="rounded-pill px-3 py-1 fw-bold extra-small" style={{ fontSize: '0.65rem' }}>VIEW</HapticButton>
-                  </Link>
+                  </HapticLink>
                 </td>
               </tr>
             ))}
@@ -420,7 +420,9 @@ function LeaguesContent() {
           <div className="display-6 mb-3">🏆</div>
           <h2 className="h5 fw-bold text-white mb-2">Multiplayer Leagues</h2>
           <p className="text-muted small mb-4 px-4">Sign in to create or join private leagues and compete with your friends.</p>
-          <Link href="/auth" passHref legacyBehavior><HapticButton className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</HapticButton></Link>
+          <HapticLink href="/auth">
+            <HapticButton className="btn-f1 px-5 py-2 fw-bold small">SIGN IN TO PLAY</HapticButton>
+          </HapticLink>
         </div>
       </SwipeablePageLayout>
     );

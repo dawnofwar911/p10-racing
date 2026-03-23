@@ -3,6 +3,10 @@ import { vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 
+// --- Environment Variables ---
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://mock-project.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key';
+
 // --- Capacitor Mocks ---
 vi.mock('@capacitor/core', () => ({
   Capacitor: {
