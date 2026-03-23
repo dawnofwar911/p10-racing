@@ -69,7 +69,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set Release Environment
+        id: set_env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "TRACK=internal" >> $GITHUB_OUTPUT
+            echo "TAG_SUFFIX=-internal" >> $GITHUB_OUTPUT
+            echo "SHOULD_BUILD=true" >> $GITHUB_OUTPUT
+          else
+            echo "TRACK=closed" >> $GITHUB_OUTPUT
+            echo "TAG_SUFFIX=" >> $GITHUB_OUTPUT
+            echo "SHOULD_BUILD=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up JDK 21
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -77,31 +91,22 @@ jobs:
           cache: 'gradle'
 
       - name: Setup Node.js
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         run: npm ci
 
       - name: Extract Version
         id: get_version
         run: jq -r '"VERSION=" + .version' package.json >> $GITHUB_OUTPUT
 
-      - name: Set Release Environment
-        id: set_env
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "TRACK=internal" >> $GITHUB_OUTPUT
-            echo "TAG_SUFFIX=-internal" >> $GITHUB_OUTPUT
-          else
-            echo "TRACK=closed" >> $GITHUB_OUTPUT
-            echo "TAG_SUFFIX=" >> $GITHUB_OUTPUT
-          fi
-
       - name: Build Static Site
-        if: steps.set_env.outputs.TRACK == 'internal'
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -109,17 +114,17 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor
-        if: steps.set_env.outputs.TRACK == 'internal'
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         run: npx cap sync android
 
       - name: Create google-services.json
-        if: steps.set_env.outputs.TRACK == 'internal'
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Build Release AAB
-        if: steps.set_env.outputs.TRACK == 'internal'
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         env:
           VERSION_CODE: ${{ github.run_number }}
         run: |
@@ -128,7 +133,7 @@ jobs:
           ./gradlew bundleRelease
 
       - name: Sign Android Release AAB
-        if: steps.set_env.outputs.TRACK == 'internal'
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         uses: r0adkll/sign-android-release@v1
         id: sign_aab
         with:
@@ -156,7 +161,7 @@ jobs:
           fi
 
       - name: Generate Release Notes
-        if: steps.set_env.outputs.TRACK == 'internal'
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         id: release_notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -185,7 +190,7 @@ jobs:
           fi
 
       - name: Upload to Google Play
-        if: steps.set_env.outputs.TRACK == 'internal'
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
