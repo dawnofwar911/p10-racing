@@ -508,6 +508,15 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
   /* Standard top margin moved here from Container for layout stability */
   margin-top: 0.5rem;
+  
+  /* Layout & Stability */
+  height: 70px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 1.5rem;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, height 0.3s ease, margin-top 0.3s ease;
+  will-change: transform, background-color, height;
 }
 
 @media (min-width: 768px) {
