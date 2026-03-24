@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Badge, Spinner } from 'react-bootstrap';
+import { Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
@@ -14,6 +14,7 @@ import { useAuth } from '@/components/AuthProvider';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy, Globe, Users } from 'lucide-react';
 import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
+import LoadingView from '@/components/LoadingView';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
@@ -185,10 +186,7 @@ export default function LeaderboardPage() {
       tabs={tabs}
       renderTabContent={(tabId) => (
         loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="danger" />
-            <p className="mt-3 text-muted text-uppercase letter-spacing-1 fw-bold small">Calculating Leaderboard...</p>
-          </div>
+          <LoadingView text="Calculating Leaderboard..." />
         ) : (
           <LeaderboardTable 
             entries={tabId === 'global' ? globalLeaderboard : localLeaderboard} 

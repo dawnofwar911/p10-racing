@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { Container, Row, Col, Form, Card, Modal, Table, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Form, Card, Modal, Table } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -886,9 +886,7 @@ export default function PredictPageWrapper() {
   return (
     <Suspense fallback={
       <div className="container mt-2 mt-md-3">
-        <div className="text-center py-5">
-          <Spinner animation="border" variant="danger" />
-        </div>
+        <LoadingView text="Loading Predictor..." />
       </div>
     }>
       <PredictPage />

@@ -12,6 +12,7 @@ import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
 import LeaderboardTable from '@/components/LeaderboardTable';
+import LoadingView from '@/components/LoadingView';
 import { Share } from '@capacitor/share';
 import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Users, ChevronLeft } from 'lucide-react';
@@ -235,9 +236,7 @@ export default function LeagueDetailPage() {
   return (
     <Suspense fallback={
       <div className="container mt-2 mt-md-3">
-        <div className="text-center py-5">
-          <Spinner animation="border" variant="danger" />
-        </div>
+        <LoadingView text="Loading League..." />
       </div>
     }>
       <LeagueDetailContent />

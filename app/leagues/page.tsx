@@ -15,6 +15,7 @@ import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import { Trophy, Settings as SettingsIcon } from 'lucide-react';
+import LoadingView from '@/components/LoadingView';
 
 interface League {
   id: string;
@@ -512,9 +513,7 @@ export default function LeaguesPage() {
   return (
     <Suspense fallback={
       <div className="container mt-2 mt-md-3">
-        <div className="text-center py-5">
-          <Spinner animation="border" variant="danger" />
-        </div>
+        <LoadingView text="Loading Leagues..." />
       </div>
     }>
       <LeaguesContent />
