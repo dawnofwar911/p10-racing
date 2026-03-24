@@ -139,7 +139,7 @@ export default function StandingsPage() {
   return (
     <SwipeablePageLayout
       title="World Championship"
-      subtitle={view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}
+      subtitle={typeof window !== 'undefined' && window.innerWidth >= 992 ? 'Driver & Constructor Standings' : (view === 'drivers' ? 'Driver Standings' : 'Constructor Standings')}
       icon={<Flag size={24} className="text-white" />}
       activeTab={view}
       onTabChange={setView}

@@ -402,8 +402,9 @@ export default function Home() {
         <Row className="justify-content-center text-center mt-2 mt-md-3">
           <Col md={10} lg={8} className="mb-1">
             <h1 className="display-5 fw-bold mb-1 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
-            <p className="small text-white opacity-75 mb-3 mx-auto" style={{ maxWidth: '420px', textWrap: 'balance' }}>
-              Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
+            <p className="small text-white opacity-75 mb-3 mx-auto" style={{ maxWidth: '600px' }}>
+              Predict the 10th place finisher and the first DNF of the<br />
+              <span className="text-danger fw-bold">{nextRace?.name || 'next Grand Prix'}</span>.
             </p>
             
             {nextRace && !loading && isSeasonFinished && (
