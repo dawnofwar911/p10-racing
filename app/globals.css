@@ -500,7 +500,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 .sticky-header {
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 1200;
   background-color: var(--f1-black); /* Default opaque black */
   margin-left: -1rem; /* Offset Container padding */
   margin-right: -1rem;

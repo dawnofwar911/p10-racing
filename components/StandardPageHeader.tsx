@@ -39,10 +39,10 @@ export default function StandardPageHeader({
       // 1. Transparency trigger (very top)
       setScrolledDown(top > 5);
 
-      // 2. Shrink trigger with Hysteresis (Shrink at 40, Expand at 10)
-      if (!headerShrunk && top > 40) {
+      // 2. Shrink trigger with Robust Hysteresis (Shrink at 60, Expand at 5)
+      if (!headerShrunk && top > 60) {
         setHeaderShrunk(true);
-      } else if (headerShrunk && top < 10) {
+      } else if (headerShrunk && top < 5) {
         setHeaderShrunk(false);
       }
     };

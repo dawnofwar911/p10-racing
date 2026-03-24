@@ -97,18 +97,19 @@ export default function SwipeablePageLayout<T extends string>({
     }
   };
 
-  const content = (
-    <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: splitOnWide ? '1400px' : '800px' }}>
-      {/* 1. Standardized F1 Header */}
-      <StandardPageHeader
-        title={title}
-        subtitle={subtitle}
-        icon={icon}
-        badge={badge}
-        onBack={onBack}
-        rightElement={rightElement}
-      />
+  const header = (
+    <StandardPageHeader
+      title={title}
+      subtitle={subtitle}
+      icon={icon}
+      badge={badge}
+      onBack={onBack}
+      rightElement={rightElement}
+    />
+  );
 
+  const mainContent = (
+    <>
       {/* 2. Standardized F1 Tab Switcher (Hidden on split view) */}
       <div className={`mb-4 ${splitOnWide ? 'd-lg-none' : ''}`}>
         <Nav variant="pills" className="f1-tab-container p-1 bg-dark rounded-pill border border-secondary" style={{ width: 'fit-content' }}>
@@ -171,12 +172,17 @@ export default function SwipeablePageLayout<T extends string>({
           </AnimatePresence>
         </div>
       </div>
-    </Container>
+    </>
   );
 
-  if (onRefresh) {
-    return <PullToRefresh onRefresh={onRefresh}>{content}</PullToRefresh>;
-  }
-
-  return content;
+  return (
+    <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: splitOnWide ? '1400px' : '800px' }}>
+      {header}
+      {onRefresh ? (
+        <PullToRefresh onRefresh={onRefresh}>
+          {mainContent}
+        </PullToRefresh>
+      ) : mainContent}
+    </Container>
+  );
 }
