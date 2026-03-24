@@ -10,18 +10,17 @@ test.describe('Predict Flow (Guest User)', () => {
         const drivers = Array.from({ length: 22 }, (_, i) => ({
           points: (100 - i).toString(),
           Driver: { 
-            driverId: i === 0 ? "max_verstappen" : (i === 1 ? "hamilton" : `driver_${i}`), 
+            driverId: i === 0 ? "max_verstappen" : (i === 1 ? "hamilton" : (i === 3 ? "leclerc" : `driver_${i}`)), 
             permanentNumber: (i + 1).toString(), 
-            code: i === 0 ? "VER" : (i === 1 ? "HAM" : `D${i}`), 
-            givenName: i === 0 ? "Max" : (i === 1 ? "Lewis" : "Driver"), 
-            familyName: i === 0 ? "Verstappen" : (i === 1 ? "Hamilton" : `${i}`) 
+            code: i === 0 ? "VER" : (i === 1 ? "HAM" : (i === 3 ? "LEC" : `D${i}`)), 
+            givenName: i === 0 ? "Max" : (i === 1 ? "Lewis" : (i === 3 ? "Charles" : "Driver")), 
+            familyName: i === 0 ? "Verstappen" : (i === 1 ? "Hamilton" : (i === 3 ? "Leclerc" : `${i}`)) 
           },
           Constructors: [{ constructorId: i % 2 === 0 ? "red_bull" : "ferrari", name: i % 2 === 0 ? "Red Bull" : "Ferrari" }]
         }));
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ MRData: { StandingsTable: { StandingsLists: [{ DriverStandings: drivers }] } } }) });
       } 
       else if (url.includes('.json')) { // Calendar or results
-        // Return a future race at Round 99 to avoid "Season Finished" logic collisions with real DB data
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -41,10 +40,9 @@ test.describe('Predict Flow (Guest User)', () => {
       }
     });
 
-    // 2. Mock Supabase to ensure clean state and avoid "Season Finished" from verified_results
+    // 2. Mock Supabase
     await page.route('**/*.supabase.co/rest/v1/**', async (route) => {
       const url = route.request().url();
-      // Return empty results for verified_results and predictions
       if (url.includes('verified_results') || url.includes('predictions') || url.includes('profiles')) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
       } else {
@@ -52,7 +50,6 @@ test.describe('Predict Flow (Guest User)', () => {
       }
     });
 
-    // Start at home and clear local storage
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
@@ -64,7 +61,7 @@ test.describe('Predict Flow (Guest User)', () => {
     await bottomNav.getByRole('link', { name: /Predict/i }).click();
     await expect(page).toHaveURL(/\/predict/);
 
-    // 2. Handle Login Wall (if visible)
+    // 2. Handle Login Wall
     const guestInput = page.getByPlaceholder(/Enter name/i);
     await expect(guestInput.or(page.getByText(/P10 Finisher/i))).toBeVisible({ timeout: 20000 });
     
@@ -74,28 +71,25 @@ test.describe('Predict Flow (Guest User)', () => {
       await expect(guestInput).not.toBeVisible({ timeout: 10000 });
     }
 
-    // 3. Verify we are NOT in "Season Finished" or "Locked" state
+    // 3. Verify Predictor State
     await expect(page.getByText(/Season Finished/i)).not.toBeVisible();
     await expect(page.getByText(/Predictions Closed/i)).not.toBeVisible();
 
-    // 4. Select P10 Driver
-    // Hamilton (Ferrari) sorts before Verstappen (Red Bull) in our mock
+    // 4. Select P10 Driver (Lewis Hamilton - Ferrari block at top)
     const lewis = page.getByText('Lewis Hamilton').first();
     await expect(lewis).toBeVisible({ timeout: 15000 });
-    await lewis.scrollIntoViewIfNeeded();
     await lewis.click();
 
-    // 5. Select DNF Driver (should auto-switch)
-    const verstappen = page.getByText('Max Verstappen').first();
-    await expect(verstappen).toBeVisible({ timeout: 10000 });
-    await verstappen.scrollIntoViewIfNeeded();
-    await verstappen.click();
+    // 5. Select DNF Driver (Charles Leclerc - Ferrari block at top)
+    const charles = page.getByText('Charles Leclerc').first();
+    await expect(charles).toBeVisible({ timeout: 10000 });
+    await charles.click();
 
     // 6. Verify Summary View
     await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
     
     // 7. Verify picks are recorded
-    await expect(page.getByText(/Verstappen/i)).toBeVisible();
     await expect(page.getByText(/Hamilton/i)).toBeVisible();
+    await expect(page.getByText(/Leclerc/i)).toBeVisible();
   });
 });
