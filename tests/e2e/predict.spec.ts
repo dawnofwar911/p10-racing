@@ -13,7 +13,7 @@ test.describe('Predict Flow (Guest User)', () => {
           { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "Ferrari", teamId: "00_ferrari", color: "#E80020" },
         ];
 
-        // Fill up to 22 drivers with generic data that sorts AFTER our targets
+        // Fill up to 22 drivers
         for (let i = 2; i < 22; i++) {
           drivers.push({
             id: `driver_${i}`,
@@ -80,15 +80,12 @@ test.describe('Predict Flow (Guest User)', () => {
 
   test('should complete a prediction flow as a guest', async ({ page }) => {
     // 1. Navigate to Predict
-    const bottomNav = page.locator('.mobile-bottom-nav');
-    await bottomNav.getByRole('link', { name: /Predict/i }).click();
+    const predictLink = page.locator('.mobile-bottom-nav').getByRole('link', { name: /Predict/i });
+    await predictLink.click();
     await expect(page).toHaveURL(/\/predict/);
 
     // 2. Handle Login Wall
     const guestInput = page.getByPlaceholder(/Enter name/i);
-    const p10Heading = page.getByText(/P10 Finisher/i);
-    await expect(guestInput.or(p10Heading)).toBeVisible({ timeout: 20000 });
-    
     if (await guestInput.isVisible()) {
       await guestInput.fill('E2EGuest');
       await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
@@ -96,26 +93,28 @@ test.describe('Predict Flow (Guest User)', () => {
     }
 
     // 3. Select P10 Driver
-    // CRITICAL: We must target the VISIBLE driver list (mobile view) 
-    // to avoid selecting the hidden desktop list which causes "hidden element" errors.
     const lewis = page.locator('.d-lg-none').getByText('Lewis Hamilton').first();
     await expect(lewis).toBeVisible({ timeout: 15000 });
-    await lewis.click({ force: true });
+    await lewis.click();
 
-    // 4. Select DNF Driver
-    // Switch to DNF tab explicitly
+    // Verify P10 selection visually (checkmark appears)
+    await expect(page.locator('.d-lg-none').getByText('✓')).toBeVisible({ timeout: 5000 });
+
+    // 4. Manually switch to DNF tab to be absolute certain
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
-    await expect(dnfTab).toBeVisible({ timeout: 10000 });
     await dnfTab.click();
     
+    // 5. Select DNF Driver
     const charles = page.locator('.d-lg-none').getByText('Charles Leclerc').first();
     await expect(charles).toBeVisible({ timeout: 10000 });
-    await charles.click({ force: true });
+    await charles.click();
 
-    // 5. Verify Summary View
-    await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
+    // 6. Verify Summary View
+    // We wait for the summary card which should appear after the 300ms auto-submit delay
+    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));
+    await expect(summaryHeading).toBeVisible({ timeout: 15000 });
     
-    // 6. Verify picks are recorded
+    // 7. Verify picks are recorded
     await expect(page.getByText(/Hamilton/i)).toBeVisible();
     await expect(page.getByText(/Leclerc/i)).toBeVisible();
   });
