@@ -501,33 +501,29 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   position: sticky;
   top: 0;
   z-index: 1200;
-  background-color: var(--f1-black); /* Default opaque black */
-  margin-left: -1rem; /* Offset Container padding */
+  background-color: var(--f1-black);
+  margin-left: -1rem;
   margin-right: -1rem;
   padding-left: 1rem;
   padding-right: 1rem;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
+  
+  /* Stable height to prevent layout feedback loops */
+  height: 70px;
+  display: flex;
+  align-items: center;
+  
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  margin-bottom: 1rem; /* Constant margin to prevent layout jumps */
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* Premium "Quart Out" for organic feel */
+  margin-bottom: 1rem;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  will-change: transform, background-color;
 }
 
 .sticky-header.header-shrunk {
-  padding-top: 0.4rem;
-  padding-bottom: 0.4rem;
+  height: 54px; /* Slightly shorter but stable */
   background-color: rgba(21, 21, 30, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  /* Removed margin-bottom change to keep layout stable */
-}
-
-/* Only apply glass effect when scrolled and NOT at the very top */
-.sticky-header.scrolled-down {
-  background-color: rgba(21, 21, 30, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .sticky-header .header-icon-container {
@@ -536,29 +532,37 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: center center;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sticky-header.header-shrunk .header-icon-container {
-  transform: scale(0.75);
+  transform: scale(0.7);
 }
 
 .sticky-header .f1-page-title {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: left center;
+  margin-bottom: 0;
+  line-height: 1.1;
 }
 
 .sticky-header.header-shrunk .f1-page-title {
-  transform: scale(0.85) translateX(-5%);
+  transform: scale(0.85);
 }
 
 .sticky-header .header-subtitle {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: left center;
+  display: block;
 }
 
 .sticky-header.header-shrunk .header-subtitle {
-  opacity: 0.7;
-  transform: scale(0.9) translateY(-2px);
+  opacity: 0;
+  height: 0;
+  pointer-events: none;
+  transform: translateY(-5px);
 }
 
 /* Pull to Refresh Spacing Balance */

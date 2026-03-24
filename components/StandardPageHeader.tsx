@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useState, useEffect, useRef } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { Row, Col } from 'react-bootstrap';
 import { ChevronLeft } from 'lucide-react';
 import HapticButton from './HapticButton';
@@ -27,8 +27,6 @@ export default function StandardPageHeader({
   rightElement
 }: StandardPageHeaderProps) {
   const [headerShrunk, setHeaderShrunk] = useState(false);
-  const [scrolledDown, setScrolledDown] = useState(false);
-  const lastScrollY = useRef(0);
 
   useEffect(() => {
     const scrollContainer = document.getElementById('main-scroll-container');
@@ -36,20 +34,13 @@ export default function StandardPageHeader({
 
     const handleScroll = () => {
       const top = scrollContainer.scrollTop;
-      const isScrollingUp = top < lastScrollY.current;
       
-      // 1. Transparency trigger (very top)
-      setScrolledDown(top > 5);
-
-      // 2. Responsive Shrink/Expand
-      if (!headerShrunk && top > 40) {
+      // Simple hysteresis to prevent jitter
+      if (!headerShrunk && top > 50) {
         setHeaderShrunk(true);
-      } else if (headerShrunk && (isScrollingUp || top < 10)) {
-        // Expand if we scroll up even a little, OR if we reach the very top
+      } else if (headerShrunk && top < 10) {
         setHeaderShrunk(false);
       }
-
-      lastScrollY.current = top;
     };
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
@@ -57,9 +48,9 @@ export default function StandardPageHeader({
   }, [headerShrunk]);
 
   return (
-    <div className={`sticky-header ${headerShrunk ? 'header-shrunk' : ''} ${scrolledDown ? 'scrolled-down' : ''}`}>
-      <Row className="align-items-center">
-        <Col xs={rightElement ? 12 : true} md={rightElement ? 7 : true}>
+    <div className={`sticky-header ${headerShrunk ? 'header-shrunk' : ''}`}>
+      <Row className="align-items-center w-100 m-0">
+        <Col xs={rightElement ? 12 : true} md={rightElement ? 7 : true} className="p-0">
           <div className="d-flex align-items-center">
             {onBack && (
               <HapticButton 
@@ -70,7 +61,7 @@ export default function StandardPageHeader({
                 <ChevronLeft size={28} />
               </HapticButton>
             )}
-            <div className="bg-danger rounded-3 p-2 me-3 d-flex align-items-center justify-content-center shadow-sm header-icon-container" style={{ flexShrink: 0 }}>
+            <div className="bg-danger rounded-3 header-icon-container me-3 shadow-sm">
               {icon}
             </div>
             <div>
@@ -87,7 +78,7 @@ export default function StandardPageHeader({
           </div>
         </Col>
         {rightElement && (
-          <Col xs={12} md={5} className="text-md-end mt-3 mt-md-0">
+          <Col xs={12} md={5} className="text-md-end mt-2 mt-md-0 p-0">
             {rightElement}
           </Col>
         )}
