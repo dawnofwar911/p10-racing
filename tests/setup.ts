@@ -51,7 +51,9 @@ const originalWarn = console.warn;
 const suppressions = [
   'Not implemented: navigation to another Document',
   'supabase.channel is not available',
-  '--localstorage-file'
+  '--localstorage-file',
+  'Multiple GoTrueClient instances detected',
+  'Request timed out after'
 ];
 
 console.error = (...args) => {
