@@ -11,17 +11,16 @@ test.describe('Predict Flow (Guest User)', () => {
         const drivers = [
           { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "Ferrari", teamId: "00_ferrari", color: "#E80020" },
           { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "Ferrari", teamId: "00_ferrari", color: "#E80020" },
-          { id: "verstappen", name: "Max Verstappen", code: "VER", team: "Red Bull", teamId: "01_redbull", color: "#3671C6" },
         ];
 
-        // Fill up to 22 drivers
-        for (let i = 3; i < 22; i++) {
+        // Fill up to 22 drivers with generic data that sorts AFTER our targets
+        for (let i = 2; i < 22; i++) {
           drivers.push({
             id: `driver_${i}`,
             name: `Driver ${i}`,
             code: `D${i}`,
-            team: "Generic Team",
-            teamId: "zz_generic",
+            team: "Other Team",
+            teamId: `zz_team_${i}`,
             color: "#ffffff"
           });
         }
@@ -87,7 +86,8 @@ test.describe('Predict Flow (Guest User)', () => {
 
     // 2. Handle Login Wall
     const guestInput = page.getByPlaceholder(/Enter name/i);
-    await expect(guestInput.or(page.getByText(/P10 Finisher/i))).toBeVisible({ timeout: 20000 });
+    const p10Heading = page.getByText(/P10 Finisher/i);
+    await expect(guestInput.or(p10Heading)).toBeVisible({ timeout: 20000 });
     
     if (await guestInput.isVisible()) {
       await guestInput.fill('E2EGuest');
@@ -96,43 +96,27 @@ test.describe('Predict Flow (Guest User)', () => {
     }
 
     // 3. Select P10 Driver
-    // We explicitly click the P10 tab if it exists
-    const p10Tab = page.locator('.f1-tab-container').getByText(/Pick P10/i);
-    if (await p10Tab.isVisible()) {
-      await p10Tab.click();
-    }
-    
-    // We just pick the first driver in the list regardless of name for maximum stability
-    const firstDriver = page.locator('.driver-list-scroll > div').first();
-    await expect(firstDriver).toBeVisible({ timeout: 15000 });
-    
-    const p10Name = await firstDriver.locator('.fw-bold.text-white.small').textContent();
-    await firstDriver.click({ force: true });
+    // CRITICAL: We must target the VISIBLE driver list (mobile view) 
+    // to avoid selecting the hidden desktop list which causes "hidden element" errors.
+    const lewis = page.locator('.d-lg-none').getByText('Lewis Hamilton').first();
+    await expect(lewis).toBeVisible({ timeout: 15000 });
+    await lewis.click({ force: true });
 
     // 4. Select DNF Driver
-    // Switch to DNF tab
+    // Switch to DNF tab explicitly
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
     await expect(dnfTab).toBeVisible({ timeout: 10000 });
     await dnfTab.click();
     
-    // Pick the second driver in the list for DNF
-    const secondDriver = page.locator('.driver-list-scroll > div').nth(1);
-    await expect(secondDriver).toBeVisible({ timeout: 10000 });
-    
-    const dnfName = await secondDriver.locator('.fw-bold.text-white.small').textContent();
-    await secondDriver.click({ force: true });
+    const charles = page.locator('.d-lg-none').getByText('Charles Leclerc').first();
+    await expect(charles).toBeVisible({ timeout: 10000 });
+    await charles.click({ force: true });
 
     // 5. Verify Summary View
     await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
     
-    // 6. Verify picks are recorded (using names we captured during interaction)
-    if (p10Name) {
-      const lastName = p10Name.split(' ').pop() || p10Name;
-      await expect(page.getByText(new RegExp(lastName, 'i'))).toBeVisible();
-    }
-    if (dnfName) {
-      const lastName = dnfName.split(' ').pop() || dnfName;
-      await expect(page.getByText(new RegExp(lastName, 'i'))).toBeVisible();
-    }
+    // 6. Verify picks are recorded
+    await expect(page.getByText(/Hamilton/i)).toBeVisible();
+    await expect(page.getByText(/Leclerc/i)).toBeVisible();
   });
 });
