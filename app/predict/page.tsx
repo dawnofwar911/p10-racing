@@ -640,91 +640,18 @@ function PredictPage() {
   };
   const guestSelection = getGuestSelection();
 
-  if (!session && !username) {
-    return (
-      <>
-        <Container className="mt-2 mt-md-3 mb-4">
-          <Row className="justify-content-center">
-            <Col md={6} lg={5}>
-              <Card className="p-4 border-secondary shadow-lg overflow-hidden">
-                <h2 className="h4 mb-4 fw-bold text-center">Who&apos;s Predicting?</h2>
-                <div className="mb-4">
-                  <HapticLink 
-                    href="/auth"
-                    className="btn btn-f1 w-100 py-3 fw-bold mb-2 shadow-sm text-decoration-none d-inline-flex align-items-center justify-content-center"
-                  >
-                    SIGN IN / CREATE ACCOUNT
-                  </HapticLink>
-                  <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
-                </div>
-
-                {guestSelection && (
-                  <div className="mb-4 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded text-center">
-                    <div className="text-danger small fw-bold text-uppercase mb-2">Unsaved Picks Found!</div>
-                    <div className="d-flex justify-content-center gap-3">
-                      <div className="text-center">
-                        <div className="extra-small text-muted text-uppercase fw-bold">P10</div>
-                        <div className="fw-bold">{getDriverDisplayName(guestSelection.p10, drivers)}</div>
-                      </div>
-                      <div className="border-start border-secondary opacity-25"></div>
-                      <div className="text-center">
-                        <div className="extra-small text-muted text-uppercase fw-bold">DNF</div>
-                        <div className="fw-bold text-danger">{getDriverDisplayName(guestSelection.dnf, drivers)}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="text-center mb-4">
-                  <hr className="border-secondary opacity-25" />
-                  <span className="bg-dark px-2 text-muted small position-relative" style={{ top: '-13px' }}>OR PLAY AS GUEST</span>
-                </div>
-
-                {existingPlayers.length > 0 && (
-                  <div className="mb-4 text-center">
-                    <Form.Label className="text-muted small text-uppercase fw-bold mb-3">Continue as Recent Player</Form.Label>
-                    <div className="d-flex flex-wrap justify-content-center gap-2">
-                      {existingPlayers.map(p => (
-                        <HapticButton key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</HapticButton>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <Form onSubmit={handleGuestLogin}>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="small text-uppercase fw-bold opacity-75">New Guest Name</Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      placeholder="Enter name" 
-                      value={tempUsername} 
-                      onChange={(e) => setTempUsername(e.target.value)} 
-                      minLength={3} 
-                      required 
-                      className="bg-dark text-white border-secondary py-2 shadow-sm" 
-                    />
-                  </Form.Group>
-                  <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold shadow-sm rounded-pill">
-                    PLAY AS GUEST
-                  </HapticButton>
-                </Form>
-              </Card>
-            </Col>
-          </Row>
-        </Container>
-        <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
-      </>
-    );
-  }
-
   const hasPicks = p10Driver && dnfDriver;
   const showSummary = (submitted || hasPicks) && !isEditing;
 
   const summaryView = (
-    <Container className="mt-2 mt-md-3 mb-4">
+    <>
       <StandardPageHeader
-        title={nextRace?.name || 'Grand Prix'}
-        subtitle={session ? `Logged in as: ${username}` : `Playing as Guest: ${username}`}
+        title="Predictions"
+        subtitle={
+          <span className="text-truncate d-block">
+            {nextRace?.name} • {session ? username : `Guest: ${username}`}
+          </span>
+        }
         icon={<Target size={24} className="text-white" />}
         rightElement={
           <div className="d-flex gap-2 align-items-center">
@@ -812,7 +739,7 @@ function PredictPage() {
           </HapticLink>
         </div>
       </div>
-    </Container>
+    </>
   );
 
   const tabs: TabOption<PredictTab>[] = [];
@@ -822,10 +749,93 @@ function PredictPage() {
   tabs.push({ id: 'p10', label: 'Pick P10', icon: <Target size={16} /> });
   tabs.push({ id: 'dnf', label: 'Pick DNF', icon: <Flame size={16} /> });
 
+  if (!session && !username) {
+    return (
+      <>
+        <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: '1400px' }}>
+          <StandardPageHeader
+            title="Predictions"
+            subtitle="Who is Predicting?"
+            icon={<Target size={24} className="text-white" />}
+          />
+          <Row className="justify-content-center mt-4">
+            <Col md={6} lg={5}>
+              <Card className="p-4 border-secondary shadow-lg overflow-hidden">
+                <div className="mb-4">
+                  <HapticLink 
+                    href="/auth"
+                    className="btn btn-f1 w-100 py-3 fw-bold mb-2 shadow-sm text-decoration-none d-inline-flex align-items-center justify-content-center"
+                  >
+                    SIGN IN / CREATE ACCOUNT
+                  </HapticLink>
+                  <p className="text-center text-muted small mt-2">Recommended to save your picks forever.</p>
+                </div>
+
+                {guestSelection && (
+                  <div className="mb-4 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded text-center">
+                    <div className="text-danger small fw-bold text-uppercase mb-2">Unsaved Picks Found!</div>
+                    <div className="d-flex justify-content-center gap-3">
+                      <div className="text-center">
+                        <div className="extra-small text-muted text-uppercase fw-bold">P10</div>
+                        <div className="fw-bold">{getDriverDisplayName(guestSelection.p10, drivers)}</div>
+                      </div>
+                      <div className="border-start border-secondary opacity-25"></div>
+                      <div className="text-center">
+                        <div className="extra-small text-muted text-uppercase fw-bold">DNF</div>
+                        <div className="fw-bold text-danger">{getDriverDisplayName(guestSelection.dnf, drivers)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-center mb-4">
+                  <hr className="border-secondary opacity-25" />
+                  <span className="bg-dark px-2 text-muted small position-relative" style={{ top: '-13px' }}>OR PLAY AS GUEST</span>
+                </div>
+
+                {existingPlayers.length > 0 && (
+                  <div className="mb-4 text-center">
+                    <Form.Label className="text-muted small text-uppercase fw-bold mb-3">Continue as Recent Player</Form.Label>
+                    <div className="d-flex flex-wrap justify-content-center gap-2">
+                      {existingPlayers.map(p => (
+                        <HapticButton key={p} variant="outline-light" size="sm" onClick={() => selectUser(p)} className="rounded-pill px-3 fw-bold">{p}</HapticButton>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Form onSubmit={handleGuestLogin}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="small text-uppercase fw-bold opacity-75">New Guest Name</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Enter name" 
+                      value={tempUsername} 
+                      onChange={(e) => setTempUsername(e.target.value)} 
+                      minLength={3} 
+                      required 
+                      className="bg-dark text-white border-secondary py-2 shadow-sm" 
+                    />
+                  </Form.Group>
+                  <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold shadow-sm rounded-pill">
+                    PLAY AS GUEST
+                  </HapticButton>
+                </Form>
+              </Card>
+            </Col>
+          </Row>
+        </Container>
+        <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
+      </>
+    );
+  }
+
   if (showSummary || isLocked) {
     return (
       <>
-        {summaryView}
+        <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: '1400px' }}>
+          {summaryView}
+        </Container>
         <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
       </>
     );
@@ -859,8 +869,12 @@ function PredictPage() {
   return (
     <>
       <SwipeablePageLayout
-        title={nextRace?.name || 'Grand Prix'}
-        subtitle={session ? `Logged in as: ${username}` : `Playing as Guest: ${username}`}
+        title="Predictions"
+        subtitle={
+          <span className="text-truncate d-block">
+            {nextRace?.name} • {session ? username : `Guest: ${username}`}
+          </span>
+        }
         icon={<Target size={24} className="text-white" />}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -893,7 +907,7 @@ function PredictPage() {
 export default function PredictPageWrapper() {
   return (
     <Suspense fallback={
-      <div className="container mt-2 mt-md-3">
+      <div className="container mt-2 mt-md-3" style={{ maxWidth: '1400px' }}>
         <LoadingView text="Loading Predictor..." />
       </div>
     }>

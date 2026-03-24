@@ -26,7 +26,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await expect(page).toHaveURL(/\/predict/);
     
     // Use specific role to avoid strict mode ambiguity
-    await expect(page.getByRole('heading', { name: /Who's Predicting/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Predictions/i })).toBeVisible();
 
     // 2. Navigate to Leagues
     await bottomNav.getByRole('link', { name: /Leagues/i }).click();
@@ -101,7 +101,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
     // Check for "Grand Prix" which is part of the race heading (e.g. "Japanese Grand Prix")
     // or the login wall if session dropped. 
     // This is more robust than "P10 Prediction" which might be delayed by race fetching.
-    const loginWallHeading = page.getByRole('heading', { name: /Who's Predicting/i });
+    const loginWallHeading = page.getByRole('heading', { name: /Predictions/i });
     const raceHeading = page.getByText(/Grand Prix/i);
     
     await expect(loginWallHeading.or(raceHeading)).toBeVisible({ timeout: 15000 });

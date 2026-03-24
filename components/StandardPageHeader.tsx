@@ -49,8 +49,8 @@ export default function StandardPageHeader({
 
   return (
     <div className={`sticky-header ${headerShrunk ? 'header-shrunk' : ''}`}>
-      <Row className="align-items-center w-100 m-0">
-        <Col xs={rightElement ? 12 : true} md={rightElement ? 7 : true} className="p-0">
+      <Row className="align-items-center w-100 m-0 flex-nowrap">
+        <Col className="p-0 flex-grow-1 overflow-hidden">
           <div className="d-flex align-items-center">
             {onBack && (
               <HapticButton 
@@ -64,13 +64,13 @@ export default function StandardPageHeader({
             <div className="bg-danger rounded-3 header-icon-container me-3 shadow-sm">
               {icon}
             </div>
-            <div>
+            <div className="overflow-hidden">
               <div className="d-flex align-items-center gap-2">
-                <h1 className="h2 mb-0 f1-page-title text-white">{title}</h1>
+                <h1 className="h2 mb-0 f1-page-title text-white text-truncate">{title}</h1>
                 {badge}
               </div>
               {subtitle && (
-                <small className="text-muted text-uppercase fw-bold letter-spacing-1 header-subtitle" style={{ fontSize: '0.65rem' }}>
+                <small className="text-muted text-uppercase fw-bold letter-spacing-1 header-subtitle text-truncate d-block" style={{ fontSize: '0.65rem' }}>
                   {subtitle}
                 </small>
               )}
@@ -78,7 +78,7 @@ export default function StandardPageHeader({
           </div>
         </Col>
         {rightElement && (
-          <Col xs={12} md={5} className="text-md-end mt-2 mt-md-0 p-0">
+          <Col xs="auto" className="text-end p-0 ps-2">
             {rightElement}
           </Col>
         )}
