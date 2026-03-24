@@ -79,6 +79,7 @@ const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], dri
 );
 
 export default function StandingsPage() {
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
   const [standings, setStandings] = useState<Driver[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -103,6 +104,12 @@ export default function StandingsPage() {
 
   const [loading, setLoading] = useState(!standings.length && !constructorStandings.length);
   const [view, setView] = useState<'drivers' | 'constructors'>('drivers');
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   async function load(quiet = false) {
     if (!quiet) setLoading(true);
@@ -139,7 +146,7 @@ export default function StandingsPage() {
   return (
     <SwipeablePageLayout
       title="World Championship"
-      subtitle={typeof window !== 'undefined' && window.innerWidth >= 992 ? 'Driver & Constructor Standings' : (view === 'drivers' ? 'Driver Standings' : 'Constructor Standings')}
+      subtitle={windowWidth >= 992 ? 'Driver & Constructor Standings' : (view === 'drivers' ? 'Driver Standings' : 'Constructor Standings')}
       icon={<Flag size={24} className="text-white" />}
       activeTab={view}
       onTabChange={setView}
