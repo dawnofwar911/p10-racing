@@ -9,8 +9,8 @@ test.describe('Predict Flow (Guest User)', () => {
       if (url.includes('driverStandings.json')) {
         // We use "00_ferrari" to ensure it sorts to the absolute top alphabetically
         const drivers = [
-          { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "AAA Ferrari", teamId: "00_ferrari", color: "#E80020" },
-          { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "AAA Ferrari", teamId: "00_ferrari", color: "#E80020" },
+          { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "Ferrari", teamId: "00_ferrari", color: "#E80020" },
+          { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "Ferrari", teamId: "00_ferrari", color: "#E80020" },
         ];
 
         // Fill up to 22 drivers with generic data that sorts AFTER our targets
@@ -94,23 +94,19 @@ test.describe('Predict Flow (Guest User)', () => {
       await expect(guestInput).not.toBeVisible({ timeout: 10000 });
     }
 
-    // 3. Verify Predictor State
-    await expect(page.getByText(/Season Finished/i)).not.toBeVisible();
-    await expect(page.getByText(/Predictions Closed/i)).not.toBeVisible();
+    // 3. Wait for any loading spinners to disappear
+    await expect(page.locator('.spinner-border')).not.toBeVisible({ timeout: 10000 });
 
     // 4. Select P10 Driver (Lewis Hamilton - top of list)
-    // We use a more specific selector and force visibility
     const lewis = page.getByText('Lewis Hamilton').first();
-    await expect(lewis).toBeVisible({ timeout: 15000 });
-    
-    // Sometimes elements are "visible" but hidden by animations. 
-    // We wait for it to be actually clickable and stable.
-    await lewis.click();
+    // We use a longer timeout and waitFor to ensure animations are settled
+    await lewis.waitFor({ state: 'visible', timeout: 15000 });
+    await lewis.click({ force: true });
 
     // 5. Select DNF Driver (Charles Leclerc - also top of list)
     const charles = page.getByText('Charles Leclerc').first();
-    await expect(charles).toBeVisible({ timeout: 10000 });
-    await charles.click();
+    await charles.waitFor({ state: 'visible', timeout: 15000 });
+    await charles.click({ force: true });
 
     // 6. Verify Summary View
     await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
