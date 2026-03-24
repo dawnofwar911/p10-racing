@@ -393,7 +393,7 @@ export default function Home() {
 
   return (
     <>
-      <Container className="mt-2 mt-md-3 flex-grow-1">
+      <Container className="mt-2 mt-md-3 flex-grow-1" style={{ maxWidth: '800px' }}>
         <StandardPageHeader 
           title="F1 PREDICTOR"
           subtitle={session ? `Hello, ${username}` : 'Play as Guest'}
