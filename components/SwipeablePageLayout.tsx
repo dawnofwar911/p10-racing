@@ -176,7 +176,7 @@ export default function SwipeablePageLayout<T extends string>({
   );
 
   return (
-    <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: splitOnWide ? '1400px' : '800px' }}>
+    <Container className="mb-4" style={{ maxWidth: splitOnWide ? '1400px' : '800px' }}>
       {header}
       {onRefresh ? (
         <PullToRefresh onRefresh={onRefresh}>
