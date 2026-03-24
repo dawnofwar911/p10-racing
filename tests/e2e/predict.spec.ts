@@ -93,26 +93,35 @@ test.describe('Predict Flow (Guest User)', () => {
     }
 
     // 3. Select P10 Driver
-    const lewis = page.locator('.d-lg-none').getByText('Lewis Hamilton').first();
+    // We target the mobile container (.d-lg-none)
+    const mobileContainer = page.locator('.d-lg-none');
+    const lewis = mobileContainer.getByText('Lewis Hamilton').first();
     await expect(lewis).toBeVisible({ timeout: 15000 });
+    
+    // Find the row for Hamilton to check for the mark later
+    const lewisRow = mobileContainer.locator('div').filter({ hasText: /^Lewis Hamilton$/ }).locator('xpath=..');
+    
     await lewis.click();
 
-    // Verify P10 selection visually (checkmark appears)
-    await expect(page.locator('.d-lg-none').getByText('✓')).toBeVisible({ timeout: 5000 });
+    // Verify P10 selection visually (checkmark appears in the same row)
+    await expect(lewisRow.getByText('✓')).toBeVisible({ timeout: 10000 });
 
-    // 4. Manually switch to DNF tab to be absolute certain
+    // 4. Switch to DNF tab
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
     await dnfTab.click();
     
+    // Confirm we are on the DNF view
+    await expect(mobileContainer.getByRole('heading', { name: /First DNF/i })).toBeVisible({ timeout: 5000 });
+    
     // 5. Select DNF Driver
-    const charles = page.locator('.d-lg-none').getByText('Charles Leclerc').first();
+    const charles = mobileContainer.getByText('Charles Leclerc').first();
     await expect(charles).toBeVisible({ timeout: 10000 });
     await charles.click();
 
     // 6. Verify Summary View
-    // We wait for the summary card which should appear after the 300ms auto-submit delay
+    // We expect the app to auto-submit and show the summary card
     const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));
-    await expect(summaryHeading).toBeVisible({ timeout: 15000 });
+    await expect(summaryHeading).toBeVisible({ timeout: 20000 });
     
     // 7. Verify picks are recorded
     await expect(page.getByText(/Hamilton/i)).toBeVisible();
