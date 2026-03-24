@@ -66,3 +66,17 @@ This document outlines the strategic roadmap for upcoming features designed to i
     *   Create a "Profile Customization" section in `app/settings/page.tsx`.
     *   Use the `favorite_team` color to dynamically theme the user's UI (accent colors, buttons).
 *   **Social:** Display the user's favorite driver/team icon next to their name on the global and league leaderboards.
+
+---
+
+## 🛠️ Internal Maintenance & Refinement
+
+### 1. 📐 Fix Maskable Icon Padding
+**Goal:** Ensure the PWA icon looks polished on all Android launchers.
+*   **Issue:** Current `logo.svg` is cropped by Android's circular/squircle mask because it lacks sufficient safe-zone padding.
+*   **Action:** Update the SVG to have more transparent padding around the central logo.
+
+### 2. 🧮 Unified Scoring Utility
+**Goal:** Centralize all prediction-to-point logic to prevent duplication.
+*   **Action:** Continue refactoring `lib/scoring.ts` to provide a single entry point for season-wide and single-race point calculations.
+

@@ -8,7 +8,7 @@ import { fetchAllSimplifiedResults } from '@/lib/results';
 import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import { calculateSeasonPoints } from '@/lib/scoring';
+import { calculateSeasonPoints, mapPredictionsByUser } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useNotification } from '@/components/Notification';
 import { isTestAccount } from '@/lib/utils/profiles';
@@ -254,17 +254,14 @@ export default function Home() {
               { data: predictions }
             ] = await Promise.all([
               supabase.from('profiles').select('id, username'),
+              // Type cast: PostgrestFilterBuilder is thenable but not a standard Promise, 
+              // requiring double-casting for use in Promise.all.
               supabase.from('predictions').select('*').ilike('race_id', `${CURRENT_SEASON}_%`) as unknown as Promise<{ data: DbPrediction[] | null }>
             ]);
 
-            if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
+            if (profiles && Object.keys(raceResultsMap).length > 0) {
               // 2. Pre-process predictions into a Map for O(1) user lookup
-              const predByUserId = (predictions || []).reduce((acc, pred) => {
-                if (!acc[pred.user_id]) acc[pred.user_id] = {};
-                const round = pred.race_id.split('_')[1];
-                acc[pred.user_id][round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-                return acc;
-              }, {} as Record<string, Record<string, { p10: string, dnf: string }>>);
+              const predByUserId = mapPredictionsByUser(predictions);
 
               // 3. Map players and calculate points
               const players = profiles

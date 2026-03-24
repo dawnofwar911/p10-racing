@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
-import { calculateSeasonPoints } from '@/lib/scoring';
+import { calculateSeasonPoints, mapPredictionsByUser } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { fetchAllSimplifiedResults } from '@/lib/results';
@@ -77,17 +77,14 @@ export default function LeaderboardPage() {
           { data: predictions },
         ] = await Promise.all([
           withTimeout(supabase.from('profiles').select('id, username')),
+          // Type cast: PostgrestFilterBuilder is thenable but not a standard Promise, 
+          // requiring double-casting for use in Promise.all.
           withTimeout(supabase.from('predictions').select('*').ilike('race_id', `${CURRENT_SEASON}_%`) as unknown as Promise<{ data: DbPrediction[] | null }>),
         ]);
 
         if (profiles) {
           // Pre-process predictions into a Map for O(1) user lookup
-          const predByUserId = (predictions || []).reduce((acc, pred) => {
-            if (!acc[pred.user_id]) acc[pred.user_id] = {};
-            const round = pred.race_id.split('_')[1];
-            acc[pred.user_id][round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-            return acc;
-          }, {} as Record<string, Record<string, { p10: string, dnf: string }>>);
+          const predByUserId = mapPredictionsByUser(predictions);
 
           const globalPlayers = profiles
             .filter(p => !isTestAccount(p.username) || p.id === currentUserId)
