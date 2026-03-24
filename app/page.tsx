@@ -23,6 +23,8 @@ import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
+import StandardPageHeader from '@/components/StandardPageHeader';
+import { User } from 'lucide-react';
 
 interface HomeRace {
   id: string;
@@ -46,6 +48,7 @@ export default function Home() {
   
   // Use Global Auth Context
   const { currentUser, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
+  const username = currentUser || session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || '';
   const { drivers: allDrivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization (Zero Pop-in)
@@ -390,12 +393,18 @@ export default function Home() {
 
   return (
     <>
-      <Container className="mt-3 mt-md-4 flex-grow-1">
-        <Row className="justify-content-center text-center">
-          <Col md={8} className="mb-2">
-            <h1 className="display-5 fw-bold mb-2 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
-            <p className="small text-white opacity-75 mb-4 mx-auto" style={{ maxWidth: '500px' }}>
-              Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
+      <Container className="mt-2 mt-md-3 flex-grow-1">
+        <StandardPageHeader 
+          title="F1 PREDICTOR"
+          subtitle={session ? `Hello, ${username}` : 'Play as Guest'}
+          icon={<User size={24} className="text-white" />}
+        />
+        <Row className="justify-content-center text-center mt-2 mt-md-3">
+          <Col md={10} lg={8} className="mb-1">
+            <h1 className="display-5 fw-bold mb-1 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
+            <p className="small text-white opacity-75 mb-3 mx-auto" style={{ maxWidth: '600px' }}>
+              Predict the 10th place finisher and the first DNF of the<br />
+              <span className="text-danger fw-bold">{nextRace?.name || 'next Grand Prix'}</span>.
             </p>
             
             {nextRace && !loading && isSeasonFinished && (
@@ -416,7 +425,7 @@ export default function Home() {
             )}
 
             {!isSeasonFinished && (
-              <div style={{ minHeight: "115px" }} className="d-flex flex-column align-items-center justify-content-center mb-4" suppressHydrationWarning>
+              <div style={{ minHeight: "100px" }} className="d-flex flex-column align-items-center justify-content-center mb-3" suppressHydrationWarning>
                 {nextRace && (
                   <>
                     {showCountdown ? (
@@ -425,17 +434,17 @@ export default function Home() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
                       >
-                        <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                        <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
+                        <div className="text-uppercase fw-bold text-danger mb-1 letter-spacing-2" style={{ fontSize: '0.6rem', opacity: 0.8 }}>Race Starts In</div>
+                        <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '300px' }}>
                           {[
                             { label: 'D', val: countdown.d },
                             { label: 'H', val: countdown.h },
                             { label: 'M', val: countdown.m },
                             { label: 'S', val: countdown.s }
                           ].map(item => (
-                            <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
-                              <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
-                              <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
+                            <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '55px', height: '55px', flexShrink: 0 }}>
+                              <div className="h5 fw-bold text-white mb-0 line-height-1">{item.val}</div>
+                              <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.5rem', letterSpacing: '0.5px' }}>{item.label}</div>
                             </div>
                           ))}
                         </div>

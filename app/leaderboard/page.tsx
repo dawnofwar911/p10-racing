@@ -198,10 +198,6 @@ export default function LeaderboardPage() {
           />
         )
       )}
-    >
-      {loading ? (
-        <LoadingView text="Calculating Leaderboard..." />
-      ) : null}
-    </SwipeablePageLayout>
+    />
   );
 }

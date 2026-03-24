@@ -7,7 +7,6 @@ import { Session } from '@supabase/supabase-js';
 import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import { useSearchParams } from 'next/navigation';
-import LoadingView from '@/components/LoadingView';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
@@ -16,6 +15,7 @@ import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import { Trophy, Settings as SettingsIcon } from 'lucide-react';
+import LoadingView from '@/components/LoadingView';
 
 interface League {
   id: string;
@@ -495,9 +495,6 @@ function LeaguesContent() {
         { id: 'my-leagues', label: 'My Leagues', icon: <Trophy size={16} /> },
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }
       ]}
-      renderTabContent={(tabId) => (
-        tabId === 'my-leagues' ? myLeaguesView : manageLeaguesView
-      )}
     >
       <div className="mt-3">
         <FeedbackAlerts 
@@ -514,7 +511,11 @@ function LeaguesContent() {
 
 export default function LeaguesPage() {
   return (
-    <Suspense fallback={<LoadingView />}>
+    <Suspense fallback={
+      <div className="container mt-2 mt-md-3">
+        <LoadingView text="Loading Leagues..." />
+      </div>
+    }>
       <LeaguesContent />
     </Suspense>
   );

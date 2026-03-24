@@ -139,7 +139,12 @@ export default function StandingsPage() {
   return (
     <SwipeablePageLayout
       title="World Championship"
-      subtitle={view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}
+      subtitle={
+        <>
+          <span className="d-lg-none">{view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}</span>
+          <span className="d-none d-lg-block">Driver & Constructor Standings</span>
+        </>
+      }
       icon={<Flag size={24} className="text-white" />}
       activeTab={view}
       onTabChange={setView}
