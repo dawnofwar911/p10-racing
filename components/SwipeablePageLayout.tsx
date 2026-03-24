@@ -98,7 +98,7 @@ export default function SwipeablePageLayout<T extends string>({
   };
 
   const content = (
-    <Container className="mt-4 mb-4 overflow-hidden" style={{ maxWidth: splitOnWide ? '1400px' : '800px' }}>
+    <Container className="mt-2 mt-md-3 mb-4 overflow-hidden" style={{ maxWidth: splitOnWide ? '1400px' : '800px' }}>
       {/* 1. Standardized F1 Header */}
       <StandardPageHeader
         title={title}

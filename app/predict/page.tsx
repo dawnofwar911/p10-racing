@@ -635,7 +635,7 @@ function PredictPage() {
   if (!session && !username) {
     return (
       <>
-        <Container className="mt-5">
+        <Container className="mt-2 mt-md-3 mb-4">
           <Row className="justify-content-center">
             <Col md={6} lg={5}>
               <Card className="p-4 border-secondary shadow-lg overflow-hidden">
@@ -713,7 +713,7 @@ function PredictPage() {
   const showSummary = (submitted || hasPicks) && !isEditing;
 
   const summaryView = (
-    <Container className="mt-4 mb-4">
+    <Container className="mt-2 mt-md-3 mb-4">
       <StandardPageHeader
         title={nextRace?.name || 'Grand Prix'}
         subtitle={session ? `Logged in as: ${username}` : `Playing as Guest: ${username}`}
