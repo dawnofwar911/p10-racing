@@ -495,3 +495,27 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 .letter-spacing-1 { letter-spacing: 1px; }
 .letter-spacing-2 { letter-spacing: 2px; }
 .extra-small { font-size: 0.65rem; }
+
+/* Sticky Header Refinements */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: rgba(21, 21, 30, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  margin-left: -1rem; /* Offset Container padding */
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Ensure no double margin when sticky is active */
+.sticky-header .row {
+  margin-bottom: 0 !important;
+}
+
