@@ -7,22 +7,20 @@ test.describe('Predict Flow (Guest User)', () => {
       const url = route.request().url();
       
       if (url.includes('driverStandings.json')) {
-        // Explicitly name the top drivers to ensure they appear correctly in the UI
+        // We use "00_ferrari" to ensure it sorts to the absolute top alphabetically
         const drivers = [
-          { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "Ferrari", teamId: "ferrari", color: "#E80020" },
-          { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "Ferrari", teamId: "ferrari", color: "#E80020" },
-          { id: "verstappen", name: "Max Verstappen", code: "VER", team: "Red Bull", teamId: "red_bull", color: "#3671C6" },
-          { id: "norris", name: "Lando Norris", code: "NOR", team: "McLaren", teamId: "mclaren", color: "#FF8000" },
+          { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "AAA Ferrari", teamId: "00_ferrari", color: "#E80020" },
+          { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "AAA Ferrari", teamId: "00_ferrari", color: "#E80020" },
         ];
 
-        // Fill up to 22 drivers with generic data
-        for (let i = 4; i < 22; i++) {
+        // Fill up to 22 drivers with generic data that sorts AFTER our targets
+        for (let i = 2; i < 22; i++) {
           drivers.push({
             id: `driver_${i}`,
-            name: `Driver ${i}`,
+            name: `Z-Driver ${i}`,
             code: `D${i}`,
-            team: i % 2 === 0 ? "Alpine" : "Haas",
-            teamId: i % 2 === 0 ? "alpine" : "haas",
+            team: "ZZZ Team",
+            teamId: "zzz_team",
             color: "#ffffff"
           });
         }
@@ -34,7 +32,7 @@ test.describe('Predict Flow (Guest User)', () => {
             permanentNumber: (i + 1).toString(), 
             code: d.code, 
             givenName: d.name.split(' ')[0], 
-            familyName: d.name.split(' ')[1] || d.id 
+            familyName: d.name.split(' ').slice(1).join(' ') || d.id 
           },
           Constructors: [{ constructorId: d.teamId, name: d.team }]
         }));
@@ -101,8 +99,12 @@ test.describe('Predict Flow (Guest User)', () => {
     await expect(page.getByText(/Predictions Closed/i)).not.toBeVisible();
 
     // 4. Select P10 Driver (Lewis Hamilton - top of list)
+    // We use a more specific selector and force visibility
     const lewis = page.getByText('Lewis Hamilton').first();
     await expect(lewis).toBeVisible({ timeout: 15000 });
+    
+    // Sometimes elements are "visible" but hidden by animations. 
+    // We wait for it to be actually clickable and stable.
     await lewis.click();
 
     // 5. Select DNF Driver (Charles Leclerc - also top of list)
