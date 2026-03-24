@@ -7,7 +7,7 @@ import HapticButton from './HapticButton';
 
 interface StandardPageHeaderProps {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   icon: ReactNode;
   badge?: ReactNode;
   onBack?: () => void;

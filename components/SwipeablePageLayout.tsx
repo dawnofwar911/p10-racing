@@ -18,7 +18,7 @@ export interface TabOption<T extends string> {
 
 interface SwipeablePageLayoutProps<T extends string> {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   icon: ReactNode;
   activeTab: T;
   onTabChange: (tabId: T) => void;
