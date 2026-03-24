@@ -7,7 +7,6 @@ import { Session } from '@supabase/supabase-js';
 import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import { useSearchParams } from 'next/navigation';
-import LoadingView from '@/components/LoadingView';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
@@ -496,7 +495,9 @@ function LeaguesContent() {
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }
       ]}
       renderTabContent={(tabId) => (
-        tabId === 'my-leagues' ? myLeaguesView : manageLeaguesView
+        <Suspense fallback={<div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>}>
+          {tabId === 'my-leagues' ? myLeaguesView : manageLeaguesView}
+        </Suspense>
       )}
     >
       <div className="mt-3">
@@ -506,7 +507,9 @@ function LeaguesContent() {
           success={success}
           setSuccess={setSuccess}
         />
-        {activeTab === 'my-leagues' ? myLeaguesView : manageLeaguesView}
+        <Suspense fallback={<div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>}>
+          {activeTab === 'my-leagues' ? myLeaguesView : manageLeaguesView}
+        </Suspense>
       </div>
     </SwipeablePageLayout>
   );
@@ -514,8 +517,6 @@ function LeaguesContent() {
 
 export default function LeaguesPage() {
   return (
-    <Suspense fallback={<LoadingView />}>
-      <LeaguesContent />
-    </Suspense>
+    <LeaguesContent />
   );
 }

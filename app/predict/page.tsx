@@ -628,7 +628,7 @@ function PredictPage() {
       console.warn('Predict: Failed to parse players list in guest selection', e);
       return null; 
     }
-    return null;
+    return null; 
   };
   const guestSelection = getGuestSelection();
 
@@ -725,85 +725,87 @@ function PredictPage() {
           </div>
         }
       />
-      <div className="text-center mt-3">
-        <Card className={`p-4 border-${isLocked ? 'danger' : 'success'} bg-dark mb-4 shadow-sm mx-auto`} style={{ maxWidth: '900px' }}>
-          <div className="display-6 mb-2">{isSeasonFinished ? '🏆' : (isLocked ? '🔒' : '✅')}</div>
-          <h2 className="h4 mb-3 fw-bold">
-            {isSeasonFinished ? 'Season Finished' : (isLocked ? 'Predictions Closed' : (submitted ? 'Locked and Loaded!' : 'Current Picks'))}
-          </h2>
-          
-          <Row className="text-start justify-content-center">
-            <Col xs={12} lg={isLocked ? 6 : 8} className="mb-4">
-              <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
-                <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">
-                  Your Selection {isLocked && '🔒'}
-                </h3>
-                {hasPicks ? <SummaryPills drivers={drivers} p10Driver={p10Driver} dnfDriver={dnfDriver} isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
-                
-                {!isSeasonFinished && hasPicks && (
-                  <div className="mt-4 text-center">
-                    <HapticButton variant="success" className="w-100 py-2 fw-bold shadow-sm rounded-pill small" style={{ maxWidth: '300px' }} onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
-                  </div>
-                )}
-              </div>
-            </Col>
-
-            {isLocked && (
-              <Col xs={12} lg={6} className="mb-4">
-                <div className="f1-glass-card border-secondary border-opacity-50 h-100">
-                  <div className="f1-card-header text-center text-danger">Community</div>
-                  <div className="p-3">
-                    {communityPredictions.length > 0 ? (
-                      <div className="table-responsive">
-                        <Table variant="dark" hover className="f1-premium-table f1-premium-table-sm mb-0">
-                          <thead>
-                            <tr>
-                              <th className="ps-3 border-0">Player</th>
-                              <th className="text-center border-0">P10</th>
-                              <th className="text-center border-0">DNF</th>
-                            </tr>
-                          </thead>
-                          <tbody>{communityPredictions.map((pred, idx) => (
-                            <tr key={idx}>
-                              <td className="ps-3 text-white fw-bold small">{pred.username}</td>
-                              <td className="text-center">
-                                <div className="d-flex align-items-center justify-content-center gap-2">
-                                  <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.p10)?.color || '#B6BABD' }}></div>
-                                  <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1 extra-small">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
-                                </div>
-                              </td>
-                              <td className="text-center">
-                                <div className="d-flex align-items-center justify-content-center gap-2">
-                                  <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.dnf)?.color || '#B6BABD' }}></div>
-                                  <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25 extra-small">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}</tbody>
-                        </Table>
-                      </div>
-                    ) : <p className="text-muted small text-center py-4">Only you so far!</p>}
-                  </div>
+      <Suspense fallback={<LoadingView text="Loading Picks..." />}>
+        <div className="text-center mt-3">
+          <Card className={`p-4 border-${isLocked ? 'danger' : 'success'} bg-dark mb-4 shadow-sm mx-auto`} style={{ maxWidth: '900px' }}>
+            <div className="display-6 mb-2">{isSeasonFinished ? '🏆' : (isLocked ? '🔒' : '✅')}</div>
+            <h2 className="h4 mb-3 fw-bold">
+              {isSeasonFinished ? 'Season Finished' : (isLocked ? 'Predictions Closed' : (submitted ? 'Locked and Loaded!' : 'Current Picks'))}
+            </h2>
+            
+            <Row className="text-start justify-content-center">
+              <Col xs={12} lg={isLocked ? 6 : 8} className="mb-4">
+                <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
+                  <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">
+                    Your Selection {isLocked && '🔒'}
+                  </h3>
+                  {hasPicks ? <SummaryPills drivers={drivers} p10Driver={p10Driver} dnfDriver={dnfDriver} isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
+                  
+                  {!isSeasonFinished && hasPicks && (
+                    <div className="mt-4 text-center">
+                      <HapticButton variant="success" className="w-100 py-2 fw-bold shadow-sm rounded-pill small" style={{ maxWidth: '300px' }} onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
+                    </div>
+                  )}
                 </div>
               </Col>
-            )}
 
-          </Row>
-        </Card>
-        <div className="d-flex justify-content-center gap-3">
-          {!isLocked && (
-            <HapticButton variant="outline-danger" size="lg" onClick={() => { setIsEditing(true); setSubmitted(false); setActiveTab('p10'); }} className="px-5 fw-bold rounded-pill">
-              Change Picks
-            </HapticButton>
-          )}
-          <HapticLink 
-            href="/"
-            className="btn btn-outline-light btn-lg px-5 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
-          >
-            Back Home
-          </HapticLink>
+              {isLocked && (
+                <Col xs={12} lg={6} className="mb-4">
+                  <div className="f1-glass-card border-secondary border-opacity-50 h-100">
+                    <div className="f1-card-header text-center text-danger">Community</div>
+                    <div className="p-3">
+                      {communityPredictions.length > 0 ? (
+                        <div className="table-responsive">
+                          <Table variant="dark" hover className="f1-premium-table f1-premium-table-sm mb-0">
+                            <thead>
+                              <tr>
+                                <th className="ps-3 border-0">Player</th>
+                                <th className="text-center border-0">P10</th>
+                                <th className="text-center border-0">DNF</th>
+                              </tr>
+                            </thead>
+                            <tbody>{communityPredictions.map((pred, idx) => (
+                              <tr key={idx}>
+                                <td className="ps-3 text-white fw-bold small">{pred.username}</td>
+                                <td className="text-center">
+                                  <div className="d-flex align-items-center justify-content-center gap-2">
+                                    <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.p10)?.color || '#B6BABD' }}></div>
+                                    <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1 extra-small">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
+                                  </div>
+                                </td>
+                                <td className="text-center">
+                                  <div className="d-flex align-items-center justify-content-center gap-2">
+                                    <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.dnf)?.color || '#B6BABD' }}></div>
+                                    <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25 extra-small">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}</tbody>
+                          </Table>
+                        </div>
+                      ) : <p className="text-muted small text-center py-4">Only you so far!</p>}
+                    </div>
+                  </div>
+                </Col>
+              )}
+
+            </Row>
+          </Card>
+          <div className="d-flex justify-content-center gap-3">
+            {!isLocked && (
+              <HapticButton variant="outline-danger" size="lg" onClick={() => { setIsEditing(true); setSubmitted(false); setActiveTab('p10'); }} className="px-5 fw-bold rounded-pill">
+                Change Picks
+              </HapticButton>
+            )}
+            <HapticLink 
+              href="/"
+              className="btn btn-outline-light btn-lg px-5 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
+            >
+              Back Home
+            </HapticLink>
+          </div>
         </div>
-      </div>
+      </Suspense>
     </Container>
   );
 
@@ -870,11 +872,13 @@ function PredictPage() {
           </div>
         }
       >
-        <div className="mt-3 flex-grow-1 d-flex flex-column pb-10 mb-5">
-          {activeTab === 'grid' && startingGrid.length > 0 && <GridView startingGrid={startingGrid} drivers={drivers} />}
-          {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} />}
-          {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={drivers} />}
-        </div>
+        <Suspense fallback={<LoadingView text="Loading Drivers..." />}>
+          <div className="mt-3 flex-grow-1 d-flex flex-column pb-10 mb-5">
+            {activeTab === 'grid' && startingGrid.length > 0 && <GridView startingGrid={startingGrid} drivers={drivers} />}
+            {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} />}
+            {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={drivers} />}
+          </div>
+        </Suspense>
       </SwipeablePageLayout>
 
       <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
@@ -884,8 +888,6 @@ function PredictPage() {
 
 export default function PredictPageWrapper() {
   return (
-    <Suspense fallback={<LoadingView />}>
-      <PredictPage />
-    </Suspense>
+    <PredictPage />
   );
 }

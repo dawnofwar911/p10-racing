@@ -3,7 +3,6 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import Loading from './loading';
 import NativeWrapper from '@/components/NativeWrapper';
 import PageTransition from '@/components/PageTransition';
 import OfflineStatus from '@/components/OfflineStatus';
@@ -48,7 +47,7 @@ export default function RootLayout({
               
               {/* THE PERMANENT SCROLL CONTAINER */}
               <main id="main-scroll-container">
-                <Suspense fallback={<Loading />}>
+                <Suspense fallback={null}>
                   <PageTransition>
                     {children}
                   </PageTransition>

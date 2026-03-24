@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Row, Col, Card } from 'react-bootstrap';
+import { Row, Col, Card, Spinner } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { History } from 'lucide-react';
 import { triggerLightHaptic } from '@/lib/utils/haptics';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
-import LoadingView from '@/components/LoadingView';
 import EmptyState from '@/components/EmptyState';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 
@@ -87,7 +86,10 @@ export default function HistoryPage() {
     >
       <div className="mt-3">
         {loading ? (
-          <LoadingView text="Loading Season History..." />
+          <div className="text-center py-5">
+            <Spinner animation="border" variant="danger" />
+            <p className="mt-3 text-muted text-uppercase letter-spacing-1 fw-bold small">Loading History...</p>
+          </div>
         ) : history.length > 0 ? (
           <Row className="g-4">
             {history.map(race => (

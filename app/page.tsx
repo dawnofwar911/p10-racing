@@ -23,6 +23,8 @@ import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
+import StandardPageHeader from '@/components/StandardPageHeader';
+import { User } from 'lucide-react';
 
 interface HomeRace {
   id: string;
@@ -46,6 +48,7 @@ export default function Home() {
   
   // Use Global Auth Context
   const { currentUser, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
+  const username = currentUser || session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || '';
   const { drivers: allDrivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization (Zero Pop-in)
@@ -390,8 +393,13 @@ export default function Home() {
 
   return (
     <>
-      <Container className="mt-3 mt-md-4 flex-grow-1">
-        <Row className="justify-content-center text-center">
+      <Container className="mt-4 flex-grow-1">
+        <StandardPageHeader 
+          title="F1 PREDICTOR"
+          subtitle={session ? `Hello, ${username}` : 'Play as Guest'}
+          icon={<User size={24} className="text-white" />}
+        />
+        <Row className="justify-content-center text-center mt-3">
           <Col md={8} className="mb-2">
             <h1 className="display-5 fw-bold mb-2 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
             <p className="small text-white opacity-75 mb-4 mx-auto" style={{ maxWidth: '500px' }}>
