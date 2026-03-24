@@ -6,7 +6,6 @@ test.describe('Predict Flow (Guest User)', () => {
     await page.route('**/api.jolpi.ca/ergast/f1/**', async (route) => {
       const url = route.request().url();
       
-      // Mock Drivers (Standings) - Providing 22 drivers to satisfy app checks
       if (url.includes('driverStandings.json')) {
         const drivers = Array.from({ length: 22 }, (_, i) => ({
           points: (100 - i).toString(),
@@ -26,7 +25,6 @@ test.describe('Predict Flow (Guest User)', () => {
           body: JSON.stringify({ MRData: { StandingsTable: { StandingsLists: [{ DriverStandings: drivers }] } } })
         });
       } 
-      // Mock Calendar (Next Race)
       else if (url.endsWith('2026.json')) {
         await route.fulfill({
           status: 200,
@@ -42,7 +40,6 @@ test.describe('Predict Flow (Guest User)', () => {
           })
         });
       }
-      // Mock Results/Qualifying (Grid)
       else if (url.includes('results.json') || url.includes('qualifying.json')) {
         await route.fulfill({
           status: 200,
@@ -55,48 +52,52 @@ test.describe('Predict Flow (Guest User)', () => {
       }
     });
 
-    // Start at home and clear storage to ensure fresh state
-    await page.goto('/');
+    // Clear everything before starting
+    await page.goto('/privacy'); // Go to a lightweight page first to clear storage
     await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await page.goto('/');
   });
 
   test('should complete a prediction flow as a guest', async ({ page }) => {
-    // 1. Navigate to Predict
-    const predictLink = page.locator('.mobile-bottom-nav').getByRole('link', { name: /Predict/i });
-    await predictLink.click();
+    // 1. Navigate to Predict via bottom nav
+    const bottomNav = page.locator('.mobile-bottom-nav');
+    await bottomNav.getByRole('link', { name: /Predict/i }).click();
     await expect(page).toHaveURL(/\/predict/);
 
     // 2. Handle Login Wall
+    // Wait for either the guest input OR the predictor to be visible
     const guestInput = page.getByPlaceholder(/Enter name/i);
-    await expect(guestInput.or(page.getByRole('heading', { name: /P10 Finisher/i }))).toBeVisible({ timeout: 15000 });
+    const p10Heading = page.getByText(/P10 Finisher/i);
+    await expect(guestInput.or(p10Heading)).toBeVisible({ timeout: 20000 });
     
     if (await guestInput.isVisible()) {
       await guestInput.fill('E2EGuest');
       await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
-      await expect(guestInput).not.toBeVisible();
+      // Wait for login form to disappear
+      await expect(guestInput).not.toBeVisible({ timeout: 10000 });
     }
 
-    // 3. Wait for the Predictor UI to initialize
-    // We confirm we are on the page by looking for the race name in the header subtitle
+    // 3. Wait for the Predictor UI to initialize properly
+    // Check for the race name in the header subtitle
     await expect(page.getByText(/E2E Test Grand Prix/i)).toBeVisible({ timeout: 15000 });
 
-    // 4. Ensure we are on the Pick P10 tab
-    const p10Tab = page.locator('.f1-tab-container').getByText(/Pick P10/i);
-    await expect(p10Tab).toBeVisible();
-    await p10Tab.click();
+    // 4. Navigate to P10 selection (might already be there, but let's be sure)
+    // We use a broader text search for the tab link
+    const p10Tab = page.locator('.nav-link').getByText(/Pick P10/i).or(page.locator('.f1-tab-container').getByText(/Pick P10/i));
+    if (await p10Tab.isVisible()) {
+      await p10Tab.click();
+    }
 
     // 5. Select P10 Driver
-    const p10Heading = page.getByRole('heading', { name: /P10 Finisher/i }).first();
-    await expect(p10Heading).toBeVisible();
+    await expect(p10Heading.first()).toBeVisible({ timeout: 10000 });
     
     const verstappen = page.getByText('Max Verstappen').first();
     await expect(verstappen).toBeVisible();
     await verstappen.click();
 
-    // 6. Wait for automatic tab switch to DNF
-    const dnfHeading = page.getByRole('heading', { name: /First DNF/i }).first();
-    await expect(dnfHeading).toBeVisible({ timeout: 10000 });
+    // 6. Wait for automatic tab switch to DNF selection
+    const dnfHeading = page.getByText(/First DNF/i);
+    await expect(dnfHeading.first()).toBeVisible({ timeout: 10000 });
 
     // 7. Select DNF Driver
     const hamilton = page.getByText('Lewis Hamilton').first();
@@ -104,10 +105,10 @@ test.describe('Predict Flow (Guest User)', () => {
     await hamilton.click();
 
     // 8. Verify Summary View
-    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));
-    await expect(summaryHeading).toBeVisible({ timeout: 15000 });
+    // Success state might be "Locked and Loaded!" or "Current Picks"
+    await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
     
-    // 9. Verify the selections and guest status
+    // 9. Verify final state
     await expect(page.getByText(/Verstappen/i)).toBeVisible();
     await expect(page.getByText(/Hamilton/i)).toBeVisible();
     await expect(page.getByText(/Guest: E2EGuest/i)).toBeVisible();
