@@ -11,7 +11,6 @@ import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
-import LoadingView from '@/components/LoadingView';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Share } from '@capacitor/share';
 import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
@@ -234,7 +233,13 @@ function LeagueDetailContent() {
 
 export default function LeagueDetailPage() {
   return (
-    <Suspense fallback={<LoadingView />}>
+    <Suspense fallback={
+      <div className="container mt-2 mt-md-3">
+        <div className="text-center py-5">
+          <Spinner animation="border" variant="danger" />
+        </div>
+      </div>
+    }>
       <LeagueDetailContent />
     </Suspense>
   );

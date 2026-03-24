@@ -23,7 +23,7 @@ interface SwipeablePageLayoutProps<T extends string> {
   activeTab: T;
   onTabChange: (tabId: T) => void;
   tabs: TabOption<T>[];
-  children: ReactNode;
+  children?: ReactNode;
   onRefresh?: () => Promise<void>;
   badge?: ReactNode;
   onBack?: () => void;
@@ -141,7 +141,7 @@ export default function SwipeablePageLayout<T extends string>({
                         {tab.icon && <span className="me-2 text-danger">{tab.icon}</span>}
                         {tab.label}
                       </h3>
-                      {renderTabContent ? renderTabContent(tab.id) : children}
+                      {renderTabContent ? renderTabContent(tab.id) : (children || null)}
                     </div>
                   </Col>
                 ))}
@@ -166,7 +166,7 @@ export default function SwipeablePageLayout<T extends string>({
               className="w-100 flex-grow-1 d-flex flex-column"
               style={{ minHeight: 'calc(100vh - 250px)' }}
             >
-              {renderTabContent ? renderTabContent(activeTab) : children}
+              {renderTabContent ? renderTabContent(activeTab) : (children || null)}
             </motion.div>
           </AnimatePresence>
         </div>

@@ -494,11 +494,6 @@ function LeaguesContent() {
         { id: 'my-leagues', label: 'My Leagues', icon: <Trophy size={16} /> },
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }
       ]}
-      renderTabContent={(tabId) => (
-        <Suspense fallback={<div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>}>
-          {tabId === 'my-leagues' ? myLeaguesView : manageLeaguesView}
-        </Suspense>
-      )}
     >
       <div className="mt-3">
         <FeedbackAlerts 
@@ -507,9 +502,7 @@ function LeaguesContent() {
           success={success}
           setSuccess={setSuccess}
         />
-        <Suspense fallback={<div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>}>
-          {activeTab === 'my-leagues' ? myLeaguesView : manageLeaguesView}
-        </Suspense>
+        {activeTab === 'my-leagues' ? myLeaguesView : manageLeaguesView}
       </div>
     </SwipeablePageLayout>
   );
@@ -517,6 +510,14 @@ function LeaguesContent() {
 
 export default function LeaguesPage() {
   return (
-    <LeaguesContent />
+    <Suspense fallback={
+      <div className="container mt-2 mt-md-3">
+        <div className="text-center py-5">
+          <Spinner animation="border" variant="danger" />
+        </div>
+      </div>
+    }>
+      <LeaguesContent />
+    </Suspense>
   );
 }
