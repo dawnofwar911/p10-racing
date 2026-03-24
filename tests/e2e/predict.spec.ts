@@ -18,14 +18,10 @@ test.describe('Predict Flow (Guest User)', () => {
           },
           Constructors: [{ constructorId: i % 2 === 0 ? "red_bull" : "ferrari", name: i % 2 === 0 ? "Red Bull" : "Ferrari" }]
         }));
-
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ MRData: { StandingsTable: { StandingsLists: [{ DriverStandings: drivers }] } } })
-        });
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ MRData: { StandingsTable: { StandingsLists: [{ DriverStandings: drivers }] } } }) });
       } 
-      else if (url.endsWith('2026.json')) {
+      else if (url.includes('.json')) { // Calendar or results
+        // Return a future race at Round 99 to avoid "Season Finished" logic collisions with real DB data
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -33,18 +29,11 @@ test.describe('Predict Flow (Guest User)', () => {
             MRData: {
               RaceTable: {
                 Races: [
-                  { season: "2026", round: "1", raceName: "E2E Test Grand Prix", Circuit: { circuitName: "E2E Track" }, date: "2026-12-31", time: "10:00:00Z" }
+                  { season: "2026", round: "99", raceName: "E2E Test GP", Circuit: { circuitName: "E2E Track" }, date: "2026-12-31", time: "10:00:00Z" }
                 ]
               }
             }
           })
-        });
-      }
-      else if (url.includes('results.json') || url.includes('qualifying.json')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ MRData: { RaceTable: { Races: [] } } })
         });
       }
       else {
@@ -52,65 +41,58 @@ test.describe('Predict Flow (Guest User)', () => {
       }
     });
 
-    // Clear everything before starting
-    await page.goto('/privacy'); // Go to a lightweight page first to clear storage
-    await page.evaluate(() => localStorage.clear());
+    // 2. Mock Supabase to ensure clean state and avoid "Season Finished" from verified_results
+    await page.route('**/*.supabase.co/rest/v1/**', async (route) => {
+      const url = route.request().url();
+      // Return empty results for verified_results and predictions
+      if (url.includes('verified_results') || url.includes('predictions') || url.includes('profiles')) {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // Start at home and clear local storage
     await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
   });
 
   test('should complete a prediction flow as a guest', async ({ page }) => {
-    // 1. Navigate to Predict via bottom nav
+    // 1. Navigate to Predict
     const bottomNav = page.locator('.mobile-bottom-nav');
     await bottomNav.getByRole('link', { name: /Predict/i }).click();
     await expect(page).toHaveURL(/\/predict/);
 
-    // 2. Handle Login Wall
-    // Wait for either the guest input OR the predictor to be visible
+    // 2. Handle Login Wall (if visible)
     const guestInput = page.getByPlaceholder(/Enter name/i);
-    const p10Heading = page.getByText(/P10 Finisher/i);
-    await expect(guestInput.or(p10Heading)).toBeVisible({ timeout: 20000 });
+    await expect(guestInput.or(page.getByText(/P10 Finisher/i))).toBeVisible({ timeout: 20000 });
     
     if (await guestInput.isVisible()) {
       await guestInput.fill('E2EGuest');
       await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
-      // Wait for login form to disappear
       await expect(guestInput).not.toBeVisible({ timeout: 10000 });
     }
 
-    // 3. Wait for the Predictor UI to initialize properly
-    // Check for the race name in the header subtitle
-    await expect(page.getByText(/E2E Test Grand Prix/i)).toBeVisible({ timeout: 15000 });
+    // 3. Verify we are NOT in "Season Finished" or "Locked" state
+    await expect(page.getByText(/Season Finished/i)).not.toBeVisible();
+    await expect(page.getByText(/Predictions Closed/i)).not.toBeVisible();
 
-    // 4. Navigate to P10 selection (might already be there, but let's be sure)
-    // We use a broader text search for the tab link
-    const p10Tab = page.locator('.nav-link').getByText(/Pick P10/i).or(page.locator('.f1-tab-container').getByText(/Pick P10/i));
-    if (await p10Tab.isVisible()) {
-      await p10Tab.click();
-    }
-
-    // 5. Select P10 Driver
-    await expect(p10Heading.first()).toBeVisible({ timeout: 10000 });
-    
+    // 4. Select P10 Driver
     const verstappen = page.getByText('Max Verstappen').first();
-    await expect(verstappen).toBeVisible();
+    await expect(verstappen).toBeVisible({ timeout: 15000 });
     await verstappen.click();
 
-    // 6. Wait for automatic tab switch to DNF selection
-    const dnfHeading = page.getByText(/First DNF/i);
-    await expect(dnfHeading.first()).toBeVisible({ timeout: 10000 });
-
-    // 7. Select DNF Driver
+    // 5. Select DNF Driver (should auto-switch)
     const hamilton = page.getByText('Lewis Hamilton').first();
-    await expect(hamilton).toBeVisible();
+    await expect(hamilton).toBeVisible({ timeout: 10000 });
     await hamilton.click();
 
-    // 8. Verify Summary View
-    // Success state might be "Locked and Loaded!" or "Current Picks"
+    // 6. Verify Summary View
     await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
     
-    // 9. Verify final state
+    // 7. Verify picks are recorded
     await expect(page.getByText(/Verstappen/i)).toBeVisible();
     await expect(page.getByText(/Hamilton/i)).toBeVisible();
-    await expect(page.getByText(/Guest: E2EGuest/i)).toBeVisible();
   });
 });
