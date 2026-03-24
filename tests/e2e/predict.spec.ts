@@ -79,14 +79,17 @@ test.describe('Predict Flow (Guest User)', () => {
     await expect(page.getByText(/Predictions Closed/i)).not.toBeVisible();
 
     // 4. Select P10 Driver
-    const verstappen = page.getByText('Max Verstappen').first();
-    await expect(verstappen).toBeVisible({ timeout: 15000 });
-    await verstappen.click();
+    // Hamilton (Ferrari) sorts before Verstappen (Red Bull) in our mock
+    const lewis = page.getByText('Lewis Hamilton').first();
+    await expect(lewis).toBeVisible({ timeout: 15000 });
+    await lewis.scrollIntoViewIfNeeded();
+    await lewis.click();
 
     // 5. Select DNF Driver (should auto-switch)
-    const hamilton = page.getByText('Lewis Hamilton').first();
-    await expect(hamilton).toBeVisible({ timeout: 10000 });
-    await hamilton.click();
+    const verstappen = page.getByText('Max Verstappen').first();
+    await expect(verstappen).toBeVisible({ timeout: 10000 });
+    await verstappen.scrollIntoViewIfNeeded();
+    await verstappen.click();
 
     // 6. Verify Summary View
     await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
