@@ -76,10 +76,13 @@ test.describe('Predict Flow (Guest User)', () => {
     if (await guestInput.isVisible()) {
       await guestInput.fill('E2EGuest');
       await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
+      // Wait for login form to disappear
+      await expect(guestInput).not.toBeVisible();
     }
 
     // 4. Wait for the driver selection tabs to appear
-    const p10Tab = page.getByRole('button', { name: /Pick P10/i });
+    // Using getByText as Nav.Link might render as link or tab, not button
+    const p10Tab = page.locator('.f1-tab-container').getByText(/Pick P10/i);
     await expect(p10Tab).toBeVisible({ timeout: 15000 });
     
     // Ensure we are on the P10 tab
