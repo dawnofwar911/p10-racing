@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { Row, Col } from 'react-bootstrap';
 import { ChevronLeft } from 'lucide-react';
 import HapticButton from './HapticButton';
@@ -28,6 +28,7 @@ export default function StandardPageHeader({
 }: StandardPageHeaderProps) {
   const [headerShrunk, setHeaderShrunk] = useState(false);
   const [scrolledDown, setScrolledDown] = useState(false);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     const scrollContainer = document.getElementById('main-scroll-container');
@@ -35,16 +36,20 @@ export default function StandardPageHeader({
 
     const handleScroll = () => {
       const top = scrollContainer.scrollTop;
+      const isScrollingUp = top < lastScrollY.current;
       
       // 1. Transparency trigger (very top)
       setScrolledDown(top > 5);
 
-      // 2. Shrink trigger with Robust Hysteresis (Shrink at 60, Expand at 5)
-      if (!headerShrunk && top > 60) {
+      // 2. Responsive Shrink/Expand
+      if (!headerShrunk && top > 40) {
         setHeaderShrunk(true);
-      } else if (headerShrunk && top < 5) {
+      } else if (headerShrunk && (isScrollingUp || top < 10)) {
+        // Expand if we scroll up even a little, OR if we reach the very top
         setHeaderShrunk(false);
       }
+
+      lastScrollY.current = top;
     };
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });

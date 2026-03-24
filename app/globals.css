@@ -509,8 +509,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  margin-bottom: 1.5rem; /* Standard gap to content */
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 1rem; /* Constant margin to prevent layout jumps */
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* Premium "Quart Out" for organic feel */
 }
 
 .sticky-header.header-shrunk {
@@ -520,7 +520,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  margin-bottom: 0.75rem !important; /* Tighten gap to content/tabs */
+  /* Removed margin-bottom change to keep layout stable */
 }
 
 /* Only apply glass effect when scrolled and NOT at the very top */
