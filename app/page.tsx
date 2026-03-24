@@ -11,6 +11,7 @@ import { Capacitor } from '@capacitor/core';
 import { calculateSeasonPoints } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useNotification } from '@/components/Notification';
+import { isTestAccount } from '@/lib/utils/profiles';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
@@ -244,21 +245,36 @@ export default function Home() {
           const upcoming = calendar[activeIndex];
           
           if (finished) {
-            const { data: profiles } = await supabase.from('profiles').select('id, username');
-            const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+            const { data: { session } } = await supabase.auth.getSession();
+            const currentUserId = session?.user?.id;
+            
+            // 1. Fetch only current season predictions (Optimized fetch)
+            const [
+              { data: profiles },
+              { data: predictions }
+            ] = await Promise.all([
+              supabase.from('profiles').select('id, username'),
+              supabase.from('predictions').select('*').ilike('race_id', `${CURRENT_SEASON}_%`) as unknown as Promise<{ data: DbPrediction[] | null }>
+            ]);
 
             if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
-              const players = profiles.map(p => ({ 
-                username: p.username, 
-                predictions: predictions
-                  .filter(pred => pred.user_id === p.id)
-                  .reduce((acc, pred) => {
-                    const round = pred.race_id.split('_')[1];
-                    acc[round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-                    return acc;
-                  }, {} as { [round: string]: { p10: string, dnf: string } })
-              }));
+              // 2. Pre-process predictions into a Map for O(1) user lookup
+              const predByUserId = (predictions || []).reduce((acc, pred) => {
+                if (!acc[pred.user_id]) acc[pred.user_id] = {};
+                const round = pred.race_id.split('_')[1];
+                acc[pred.user_id][round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
+                return acc;
+              }, {} as Record<string, Record<string, { p10: string, dnf: string }>>);
 
+              // 3. Map players and calculate points
+              const players = profiles
+                .filter(p => !isTestAccount(p.username) || p.id === currentUserId)
+                .map(p => ({ 
+                  username: p.username, 
+                  predictions: predByUserId[p.id] || {}
+                }));
+
+              // 4. Add local/guest players
               const localPlayers: string[] = [];
               try {
                 const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
@@ -408,20 +424,58 @@ export default function Home() {
             </p>
             
             {nextRace && !loading && isSeasonFinished && (
-              <div className="f1-accent-card mb-4 p-4 border-warning border-opacity-50">
-                <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
-                <h2 className="display-6 fw-bold text-white mb-2">
-                  {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
-                </h2>
-                <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
-                <HapticLink 
-                  href="/leaderboard"
-                  className="btn btn-warning fw-bold px-4 rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
-                  hapticStyle="medium"
-                >
-                  VIEW FINAL STANDINGS
-                </HapticLink>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.6, type: 'spring' }}
+                className="f1-accent-card mb-4 p-4 border-warning border-opacity-50 overflow-hidden position-relative"
+              >
+                {/* Decorative particles */}
+                {[...Array(6)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="position-absolute bg-warning opacity-25 rounded-circle"
+                    animate={{
+                      y: [0, -100],
+                      x: [0, (i % 2 === 0 ? 20 : -20) * (i + 1)],
+                      opacity: [0.2, 0],
+                      scale: [1, 0]
+                    }}
+                    transition={{
+                      duration: 2 + i,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                      delay: i * 0.5
+                    }}
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      bottom: '20px',
+                      left: `${15 + (i * 15)}%`,
+                      zIndex: 0
+                    }}
+                  />
+                ))}
+
+                <div className="position-relative" style={{ zIndex: 1 }}>
+                  <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
+                  <motion.h2 
+                    className="display-6 fw-bold text-white mb-2"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
+                  </motion.h2>
+                  <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
+                  <HapticLink 
+                    href="/leaderboard"
+                    className="btn btn-warning fw-bold px-4 rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center shadow"
+                    hapticStyle="medium"
+                  >
+                    VIEW FINAL STANDINGS
+                  </HapticLink>
+                </div>
+              </motion.div>
             )}
 
             {!isSeasonFinished && (

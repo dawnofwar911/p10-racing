@@ -77,26 +77,29 @@ export default function LeaderboardPage() {
           { data: predictions },
         ] = await Promise.all([
           withTimeout(supabase.from('profiles').select('id, username')),
-          withTimeout(supabase.from('predictions').select<'*', DbPrediction>('*')),
+          withTimeout(supabase.from('predictions').select('*').ilike('race_id', `${CURRENT_SEASON}_%`) as unknown as Promise<{ data: DbPrediction[] | null }>),
         ]);
 
         if (profiles) {
+          // Pre-process predictions into a Map for O(1) user lookup
+          const predByUserId = (predictions || []).reduce((acc, pred) => {
+            if (!acc[pred.user_id]) acc[pred.user_id] = {};
+            const round = pred.race_id.split('_')[1];
+            acc[pred.user_id][round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
+            return acc;
+          }, {} as Record<string, Record<string, { p10: string, dnf: string }>>);
+
           const globalPlayers = profiles
             .filter(p => !isTestAccount(p.username) || p.id === currentUserId)
             .map(p => ({ 
               username: p.username, 
               userId: p.id, 
               isLocal: false,
-              dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+              playerPredictions: predByUserId[p.id] || {}
             }));
 
           globalEntries = globalPlayers.map((player) => {
-            const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
-            Object.keys(raceResultsMap).forEach(round => {
-              const dbMatch = player.dbPredictions?.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
-              if (dbMatch) playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
-            });
-            const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
+            const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(player.playerPredictions, raceResultsMap);
             return { rank: 0, player: player.username, points: totalPoints, lastRacePoints, breakdown: latestBreakdown, history };
           });
 
