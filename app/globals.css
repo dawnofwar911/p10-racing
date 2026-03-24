@@ -501,9 +501,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background-color: rgba(21, 21, 30, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: var(--f1-black); /* Default opaque black */
   margin-left: -1rem; /* Offset Container padding */
   margin-right: -1rem;
   padding-left: 1rem;
@@ -511,6 +509,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 1.5rem; /* Standard gap to content */
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -518,7 +517,17 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
   background-color: rgba(21, 21, 30, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  margin-bottom: 0.75rem !important; /* Tighten gap to content/tabs */
+}
+
+/* Only apply glass effect when scrolled and NOT at the very top */
+.sticky-header.scrolled-down {
+  background-color: rgba(21, 21, 30, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .sticky-header .header-icon-container {

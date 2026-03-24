@@ -26,25 +26,33 @@ export default function StandardPageHeader({
   onBack,
   rightElement
 }: StandardPageHeaderProps) {
-  const [scrolled, setScrolled] = useState(false);
+  const [headerShrunk, setHeaderShrunk] = useState(false);
+  const [scrolledDown, setScrolledDown] = useState(false);
 
   useEffect(() => {
     const scrollContainer = document.getElementById('main-scroll-container');
     if (!scrollContainer) return;
 
     const handleScroll = () => {
-      const isScrolled = scrollContainer.scrollTop > 15;
-      if (isScrolled !== scrolled) {
-        setScrolled(isScrolled);
+      const top = scrollContainer.scrollTop;
+      
+      // 1. Transparency trigger (very top)
+      setScrolledDown(top > 5);
+
+      // 2. Shrink trigger with Hysteresis (Shrink at 40, Expand at 10)
+      if (!headerShrunk && top > 40) {
+        setHeaderShrunk(true);
+      } else if (headerShrunk && top < 10) {
+        setHeaderShrunk(false);
       }
     };
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, [scrolled]);
+  }, [headerShrunk]);
 
   return (
-    <div className={`sticky-header mb-4 ${scrolled ? 'header-shrunk' : ''}`}>
+    <div className={`sticky-header ${headerShrunk ? 'header-shrunk' : ''} ${scrolledDown ? 'scrolled-down' : ''}`}>
       <Row className="align-items-center">
         <Col xs={rightElement ? 12 : true} md={rightElement ? 7 : true}>
           <div className="d-flex align-items-center">
