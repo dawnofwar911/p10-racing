@@ -495,7 +495,6 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 .letter-spacing-1 { letter-spacing: 1px; }
 .letter-spacing-2 { letter-spacing: 2px; }
 .extra-small { font-size: 0.65rem; }
-
 .sticky-header {
   position: sticky;
   top: 0;
@@ -507,27 +506,28 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   padding-right: 1rem;
 
   /* Standard top margin moved here from Container for layout stability */
-  margin-top: 0.5rem;
-  
+  padding-top: 0.5rem;
+
   /* Layout & Stability */
   height: 70px;
   display: flex;
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   margin-bottom: 1.5rem;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease, height 0.3s ease, margin-top 0.3s ease;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, height 0.3s ease, padding-top 0.3s ease;
   will-change: transform, background-color, height;
 }
 
 @media (min-width: 768px) {
   .sticky-header {
-    margin-top: 1rem;
+    padding-top: 1rem;
   }
 }
 
 .sticky-header.header-shrunk {
-  margin-top: 0; /* Shrunk header sticks to very top */
+  padding-top: 0; /* Shrunk header sticks to very top */
   height: 54px; 
+...
   background-color: rgba(21, 21, 30, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
