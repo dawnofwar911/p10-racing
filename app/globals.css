@@ -511,7 +511,42 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease-in-out;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sticky-header.header-shrunk {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  background-color: rgba(21, 21, 30, 0.95);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.sticky-header .header-icon-container {
+  width: 45px;
+  height: 45px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sticky-header.header-shrunk .header-icon-container {
+  width: 32px;
+  height: 32px;
+}
+
+.sticky-header .f1-page-title {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sticky-header.header-shrunk .f1-page-title {
+  font-size: 1.2rem !important;
+}
+
+.sticky-header .header-subtitle {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sticky-header.header-shrunk .header-subtitle {
+  font-size: 0.55rem !important;
+  opacity: 0.7;
 }
 
 /* Ensure no double margin when sticky is active */

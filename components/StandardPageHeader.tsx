@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { Row, Col } from 'react-bootstrap';
 import { ChevronLeft } from 'lucide-react';
 import HapticButton from './HapticButton';
@@ -26,8 +26,25 @@ export default function StandardPageHeader({
   onBack,
   rightElement
 }: StandardPageHeaderProps) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const scrollContainer = document.getElementById('main-scroll-container');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const isScrolled = scrollContainer.scrollTop > 15;
+      if (isScrolled !== scrolled) {
+        setScrolled(isScrolled);
+      }
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [scrolled]);
+
   return (
-    <div className="sticky-header mb-4">
+    <div className={`sticky-header mb-4 ${scrolled ? 'header-shrunk' : ''}`}>
       <Row className="align-items-center">
         <Col xs={rightElement ? 12 : true} md={rightElement ? 7 : true}>
           <div className="d-flex align-items-center">
@@ -40,7 +57,7 @@ export default function StandardPageHeader({
                 <ChevronLeft size={28} />
               </HapticButton>
             )}
-            <div className="bg-danger rounded-3 p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: '45px', height: '45px', flexShrink: 0 }}>
+            <div className="bg-danger rounded-3 p-2 me-3 d-flex align-items-center justify-content-center shadow-sm header-icon-container" style={{ flexShrink: 0 }}>
               {icon}
             </div>
             <div>
@@ -49,7 +66,7 @@ export default function StandardPageHeader({
                 {badge}
               </div>
               {subtitle && (
-                <small className="text-muted text-uppercase fw-bold letter-spacing-1" style={{ fontSize: '0.65rem' }}>
+                <small className="text-muted text-uppercase fw-bold letter-spacing-1 header-subtitle" style={{ fontSize: '0.65rem' }}>
                   {subtitle}
                 </small>
               )}
