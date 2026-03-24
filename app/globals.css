@@ -506,25 +506,35 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   margin-right: -1rem;
   padding-left: 1rem;
   padding-right: 1rem;
-  
-  /* Stable height to prevent layout feedback loops */
+
+  /* Standard top padding for perfect navbar alignment */
+  padding-top: 0.5rem;
+
+  /* Layout & Stability */
   height: 70px;
   display: flex;
   align-items: center;
-  
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  margin-bottom: 1rem;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
-  will-change: transform, background-color;
+  margin-bottom: 1.5rem;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, height 0.3s ease, padding-top 0.3s ease;
+  will-change: transform, background-color, height;
+}
+
+@media (min-width: 768px) {
+  .sticky-header {
+    padding-top: 1rem;
+  }
 }
 
 .sticky-header.header-shrunk {
-  height: 54px; /* Slightly shorter but stable */
+  padding-top: 0; /* Shrunk header sticks to very top */
+  height: 54px; 
   background-color: rgba(21, 21, 30, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
+
 
 .sticky-header .header-icon-container {
   width: 45px;
