@@ -7,20 +7,21 @@ test.describe('Predict Flow (Guest User)', () => {
       const url = route.request().url();
       
       if (url.includes('driverStandings.json')) {
-        // We use "00_ferrari" to ensure it sorts to the absolute top alphabetically
+        // We use "A-Ferrari" to ensure it sorts to the top alphabetically
         const drivers = [
-          { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "Ferrari", teamId: "00_ferrari", color: "#E80020" },
-          { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "Ferrari", teamId: "00_ferrari", color: "#E80020" },
+          { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "A-Ferrari", teamId: "a_ferrari", color: "#E80020" },
+          { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "A-Ferrari", teamId: "a_ferrari", color: "#E80020" },
+          { id: "verstappen", name: "Max Verstappen", code: "VER", team: "Red Bull", teamId: "red_bull", color: "#3671C6" },
         ];
 
-        // Fill up to 22 drivers with generic data that sorts AFTER our targets
-        for (let i = 2; i < 22; i++) {
+        // Fill up to 22 drivers
+        for (let i = 3; i < 22; i++) {
           drivers.push({
             id: `driver_${i}`,
-            name: `Z-Driver ${i}`,
+            name: `Driver ${i}`,
             code: `D${i}`,
-            team: "ZZZ Team",
-            teamId: "zzz_team",
+            team: "Z-Team",
+            teamId: "z_team",
             color: "#ffffff"
           });
         }
@@ -94,24 +95,29 @@ test.describe('Predict Flow (Guest User)', () => {
       await expect(guestInput).not.toBeVisible({ timeout: 10000 });
     }
 
-    // 3. Wait for any loading spinners to disappear
-    await expect(page.locator('.spinner-border')).not.toBeVisible({ timeout: 10000 });
-
-    // 4. Select P10 Driver (Lewis Hamilton - top of list)
+    // 3. Select P10 Driver
+    // Explicitly click P10 tab to ensure we are in the right state
+    const p10Tab = page.locator('.f1-tab-container').getByText(/Pick P10/i);
+    await p10Tab.click();
+    
     const lewis = page.getByText('Lewis Hamilton').first();
-    // We use a longer timeout and waitFor to ensure animations are settled
-    await lewis.waitFor({ state: 'visible', timeout: 15000 });
-    await lewis.click({ force: true });
+    await expect(lewis).toBeVisible({ timeout: 10000 });
+    await lewis.click();
 
-    // 5. Select DNF Driver (Charles Leclerc - also top of list)
+    // 4. Select DNF Driver
+    // Instead of waiting for auto-switch (which has a 300ms delay), we manually switch
+    // to make the test faster and more robust.
+    const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
+    await dnfTab.click();
+    
     const charles = page.getByText('Charles Leclerc').first();
-    await charles.waitFor({ state: 'visible', timeout: 15000 });
-    await charles.click({ force: true });
+    await expect(charles).toBeVisible({ timeout: 10000 });
+    await charles.click();
 
-    // 6. Verify Summary View
+    // 5. Verify Summary View
     await expect(page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i))).toBeVisible({ timeout: 15000 });
     
-    // 7. Verify picks are recorded
+    // 6. Verify picks are recorded
     await expect(page.getByText(/Hamilton/i)).toBeVisible();
     await expect(page.getByText(/Leclerc/i)).toBeVisible();
   });
