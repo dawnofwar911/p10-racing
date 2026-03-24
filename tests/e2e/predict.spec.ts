@@ -7,18 +7,43 @@ test.describe('Predict Flow (Guest User)', () => {
       const url = route.request().url();
       
       if (url.includes('driverStandings.json')) {
-        const drivers = Array.from({ length: 22 }, (_, i) => ({
+        // Explicitly name the top drivers to ensure they appear correctly in the UI
+        const drivers = [
+          { id: "hamilton", name: "Lewis Hamilton", code: "HAM", team: "Ferrari", teamId: "ferrari", color: "#E80020" },
+          { id: "leclerc", name: "Charles Leclerc", code: "LEC", team: "Ferrari", teamId: "ferrari", color: "#E80020" },
+          { id: "verstappen", name: "Max Verstappen", code: "VER", team: "Red Bull", teamId: "red_bull", color: "#3671C6" },
+          { id: "norris", name: "Lando Norris", code: "NOR", team: "McLaren", teamId: "mclaren", color: "#FF8000" },
+        ];
+
+        // Fill up to 22 drivers with generic data
+        for (let i = 4; i < 22; i++) {
+          drivers.push({
+            id: `driver_${i}`,
+            name: `Driver ${i}`,
+            code: `D${i}`,
+            team: i % 2 === 0 ? "Alpine" : "Haas",
+            teamId: i % 2 === 0 ? "alpine" : "haas",
+            color: "#ffffff"
+          });
+        }
+
+        const standings = drivers.map((d, i) => ({
           points: (100 - i).toString(),
           Driver: { 
-            driverId: i === 0 ? "max_verstappen" : (i === 1 ? "hamilton" : (i === 3 ? "leclerc" : `driver_${i}`)), 
+            driverId: d.id, 
             permanentNumber: (i + 1).toString(), 
-            code: i === 0 ? "VER" : (i === 1 ? "HAM" : (i === 3 ? "LEC" : `D${i}`)), 
-            givenName: i === 0 ? "Max" : (i === 1 ? "Lewis" : (i === 3 ? "Charles" : "Driver")), 
-            familyName: i === 0 ? "Verstappen" : (i === 1 ? "Hamilton" : (i === 3 ? "Leclerc" : `${i}`)) 
+            code: d.code, 
+            givenName: d.name.split(' ')[0], 
+            familyName: d.name.split(' ')[1] || d.id 
           },
-          Constructors: [{ constructorId: i % 2 === 0 ? "red_bull" : "ferrari", name: i % 2 === 0 ? "Red Bull" : "Ferrari" }]
+          Constructors: [{ constructorId: d.teamId, name: d.team }]
         }));
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ MRData: { StandingsTable: { StandingsLists: [{ DriverStandings: drivers }] } } }) });
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ MRData: { StandingsTable: { StandingsLists: [{ DriverStandings: standings }] } } })
+        });
       } 
       else if (url.includes('.json')) { // Calendar or results
         await route.fulfill({
@@ -75,12 +100,12 @@ test.describe('Predict Flow (Guest User)', () => {
     await expect(page.getByText(/Season Finished/i)).not.toBeVisible();
     await expect(page.getByText(/Predictions Closed/i)).not.toBeVisible();
 
-    // 4. Select P10 Driver (Lewis Hamilton - Ferrari block at top)
+    // 4. Select P10 Driver (Lewis Hamilton - top of list)
     const lewis = page.getByText('Lewis Hamilton').first();
     await expect(lewis).toBeVisible({ timeout: 15000 });
     await lewis.click();
 
-    // 5. Select DNF Driver (Charles Leclerc - Ferrari block at top)
+    // 5. Select DNF Driver (Charles Leclerc - also top of list)
     const charles = page.getByText('Charles Leclerc').first();
     await expect(charles).toBeVisible({ timeout: 10000 });
     await charles.click();
