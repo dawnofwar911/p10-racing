@@ -533,29 +533,37 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 .sticky-header .header-icon-container {
   width: 45px;
   height: 45px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center center;
+  flex-shrink: 0;
 }
 
 .sticky-header.header-shrunk .header-icon-container {
-  width: 32px;
-  height: 32px;
+  transform: scale(0.75);
 }
 
 .sticky-header .f1-page-title {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: left center;
 }
 
 .sticky-header.header-shrunk .f1-page-title {
-  font-size: 1.2rem !important;
+  transform: scale(0.85) translateX(-5%);
 }
 
 .sticky-header .header-subtitle {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: left center;
 }
 
 .sticky-header.header-shrunk .header-subtitle {
-  font-size: 0.55rem !important;
   opacity: 0.7;
+  transform: scale(0.9) translateY(-2px);
+}
+
+/* Pull to Refresh Spacing Balance */
+.ptr-content-wrapper {
+  padding-top: 0.75rem; /* Gap between header and content when pulling */
 }
 
 /* Ensure no double margin when sticky is active */

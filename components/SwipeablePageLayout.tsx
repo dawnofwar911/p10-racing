@@ -180,7 +180,9 @@ export default function SwipeablePageLayout<T extends string>({
       {header}
       {onRefresh ? (
         <PullToRefresh onRefresh={onRefresh}>
-          {mainContent}
+          <div className="ptr-content-wrapper">
+            {mainContent}
+          </div>
         </PullToRefresh>
       ) : mainContent}
     </Container>
