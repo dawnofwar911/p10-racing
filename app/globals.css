@@ -459,6 +459,20 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   padding: 1rem 1.25rem !important;
 }
 
+@media (max-width: 575.98px) {
+  .f1-premium-table th, .f1-premium-table td {
+    padding: 0.75rem 0.75rem !important;
+  }
+  
+  .f1-premium-table th.ps-4, .f1-premium-table td.ps-4 {
+    padding-left: 1rem !important;
+  }
+  
+  .f1-premium-table th.pe-4, .f1-premium-table td.pe-4 {
+    padding-right: 1rem !important;
+  }
+}
+
 .f1-premium-table tbody tr {
   height: 70px;
   vertical-align: middle;
