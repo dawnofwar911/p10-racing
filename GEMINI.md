@@ -11,6 +11,7 @@ To maintain P10 Racing as a fully polished, multiplayer mobile application with 
 
 ## 🏗️ Architecture & Historical Context
 *   **Historical Roadmap:** [ROADMAP.md](./ROADMAP.md) - History of Phase 1-4 (Native Feel, CI/CD, Backend Migration, Play Store release).
+*   **Feature Proposals:** [PROPOSALS.md](./PROPOSALS.md) - Detailed plans for upcoming features (Driver Insights, Achievements, Live Race Center, etc.).
 *   **Tech Stack:** Next.js 15 (React 19), Supabase (Auth/DB/Edge Functions), Capacitor JS 8 (Android/iOS), Vitest (Tests), Jolpica F1 API (Data).
 
 ---

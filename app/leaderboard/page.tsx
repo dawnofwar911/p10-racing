@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from 'react-bootstrap';
 import { LeaderboardEntry, CURRENT_SEASON } from '@/lib/data';
-import { calculateSeasonPoints } from '@/lib/scoring';
+import { calculateSeasonPoints, mapPredictionsByUser } from '@/lib/scoring';
 import { DbPrediction } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { fetchAllSimplifiedResults } from '@/lib/results';
@@ -77,26 +77,26 @@ export default function LeaderboardPage() {
           { data: predictions },
         ] = await Promise.all([
           withTimeout(supabase.from('profiles').select('id, username')),
-          withTimeout(supabase.from('predictions').select<'*', DbPrediction>('*')),
+          // Type cast: PostgrestFilterBuilder is thenable but not a standard Promise, 
+          // requiring double-casting for use in Promise.all.
+          withTimeout(supabase.from('predictions').select('*').ilike('race_id', `${CURRENT_SEASON}_%`) as unknown as Promise<{ data: DbPrediction[] | null }>),
         ]);
 
         if (profiles) {
+          // Pre-process predictions into a Map for O(1) user lookup
+          const predByUserId = mapPredictionsByUser(predictions);
+
           const globalPlayers = profiles
             .filter(p => !isTestAccount(p.username) || p.id === currentUserId)
             .map(p => ({ 
               username: p.username, 
               userId: p.id, 
               isLocal: false,
-              dbPredictions: predictions?.filter(pred => pred.user_id === p.id) || []
+              playerPredictions: predByUserId[p.id] || {}
             }));
 
           globalEntries = globalPlayers.map((player) => {
-            const playerPredictions: { [round: string]: { p10: string, dnf: string } | null } = {};
-            Object.keys(raceResultsMap).forEach(round => {
-              const dbMatch = player.dbPredictions?.find((dp) => dp.race_id === `${CURRENT_SEASON}_${round}`);
-              if (dbMatch) playerPredictions[round] = { p10: dbMatch.p10_driver_id, dnf: dbMatch.dnf_driver_id };
-            });
-            const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(playerPredictions, raceResultsMap);
+            const { totalPoints, lastRacePoints, latestBreakdown, history } = calculateSeasonPoints(player.playerPredictions, raceResultsMap);
             return { rank: 0, player: player.username, points: totalPoints, lastRacePoints, breakdown: latestBreakdown, history };
           });
 

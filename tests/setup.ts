@@ -44,6 +44,45 @@ vi.mock('@capacitor/splash-screen', () => ({
 // --- Supabase / MSW Mocks ---
 export const server = setupServer();
 
+// Global console override to suppress noisy environment warnings
+const originalError = console.error;
+const originalWarn = console.warn;
+
+const suppressions = [
+  'Not implemented: navigation to another Document',
+  'supabase.channel is not available',
+  '--localstorage-file',
+  'Multiple GoTrueClient instances detected',
+  'Request timed out after'
+];
+
+console.error = (...args) => {
+  const msg = args.map(arg => arg?.toString()).join(' ');
+  if (suppressions.some(s => msg.includes(s))) return;
+  originalError(...args);
+};
+
+console.warn = (...args) => {
+  const msg = args.map(arg => arg?.toString()).join(' ');
+  if (suppressions.some(s => msg.includes(s))) return;
+  originalWarn(...args);
+};
+
+// Mock window.location for JSDOM navigation suppression
+if (typeof window !== 'undefined') {
+  const oldLocation = window.location;
+  // @ts-ignore
+  delete window.location;
+  // @ts-ignore
+  window.location = {
+    ...oldLocation,
+    assign: vi.fn(),
+    replace: vi.fn(),
+    reload: vi.fn(),
+    href: 'http://localhost/'
+  } as unknown as Location;
+}
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};

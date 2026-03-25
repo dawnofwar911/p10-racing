@@ -1,4 +1,22 @@
-import { SimplifiedResults } from './types';
+import { SimplifiedResults, DbPrediction } from './types';
+
+export interface UserPredictions {
+  [round: string]: { p10: string, dnf: string };
+}
+
+/**
+ * Pre-processes a flat list of DB predictions into a Map keyed by user_id
+ * for O(1) lookup.
+ */
+export function mapPredictionsByUser(predictions: DbPrediction[] | null): Record<string, UserPredictions> {
+  if (!predictions) return {};
+  return predictions.reduce((acc, pred) => {
+    if (!acc[pred.user_id]) acc[pred.user_id] = {};
+    const round = pred.race_id.split('_')[1];
+    acc[pred.user_id][round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
+    return acc;
+  }, {} as Record<string, UserPredictions>);
+}
 
 export function calculateP10Points(actualPosition: number): number {
   const distance = Math.abs(actualPosition - 10);
