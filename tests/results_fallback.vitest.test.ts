@@ -9,6 +9,7 @@ import { getResultsKey } from '@/lib/utils/storage';
 vi.mock('@/lib/api', () => ({
   fetchCalendar: vi.fn(),
   fetchRaceResults: vi.fn(),
+  fetchRecentResults: vi.fn(),
   getFirstDnfDriver: vi.fn(),
   CURRENT_SEASON: 2026,
 }));
