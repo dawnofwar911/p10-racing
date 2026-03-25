@@ -30,6 +30,7 @@
     "tests/e2e/**/*",
     "lib/supabase/edge_function_check.ts",
     "lib/supabase/edge_function_sender.ts",
-    "lib/supabase/sync_github_issues.ts"
+    "lib/supabase/sync_github_issues.ts",
+    "lib/supabase/f1_live_proxy.ts"
   ]
 }

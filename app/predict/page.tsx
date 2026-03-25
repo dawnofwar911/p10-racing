@@ -27,6 +27,7 @@ import { LayoutGrid, Target, Flame } from 'lucide-react';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 import SelectionList from '@/components/SelectionList';
+import LiveRaceCenter from '@/components/LiveRaceCenter';
 
 interface PredictRace {
   id: string;
@@ -216,6 +217,7 @@ function PredictPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loadingRace, setLoadingRace] = useState(!nextRace);
   const [isLocked, setIsLocked] = useState(false);
+  const [isRaceInProgress, setIsRaceInProgress] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
@@ -229,6 +231,25 @@ function PredictPage() {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  useEffect(() => {
+    if (!nextRace) return;
+
+    const calculateStatus = () => {
+      const now = new Date().getTime();
+      const targetStr = `${nextRace.date}T${nextRace.time}`;
+      const target = new Date(targetStr).getTime();
+      const fourHoursLater = target + 4 * 60 * 60 * 1000;
+      
+      const lockTime = target + (2 * 60 * 1000);
+      setIsLocked(now > lockTime);
+      setIsRaceInProgress(now > target && now < fourHoursLater);
+    };
+
+    calculateStatus();
+    const timer = setInterval(calculateStatus, 30000);
+    return () => clearInterval(timer);
+  }, [nextRace]);
 
   useEffect(() => {
     if (searchParams.get('howto') === 'true' && !howtoHandledRef.current) {
@@ -636,6 +657,16 @@ function PredictPage() {
           </h2>
           
           <Row className="text-start justify-content-center">
+            {isRaceInProgress && (
+              <Col xs={12} className="mb-2">
+                <LiveRaceCenter 
+                  p10Prediction={p10Driver} 
+                  dnfPrediction={dnfDriver} 
+                  drivers={drivers} 
+                  isRaceInProgress={isRaceInProgress} 
+                />
+              </Col>
+            )}
             <Col xs={12} lg={isLocked ? 6 : 8} className="mb-4">
               <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
                 <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">
