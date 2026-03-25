@@ -49,19 +49,21 @@ const SelectionList: React.FC<SelectionListProps> = ({
                       <div className="d-flex gap-1 ms-1">
                         {form.map((f, i) => {
                           const isDNF = f.status.toLowerCase() !== 'finished' && !f.status.toLowerCase().includes('lap');
-                          const isPoints = !isDNF && f.pos <= 10;
+                          const isP10 = f.pos === 10;
                           return (
                             <div 
                               key={i} 
                               className={`rounded-circle d-flex align-items-center justify-content-center text-white fw-bold`}
                               style={{ 
-                                width: '12px', 
-                                height: '12px', 
-                                fontSize: '0.45rem',
-                                backgroundColor: isDNF ? '#dc3545' : (isPoints ? '#198754' : '#6c757d')
+                                width: '16px', 
+                                height: '16px', 
+                                fontSize: '0.5rem',
+                                backgroundColor: isP10 ? '#e10600' : (isDNF ? '#dc3545' : '#333'),
+                                border: isP10 ? '1px solid rgba(255,255,255,0.5)' : 'none'
                               }}
                               title={isDNF ? f.status : `P${f.pos}`}
                             >
+                              {isDNF ? 'R' : f.pos}
                             </div>
                           );
                         })}

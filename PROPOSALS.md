@@ -5,13 +5,14 @@ This document outlines the strategic roadmap for upcoming features designed to i
 ---
 
 ## 1. 📊 Driver Insights ("The Analyst")
-**Goal:** Provide historical context to help users make data-driven predictions.
+**Goal:** Provide historical context focused on the P10 target to help users make data-driven predictions.
 
 ### Implementation Plan:
 *   **Data Strategy:** Use the existing Jolpica F1 API to fetch the last 3 race results for each driver.
 *   **UI/UX:** 
-    *   Add a "Form" sparkline or mini-table inside the driver selection list in `app/predict/page.tsx`.
-    *   Show finishing positions (e.g., `P8`, `P12`, `DNF`) for the most recent rounds.
+    *   Add a "Form" guide inside the driver selection list in `components/SelectionList.tsx`.
+    *   Show finishing positions (e.g., `10`, `9`, `R`) inside color-coded badges.
+    *   **Colors:** High-contrast Brand Red for exact P10 finishes, Standard Red for DNFs, and Neutral Gray for others.
 *   **Caching:** Store these results in `localStorage` (`p10_cache_driver_form`) to avoid redundant API calls during the selection process.
 
 ---
