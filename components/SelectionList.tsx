@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Driver } from '@/lib/types';
+import { isDnfStatus } from '@/lib/api';
 
 interface SelectionListProps {
   type: 'p10' | 'dnf';
@@ -20,11 +21,13 @@ const SelectionList: React.FC<SelectionListProps> = ({
   driverForm = {}, 
   isHighlighted = false 
 }) => {
-  const sortedByTeam = [...drivers].sort((a, b) => {
-    if (a.teamId < b.teamId) return -1;
-    if (a.teamId > b.teamId) return 1;
-    return b.points - a.points;
-  });
+  const sortedByTeam = useMemo(() => {
+    return [...drivers].sort((a, b) => {
+      if (a.teamId < b.teamId) return -1;
+      if (a.teamId > b.teamId) return 1;
+      return b.points - a.points;
+    });
+  }, [drivers]);
 
   return (
     <div className={`mx-auto w-100 h-100 p-3 rounded transition-all ${isHighlighted ? 'f1-focus-glow' : ''}`} style={{ maxWidth: '500px', border: isHighlighted ? 'none' : '1px solid transparent' }}>
@@ -44,13 +47,14 @@ const SelectionList: React.FC<SelectionListProps> = ({
                 <div className="text-truncate">
                   <div className="fw-bold text-white small text-truncate">{driver.name}</div>
                   <div className="d-flex align-items-center gap-2">
-                    <div className="extra-small text-uppercase fw-bold text-muted opacity-75" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
+                    <div className="extra-small text-uppercase fw-bold text-muted opacity-75 text-truncate" style={{ fontSize: '0.55rem' }}>{driver.team}</div>
                     {form.length > 0 && (
-                      <div className="d-flex gap-1 ms-1">
+                      <div className="d-flex gap-1 ms-1 flex-shrink-0">
                         {form.map((f, i) => {
                           const status = f.status.toLowerCase();
-                          const isFinished = status === 'finished' || status.includes('lap');
-                          const isDNS = status.includes('start') || status.includes('withdraw') || status.includes('qualif');
+                          // Use shared isDnfStatus for consistency
+                          const isDNF = isDnfStatus(f.status);
+                          const isDNS = status.includes('start') || status.includes('withdraw') || status.includes('qualif') || status === 'dns';
                           const isP10 = f.pos === 10;
                           
                           // Label logic: 10, R (Retired), - (DNS/No start), or Pos
@@ -61,13 +65,11 @@ const SelectionList: React.FC<SelectionListProps> = ({
                           if (isP10) {
                             bgColor = '#e10600';
                             border = '1px solid rgba(255,255,255,0.5)';
-                          } else if (!isFinished) {
-                            if (isDNS) {
-                              label = '-';
-                            } else {
-                              label = 'R';
-                              bgColor = '#dc3545';
-                            }
+                          } else if (isDNF) {
+                            label = 'R';
+                            bgColor = '#dc3545';
+                          } else if (isDNS) {
+                            label = '-';
                           }
 
                           return (

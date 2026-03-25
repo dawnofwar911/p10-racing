@@ -3,9 +3,10 @@
 import React from 'react';
 import { Offcanvas } from 'react-bootstrap';
 import HapticLink from './HapticLink';
-import { Settings, LogOut, ShieldAlert, History, LogIn, User, Coffee } from 'lucide-react';
+import { Settings, LogOut, ShieldAlert, History, LogIn, User, Coffee, Trophy } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 import HapticButton from './HapticButton';
+import { useAchievements } from '@/lib/hooks/use-achievements';
 
 interface UserDrawerProps {
   show: boolean;
@@ -17,6 +18,8 @@ interface UserDrawerProps {
 }
 
 export default function UserDrawer({ show, onHide, currentUser, session, isAdmin, onLogout }: UserDrawerProps) {
+  const { unlocked, allAchievements } = useAchievements();
+
   const handleLinkClick = () => {
     onHide();
   };
@@ -51,6 +54,41 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
               <h4 className="mb-0 fw-bold">{currentUser || 'Guest'}</h4>
               {isAdmin && <span className="badge bg-warning text-dark mt-1" style={{ fontSize: '0.6rem' }}>SYSTEM ADMIN</span>}
             </div>
+          </div>
+        </div>
+
+        {/* Achievements Preview */}
+        <div className="p-3 border-bottom border-secondary border-opacity-25 bg-black bg-opacity-10">
+          <div className="d-flex justify-content-between align-items-center mb-2 px-1">
+            <span className="text-muted extra-small text-uppercase fw-bold letter-spacing-1">Achievements</span>
+            <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20" style={{ fontSize: '0.6rem' }}>
+              {unlocked.length} / {allAchievements.length}
+            </span>
+          </div>
+          <div className="d-flex gap-2 px-1 overflow-hidden">
+            {allAchievements.slice(0, 5).map(achievement => {
+              const isUnlocked = unlocked.some(u => u.achievementId === achievement.id);
+              return (
+                <div 
+                  key={achievement.id}
+                  className={`rounded-circle d-flex align-items-center justify-content-center ${!isUnlocked ? 'opacity-20 grayscale' : 'shadow-sm'}`}
+                  style={{ 
+                    width: '32px', 
+                    height: '32px', 
+                    backgroundColor: isUnlocked ? achievement.color : '#333',
+                    fontSize: '1rem',
+                    flexShrink: 0,
+                    border: isUnlocked ? '1px solid rgba(255,255,255,0.2)' : '1px dashed rgba(255,255,255,0.1)'
+                  }}
+                  title={achievement.name}
+                >
+                  {isUnlocked ? achievement.icon : <Trophy size={14} className="text-white" />}
+                </div>
+              );
+            })}
+            {allAchievements.length > 5 && (
+              <div className="extra-small text-muted d-flex align-items-center ms-1 fw-bold">+{allAchievements.length - 5}</div>
+            )}
           </div>
         </div>
 

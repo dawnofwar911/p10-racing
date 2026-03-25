@@ -237,6 +237,19 @@ export async function fetchQualifyingResults(season: number, round: number): Pro
 export type DriverFormMap = Record<string, { pos: number, status: string }[]>;
 
 /**
+ * Shared utility to determine if a status string indicates a DNF (Retired during race).
+ * Excludes DNS (Did not start) and other non-participation statuses.
+ */
+export function isDnfStatus(status: string, laps: string = "1"): boolean {
+  const s = status.toLowerCase();
+  const isFinished = s === "finished" || s.includes("lap");
+  const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
+  const hasLaps = parseInt(laps) > 0;
+  
+  return !isFinished && !isDns && hasLaps;
+}
+
+/**
  * Fetches the last N race results for all drivers in the given season.
  */
 export async function fetchRecentResults(season: number, count: number = 3): Promise<DriverFormMap> {
@@ -245,7 +258,8 @@ export async function fetchRecentResults(season: number, count: number = 3): Pro
     if (!response.ok) return {};
 
     const data = await response.json();
-    const races = data.MRData.RaceTable.Races || [];
+    const races = (data.MRData.RaceTable.Races || [])
+      .sort((a: ApiRace, b: ApiRace) => parseInt(a.round, 10) - parseInt(b.round, 10));
     
     // Take the latest 'count' races
     const latestRaces = races.slice(-count);
@@ -257,7 +271,7 @@ export async function fetchRecentResults(season: number, count: number = 3): Pro
         if (!formMap[driverId]) formMap[driverId] = [];
         
         formMap[driverId].push({
-          pos: parseInt(result.position),
+          pos: parseInt(result.position, 10) || 20, // Fallback to 20 for non-numeric (R, D, etc)
           status: result.status
         });
       });
@@ -276,15 +290,7 @@ export function getP10DriverId(race: ApiRace): string | null {
 }
 
 export function getFirstDnfDriver(race: ApiRace): ApiDriver | null {
-  const retirements = race.Results.filter(r => {
-    const s = r.status.toLowerCase();
-    const isFinished = s === "finished";
-    const isLapped = s.includes("lap"); 
-    const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
-    const hasLaps = parseInt(r.laps) > 0;
-    
-    return !isFinished && !isLapped && !isDns && hasLaps;
-  });
+  const retirements = race.Results.filter(r => isDnfStatus(r.status, r.laps));
 
   if (retirements.length === 0) return null;
 
