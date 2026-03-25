@@ -98,12 +98,12 @@ export function evaluateAchievements(
     unlockedIds.push('midfield_master');
   }
 
-  // 4. Midfield Streak (3 consecutive races with points >= 15 - within 2 pos of P10)
+  // 4. Midfield Streak (3 consecutive races within 2 pos of P10)
   let consecutiveMidfield = 0;
   let maxConsecutive = 0;
   history.forEach(h => {
-    // 15 points means P8 or P12 (distance 2)
-    if (Math.abs(h.p10Pos - 10) <= 2) {
+    // Distance of 2 from P10 (P8-P12)
+    if (Math.abs(h.p10Pos - 10) <= 2) { // Criteria: P10 position within +/- 2 (P8-P12)
       consecutiveMidfield++;
       maxConsecutive = Math.max(maxConsecutive, consecutiveMidfield);
     } else {
@@ -114,8 +114,8 @@ export function evaluateAchievements(
     unlockedIds.push('midfield_streak');
   }
 
-  // 5. Season Professional (10 total races with points >= 10 - within 4 pos of P10)
-  const totalRacesHighQuality = history.filter(h => Math.abs(h.p10Pos - 10) <= 4).length;
+  // 5. Season Professional (10 total races within 4 pos of P10)
+  const totalRacesHighQuality = history.filter(h => Math.abs(h.p10Pos - 10) <= 4).length; // Criteria: P10 position within +/- 4 (P6-P14)
   if (totalRacesHighQuality >= 10) {
     unlockedIds.push('season_pro');
   }

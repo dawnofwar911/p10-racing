@@ -48,6 +48,17 @@ describe('Achievement Evaluation Logic', () => {
     expect(unlocked).not.toContain('midfield_streak');
   });
 
+  it('does not award skill-based achievements for DNF points', () => {
+    const history = [
+      { round: '1', points: 26, p10Pos: 20, dnfCorrect: true, totalSoFar: 26 }, // 25 for DNF, 1 for bad P10
+      { round: '2', points: 26, p10Pos: 20, dnfCorrect: true, totalSoFar: 52 },
+      { round: '3', points: 26, p10Pos: 20, dnfCorrect: true, totalSoFar: 78 }
+    ];
+    const unlocked = evaluateAchievements(history);
+    expect(unlocked).not.toContain('midfield_streak');
+    expect(unlocked).not.toContain('season_pro');
+  });
+
   it('identifies Season Professional (10 total races within 4 pos of P10)', () => {
     const history = Array.from({ length: 10 }, (_, i) => ({
       round: (i + 1).toString(),
