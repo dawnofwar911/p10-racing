@@ -12,6 +12,13 @@ export interface Achievement {
 
 export const ACHIEVEMENTS: Achievement[] = [
   {
+    id: 'bullseye',
+    name: 'Bullseye',
+    description: 'Guess the exact P10 finisher (25 pts) for the first time.',
+    icon: '🎯',
+    color: '#e10600'
+  },
+  {
     id: 'perfect_weekend',
     name: 'Perfect Weekend',
     description: 'Guess both P10 and First DNF correctly in a single race.',
@@ -22,22 +29,29 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'midfield_master',
     name: 'Midfield Master',
     description: 'Guess the exact P10 finisher in 3 different races.',
-    icon: '🎯',
+    icon: '👑',
     color: '#FFD700'
   },
   {
-    id: 'point_scorer',
-    name: 'Point Scorer',
-    description: 'Earn points in 5 consecutive races.',
+    id: 'midfield_streak',
+    name: 'Midfield Streak',
+    description: 'Finish in the "Midfield Zone" (P8–P12) for 3 consecutive races.',
     icon: '🔥',
     color: '#FF8C00'
   },
   {
-    id: 'consistent_performer',
-    name: 'Consistent Performer',
-    description: 'Earn points in 10 total races across the season.',
+    id: 'season_pro',
+    name: 'Season Professional',
+    description: 'Earn double-digit points (10+) in 10 different races.',
     icon: '📈',
     color: '#1E90FF'
+  },
+  {
+    id: 'centurion',
+    name: 'The Centurion',
+    description: 'Reach 100 total points in a single season.',
+    icon: '💯',
+    color: '#4CAF50'
   },
   {
     id: 'survivor',
@@ -68,41 +82,48 @@ export function evaluateAchievements(
 ): string[] {
   const unlockedIds: string[] = [];
 
-  // 1. Perfect Weekend
+  // 1. Bullseye (First exact P10)
+  if (history.some(h => h.p10Pos === 10)) {
+    unlockedIds.push('bullseye');
+  }
+
+  // 2. Perfect Weekend
   if (history.some(h => h.p10Pos === 10 && h.dnfCorrect)) {
     unlockedIds.push('perfect_weekend');
   }
 
-  // 2. Midfield Master (3 exact P10s)
+  // 3. Midfield Master (3 exact P10s)
   const exactP10Count = history.filter(h => h.p10Pos === 10).length;
   if (exactP10Count >= 3) {
     unlockedIds.push('midfield_master');
   }
 
-  // 3. Point Scorer (5 consecutive races with points > 0)
-  let consecutivePoints = 0;
+  // 4. Midfield Streak (3 consecutive races with points >= 15 - within 2 pos of P10)
+  let consecutiveMidfield = 0;
   let maxConsecutive = 0;
   history.forEach(h => {
-    if (h.points > 0) {
-      consecutivePoints++;
-      maxConsecutive = Math.max(maxConsecutive, consecutivePoints);
+    // 15 points means P8 or P12 (distance 2)
+    if (Math.abs(h.p10Pos - 10) <= 2) {
+      consecutiveMidfield++;
+      maxConsecutive = Math.max(maxConsecutive, consecutiveMidfield);
     } else {
-      consecutivePoints = 0;
+      consecutiveMidfield = 0;
     }
   });
-  if (maxConsecutive >= 5) {
-    unlockedIds.push('point_scorer');
+  if (maxConsecutive >= 3) {
+    unlockedIds.push('midfield_streak');
   }
 
-  // 4. Consistent Performer (10 total races with points > 0)
-  const totalRacesWithPoints = history.filter(h => h.points > 0).length;
-  if (totalRacesWithPoints >= 10) {
-    unlockedIds.push('consistent_performer');
+  // 5. Season Professional (10 total races with points >= 10 - within 4 pos of P10)
+  const totalRacesHighQuality = history.filter(h => Math.abs(h.p10Pos - 10) <= 4).length;
+  if (totalRacesHighQuality >= 10) {
+    unlockedIds.push('season_pro');
   }
 
-  // Note: 'survivor' requires more data (total retirements per race) 
-  // which might not be in the basic history object.
-  // We can add it if we enhance the history transformation.
+  // 6. The Centurion (100 total points)
+  if (history.length > 0 && history[history.length - 1].totalSoFar >= 100) {
+    unlockedIds.push('centurion');
+  }
 
   return unlockedIds;
 }
