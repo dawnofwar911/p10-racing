@@ -54,6 +54,7 @@ vi.mock('@/lib/api', () => ({
   fetchCalendar: vi.fn(),
   fetchDrivers: vi.fn(),
   fetchRaceResults: vi.fn(),
+  fetchRecentResults: vi.fn(),
   getFirstDnfDriver: vi.fn(),
 }));
 

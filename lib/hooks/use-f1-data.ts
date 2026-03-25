@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ApiCalendarRace, fetchDrivers, fetchCalendar } from '@/lib/api';
+import { ApiCalendarRace, fetchDrivers, fetchCalendar, fetchRecentResults, DriverFormMap } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from '@/lib/utils/storage';
 export interface UseF1DataReturn {
   drivers: Driver[];
   calendar: ApiCalendarRace[];
+  driverForm: DriverFormMap;
   loading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
@@ -21,6 +22,7 @@ export interface UseF1DataReturn {
 export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS as unknown as Driver[]);
   const [calendar, setCalendar] = useState<ApiCalendarRace[]>([]);
+  const [driverForm, setDriverForm] = useState<DriverFormMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -43,14 +45,24 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     } catch (e) {
       console.warn('useF1Data: Failed to load cached calendar', e);
     }
+
+    try {
+      const cachedForm = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVER_FORM);
+      if (cachedForm) {
+        setDriverForm(JSON.parse(cachedForm));
+      }
+    } catch (e) {
+      console.warn('useF1Data: Failed to load cached driver form', e);
+    }
   }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [driversData, calendarData] = await Promise.all([
+      const [driversData, calendarData, formData] = await Promise.all([
         fetchDrivers(season),
-        fetchCalendar(season)
+        fetchCalendar(season),
+        fetchRecentResults(season)
       ]);
 
       if (driversData.length > 0) {
@@ -61,6 +73,11 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       if (calendarData.length > 0) {
         setCalendar(calendarData);
         localStorage.setItem(STORAGE_KEYS.CACHE_CALENDAR, JSON.stringify(calendarData));
+      }
+
+      if (Object.keys(formData).length > 0) {
+        setDriverForm(formData);
+        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVER_FORM, JSON.stringify(formData));
       }
 
       setError(null);
@@ -76,5 +93,5 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     fetchData();
   }, [fetchData]);
 
-  return { drivers, calendar, loading, error, refresh: fetchData };
+  return { drivers, calendar, driverForm, loading, error, refresh: fetchData };
 }

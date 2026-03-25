@@ -234,6 +234,42 @@ export async function fetchQualifyingResults(season: number, round: number): Pro
   }
 }
 
+export type DriverFormMap = Record<string, { pos: number, status: string }[]>;
+
+/**
+ * Fetches the last N race results for all drivers in the given season.
+ */
+export async function fetchRecentResults(season: number, count: number = 3): Promise<DriverFormMap> {
+  try {
+    const response = await fetch(`${BASE_URL}/${season}/results.json?limit=500`);
+    if (!response.ok) return {};
+
+    const data = await response.json();
+    const races = data.MRData.RaceTable.Races || [];
+    
+    // Take the latest 'count' races
+    const latestRaces = races.slice(-count);
+    const formMap: DriverFormMap = {};
+
+    latestRaces.forEach((race: ApiRace) => {
+      race.Results.forEach((result: ApiResult) => {
+        const driverId = result.Driver.driverId;
+        if (!formMap[driverId]) formMap[driverId] = [];
+        
+        formMap[driverId].push({
+          pos: parseInt(result.position),
+          status: result.status
+        });
+      });
+    });
+
+    return formMap;
+  } catch (error) {
+    console.error('Error fetching recent results:', error);
+    return {};
+  }
+}
+
 export function getP10DriverId(race: ApiRace): string | null {
   const p10Result = race.Results.find(r => r.position === "10");
   return p10Result ? p10Result.Driver.driverId : null;
