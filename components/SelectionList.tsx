@@ -48,8 +48,28 @@ const SelectionList: React.FC<SelectionListProps> = ({
                     {form.length > 0 && (
                       <div className="d-flex gap-1 ms-1">
                         {form.map((f, i) => {
-                          const isDNF = f.status.toLowerCase() !== 'finished' && !f.status.toLowerCase().includes('lap');
+                          const status = f.status.toLowerCase();
+                          const isFinished = status === 'finished' || status.includes('lap');
+                          const isDNS = status.includes('start') || status.includes('withdraw') || status.includes('qualif');
                           const isP10 = f.pos === 10;
+                          
+                          // Label logic: 10, R (Retired), - (DNS/No start), or Pos
+                          let label = f.pos.toString();
+                          let bgColor = '#333';
+                          let border = 'none';
+
+                          if (isP10) {
+                            bgColor = '#e10600';
+                            border = '1px solid rgba(255,255,255,0.5)';
+                          } else if (!isFinished) {
+                            if (isDNS) {
+                              label = '-';
+                            } else {
+                              label = 'R';
+                              bgColor = '#dc3545';
+                            }
+                          }
+
                           return (
                             <div 
                               key={i} 
@@ -58,12 +78,12 @@ const SelectionList: React.FC<SelectionListProps> = ({
                                 width: '16px', 
                                 height: '16px', 
                                 fontSize: '0.5rem',
-                                backgroundColor: isP10 ? '#e10600' : (isDNF ? '#dc3545' : '#333'),
-                                border: isP10 ? '1px solid rgba(255,255,255,0.5)' : 'none'
+                                backgroundColor: bgColor,
+                                border: border
                               }}
-                              title={isDNF ? f.status : `P${f.pos}`}
+                              title={f.status}
                             >
-                              {isDNF ? 'R' : f.pos}
+                              {label}
                             </div>
                           );
                         })}

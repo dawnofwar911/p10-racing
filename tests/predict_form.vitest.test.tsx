@@ -10,17 +10,29 @@ const mockDrivers = [
 
 const mockForm = {
   'verstappen': [{ pos: 1, status: 'Finished' }, { pos: 1, status: 'Finished' }],
-  'hamilton': [{ pos: 10, status: 'Finished' }, { pos: 15, status: 'Finished' }, { pos: 20, status: 'Accident' }]
+  'hamilton': [
+    { pos: 10, status: 'Finished' }, 
+    { pos: 15, status: 'Finished' }, 
+    { pos: 20, status: 'Did not start' } // DNS
+  ],
+  'leclerc': [
+    { pos: 18, status: 'Accident' } // DNF
+  ]
 };
 
 describe('SelectionList - Driver Form Guides', () => {
-  it('renders form badges with correct colors based on position and status', () => {
+  it('renders form badges with correct colors and hyphen for DNS', async () => {
+    const driversWithLeclerc = [
+      ...mockDrivers,
+      { id: 'leclerc', name: 'Charles Leclerc', team: 'Ferrari', teamId: 'ferrari', code: 'LEC', number: 16, color: '#E80020', points: 60 }
+    ];
+
     render(
       <SelectionList 
         type="p10"
         currentPick=""
         onSelect={vi.fn()}
-        drivers={mockDrivers}
+        drivers={driversWithLeclerc}
         driverForm={mockForm}
       />
     );
@@ -33,7 +45,7 @@ describe('SelectionList - Driver Form Guides', () => {
     expect(vBadges?.[0].style.backgroundColor).toBe('rgb(51, 51, 51)'); // #333
     expect(vBadges?.[0].textContent).toBe('1');
 
-    // Lewis Hamilton: P10 (Target Red #e10600), P15 (Gray #333), Accident (Danger Red #dc3545)
+    // Lewis Hamilton: P10 (Target Red #e10600), P15 (Gray #333), DNS (Gray #333 with -)
     const hamiltonRow = screen.getByText('Lewis Hamilton').closest('.cursor-pointer');
     const hBadges = hamiltonRow?.querySelectorAll('.rounded-circle');
     expect(hBadges).toHaveLength(3);
@@ -43,10 +55,17 @@ describe('SelectionList - Driver Form Guides', () => {
     expect(hBadges?.[0].textContent).toBe('10');
     // @ts-ignore
     expect(hBadges?.[1].style.backgroundColor).toBe('rgb(51, 51, 51)'); // #333 (P15)
-    expect(hBadges?.[1].textContent).toBe('15');
     // @ts-ignore
-    expect(hBadges?.[2].style.backgroundColor).toBe('rgb(220, 53, 69)'); // #dc3545 (DNF)
-    expect(hBadges?.[2].textContent).toBe('R');
+    expect(hBadges?.[2].style.backgroundColor).toBe('rgb(51, 51, 51)'); // #333 (DNS)
+    expect(hBadges?.[2].textContent).toBe('-');
+
+    // Charles Leclerc: DNF (Danger Red #dc3545 with R)
+    const leclercRow = screen.getByText('Charles Leclerc').closest('.cursor-pointer');
+    const lBadges = leclercRow?.querySelectorAll('.rounded-circle');
+    expect(lBadges).toHaveLength(1);
+    // @ts-ignore
+    expect(lBadges?.[0].style.backgroundColor).toBe('rgb(220, 53, 69)'); // #dc3545 (DNF)
+    expect(lBadges?.[0].textContent).toBe('R');
   });
 
   it('renders nothing when form data is missing', () => {
