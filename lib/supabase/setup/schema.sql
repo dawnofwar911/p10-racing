@@ -349,6 +349,6 @@ CREATE TABLE public.user_achievements (
 
 -- RLS for user_achievements
 ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view their own achievements" ON public.user_achievements FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Achievements are public" ON public.user_achievements FOR SELECT USING (true);
 CREATE POLICY "Users can unlock their own achievements" ON public.user_achievements FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "Users can update their own achievements" ON public.user_achievements FOR UPDATE USING (user_id = auth.uid());
