@@ -88,10 +88,10 @@ export default function LeaderboardTable({
                 <td className="fw-bold fs-5 text-white text-break">
                   {entry.player}
                   {entry.player === currentUser && (
-                    <span className="badge bg-danger ms-2 rounded-pill" style={{ fontSize: '0.5rem', verticalAlign: 'middle' }}>YOU</span>
+                    <span className="badge bg-danger ms-2 rounded-pill align-middle" style={{ fontSize: '0.5rem' }}>YOU</span>
                   )}
                   {entry.rank === 1 && entries.length > 1 && isSeasonComplete && (
-                    <span className="ms-2 badge bg-warning text-dark small p-1 rounded-pill" style={{ fontSize: '0.6rem', verticalAlign: 'middle' }}>CHAMPION</span>
+                    <span className="ms-2 badge bg-warning text-dark small p-1 rounded-pill align-middle" style={{ fontSize: '0.6rem' }}>CHAMPION</span>
                   )}
                 </td>
                 <td className="text-end">
@@ -152,7 +152,7 @@ export default function LeaderboardTable({
                       <div className="season-history">
                         <h4 className="h6 text-uppercase fw-bold text-danger letter-spacing-2 mb-3" style={{ fontSize: '0.7rem' }}>Season History</h4>
                         {entry.history && entry.history.length > 0 ? (
-                          <div className="table-responsive" style={{ margin: '0 -0.25rem' }}>
+                          <div className="table-responsive mx-n1">
                             <Table variant="dark" size="sm" className="mb-0 extra-small" style={{ minWidth: '320px' }}>
                               <thead>
                                 <tr className="text-white opacity-50 border-bottom border-secondary border-opacity-25 text-uppercase" style={{ fontSize: '0.55rem' }}>
