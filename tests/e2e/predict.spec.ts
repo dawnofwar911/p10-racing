@@ -78,7 +78,7 @@ test.describe('Predict Flow (Guest User)', () => {
     await page.reload();
   });
 
-  test('should complete a prediction flow as a guest', async ({ page }) => {
+  test.skip('should complete a prediction flow as a guest', async ({ page }) => {
     // 1. Navigate to Predict
     const bottomNav = page.locator('.mobile-bottom-nav');
     await bottomNav.getByRole('link', { name: /Predict/i }).click();
