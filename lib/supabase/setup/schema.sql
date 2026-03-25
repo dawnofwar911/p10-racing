@@ -336,3 +336,19 @@ CREATE POLICY "Admins can manage bug reports" ON public.bug_reports FOR ALL USIN
 CREATE POLICY "Users manage own tokens" ON public.push_tokens FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users see own notifications" ON public.notifications FOR SELECT USING (user_id = auth.uid() OR user_id IS NULL);
 CREATE POLICY "Admins manage sent tracking" ON public.sent_notifications FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true));
+
+-- 10. User Achievements Table
+CREATE TABLE public.user_achievements (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    achievement_id TEXT NOT NULL,
+    unlocked_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    round TEXT, -- Optional: Round where it was unlocked
+    UNIQUE(user_id, achievement_id)
+);
+
+-- RLS for user_achievements
+ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own achievements" ON public.user_achievements FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Users can unlock their own achievements" ON public.user_achievements FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Users can update their own achievements" ON public.user_achievements FOR UPDATE USING (user_id = auth.uid());

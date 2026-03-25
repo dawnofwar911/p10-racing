@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   CACHE_LEAGUES: 'p10_cache_leagues',
   CACHE_CALENDAR: 'p10_cache_calendar',
   CACHE_DRIVER_FORM: 'p10_cache_driver_form',
+  CACHE_ACHIEVEMENTS: 'p10_cache_achievements',
   IS_ADMIN: 'p10_is_admin',
   SYNC_QUEUE: 'p10_sync_queue',
   HAPTICS_ENABLED: 'p10_haptics_enabled',
