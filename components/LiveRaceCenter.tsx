@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, Spinner, Badge } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useF1LiveTiming } from '@/lib/hooks/use-f1-live-timing';
@@ -20,6 +20,13 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
   isRaceInProgress 
 }) => {
   const { data, loading, error } = useF1LiveTiming(isRaceInProgress);
+
+  const driversMap = useMemo(() => {
+    return drivers.reduce((acc, d) => {
+      acc[d.id] = d;
+      return acc;
+    }, {} as Record<string, Driver>);
+  }, [drivers]);
 
   if (!isRaceInProgress) return null;
 
@@ -66,9 +73,9 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                   <div className="col-6 border-end border-secondary border-opacity-25">
                     <div className="extra-small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '0.55rem' }}>Your P10 Pick</div>
                     <div className="d-flex align-items-center gap-2">
-                      <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === p10Prediction)?.color || '#333' }}></div>
+                      <div className="f1-driver-line" style={{ height: '12px', backgroundColor: driversMap[p10Prediction]?.color || '#333' }}></div>
                       <span className="fw-bold text-white small text-truncate">
-                        {drivers.find(d => d.id === p10Prediction)?.code || '---'}
+                        {driversMap[p10Prediction]?.code || '---'}
                       </span>
                       <Badge bg={userP10Result?.position === 10 ? 'success' : 'danger'} className="ms-auto" style={{ fontSize: '0.6rem' }}>
                         P{userP10Result?.position || '??'}
@@ -78,9 +85,9 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                   <div className="col-6 ps-3">
                     <div className="extra-small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '0.55rem' }}>Your DNF Pick</div>
                     <div className="d-flex align-items-center gap-2">
-                      <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === dnfPrediction)?.color || '#333' }}></div>
+                      <div className="f1-driver-line" style={{ height: '12px', backgroundColor: driversMap[dnfPrediction]?.color || '#333' }}></div>
                       <span className="fw-bold text-white small text-truncate">
-                        {drivers.find(d => d.id === dnfPrediction)?.code || '---'}
+                        {driversMap[dnfPrediction]?.code || '---'}
                       </span>
                       <Badge bg={userDnfResult?.isRetired ? 'success' : 'secondary'} className="ms-auto" style={{ fontSize: '0.6rem' }}>
                         {userDnfResult?.isRetired ? 'DNF' : 'LIVE'}
@@ -99,7 +106,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                   {focusResults.length > 0 ? focusResults.map((res) => {
                     const isUserPick = res.driverId === p10Prediction;
                     const isP10 = res.position === 10;
-                    const driver = drivers.find(d => d.id === res.driverId);
+                    const driver = driversMap[res.driverId];
                     
                     return (
                       <motion.div 
@@ -147,7 +154,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                     <span>None yet</span>
                   )}
                 </div>
-                <div className="opacity-50 font-monospace" style={{ fontSize: '0.6rem' }}>
+                <div className="opacity-50 font-monospace" style={{ fontSize: '0.6rem' }} suppressHydrationWarning>
                   UPDATED: {new Date(data.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </div>
               </div>

@@ -52,6 +52,10 @@ interface CommunityPredictionData {
 
 type PredictTab = 'grid' | 'p10' | 'dnf';
 
+const RACE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
+const PREDICTION_LOCK_BUFFER_MS = 2 * 60 * 1000; // 2 minutes after race start
+const STATUS_CHECK_INTERVAL_MS = 30000; // 30 seconds
+
 // --- SUB-COMPONENTS MOVED OUTSIDE TO PREVENT RE-RENDERING LOOPS ---
 
 const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], drivers: Driver[] }) => (
@@ -239,15 +243,15 @@ function PredictPage() {
       const now = new Date().getTime();
       const targetStr = `${nextRace.date}T${nextRace.time}`;
       const target = new Date(targetStr).getTime();
-      const fourHoursLater = target + 4 * 60 * 60 * 1000;
+      const fourHoursLater = target + RACE_DURATION_MS;
       
-      const lockTime = target + (2 * 60 * 1000);
+      const lockTime = target + PREDICTION_LOCK_BUFFER_MS;
       setIsLocked(now > lockTime);
       setIsRaceInProgress(now > target && now < fourHoursLater);
     };
 
     calculateStatus();
-    const timer = setInterval(calculateStatus, 30000);
+    const timer = setInterval(calculateStatus, STATUS_CHECK_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [nextRace]);
 
@@ -329,7 +333,7 @@ function PredictPage() {
           setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(currentRace));
 
           const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
-          const lockTime = new Date(raceStartTime.getTime() + 120000);
+          const lockTime = new Date(raceStartTime.getTime() + PREDICTION_LOCK_BUFFER_MS);
           if (now > lockTime || finished) {
             setIsLocked(true);
           }

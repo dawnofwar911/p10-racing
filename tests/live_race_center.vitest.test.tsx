@@ -1,13 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import LiveRaceCenter from '@/components/LiveRaceCenter';
-import { useF1LiveTiming } from '@/lib/hooks/use-f1-live-timing';
-
-// Mock the hook
-vi.mock('@/lib/hooks/use-f1-live-timing', () => ({
-  useF1LiveTiming: vi.fn()
-}));
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 
 const mockDrivers = [
   { id: 'max_verstappen', name: 'Max Verstappen', code: 'VER', color: '#3671C6', team: 'Red Bull Racing', teamId: 'red_bull', number: 1, points: 0 },
@@ -16,20 +12,17 @@ const mockDrivers = [
   { id: 'albon', name: 'Alexander Albon', code: 'ALB', color: '#64C4FF', team: 'Williams', teamId: 'williams', number: 23, points: 0 },
   { id: 'alonso', name: 'Fernando Alonso', code: 'ALO', color: '#27F4D2', team: 'Aston Martin', teamId: 'aston_martin', number: 14, points: 0 },
   { id: 'hamilton', name: 'Lewis Hamilton', code: 'HAM', color: '#27F4D2', team: 'Mercedes', teamId: 'mercedes', number: 44, points: 0 },
-  { id: 'perez', name: 'Sergio Perez', code: 'PER', color: '#3671C6', team: 'Red Bull Racing', teamId: 'red_bull', number: 11, points: 0 },
-  { id: 'sainz', name: 'Carlos Sainz', code: 'SAI', color: '#E8002D', team: 'Ferrari', teamId: 'ferrari', number: 55, points: 0 },
-  { id: 'russell', name: 'George Russell', code: 'RUS', color: '#27F4D2', team: 'Mercedes', teamId: 'mercedes', number: 63, points: 0 },
-  { id: 'piastri', name: 'Oscar Piastri', code: 'PIA', color: '#FF8000', team: 'McLaren', teamId: 'mclaren', number: 81, points: 0 }
+  { id: 'perez', name: 'Sergio Perez', code: 'PER', color: '#3671C6', team: 'Red Bull Racing', teamId: 'red_bull', number: 11, points: 0 }
 ];
 
+const server = setupServer();
+
 describe('LiveRaceCenter Component', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeAll(() => server.listen());
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
 
   it('should not render if race is not in progress', () => {
-    (useF1LiveTiming as any).mockReturnValue({ data: null, loading: false, error: null });
-    
     const { container } = render(
       <LiveRaceCenter 
         p10Prediction="albon" 
@@ -38,13 +31,16 @@ describe('LiveRaceCenter Component', () => {
         isRaceInProgress={false} 
       />
     );
-    
     expect(container.firstChild).toBeNull();
   });
 
-  it('should show loading state', () => {
-    (useF1LiveTiming as any).mockReturnValue({ data: null, loading: true, error: null });
-    
+  it('should show loading state', async () => {
+    server.use(
+      http.post('https://mock-project.supabase.co/functions/v1/f1-live-proxy', () => {
+        return new Promise((resolve) => setTimeout(() => resolve(HttpResponse.json({})), 100));
+      })
+    );
+
     render(
       <LiveRaceCenter 
         p10Prediction="albon" 
@@ -53,7 +49,6 @@ describe('LiveRaceCenter Component', () => {
         isRaceInProgress={true} 
       />
     );
-    
     expect(screen.getByText(/Connecting to Track/i)).toBeDefined();
   });
 
@@ -72,7 +67,11 @@ describe('LiveRaceCenter Component', () => {
       lastUpdated: new Date().toISOString()
     };
 
-    (useF1LiveTiming as any).mockReturnValue({ data: mockData, loading: false, error: null });
+    server.use(
+      http.post('https://mock-project.supabase.co/functions/v1/f1-live-proxy', () => {
+        return HttpResponse.json(mockData);
+      })
+    );
     
     render(
       <LiveRaceCenter 
@@ -84,23 +83,30 @@ describe('LiveRaceCenter Component', () => {
     );
     
     // Check P10 status badge (Albon is P10 in mock data)
-    const p10Badge = screen.getByText('P10');
-    expect(p10Badge.className).toContain('bg-success');
+    expect(await screen.findByText('Your P10 Pick')).toBeDefined();
+    const p10PickContainer = screen.getByText('Your P10 Pick').parentElement;
+    const p10Badge = p10PickContainer?.querySelector('.badge');
+    expect(p10Badge?.className).toMatch(/bg-success/);
 
     // Check DNF status badge (Perez is retired in mock data)
-    const dnfBadge = screen.getByText('DNF');
-    expect(dnfBadge.className).toContain('bg-success');
+    expect(await screen.findByText('Your DNF Pick')).toBeDefined();
+    const dnfPickContainer = screen.getByText('Your DNF Pick').parentElement;
+    const dnfBadge = dnfPickContainer?.querySelector('.badge');
+    expect(dnfBadge?.className).toMatch(/bg-success/);
 
     // Check P10 battle list
     expect(screen.getByText('Alexander Albon')).toBeDefined();
     expect(screen.getByText('YOUR PICK')).toBeDefined();
     expect(screen.getByText('RETIRED:')).toBeDefined();
-    // Use getAllByText because PER appears in DNF pick and Retired list
     expect(screen.getAllByText('PER').length).toBe(2);
   });
 
-  it('should handle error state', () => {
-    (useF1LiveTiming as any).mockReturnValue({ data: null, loading: false, error: 'API Error' });
+  it('should handle error state', async () => {
+    server.use(
+      http.post('https://mock-project.supabase.co/functions/v1/f1-live-proxy', () => {
+        return new HttpResponse(null, { status: 500 });
+      })
+    );
     
     render(
       <LiveRaceCenter 
@@ -111,6 +117,6 @@ describe('LiveRaceCenter Component', () => {
       />
     );
     
-    expect(screen.getByText(/Waiting for live timing data/i)).toBeDefined();
+    expect(await screen.findByText(/Waiting for live timing data/i)).toBeDefined();
   });
 });

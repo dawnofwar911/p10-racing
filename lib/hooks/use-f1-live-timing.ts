@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 export interface LiveResult {
@@ -26,7 +26,7 @@ export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 6
   const [data, setData] = useState<LiveRaceData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const mountedRef = useRef(true);
 
   const fetchData = useCallback(async () => {
