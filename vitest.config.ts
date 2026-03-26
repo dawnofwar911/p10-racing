@@ -9,9 +9,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.vitest.test.{ts,tsx}'],
-    pool: 'forks',
-    fileParallelism: false,
-    maxWorkers: 1,
     alias: {
       '@': path.resolve(__dirname, './'),
     },
