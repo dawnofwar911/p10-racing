@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENT_SEASON } from '@/lib/data';
 import { STORAGE_KEYS, getPredictionKey, setStorageItem, STORAGE_UPDATE_EVENT } from '@/lib/utils/storage';
@@ -14,7 +14,7 @@ export interface Prediction {
 }
 
 export function useSyncPredictions(raceId: string | number | undefined) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { session, currentUser, displayName, syncVersion } = useAuth();
   const { showNotification } = useNotification();
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -65,7 +65,12 @@ export function useSyncPredictions(raceId: string | number | undefined) {
     }
 
     if (mountedRef.current) {
-      setPrediction(finalPrediction);
+      // Prevent state update if values haven't changed (deep equality check)
+      setPrediction(prev => {
+        if (!prev && !finalPrediction) return prev;
+        if (prev?.p10 === finalPrediction?.p10 && prev?.dnf === finalPrediction?.dnf) return prev;
+        return finalPrediction;
+      });
       setLoading(false);
     }
   }, [raceId, session, currentUser, displayName, supabase]);

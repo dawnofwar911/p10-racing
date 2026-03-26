@@ -38,17 +38,17 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
         fetchRecentResults(season)
       ]);
 
-      if (driversData.length > 0) {
+      if (driversData && driversData.length > 0) {
         setDrivers(driversData);
         localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(driversData));
       }
 
-      if (calendarData.length > 0) {
+      if (calendarData && calendarData.length > 0) {
         setCalendar(calendarData);
         localStorage.setItem(STORAGE_KEYS.CACHE_CALENDAR, JSON.stringify(calendarData));
       }
 
-      if (Object.keys(formData).length > 0) {
+      if (formData && Object.keys(formData).length > 0) {
         setDriverForm(formData);
         localStorage.setItem(STORAGE_KEYS.CACHE_DRIVER_FORM, JSON.stringify(formData));
       }
