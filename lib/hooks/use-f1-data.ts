@@ -23,7 +23,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS as unknown as Driver[]);
   const [calendar, setCalendar] = useState<ApiCalendarRace[]>([]);
   const [driverForm, setDriverForm] = useState<DriverFormMap>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Default to false to prevent layout shift if cache exists
   const [error, setError] = useState<Error | null>(null);
   const initialHydrationRef = useRef(false);
 
