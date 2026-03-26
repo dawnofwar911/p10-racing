@@ -6,7 +6,7 @@ import { CURRENT_SEASON } from '@/lib/data';
 import { fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
-import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic, triggerSelectionHaptic } from '@/lib/utils/haptics';
+import { triggerLightHaptic, triggerMediumHaptic, triggerSelectionHaptic } from '@/lib/utils/haptics';
 import { createClient } from '@/lib/supabase/client';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -26,6 +26,7 @@ import StandardPageHeader from '@/components/StandardPageHeader';
 import { LayoutGrid, Target, Flame } from 'lucide-react';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
+import { useSyncPredictions } from '@/lib/hooks/use-sync-predictions';
 import SelectionList from '@/components/SelectionList';
 import LiveRaceCenter from '@/components/LiveRaceCenter';
 
@@ -167,8 +168,7 @@ function PredictPage() {
   const mountedRef = useRef(true);
   const howtoHandledRef = useRef(false);
   
-  const { session, currentUser, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
-  const username = currentUser || '';
+  const { session, currentUser, displayName, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
   const { drivers, calendar, driverForm, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization
@@ -185,40 +185,22 @@ function PredictPage() {
 
   const [tempUsername, setTempUsername] = useState('');
   
-  const [p10Driver, setP10Driver] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    try {
-      const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-      if (cachedRaceStr && user) {
-        const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
-        return predStr ? JSON.parse(predStr).p10 : '';
-      }
-    } catch (e) {
-      console.warn('Predict: Failed to parse p10 cache', e);
-    }
-    return '';
-  });
-
-  const [dnfDriver, setDnfDriver] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    try {
-      const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-      if (cachedRaceStr && user) {
-        const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
-        return predStr ? JSON.parse(predStr).dnf : '';
-      }
-    } catch (e) {
-      console.warn('Predict: Failed to parse dnf cache', e);
-    }
-    return '';
-  });
+  const [p10Driver, setP10Driver] = useState('');
+  const [dnfDriver, setDnfDriver] = useState('');
 
   const [submitted, setSubmitted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  
+  const { prediction, submitPrediction } = useSyncPredictions(nextRace?.id);
+
+  // Sync loaded prediction to local state if not editing
+  useEffect(() => {
+    if (prediction && !isEditing) {
+      setP10Driver(prediction.p10);
+      setDnfDriver(prediction.dnf);
+    }
+  }, [prediction, isEditing]);
+
   const [loadingRace, setLoadingRace] = useState(!nextRace);
   const [isLocked, setIsLocked] = useState(false);
   const [isRaceInProgress, setIsRaceInProgress] = useState(false);
@@ -369,39 +351,6 @@ function PredictPage() {
             if (finalGrid.length > 0 && !hasCachedGrid) setActiveTab('grid');
           }
 
-          if (!isEditing) {
-            let finalP10 = '';
-            let finalDnf = '';
-
-            if (session) {
-              const { data: dbPred } = await supabase.from('predictions').select('*').eq('user_id', session.user.id).eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`).maybeSingle();
-              if (dbPred) {
-                finalP10 = dbPred.p10_driver_id;
-                finalDnf = dbPred.dnf_driver_id;
-              } else {
-                const storageUser = username || session.user.id;
-                const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, currentRace.id));
-                if (finalized) {
-                  const parsed = JSON.parse(finalized);
-                  finalP10 = parsed.p10;
-                  finalDnf = parsed.dnf;
-                }
-              }
-            } else if (username) {
-              const finalized = localStorage.getItem(getPredictionKey(CURRENT_SEASON, username, currentRace.id));
-              if (finalized) {
-                const parsed = JSON.parse(finalized);
-                finalP10 = parsed.p10;
-                finalDnf = parsed.dnf;
-              }
-            }
-
-            if (mountedRef.current && finalP10 && finalDnf) {
-              setP10Driver((prev: string) => prev || finalP10);
-              setDnfDriver((prev: string) => prev || finalDnf);
-            }
-          }
-
           const { data: dbPreds } = await supabase.from('predictions').select('user_id, p10_driver_id, dnf_driver_id').eq('race_id', `${CURRENT_SEASON}_${currentRace.id}`);
           let formattedDbPreds: CommunityPrediction[] = [];
           const userIds = (dbPreds as unknown as CommunityPredictionData[] || []).map(p => p.user_id);
@@ -416,7 +365,7 @@ function PredictPage() {
             }));
           }
 
-          const otherDbPreds = formattedDbPreds.filter(p => p.username !== username);
+          const otherDbPreds = formattedDbPreds.filter(p => p.username !== displayName);
           
           let playersList: string[] = [];
           try {
@@ -426,7 +375,7 @@ function PredictPage() {
             console.warn('Predict: Failed to parse players list during init', e);
           }
 
-          const localPreds = (Array.isArray(playersList) ? playersList : []).filter((p: string) => p !== username).map((p: string) => {
+          const localPreds = (Array.isArray(playersList) ? playersList : []).filter((p: string) => p !== displayName).map((p: string) => {
             try {
               const pred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, p, currentRace.id));
               return pred ? JSON.parse(pred) : null;
@@ -461,7 +410,7 @@ function PredictPage() {
     }
     
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, username, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session, displayName, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
@@ -483,49 +432,10 @@ function PredictPage() {
     }
 
     console.log('Predict: Submitting prediction...', { p10, dnf, raceId: nextRace.id });
-    
-    try {
-      triggerHeavyHaptic();
-      const prediction = { username: username || 'User', p10, dnf, raceId: nextRace.id, season: CURRENT_SEASON };
-
-      if (session) {
-        const { error } = await supabase.from('predictions').upsert({
-          user_id: session.user.id,
-          race_id: `${CURRENT_SEASON}_${nextRace.id}`,
-          p10_driver_id: p10,
-          dnf_driver_id: dnf,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id, race_id' });
-        
-        if (error) {
-          console.error('Predict: Supabase error:', error);
-          showNotification('Error saving prediction: ' + error.message, 'error');
-          return;
-        }
-        console.log('Predict: Saved to Supabase successfully');
-        const storageUser = username || session.user.id;
-        setStorageItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id), JSON.stringify(prediction));
-      } else {
-        console.log('Predict: Saving guest prediction to local storage');
-        setStorageItem(getPredictionKey(CURRENT_SEASON, username, nextRace.id), JSON.stringify(prediction));
-        
-        let players: string[] = [];
-        try {
-          const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
-          players = stored ? JSON.parse(stored) : [];
-        } catch (e) {
-          console.warn('Predict: Failed to parse players list during submit', e);
-        }
-
-        if (Array.isArray(players) && !players.includes(username)) {
-          players.push(username);
-          localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(players));
-        }
-      }
+    const success = await submitPrediction(p10, dnf);
+    if (success) {
       setSubmitted(true);
       setIsEditing(false);
-    } catch (err) {
-      console.error('Predict: Submit catch block:', err);
     }
   };
 
@@ -642,7 +552,7 @@ function PredictPage() {
         title="Predictions"
         subtitle={
           <span className="text-truncate d-block">
-            {nextRace?.name} • {session ? username : `Guest: ${username}`}
+            {nextRace?.name} • {displayName}
           </span>
         }
         icon={<Target size={24} className="text-white" />}
@@ -752,7 +662,7 @@ function PredictPage() {
   tabs.push({ id: 'p10', label: 'Pick P10', icon: <Target size={16} /> });
   tabs.push({ id: 'dnf', label: 'Pick DNF', icon: <Flame size={16} /> });
 
-  if (!session && !username) {
+  if (!session && !currentUser) {
     return (
       <>
         <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: '1400px' }}>
@@ -876,7 +786,7 @@ function PredictPage() {
         title="Predictions"
         subtitle={
           <span className="text-truncate d-block">
-            {nextRace?.name} • {session ? username : `Guest: ${username}`}
+            {nextRace?.name} • {displayName}
           </span>
         }
         icon={<Target size={24} className="text-white" />}

@@ -10,6 +10,7 @@ import { sessionTracker } from '@/lib/utils/session';
 interface AuthContextType {
   session: Session | null;
   currentUser: string | null;
+  displayName: string;
   isAdmin: boolean;
   hasSession: boolean;
   isAuthLoading: boolean;
@@ -22,6 +23,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   session: null,
   currentUser: null,
+  displayName: 'Guest',
   isAdmin: false,
   hasSession: false,
   isAuthLoading: true,
@@ -40,6 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+  });
+
+  const [displayName, setDisplayName] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'Guest';
+    return localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || 'Guest';
   });
 
   const [isAdmin, setIsAdmin] = useState(() => {
@@ -79,12 +86,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (profile) {
           setCurrentUser(profile.username);
+          setDisplayName(profile.username);
           setIsAdmin(!!profile.is_admin);
           setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
           setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!profile.is_admin));
         } else {
           const fallback = currentSession.user.email?.split('@')[0] || `User_${currentSession.user.id.substring(0, 5)}`;
           setCurrentUser(fallback);
+          setDisplayName(fallback);
           setStorageItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
         }
       } else {
@@ -95,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         removeStorageItem(STORAGE_KEYS.IS_ADMIN);
         const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
+        setDisplayName(localUser || 'Guest');
         setIsAdmin(false);
       }
     } catch (err) {
@@ -121,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         removeStorageItem(STORAGE_KEYS.IS_ADMIN);
         const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
+        setDisplayName(localUser || 'Guest');
         setIsAdmin(false);
         if (event === 'SIGNED_OUT') {
           window.location.href = '/';
@@ -136,12 +147,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then(({ data }) => {
             if (data) {
               setCurrentUser(data.username);
+              setDisplayName(data.username);
               setIsAdmin(!!data.is_admin);
               setStorageItem(STORAGE_KEYS.CACHE_USERNAME, data.username);
               setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!data.is_admin));
             } else {
               const fallback = newSession.user.email?.split('@')[0] || `User_${newSession.user.id.substring(0, 5)}`;
               setCurrentUser(fallback);
+              setDisplayName(fallback);
               setStorageItem(STORAGE_KEYS.CACHE_USERNAME, fallback);
             }
           });
@@ -161,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('AuthProvider: Profile updated in real-time:', updated);
         if (updated.username) {
           setCurrentUser(updated.username);
+          setDisplayName(updated.username);
           setStorageItem(STORAGE_KEYS.CACHE_USERNAME, updated.username);
         }
         if (updated.is_admin !== undefined) {
@@ -182,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const newIsAdmin = localStorage.getItem(STORAGE_KEYS.IS_ADMIN) === 'true';
         
         setCurrentUser(newUser);
+        setDisplayName(newUser || 'Guest');
         setHasSession(newSessionStatus);
         setIsAdmin(newIsAdmin);
       }
@@ -204,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     removeStorageItem(STORAGE_KEYS.IS_ADMIN);
     removeStorageItem(STORAGE_KEYS.CURRENT_USER);
     setCurrentUser(null);
+    setDisplayName('Guest');
     setIsAdmin(false);
     
     if (session) {
@@ -216,6 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(() => ({
     session,
     currentUser,
+    displayName,
     isAdmin,
     hasSession,
     isAuthLoading,
@@ -223,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshAuth: getSession,
     triggerRefresh
-  }), [session, currentUser, isAdmin, hasSession, isAuthLoading, syncVersion, logout, getSession, triggerRefresh]);
+  }), [session, currentUser, displayName, isAdmin, hasSession, isAuthLoading, syncVersion, logout, getSession, triggerRefresh]);
 
   return (
     <AuthContext.Provider value={value}>

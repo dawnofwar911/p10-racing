@@ -15,7 +15,7 @@ import { isTestAccount } from '@/lib/utils/profiles';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
@@ -24,6 +24,7 @@ import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
+import { useSyncPredictions } from '@/lib/hooks/use-sync-predictions';
 import StandardPageHeader from '@/components/StandardPageHeader';
 import { User } from 'lucide-react';
 
@@ -36,11 +37,6 @@ interface HomeRace {
   round: number;
 }
 
-interface HomePrediction {
-  p10: string;
-  dnf: string;
-}
-
 export default function Home() {
   const supabase = createClient();
   const { showNotification } = useNotification();
@@ -48,8 +44,7 @@ export default function Home() {
   const router = useRouter();
   
   // Use Global Auth Context
-  const { currentUser, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
-  const username = currentUser || session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || '';
+  const { currentUser, displayName, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
   const { drivers: allDrivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization (Zero Pop-in)
@@ -65,118 +60,7 @@ export default function Home() {
   });
 
   const [loading, setLoading] = useState(!nextRace);
-  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && user) {
-      try {
-        const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
-        return predStr ? JSON.parse(predStr) : null;
-      } catch (e) {
-        console.warn('Home: Failed to parse prediction cache', e);
-        return null;
-      }
-    }
-    return null;
-  });
-
-  // Reactive Prediction Load: Runs when auth status, sync version or next race changes
-  useEffect(() => {
-    const loadPrediction = async () => {
-      if (!nextRace) return;
-
-      let finalPrediction: HomePrediction | null = null;
-      
-      // 1. Try local cache FIRST for immediate sync
-      const storageUser = session?.user?.id || currentUser || '';
-      if (storageUser) {
-        try {
-          const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
-          if (cachedPred) {
-            finalPrediction = JSON.parse(cachedPred);
-          }
-        } catch (e) {
-          console.warn('Home: Failed to parse prediction during load', e);
-        }
-      }
-
-      // 2. Try DB as fallback if no cache or to ensure fresh data
-      if (!finalPrediction && session) {
-        const { data: pred } = await supabase
-          .from('predictions')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .eq('race_id', `${CURRENT_SEASON}_${nextRace.id}`)
-          .maybeSingle();
-        
-        if (pred) {
-          finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-        }
-      }
-
-      if (mountedRef.current) {
-        setUserPrediction(prev => {
-          if (!finalPrediction) return null;
-          if (prev?.p10 === finalPrediction.p10 && prev?.dnf === finalPrediction.dnf) return prev;
-          return finalPrediction;
-        });
-      }
-    };
-
-    // Skip if we already performed initial load AND have a prediction (optimistic stability)
-    if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
-      const storageUser = session?.user?.id || currentUser || '';
-      try {
-        const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
-        }
-      } catch (e) {
-        console.warn('Home: Failed to parse prediction during stability check', e);
-      }
-    }
-
-    loadPrediction();
-  }, [currentUser, session, nextRace, supabase, userPrediction, syncVersion]);
-
-  // Reactive Storage Listener: If predictions change on another page, update here immediately
-  useEffect(() => {
-    const handleStorageUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ key: string }>;
-      const updatedKey = customEvent.detail?.key;
-      
-      const activeUserId = session?.user?.id;
-      const localUsername = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      const storageUser = activeUserId || localUsername || '';
-      
-      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id) : null;
-
-      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER || updatedKey === STORAGE_KEYS.CACHE_USERNAME) {
-        const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-        if (cachedRaceStr && storageUser) {
-          try {
-            const raceObj = JSON.parse(cachedRaceStr);
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
-            if (predStr) {
-              const parsed = JSON.parse(predStr);
-              setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
-            } else {
-              setUserPrediction(null);
-            }
-          } catch (e) { 
-            console.warn('Home: Failed to parse data during storage update', e);
-            setUserPrediction(null); 
-          }
-        }
-      }
-    };
-
-    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace, syncVersion, session]);
+  const { prediction: userPrediction } = useSyncPredictions(nextRace?.id);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -408,9 +292,10 @@ export default function Home() {
     <>
       <Container className="mt-2 mt-md-3 flex-grow-1">
         <StandardPageHeader 
-          title="F1 PREDICTOR"
-          subtitle={session ? `Hello, ${username}` : 'Play as Guest'}
+          title="P10 Racing"
+          subtitle={session ? `Hello, ${displayName}` : 'Play as Guest'}
           icon={<User size={24} className="text-white" />}
+
         />
         <Row className="justify-content-center text-center mt-2 mt-md-3">
           <Col md={10} lg={8} className="mb-1">

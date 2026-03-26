@@ -110,6 +110,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
+
 // Mock window.matchMedia for some libraries (like Framer Motion)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
