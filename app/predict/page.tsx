@@ -27,6 +27,7 @@ import { LayoutGrid, Target, Flame } from 'lucide-react';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 import SelectionList from '@/components/SelectionList';
+import LiveRaceCenter from '@/components/LiveRaceCenter';
 
 interface PredictRace {
   id: string;
@@ -50,6 +51,10 @@ interface CommunityPredictionData {
 }
 
 type PredictTab = 'grid' | 'p10' | 'dnf';
+
+const RACE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
+const PREDICTION_LOCK_BUFFER_MS = 2 * 60 * 1000; // 2 minutes after race start
+const STATUS_CHECK_INTERVAL_MS = 30000; // 30 seconds
 
 // --- SUB-COMPONENTS MOVED OUTSIDE TO PREVENT RE-RENDERING LOOPS ---
 
@@ -216,6 +221,7 @@ function PredictPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loadingRace, setLoadingRace] = useState(!nextRace);
   const [isLocked, setIsLocked] = useState(false);
+  const [isRaceInProgress, setIsRaceInProgress] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
@@ -229,6 +235,25 @@ function PredictPage() {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  useEffect(() => {
+    if (!nextRace) return;
+
+    const calculateStatus = () => {
+      const now = new Date().getTime();
+      const targetStr = `${nextRace.date}T${nextRace.time}`;
+      const target = new Date(targetStr).getTime();
+      const fourHoursLater = target + RACE_DURATION_MS;
+      
+      const lockTime = target + PREDICTION_LOCK_BUFFER_MS;
+      setIsLocked(now > lockTime);
+      setIsRaceInProgress(now > target && now < fourHoursLater);
+    };
+
+    calculateStatus();
+    const timer = setInterval(calculateStatus, STATUS_CHECK_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [nextRace]);
 
   useEffect(() => {
     if (searchParams.get('howto') === 'true' && !howtoHandledRef.current) {
@@ -308,7 +333,7 @@ function PredictPage() {
           setStorageItem(STORAGE_KEYS.CACHE_NEXT_RACE, JSON.stringify(currentRace));
 
           const raceStartTime = new Date(`${currentRace.date}T${currentRace.time}`);
-          const lockTime = new Date(raceStartTime.getTime() + 120000);
+          const lockTime = new Date(raceStartTime.getTime() + PREDICTION_LOCK_BUFFER_MS);
           if (now > lockTime || finished) {
             setIsLocked(true);
           }
@@ -636,6 +661,16 @@ function PredictPage() {
           </h2>
           
           <Row className="text-start justify-content-center">
+            {isRaceInProgress && (
+              <Col xs={12} className="mb-2">
+                <LiveRaceCenter 
+                  p10Prediction={p10Driver} 
+                  dnfPrediction={dnfDriver} 
+                  drivers={drivers} 
+                  isRaceInProgress={isRaceInProgress} 
+                />
+              </Col>
+            )}
             <Col xs={12} lg={isLocked ? 6 : 8} className="mb-4">
               <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
                 <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">

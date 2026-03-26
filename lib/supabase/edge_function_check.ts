@@ -18,7 +18,25 @@ interface RaceResultItem {
   };
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // 1. CORS Headers
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*', // System task, but good practice
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  // 2. Security: Verify Secret (prevent manual/external trigger)
+  const authHeader = req.headers.get('Authorization');
+  const CRON_SECRET = Deno.env.get('CRON_SECRET');
+  
+  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+  }
+
   const now = new Date();
   const season = now.getFullYear();
 
@@ -220,10 +238,10 @@ Deno.serve(async () => {
       }
     }
 
-    return new Response('Check completed');
+    return new Response('Check completed', { headers: corsHeaders });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('Error in checker:', errorMessage);
-    return new Response('Error', { status: 500 });
+    return new Response('Error', { status: 500, headers: corsHeaders });
   }
 });
