@@ -95,8 +95,7 @@ export function useSyncPredictions(raceId: string | number | undefined) {
           showNotification('Error saving prediction: ' + error.message, 'error');
           return false;
         }
-        const storageUser = displayName || session.user.id;
-        setStorageItem(getPredictionKey(CURRENT_SEASON, storageUser, String(raceId)), JSON.stringify(predData));
+        setStorageItem(getPredictionKey(CURRENT_SEASON, session.user.id, String(raceId)), JSON.stringify(predData));
       } else {
         // Guest mode
         setStorageItem(getPredictionKey(CURRENT_SEASON, displayName, String(raceId)), JSON.stringify(predData));
