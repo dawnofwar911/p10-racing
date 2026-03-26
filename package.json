@@ -2,7 +2,6 @@
   "name": "p10-racing",
   "version": "1.39.0",
   "private": false,
-
   "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev",
@@ -10,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
@@ -52,6 +51,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.0",
     "@vitest/coverage-v8": "^4.1.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.1.6",
     "husky": "^9.1.7",
