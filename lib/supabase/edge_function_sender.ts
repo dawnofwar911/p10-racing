@@ -13,7 +13,34 @@ interface NotificationRecord {
 }
 
 Deno.serve(async (req) => {
+  // 1. CORS Headers - Securely derived from environment
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigins = [
+    Deno.env.get('APP_URL'), 
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'capacitor://localhost',
+    'http://localhost'
+  ].filter(Boolean);
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin'
+  };
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
+    // 2. Simple Authorization Check (ensure it's from Supabase or our App)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    }
+
     const payload = await req.json();
     const record: NotificationRecord = payload.record;
 
@@ -75,11 +102,11 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully sent ${results.filter(s => s === 200).length} notifications.`);
     return new Response(JSON.stringify({ sent: results.length }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('Push Error:', msg);
-    return new Response(msg, { status: 500 });
+    return new Response(msg, { status: 500, headers: corsHeaders });
   }
 });

@@ -159,7 +159,7 @@ export default function AuthPage() {
 
   return (
     <>
-      <Container className="mt-5">
+      <Container className="mt-2 mt-md-3">
         <Row className="justify-content-center">
           <Col md={6} lg={5}>
             <Card className="f1-glass-card border-secondary border-opacity-50">
@@ -233,7 +233,7 @@ export default function AuthPage() {
                   )}
 
                   <HapticButton 
-                    hapticStyle="medium"
+                    haptic="medium"
                     type="submit" 
                     variant="danger"
                     className="w-100 py-3 fw-bold mb-3 rounded-pill shadow-sm" 

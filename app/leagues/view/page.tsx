@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
-import { Spinner, Badge } from 'react-bootstrap';
+import { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
+import { Badge } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
@@ -11,8 +11,8 @@ import { calculateSeasonPoints } from '@/lib/scoring';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { isTestAccount } from '@/lib/utils/profiles';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
-import LoadingView from '@/components/LoadingView';
 import LeaderboardTable from '@/components/LeaderboardTable';
+import LoadingView from '@/components/LoadingView';
 import { Share } from '@capacitor/share';
 import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Users, ChevronLeft } from 'lucide-react';
@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import HapticButton from '@/components/HapticButton';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
+import LeaderboardSkeleton from '@/components/LeaderboardSkeleton'; // Import the skeleton
 
 const supabase = createClient();
 
@@ -217,14 +218,13 @@ function LeagueDetailContent() {
         </div>
         
         {loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+          <LeaderboardSkeleton />
         ) : (
           <LeaderboardTable 
             entries={leaderboard} 
             loading={loading} 
             isSeasonComplete={isSeasonComplete}
             drivers={allDrivers}
-            emptyMessage="No members in this league yet."
           />
         )}
       </div>
@@ -234,7 +234,11 @@ function LeagueDetailContent() {
 
 export default function LeagueDetailPage() {
   return (
-    <Suspense fallback={<LoadingView />}>
+    <Suspense fallback={
+      <div className="container mt-2 mt-md-3">
+        <LoadingView text="Loading League..." />
+      </div>
+    }>
       <LeagueDetailContent />
     </Suspense>
   );

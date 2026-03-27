@@ -362,7 +362,7 @@ export default function AdminPage() {
                   </Dropdown>
                 </Form.Group>
                 <div className="d-grid gap-3">
-                  <HapticButton hapticStyle="medium" variant={existingResult ? "warning" : "danger"} size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className={`fw-bold py-3 rounded-pill shadow-sm ${existingResult ? 'text-dark' : ''}`}>
+                  <HapticButton haptic="medium" variant={existingResult ? "warning" : "danger"} size="lg" onClick={() => handleSaveResults('global')} disabled={loading} className={`fw-bold py-3 rounded-pill shadow-sm ${existingResult ? 'text-dark' : ''}`}>
                     {existingResult ? 'CORRECT & RE-CALCULATE' : 'PUBLISH GLOBALLY'}
                   </HapticButton>
                   <HapticButton variant="outline-light" onClick={() => handleSaveResults('local')} disabled={loading} className="fw-bold py-2 rounded-pill opacity-75">

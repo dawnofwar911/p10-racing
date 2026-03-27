@@ -7,7 +7,6 @@ import { Session } from '@supabase/supabase-js';
 import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { CURRENT_SEASON } from '@/lib/data';
 import { useSearchParams } from 'next/navigation';
-import LoadingView from '@/components/LoadingView';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
@@ -16,6 +15,7 @@ import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import { Trophy, Settings as SettingsIcon } from 'lucide-react';
+import LoadingView from '@/components/LoadingView';
 
 interface League {
   id: string;
@@ -88,7 +88,7 @@ const MyLeaguesView = ({
             {localGuests.map(guest => (
               <div key={guest} className="d-flex align-items-center bg-dark bg-opacity-50 p-1 px-2 rounded-pill border border-secondary border-opacity-50">
                 <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
-                <HapticButton hapticStyle="medium" variant="warning" size="sm" className="fw-bold extra-small py-0 rounded-pill" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
+                <HapticButton haptic="medium" variant="warning" size="sm" className="fw-bold extra-small py-0 rounded-pill" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
               </div>
             ))}
           </div>
@@ -131,7 +131,7 @@ const ManageLeaguesView = ({
                 className="f1-input-dark py-2 small" 
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+            <HapticButton haptic="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
               {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE NEW LEAGUE'}
             </HapticButton>
           </Form>
@@ -155,7 +155,7 @@ const ManageLeaguesView = ({
                 maxLength={8}
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+            <HapticButton haptic="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
               JOIN WITH CODE
             </HapticButton>
           </Form>
@@ -218,43 +218,46 @@ function LeaguesContent() {
   }, []);
 
   const fetchLeagues = useCallback(async (quiet = false) => {
+    if (!session?.user?.id) return; // Must be authenticated
     if (!quiet && mountedRef.current) setLoading(true);
     try {
+      // 1. Fetch IDs of leagues the user is a member of
+      const { data: memberData, error: memberError } = await withTimeout(supabase
+        .from('league_members')
+        .select('league_id')
+        .eq('user_id', session.user.id));
+      
+      if (memberError) throw memberError;
+      const leagueIds = memberData?.map(m => m.league_id) || [];
+
+      if (leagueIds.length === 0) {
+        if (mountedRef.current) {
+          setLeagues([]);
+          setLoading(false);
+          localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, '[]');
+        }
+        return;
+      }
+
+      // 2. Fetch the league details for those specific leagues
       const { data: leaguesData, error: fetchError } = await withTimeout(supabase
         .from('leagues')
         .select('*')
+        .in('id', leagueIds)
         .order('created_at', { ascending: false }));
 
       if (fetchError) throw fetchError;
       
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      const currentUserId = currentSession?.user?.id;
-
-      const creatorIds = [...new Set((leaguesData || []).map(l => l.created_by).filter(Boolean))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', creatorIds);
-
-      const profileMap = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id]: p.username }), {} as Record<string, string>);
-
-      const filteredData = (leaguesData || []).filter(league => {
-        const creatorUsername = profileMap[league.created_by];
-        const isTest = /\b(tester|reviewer)\b/i.test(creatorUsername || '');
-        if (!isTest) return true;
-        return league.created_by === currentUserId;
-      });
-
       if (mountedRef.current) {
-        setLeagues(filteredData);
-        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(filteredData));
+        setLeagues(leaguesData || []);
+        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(leaguesData || []));
       }
     } catch (err: unknown) {
       if (err instanceof Error && mountedRef.current) setError(err.message);
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, session?.user?.id]);
 
   const init = useCallback(async () => {
     try {
@@ -495,9 +498,6 @@ function LeaguesContent() {
         { id: 'my-leagues', label: 'My Leagues', icon: <Trophy size={16} /> },
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }
       ]}
-      renderTabContent={(tabId) => (
-        tabId === 'my-leagues' ? myLeaguesView : manageLeaguesView
-      )}
     >
       <div className="mt-3">
         <FeedbackAlerts 
@@ -514,7 +514,11 @@ function LeaguesContent() {
 
 export default function LeaguesPage() {
   return (
-    <Suspense fallback={<LoadingView />}>
+    <Suspense fallback={
+      <div className="container mt-2 mt-md-3">
+        <LoadingView text="Loading Leagues..." />
+      </div>
+    }>
       <LeaguesContent />
     </Suspense>
   );

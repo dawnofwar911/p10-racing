@@ -15,10 +15,10 @@ export default function PageTransition({ children }: { children: React.ReactNode
     */
     <motion.div
       key={pathname}
-      initial={{ opacity: 0 }}
+      initial={{ opacity: 0.9 }}
       animate={{ opacity: 1 }}
       transition={{ 
-        duration: 0.15, 
+        duration: 0.1, 
         ease: "easeOut" 
       }}
       className="page-transition-wrapper"

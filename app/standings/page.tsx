@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, Spinner } from 'react-bootstrap';
+import { Table } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { Driver, ConstructorStanding } from '@/lib/types';
 import { fetchDrivers, fetchConstructors } from '@/lib/api';
@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { Flag, Trophy, Users } from 'lucide-react';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
+import LeaderboardSkeleton from '@/components/LeaderboardSkeleton';
 
 const DriversTable = ({ data }: { data: Driver[] }) => (
   <div className="f1-premium-table-container">
@@ -139,7 +140,12 @@ export default function StandingsPage() {
   return (
     <SwipeablePageLayout
       title="World Championship"
-      subtitle={view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}
+      subtitle={
+        <>
+          <span className="d-lg-none">{view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}</span>
+          <span className="d-none d-lg-block">Driver & Constructor Standings</span>
+        </>
+      }
       icon={<Flag size={24} className="text-white" />}
       activeTab={view}
       onTabChange={setView}
@@ -151,7 +157,13 @@ export default function StandingsPage() {
       ]}
       renderTabContent={(tabId) => (
         loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+          <LeaderboardSkeleton 
+            columns={[
+              { header: 'Pos', className: 'ps-3', width: '50px', skeletonWidth: '20px' },
+              { header: view === 'drivers' ? 'Driver / Team' : 'Team', skeletonWidth: '70%' },
+              { header: 'PTS', className: 'text-end pe-4', width: '80px', skeletonWidth: '40px' }
+            ]}
+          />
         ) : tabId === 'drivers' ? (
           <DriversTable data={standings} />
         ) : (
@@ -160,7 +172,15 @@ export default function StandingsPage() {
       )}
     >
       {/* Fallback for safety, though renderTabContent handles it */}
-      {loading ? <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div> : null}
+      {loading ? (
+        <LeaderboardSkeleton 
+          columns={[
+            { header: 'Pos', className: 'ps-3', width: '50px', skeletonWidth: '20px' },
+            { header: view === 'drivers' ? 'Driver / Team' : 'Team', skeletonWidth: '70%' },
+            { header: 'PTS', className: 'text-end pe-4', width: '80px', skeletonWidth: '40px' }
+          ]}
+        />
+      ) : null}
     </SwipeablePageLayout>
   );
 }

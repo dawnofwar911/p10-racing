@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { ApiCalendarRace, fetchDrivers, fetchCalendar } from '@/lib/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ApiCalendarRace, fetchDrivers, fetchCalendar, fetchRecentResults, DriverFormMap } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from '@/lib/utils/storage';
 export interface UseF1DataReturn {
   drivers: Driver[];
   calendar: ApiCalendarRace[];
+  driverForm: DriverFormMap;
   loading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
@@ -16,51 +17,40 @@ export interface UseF1DataReturn {
 
 /**
  * Custom hook to fetch and cache F1 drivers and calendar data.
- * To avoid hydration mismatches, we initialize with fallback data and load cache in an effect.
+ * Optimized with stale-while-revalidate and hydration safety.
  */
 export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
   const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS as unknown as Driver[]);
   const [calendar, setCalendar] = useState<ApiCalendarRace[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [driverForm, setDriverForm] = useState<DriverFormMap>({});
+  const [loading, setLoading] = useState(false); // Default to false to prevent layout shift if cache exists
   const [error, setError] = useState<Error | null>(null);
+  const initialHydrationRef = useRef(false);
 
-  // 1. Initial Cache Load (Safe for hydration)
-  useEffect(() => {
+  const fetchData = useCallback(async (isInitial: boolean = false) => {
+    // If initial, and we have valid cache, we can skip full loading state
+    if (!isInitial) setLoading(true);
+    
     try {
-      const cachedDrivers = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-      if (cachedDrivers) {
-        setDrivers(JSON.parse(cachedDrivers));
-      }
-    } catch (e) {
-      console.warn('useF1Data: Failed to load cached drivers', e);
-    }
-
-    try {
-      const cachedCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR);
-      if (cachedCalendar) {
-        setCalendar(JSON.parse(cachedCalendar));
-      }
-    } catch (e) {
-      console.warn('useF1Data: Failed to load cached calendar', e);
-    }
-  }, []);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [driversData, calendarData] = await Promise.all([
+      const [driversData, calendarData, formData] = await Promise.all([
         fetchDrivers(season),
-        fetchCalendar(season)
+        fetchCalendar(season),
+        fetchRecentResults(season)
       ]);
 
-      if (driversData.length > 0) {
+      if (driversData && driversData.length > 0) {
         setDrivers(driversData);
         localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(driversData));
       }
 
-      if (calendarData.length > 0) {
+      if (calendarData && calendarData.length > 0) {
         setCalendar(calendarData);
         localStorage.setItem(STORAGE_KEYS.CACHE_CALENDAR, JSON.stringify(calendarData));
+      }
+
+      if (formData && Object.keys(formData).length > 0) {
+        setDriverForm(formData);
+        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVER_FORM, JSON.stringify(formData));
       }
 
       setError(null);
@@ -72,9 +62,33 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     }
   }, [season]);
 
+  // 1. Initial Cache Load & Refresh Trigger
   useEffect(() => {
-    fetchData();
+    if (initialHydrationRef.current) return;
+    
+    // Load from cache first
+    let hasValidCache = false;
+    try {
+      const cachedDrivers = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
+      const cachedCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR);
+      const cachedForm = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVER_FORM);
+
+      if (cachedDrivers && cachedCalendar) {
+        setDrivers(JSON.parse(cachedDrivers));
+        setCalendar(JSON.parse(cachedCalendar));
+        if (cachedForm) setDriverForm(JSON.parse(cachedForm));
+        hasValidCache = true;
+      }
+    } catch (e) {
+      console.warn('useF1Data: Failed to load cache', e);
+    }
+
+    initialHydrationRef.current = true;
+    
+    // Always trigger a background refresh on mount to ensure freshness, 
+    // but only if it's the first time this mount.
+    fetchData(hasValidCache);
   }, [fetchData]);
 
-  return { drivers, calendar, loading, error, refresh: fetchData };
+  return { drivers, calendar, driverForm, loading, error, refresh: () => fetchData(false) };
 }

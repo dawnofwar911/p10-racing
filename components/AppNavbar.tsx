@@ -6,7 +6,6 @@ import HapticButton from './HapticButton';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import { User } from 'lucide-react';
 import { NAV_ITEMS } from '@/lib/navigation';
 import UserDrawer from './UserDrawer';
@@ -18,7 +17,6 @@ export default function AppNavbar() {
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    triggerMediumHaptic();
     await logout();
   };
 
@@ -30,7 +28,6 @@ export default function AppNavbar() {
     if (!showDrawer) return;
 
     const handleBack = (e: CustomEvent) => {
-      triggerLightHaptic();
       setShowDrawer(false);
       e.preventDefault(); // Stop default navigation behavior
     };

@@ -1,20 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Spinner } from 'react-bootstrap';
+import { Container, Row, Col } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { triggerMediumHaptic } from '@/lib/utils/haptics';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import { calculateSeasonPoints } from '@/lib/scoring';
+import { calculateSeasonPoints, mapPredictionsByUser } from '@/lib/scoring';
 import { createClient } from '@/lib/supabase/client';
 import { useNotification } from '@/components/Notification';
+import { isTestAccount } from '@/lib/utils/profiles';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
 import { getActiveRaceIndex } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
-import { STORAGE_KEYS, getPredictionKey, STORAGE_UPDATE_EVENT, setStorageItem } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
@@ -23,6 +24,9 @@ import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
+import { useSyncPredictions } from '@/lib/hooks/use-sync-predictions';
+import StandardPageHeader from '@/components/StandardPageHeader';
+import { User } from 'lucide-react';
 
 interface HomeRace {
   id: string;
@@ -33,10 +37,24 @@ interface HomeRace {
   round: number;
 }
 
-interface HomePrediction {
-  p10: string;
-  dnf: string;
-}
+const NextRaceSkeleton = () => (
+  <div className="f1-glass-card p-3 border-secondary border-opacity-25 h-100 animate-pulse">
+    <div className="skeleton-text mb-2" style={{ width: '40%', height: '10px' }}></div>
+    <div className="skeleton-text mb-1" style={{ width: '80%', height: '24px' }}></div>
+    <div className="skeleton-text mb-2" style={{ width: '60%', height: '14px' }}></div>
+    <div className="skeleton-text" style={{ width: '30%', height: '18px', borderRadius: '10px' }}></div>
+  </div>
+);
+
+const CountdownSkeleton = () => (
+  <div className="d-flex justify-content-center gap-2 px-2 mx-auto animate-pulse" style={{ maxWidth: '300px' }}>
+    {[1, 2, 3, 4].map(i => (
+      <div key={i} className="bg-dark border border-secondary border-opacity-20 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '55px', height: '55px', opacity: 0.5 }}>
+        <div className="skeleton-text" style={{ width: '25px', height: '20px' }}></div>
+      </div>
+    ))}
+  </div>
+);
 
 export default function Home() {
   const supabase = createClient();
@@ -45,7 +63,7 @@ export default function Home() {
   const router = useRouter();
   
   // Use Global Auth Context
-  const { currentUser, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
+  const { currentUser, displayName, hasSession, session, isAuthLoading, syncVersion, triggerRefresh } = useAuth();
   const { drivers: allDrivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
 
   // 1. Synchronous Cache Initialization (Zero Pop-in)
@@ -61,118 +79,7 @@ export default function Home() {
   });
 
   const [loading, setLoading] = useState(!nextRace);
-  const [userPrediction, setUserPrediction] = useState<HomePrediction | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const user = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-    if (cachedRaceStr && user) {
-      try {
-        const raceObj = JSON.parse(cachedRaceStr);
-        const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, user, raceObj.id));
-        return predStr ? JSON.parse(predStr) : null;
-      } catch (e) {
-        console.warn('Home: Failed to parse prediction cache', e);
-        return null;
-      }
-    }
-    return null;
-  });
-
-  // Reactive Prediction Load: Runs when auth status, sync version or next race changes
-  useEffect(() => {
-    const loadPrediction = async () => {
-      if (!nextRace) return;
-
-      let finalPrediction: HomePrediction | null = null;
-      
-      // 1. Try local cache FIRST for immediate sync
-      const storageUser = session?.user?.id || currentUser || '';
-      if (storageUser) {
-        try {
-          const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id));
-          if (cachedPred) {
-            finalPrediction = JSON.parse(cachedPred);
-          }
-        } catch (e) {
-          console.warn('Home: Failed to parse prediction during load', e);
-        }
-      }
-
-      // 2. Try DB as fallback if no cache or to ensure fresh data
-      if (!finalPrediction && session) {
-        const { data: pred } = await supabase
-          .from('predictions')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .eq('race_id', `${CURRENT_SEASON}_${nextRace.id}`)
-          .maybeSingle();
-        
-        if (pred) {
-          finalPrediction = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-        }
-      }
-
-      if (mountedRef.current) {
-        setUserPrediction(prev => {
-          if (!finalPrediction) return null;
-          if (prev?.p10 === finalPrediction.p10 && prev?.dnf === finalPrediction.dnf) return prev;
-          return finalPrediction;
-        });
-      }
-    };
-
-    // Skip if we already performed initial load AND have a prediction (optimistic stability)
-    if (!sessionTracker.isInitialLoadNeeded() && userPrediction) {
-      const storageUser = session?.user?.id || currentUser || '';
-      try {
-        const cached = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, nextRace?.id || ''));
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            if (userPrediction.p10 === parsed.p10 && userPrediction.dnf === parsed.dnf) return;
-        }
-      } catch (e) {
-        console.warn('Home: Failed to parse prediction during stability check', e);
-      }
-    }
-
-    loadPrediction();
-  }, [currentUser, session, nextRace, supabase, userPrediction, syncVersion]);
-
-  // Reactive Storage Listener: If predictions change on another page, update here immediately
-  useEffect(() => {
-    const handleStorageUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ key: string }>;
-      const updatedKey = customEvent.detail?.key;
-      
-      const activeUserId = session?.user?.id;
-      const localUsername = localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      const storageUser = activeUserId || localUsername || '';
-      
-      const expectedKey = nextRace ? getPredictionKey(CURRENT_SEASON, storageUser, nextRace.id) : null;
-
-      if (updatedKey === expectedKey || updatedKey === STORAGE_KEYS.CURRENT_USER || updatedKey === STORAGE_KEYS.CACHE_USERNAME) {
-        const cachedRaceStr = localStorage.getItem(STORAGE_KEYS.CACHE_NEXT_RACE);
-        if (cachedRaceStr && storageUser) {
-          try {
-            const raceObj = JSON.parse(cachedRaceStr);
-            const predStr = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, raceObj.id));
-            if (predStr) {
-              const parsed = JSON.parse(predStr);
-              setUserPrediction(prev => (prev?.p10 === parsed.p10 && prev?.dnf === parsed.dnf) ? prev : parsed);
-            } else {
-              setUserPrediction(null);
-            }
-          } catch (e) { 
-            console.warn('Home: Failed to parse data during storage update', e);
-            setUserPrediction(null); 
-          }
-        }
-      }
-    };
-
-    window.addEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-    return () => window.removeEventListener(STORAGE_UPDATE_EVENT, handleStorageUpdate);
-  }, [currentUser, nextRace, syncVersion, session]);
+  const { prediction: userPrediction } = useSyncPredictions(nextRace?.id);
 
   const [countdown, setCountdown] = useState(() => {
     if (typeof window === 'undefined' || !nextRace) return { d: 0, h: 0, m: 0, s: 0 };
@@ -241,21 +148,33 @@ export default function Home() {
           const upcoming = calendar[activeIndex];
           
           if (finished) {
-            const { data: profiles } = await supabase.from('profiles').select('id, username');
-            const { data: predictions } = await supabase.from('predictions').select('*') as { data: DbPrediction[] | null };
+            const { data: { session } } = await supabase.auth.getSession();
+            const currentUserId = session?.user?.id;
+            
+            // 1. Fetch only current season predictions (Optimized fetch)
+            const [
+              { data: profiles },
+              { data: predictions }
+            ] = await Promise.all([
+              supabase.from('profiles').select('id, username'),
+              // Type cast: PostgrestFilterBuilder is thenable but not a standard Promise, 
+              // requiring double-casting for use in Promise.all.
+              supabase.from('predictions').select('*').ilike('race_id', `${CURRENT_SEASON}_%`) as unknown as Promise<{ data: DbPrediction[] | null }>
+            ]);
 
-            if (profiles && predictions && Object.keys(raceResultsMap).length > 0) {
-              const players = profiles.map(p => ({ 
-                username: p.username, 
-                predictions: predictions
-                  .filter(pred => pred.user_id === p.id)
-                  .reduce((acc, pred) => {
-                    const round = pred.race_id.split('_')[1];
-                    acc[round] = { p10: pred.p10_driver_id, dnf: pred.dnf_driver_id };
-                    return acc;
-                  }, {} as { [round: string]: { p10: string, dnf: string } })
-              }));
+            if (profiles && Object.keys(raceResultsMap).length > 0) {
+              // 2. Pre-process predictions into a Map for O(1) user lookup
+              const predByUserId = mapPredictionsByUser(predictions);
 
+              // 3. Map players and calculate points
+              const players = profiles
+                .filter(p => !isTestAccount(p.username) || p.id === currentUserId)
+                .map(p => ({ 
+                  username: p.username, 
+                  predictions: predByUserId[p.id] || {}
+                }));
+
+              // 4. Add local/guest players
               const localPlayers: string[] = [];
               try {
                 const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
@@ -390,69 +309,133 @@ export default function Home() {
 
   return (
     <>
-      <Container className="mt-3 mt-md-4 flex-grow-1">
-        <Row className="justify-content-center text-center">
-          <Col md={8} className="mb-2">
-            <h1 className="display-5 fw-bold mb-2 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
-            <p className="small text-white opacity-75 mb-4 mx-auto" style={{ maxWidth: '500px' }}>
-              Predict the 10th place finisher and the first DNF of the {nextRace?.name || 'next Grand Prix'}.
+      <Container className="mt-2 mt-md-3 flex-grow-1">
+        <StandardPageHeader 
+          title="P10 Racing"
+          subtitle={session ? `Hello, ${displayName}` : 'Play as Guest'}
+          icon={<User size={24} className="text-white" />}
+
+        />
+        <Row className="justify-content-center text-center mt-2 mt-md-3">
+          <Col md={10} lg={8} className="mb-1">
+            <h1 className="display-5 fw-bold mb-1 text-white letter-spacing-1">MASTER THE <span className="text-danger">MIDFIELD</span></h1>
+            <p className="small text-white opacity-75 mb-3 mx-auto" style={{ maxWidth: '600px' }}>
+              Predict the 10th place finisher and the first DNF of the<br />
+              <span className="text-danger fw-bold">{nextRace?.name || 'next Grand Prix'}</span>.
             </p>
             
             {nextRace && !loading && isSeasonFinished && (
-              <div className="f1-accent-card mb-4 p-4 border-warning border-opacity-50">
-                <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
-                <h2 className="display-6 fw-bold text-white mb-2">
-                  {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
-                </h2>
-                <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
-                <HapticLink 
-                  href="/leaderboard"
-                  className="btn btn-warning fw-bold px-4 rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
-                  hapticStyle="medium"
-                >
-                  VIEW FINAL STANDINGS
-                </HapticLink>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.6, type: 'spring' }}
+                className="f1-accent-card mb-4 p-4 border-warning border-opacity-50 overflow-hidden position-relative"
+              >
+                {/* Decorative particles */}
+                {[...Array(6)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="position-absolute bg-warning opacity-25 rounded-circle"
+                    animate={{
+                      y: [0, -100],
+                      x: [0, (i % 2 === 0 ? 20 : -20) * (i + 1)],
+                      opacity: [0.2, 0],
+                      scale: [1, 0]
+                    }}
+                    transition={{
+                      duration: 2 + i,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                      delay: i * 0.5
+                    }}
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      bottom: '20px',
+                      left: `${15 + (i * 15)}%`,
+                      zIndex: 0
+                    }}
+                  />
+                ))}
+
+                <div className="position-relative" style={{ zIndex: 1 }}>
+                  <div className="text-uppercase fw-bold text-warning mb-2 letter-spacing-2" style={{ fontSize: '0.8rem' }}>🏆 Season Champion 🏆</div>
+                  <motion.h2 
+                    className="display-6 fw-bold text-white mb-2"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    {champion ? champion.toUpperCase() : 'SEASON FINISHED'}
+                  </motion.h2>
+                  <p className="text-muted small mb-3">Congratulations! Check the leaderboard to see the final standings for {CURRENT_SEASON}.</p>
+                  <HapticLink 
+                    href="/leaderboard"
+                    className="btn btn-warning fw-bold px-4 rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center shadow"
+                    haptic="medium"
+                  >
+                    VIEW FINAL STANDINGS
+                  </HapticLink>
+                </div>
+              </motion.div>
             )}
 
             {!isSeasonFinished && (
-              <div style={{ minHeight: "115px" }} className="d-flex flex-column align-items-center justify-content-center mb-4" suppressHydrationWarning>
-                {nextRace && (
-                  <>
-                    {showCountdown ? (
-                      <motion.div
-                        initial={isColdStart ? { opacity: 0, y: 5 } : false}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4 }}
-                      >
-                        <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                        <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '320px' }}>
-                          {[
-                            { label: 'D', val: countdown.d },
-                            { label: 'H', val: countdown.h },
-                            { label: 'M', val: countdown.m },
-                            { label: 'S', val: countdown.s }
-                          ].map(item => (
-                            <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
-                              <div className="h4 fw-bold text-white mb-0 line-height-1">{item.val}</div>
-                              <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>{item.label}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    ) : isRaceInProgress ? (
-                      <motion.div
-                        initial={isColdStart ? { opacity: 0 } : false}
-                        animate={{ opacity: 1 }}
-                      >
-                        <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
-                        <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
-                      </motion.div>
-                    ) : (
+              <div style={{ minHeight: "100px" }} className="d-flex flex-column align-items-center justify-content-center mb-3" suppressHydrationWarning>
+                <AnimatePresence mode="wait">
+                  {!nextRace ? (
+                    <motion.div 
+                      key="countdown-skeleton"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="text-uppercase fw-bold text-danger mb-1 letter-spacing-2" style={{ fontSize: '0.6rem', opacity: 0.8 }}>Race Starts In</div>
+                      <CountdownSkeleton />
+                    </motion.div>
+                  ) : nextRace && showCountdown ? (
+                    <motion.div
+                      key="countdown-active"
+                      initial={isColdStart ? { opacity: 0, y: 5 } : { opacity: 0 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <div className="text-uppercase fw-bold text-danger mb-1 letter-spacing-2" style={{ fontSize: '0.6rem', opacity: 0.8 }}>Race Starts In</div>
+                      <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '300px' }}>
+                        {[
+                          { label: 'D', val: countdown.d },
+                          { label: 'H', val: countdown.h },
+                          { label: 'M', val: countdown.m },
+                          { label: 'S', val: countdown.s }
+                        ].map(item => (
+                          <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '55px', height: '55px', flexShrink: 0 }}>
+                            <div className="h5 fw-bold text-white mb-0 line-height-1">{item.val}</div>
+                            <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.5rem', letterSpacing: '0.5px' }}>{item.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ) : isRaceInProgress ? (
+                    <motion.div
+                      key="race-in-progress"
+                      initial={isColdStart ? { opacity: 0 } : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
+                      <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="race-fallback"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
                       <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                    )}
-                  </>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -460,7 +443,7 @@ export default function Home() {
               {!isSeasonFinished ? (
                 <HapticLink 
                   href="/predict" 
-                  hapticStyle="medium"
+                  haptic="medium"
                   className="btn btn-f1 btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center"
                   style={{ fontSize: '0.9rem', minWidth: '200px' }}
                   suppressHydrationWarning
@@ -472,7 +455,7 @@ export default function Home() {
               ) : (
                 <HapticLink 
                   href="/history" 
-                  hapticStyle="medium"
+                  haptic="medium"
                   className="btn btn-danger btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center rounded-pill"
                   style={{ fontSize: '0.9rem', minWidth: '200px' }}
                 >
@@ -481,7 +464,7 @@ export default function Home() {
               )}
               <HapticLink 
                 href="/leaderboard" 
-                hapticStyle="medium"
+                haptic="medium"
                 className="btn btn-outline-light btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center opacity-75"
                 style={{ fontSize: '0.9rem', minWidth: '200px' }}
               >
@@ -533,15 +516,27 @@ export default function Home() {
 
         <Row className="mt-2 g-3 px-1">
           <Col md={6}>
-            <div className="f1-glass-card p-3 border-secondary border-opacity-25 h-100" style={{ minHeight: '110px' }}>
-              <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
+            <AnimatePresence mode="wait">
               {loading && !nextRace ? (
-                <Spinner animation="border" size="sm" variant="danger" />
+                <motion.div
+                  key="next-race-skeleton"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-100"
+                >
+                  <NextRaceSkeleton />
+                </motion.div>
               ) : (
                 <motion.div
-                  initial={isColdStart ? { opacity: 0 } : false}
+                  key="next-race-card"
+                  initial={isColdStart ? { opacity: 0 } : { opacity: 0 }}
                   animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="f1-glass-card p-3 border-secondary border-opacity-25 h-100"
+                  style={{ minHeight: '110px' }}
                 >
+                  <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
                   <p className="fw-bold mb-0 text-white" style={{ fontSize: '1.1rem' }}>{nextRace?.name}</p>
                   <p className="text-white opacity-50 small mb-2">{nextRace?.circuit}</p>
                   <div className="badge bg-danger bg-opacity-10 text-danger px-2 py-1 border border-danger border-opacity-20 rounded-pill fw-bold" style={{ fontSize: '0.65rem' }}>
@@ -549,7 +544,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               )}
-            </div>
+            </AnimatePresence>
           </Col>
 
           <Col md={6}>
@@ -583,7 +578,7 @@ export default function Home() {
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
                     <HapticLink 
                       href="/auth" 
-                      hapticStyle="medium"
+                      haptic="medium"
                       className="btn btn-primary btn-sm px-4 py-1 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
                       style={{ fontSize: '0.7rem' }}
                     >

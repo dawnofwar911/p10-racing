@@ -2,29 +2,23 @@
 
 import React from 'react';
 import { Button, ButtonProps } from 'react-bootstrap';
-import { triggerLightHaptic, triggerMediumHaptic, triggerHeavyHaptic } from '@/lib/utils/haptics';
+import { useHaptics, HapticType } from '@/lib/hooks/use-haptics';
 
 interface HapticButtonProps extends ButtonProps {
-  hapticStyle?: 'light' | 'medium' | 'heavy';
+  haptic?: HapticType;
   children: React.ReactNode;
 }
 
-/**
- * A wrapper for react-bootstrap/Button that triggers a haptic impact on click.
- * Defaults to 'light' haptic.
- */
 export default function HapticButton({ 
-  hapticStyle = 'light', 
+  haptic = 'light', 
   onClick, 
   children, 
   ...props 
 }: HapticButtonProps) {
+  const { triggerHaptic } = useHaptics();
   
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (hapticStyle === 'light') triggerLightHaptic();
-    else if (hapticStyle === 'medium') triggerMediumHaptic();
-    else if (hapticStyle === 'heavy') triggerHeavyHaptic();
-    
+    triggerHaptic(haptic);
     if (onClick) onClick(e);
   };
 
