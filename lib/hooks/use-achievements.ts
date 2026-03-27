@@ -12,17 +12,29 @@ import { useNotification } from '@/components/Notification';
 export function useAchievements() {
   const { session, currentUser } = useAuth();
   const { showNotification } = useNotification();
-  const [unlocked, setUnlocked] = useState<UnlockedAchievement[]>([]);
+  const [unlocked, setUnlocked] = useState<UnlockedAchievement[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const key = session?.user?.id ? `achievements_${session.user.id}` : 'achievements_guest';
+      const cached = localStorage.getItem(key);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   const refreshAchievements = useCallback(async () => {
     setLoading(true);
     const userId = session?.user?.id;
     
-    // 1. Get currently unlocked
+    // 1. Get currently unlocked (from DB for auth, or re-eval for guest)
     const currentUnlocked = await getUnlockedAchievements(userId);
     setUnlocked(currentUnlocked);
-
+    // Cache the result
+    const cacheKey = userId ? `achievements_${userId}` : 'achievements_guest';
+    localStorage.setItem(cacheKey, JSON.stringify(currentUnlocked));
+    
     // 2. Evaluate for new ones
     try {
       const raceResultsMap = await fetchAllSimplifiedResults();
@@ -58,6 +70,7 @@ export function useAchievements() {
       if (newlyUnlockedIds.length > 0) {
         const updated = await getUnlockedAchievements(userId);
         setUnlocked(updated);
+        localStorage.setItem(cacheKey, JSON.stringify(updated));
 
         // Show notifications for new unlocks
         newlyUnlockedIds.forEach(id => {
@@ -80,7 +93,7 @@ export function useAchievements() {
   useEffect(() => {
     refreshAchievements();
   }, [refreshAchievements]);
-
+  
   return { 
     unlocked, 
     allAchievements: ACHIEVEMENTS,
