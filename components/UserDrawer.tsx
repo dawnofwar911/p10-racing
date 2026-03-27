@@ -148,7 +148,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
 
           {session ? (
             <HapticButton 
-              hapticStyle="medium"
+              haptic="medium"
               variant="danger" 
               className="w-100 fw-bold py-3 d-flex align-items-center justify-content-center rounded-pill"
               onClick={() => {

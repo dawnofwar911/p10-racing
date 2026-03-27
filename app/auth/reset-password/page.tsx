@@ -243,7 +243,7 @@ export default function ResetPasswordPage() {
                   </Form.Group>
 
                   <HapticButton 
-                    hapticStyle="medium"
+                    haptic="medium"
                     type="submit" 
                     variant="danger"
                     className="w-100 py-3 fw-bold mb-3 rounded-pill shadow-sm" 

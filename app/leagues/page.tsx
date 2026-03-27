@@ -88,7 +88,7 @@ const MyLeaguesView = ({
             {localGuests.map(guest => (
               <div key={guest} className="d-flex align-items-center bg-dark bg-opacity-50 p-1 px-2 rounded-pill border border-secondary border-opacity-50">
                 <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
-                <HapticButton hapticStyle="medium" variant="warning" size="sm" className="fw-bold extra-small py-0 rounded-pill" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
+                <HapticButton haptic="medium" variant="warning" size="sm" className="fw-bold extra-small py-0 rounded-pill" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
               </div>
             ))}
           </div>
@@ -131,7 +131,7 @@ const ManageLeaguesView = ({
                 className="f1-input-dark py-2 small" 
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+            <HapticButton haptic="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
               {actionLoading ? <Spinner animation="border" size="sm" /> : 'CREATE NEW LEAGUE'}
             </HapticButton>
           </Form>
@@ -155,7 +155,7 @@ const ManageLeaguesView = ({
                 maxLength={8}
               />
             </Form.Group>
-            <HapticButton hapticStyle="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
+            <HapticButton haptic="medium" type="submit" variant="outline-danger" className="w-100 py-2 fw-bold small rounded-pill" disabled={actionLoading}>
               JOIN WITH CODE
             </HapticButton>
           </Form>
