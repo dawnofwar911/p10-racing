@@ -14,7 +14,7 @@ import { useAuth } from '@/components/AuthProvider';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy, Globe, Users } from 'lucide-react';
 import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
-import LoadingView from '@/components/LoadingView';
+import LeaderboardSkeleton from '@/components/LeaderboardSkeleton';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
@@ -58,16 +58,25 @@ export default function LeaderboardPage() {
   }, []);
 
   const calculate = useCallback(async (quiet = false) => {
-    if (f1Loading) return;
+    // Keep loading if F1 data is still pending, but only if we have no cached data
+    if (f1Loading && globalLeaderboard.length === 0) {
+      if (mountedRef.current) setLoading(true);
+      return;
+    }
+    
     if (!quiet && mountedRef.current) setLoading(true);
     
     try {
       const raceResultsMap = await fetchAllSimplifiedResults();
       
       const resultsFoundCount = Object.keys(raceResultsMap).length;
-      if (mountedRef.current) setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount >= calendar.length);
+      // Determine season completion only after calendar is fully loaded and results are fetched
+      if (mountedRef.current && calendar.length > 0) {
+        setIsSeasonComplete(resultsFoundCount > 0 && resultsFoundCount >= calendar.length);
+      }
 
       const currentUserId = session?.user?.id;
+
 
       // 1. GLOBAL CALCULATION
       let globalEntries: LeaderboardEntry[] = [];
@@ -182,11 +191,11 @@ export default function LeaderboardPage() {
       onTabChange={setView}
       onRefresh={() => calculate(true)}
       splitOnWide={tabs.length > 1}
-      badge={isSeasonComplete && <Badge bg="warning" text="dark" className="rounded-pill fw-bold" style={{ fontSize: '0.6rem' }}>FINAL</Badge>}
+      badge={!loading && isSeasonComplete && <Badge bg="warning" text="dark" className="rounded-pill fw-bold" style={{ fontSize: '0.6rem' }}>FINAL</Badge>}
       tabs={tabs}
       renderTabContent={(tabId) => (
         loading ? (
-          <LoadingView text="Calculating Leaderboard..." />
+          <LeaderboardSkeleton />
         ) : (
           <LeaderboardTable 
             entries={tabId === 'global' ? globalLeaderboard : localLeaderboard} 
@@ -194,7 +203,6 @@ export default function LeaderboardPage() {
             currentUser={currentUser || undefined}
             isSeasonComplete={isSeasonComplete}
             drivers={drivers}
-            emptyMessage={tabId === 'global' ? "No global players found." : "No guest data found on this device."}
           />
         )
       )}

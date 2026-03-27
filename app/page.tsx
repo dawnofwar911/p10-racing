@@ -352,7 +352,7 @@ export default function Home() {
                   <HapticLink 
                     href="/leaderboard"
                     className="btn btn-warning fw-bold px-4 rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center shadow"
-                    hapticStyle="medium"
+                    haptic="medium"
                   >
                     VIEW FINAL STANDINGS
                   </HapticLink>
@@ -405,7 +405,7 @@ export default function Home() {
               {!isSeasonFinished ? (
                 <HapticLink 
                   href="/predict" 
-                  hapticStyle="medium"
+                  haptic="medium"
                   className="btn btn-f1 btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center"
                   style={{ fontSize: '0.9rem', minWidth: '200px' }}
                   suppressHydrationWarning
@@ -417,7 +417,7 @@ export default function Home() {
               ) : (
                 <HapticLink 
                   href="/history" 
-                  hapticStyle="medium"
+                  haptic="medium"
                   className="btn btn-danger btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center rounded-pill"
                   style={{ fontSize: '0.9rem', minWidth: '200px' }}
                 >
@@ -426,7 +426,7 @@ export default function Home() {
               )}
               <HapticLink 
                 href="/leaderboard" 
-                hapticStyle="medium"
+                haptic="medium"
                 className="btn btn-outline-light btn-lg px-4 py-2 fw-bold text-decoration-none d-inline-flex align-items-center justify-content-center opacity-75"
                 style={{ fontSize: '0.9rem', minWidth: '200px' }}
               >
@@ -528,7 +528,7 @@ export default function Home() {
                     <p className="extra-small text-white opacity-60 mb-2" style={{ fontSize: '0.75rem' }}>Save predictions and compete in leagues.</p>
                     <HapticLink 
                       href="/auth" 
-                      hapticStyle="medium"
+                      haptic="medium"
                       className="btn btn-primary btn-sm px-4 py-1 fw-bold rounded-pill text-decoration-none d-inline-flex align-items-center justify-content-center"
                       style={{ fontSize: '0.7rem' }}
                     >

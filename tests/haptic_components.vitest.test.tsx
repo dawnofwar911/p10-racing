@@ -39,13 +39,13 @@ describe('Haptic Components', () => {
     });
 
     it('triggers medium haptic when specified', () => {
-      const { getByText } = render(<HapticButton hapticStyle="medium">Medium</HapticButton>);
+      const { getByText } = render(<HapticButton haptic="medium">Medium</HapticButton>);
       fireEvent.click(getByText('Medium'));
       expect(triggerMediumHaptic).toHaveBeenCalled();
     });
 
     it('triggers heavy haptic when specified', () => {
-      const { getByText } = render(<HapticButton hapticStyle="heavy">Heavy</HapticButton>);
+      const { getByText } = render(<HapticButton haptic="heavy">Heavy</HapticButton>);
       fireEvent.click(getByText('Heavy'));
       expect(triggerHeavyHaptic).toHaveBeenCalled();
     });
@@ -67,7 +67,7 @@ describe('Haptic Components', () => {
     });
 
     it('triggers specified haptic style', () => {
-      const { getByText } = render(<HapticLink href="/test" hapticStyle="medium">Medium Link</HapticLink>);
+      const { getByText } = render(<HapticLink href="/test" haptic="medium">Medium Link</HapticLink>);
       fireEvent.click(getByText('Medium Link'));
       expect(triggerMediumHaptic).toHaveBeenCalled();
     });

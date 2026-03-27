@@ -11,7 +11,6 @@ interface LeaderboardTableProps {
   loading: boolean;
   currentUser?: string;
   isSeasonComplete?: boolean;
-  emptyMessage?: string;
   drivers?: Driver[];
 }
 
@@ -20,10 +19,8 @@ export default function LeaderboardTable({
   loading, 
   currentUser, 
   isSeasonComplete = false,
-  emptyMessage = "No entries yet.",
   drivers = []
 }: LeaderboardTableProps) {
-
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const toggleExpand = (player: string) => {
@@ -31,40 +28,21 @@ export default function LeaderboardTable({
     setExpandedPlayer(expandedPlayer === player ? null : player);
   };
 
-  if (loading) {
+  if (entries.length === 0 && !loading) {
     return (
-      <div className="f1-premium-table-container">
-        <Table variant="dark" className="f1-premium-table mb-0">
-          <tbody>
-            <tr>
-              <td className="text-center py-5">
-                <Spinner animation="border" variant="danger" />
-              </td>
-            </tr>
-          </tbody>
-        </Table>
+      <div className="text-center py-5 text-muted small opacity-50">
+        No entries yet.
       </div>
     );
   }
-
-  if (entries.length === 0) {
-    return (
-      <div className="f1-premium-table-container">
-        <Table variant="dark" className="f1-premium-table mb-0">
-          <tbody>
-            <tr>
-              <td className="text-center py-5 text-muted small opacity-50">
-                {emptyMessage}
-              </td>
-            </tr>
-          </tbody>
-        </Table>
-      </div>
-    );
-  }
-
+  
   return (
     <div className="f1-premium-table-container">
+      {loading && (
+        <div className="overlay-spinner">
+          <Spinner animation="border" variant="danger" data-testid="loading-spinner" />
+        </div>
+      )}
       <Table variant="dark" hover className="f1-premium-table mb-0">
         <thead>
           <tr>
