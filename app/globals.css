@@ -658,7 +658,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
 /* Pull to Refresh Spacing Balance */
 .ptr-content-wrapper {
-  padding-top: 0.75rem; /* Gap between header and content when pulling */
+  padding-top: 0; /* Align with pages that don't have pull-to-refresh */
 }
 
 /* Ensure no double margin when sticky is active */
