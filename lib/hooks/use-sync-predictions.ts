@@ -21,7 +21,7 @@ export function useSyncPredictions(raceId: string | number | undefined) {
   // 1. Synchronous Initialization from Cache
   const [prediction, setPrediction] = useState<Prediction | null>(() => {
     if (typeof window === 'undefined' || !raceId) return null;
-    const storageUser = (typeof window !== 'undefined' ? (localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) : '') || '';
+    const storageUser = (localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) || '';
     if (!storageUser) return null;
     
     try {

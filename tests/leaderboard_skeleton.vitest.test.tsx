@@ -12,10 +12,24 @@ describe('LeaderboardSkeleton', () => {
 
   it('renders correct table headers', () => {
     render(<LeaderboardSkeleton />);
-    expect(screen.getByText('Pos')).toBeDefined();
-    expect(screen.getByText('Player')).toBeDefined();
-    expect(screen.getByText('Last Race')).toBeDefined();
-    expect(screen.getByText('Total')).toBeDefined();
+    expect(screen.getByText('Pos')).toBeInTheDocument();
+    expect(screen.getByText('Player')).toBeInTheDocument();
+    expect(screen.getByText('Last Race')).toBeInTheDocument();
+    expect(screen.getByText('Total')).toBeInTheDocument();
+  });
+
+  it('renders custom columns', () => {
+    render(
+      <LeaderboardSkeleton 
+        columns={[
+          { header: 'Rank' },
+          { header: 'Points' }
+        ]} 
+      />
+    );
+    expect(screen.getByText('Rank')).toBeInTheDocument();
+    expect(screen.getByText('Points')).toBeInTheDocument();
+    expect(screen.queryByText('Pos')).not.toBeInTheDocument();
   });
 
   it('renders skeleton text elements', () => {
