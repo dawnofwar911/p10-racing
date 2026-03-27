@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
-import { Spinner, Badge } from 'react-bootstrap';
+import { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react';
+import { Badge } from 'react-bootstrap';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchCalendar, fetchDrivers } from '@/lib/api';
@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import HapticButton from '@/components/HapticButton';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
+import LeaderboardSkeleton from '@/components/LeaderboardSkeleton'; // Import the skeleton
 
 const supabase = createClient();
 
@@ -217,7 +218,7 @@ function LeagueDetailContent() {
         </div>
         
         {loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+          <LeaderboardSkeleton />
         ) : (
           <LeaderboardTable 
             entries={leaderboard} 

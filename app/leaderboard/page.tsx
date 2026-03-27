@@ -14,7 +14,7 @@ import { useAuth } from '@/components/AuthProvider';
 import LeaderboardTable from '@/components/LeaderboardTable';
 import { Trophy, Globe, Users } from 'lucide-react';
 import SwipeablePageLayout, { TabOption } from '@/components/SwipeablePageLayout';
-import LoadingView from '@/components/LoadingView';
+import LeaderboardSkeleton from '@/components/LeaderboardSkeleton';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 
@@ -195,7 +195,7 @@ export default function LeaderboardPage() {
       tabs={tabs}
       renderTabContent={(tabId) => (
         loading ? (
-          <LoadingView text="Calculating Leaderboard..." />
+          <LeaderboardSkeleton />
         ) : (
           <LeaderboardTable 
             entries={tabId === 'global' ? globalLeaderboard : localLeaderboard} 
