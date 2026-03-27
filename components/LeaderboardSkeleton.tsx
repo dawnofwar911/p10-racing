@@ -1,46 +1,61 @@
 import React from 'react';
-import { Card, Table } from 'react-bootstrap';
+import { Table } from 'react-bootstrap';
 
-const LeaderboardSkeleton: React.FC = () => {
+interface SkeletonColumn {
+  header: string;
+  className?: string;
+  width?: string;
+  skeletonWidth?: string;
+}
+
+interface LeaderboardSkeletonProps {
+  columns?: SkeletonColumn[];
+  rows?: number;
+}
+
+const DEFAULT_COLUMNS: SkeletonColumn[] = [
+  { header: 'Pos', className: 'ps-4', width: '60px', skeletonWidth: '20px' },
+  { header: 'Player', className: '', skeletonWidth: '60%' },
+  { header: 'Last Race', className: 'text-end', skeletonWidth: '40px' },
+  { header: 'Total', className: 'text-end pe-4', skeletonWidth: '40px' },
+];
+
+const LeaderboardSkeleton: React.FC<LeaderboardSkeletonProps> = ({ 
+  columns = DEFAULT_COLUMNS,
+  rows = 10 
+}) => {
   return (
-    <Card className="f1-glass-card border-secondary border-opacity-25 mb-4">
-      <Card.Body className="p-0">
-        <Table responsive className="leaderboard-table mb-0">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th>Points</th>
-              <th>Last Race</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...Array(10)].map((_, index) => (
-              <tr key={index} className="leaderboard-entry skeleton-row">
-                <td>
-                  <div className="skeleton-text short" />
-                </td>
-                <td>
-                  <div className="d-flex align-items-center">
-                    <div className="skeleton-avatar" />
-                    <div className="skeleton-text long ms-2" />
-                  </div>
-                </td>
-                <td>
-                  <div className="skeleton-text medium" />
-                </td>
-                <td>
-                  <div className="skeleton-text short" />
-                </td>
-              </tr>
+    <div className="f1-premium-table-container">
+      <Table variant="dark" className="f1-premium-table mb-0">
+        <thead>
+          <tr>
+            {columns.map((col, idx) => (
+              <th 
+                key={idx} 
+                className={`${col.className || ''} py-3 border-0`} 
+                style={col.width ? { width: col.width } : {}}
+              >
+                {col.header}
+              </th>
             ))}
-          </tbody>
-        </Table>
-        <div className="d-flex justify-content-center p-3">
-          <div className="skeleton-button" data-testid="skeleton-button" />
-        </div>
-      </Card.Body>
-    </Card>
+          </tr>
+        </thead>
+        <tbody>
+          {[...Array(rows)].map((_, rowIndex) => (
+            <tr key={rowIndex} className="skeleton-row border-secondary border-opacity-10">
+              {columns.map((col, colIndex) => (
+                <td key={colIndex} className={col.className || ''}>
+                  <div 
+                    className={`skeleton-text ${col.className?.includes('text-end') ? 'ms-auto' : ''}`} 
+                    style={{ width: col.skeletonWidth || '100%' }} 
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
   );
 };
 
