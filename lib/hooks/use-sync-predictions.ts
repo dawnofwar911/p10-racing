@@ -17,8 +17,22 @@ export function useSyncPredictions(raceId: string | number | undefined) {
   const supabase = useMemo(() => createClient(), []);
   const { session, currentUser, displayName, syncVersion } = useAuth();
   const { showNotification } = useNotification();
-  const [prediction, setPrediction] = useState<Prediction | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  // 1. Synchronous Initialization from Cache
+  const [prediction, setPrediction] = useState<Prediction | null>(() => {
+    if (typeof window === 'undefined' || !raceId) return null;
+    const storageUser = (localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) || '';
+    if (!storageUser) return null;
+    
+    try {
+      const cachedPred = localStorage.getItem(getPredictionKey(CURRENT_SEASON, storageUser, String(raceId)));
+      return cachedPred ? JSON.parse(cachedPred) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [loading, setLoading] = useState(() => !prediction);
   const mountedRef = useRef(true);
 
   const loadPrediction = useCallback(async () => {

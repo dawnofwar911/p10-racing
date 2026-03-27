@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Spinner } from 'react-bootstrap';
+import { Container, Row, Col } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { DbPrediction } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
@@ -36,6 +36,25 @@ interface HomeRace {
   time: string;
   round: number;
 }
+
+const NextRaceSkeleton = () => (
+  <div className="f1-glass-card p-3 border-secondary border-opacity-25 h-100 animate-pulse">
+    <div className="skeleton-text mb-2" style={{ width: '40%', height: '10px' }}></div>
+    <div className="skeleton-text mb-1" style={{ width: '80%', height: '24px' }}></div>
+    <div className="skeleton-text mb-2" style={{ width: '60%', height: '14px' }}></div>
+    <div className="skeleton-text" style={{ width: '30%', height: '18px', borderRadius: '10px' }}></div>
+  </div>
+);
+
+const CountdownSkeleton = () => (
+  <div className="d-flex justify-content-center gap-2 px-2 mx-auto animate-pulse" style={{ maxWidth: '300px' }}>
+    {[1, 2, 3, 4].map(i => (
+      <div key={i} className="bg-dark border border-secondary border-opacity-20 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '55px', height: '55px', opacity: 0.5 }}>
+        <div className="skeleton-text" style={{ width: '25px', height: '20px' }}></div>
+      </div>
+    ))}
+  </div>
+);
 
 export default function Home() {
   const supabase = createClient();
@@ -362,42 +381,61 @@ export default function Home() {
 
             {!isSeasonFinished && (
               <div style={{ minHeight: "100px" }} className="d-flex flex-column align-items-center justify-content-center mb-3" suppressHydrationWarning>
-                {nextRace && (
-                  <>
-                    {showCountdown ? (
-                      <motion.div
-                        initial={isColdStart ? { opacity: 0, y: 5 } : false}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4 }}
-                      >
-                        <div className="text-uppercase fw-bold text-danger mb-1 letter-spacing-2" style={{ fontSize: '0.6rem', opacity: 0.8 }}>Race Starts In</div>
-                        <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '300px' }}>
-                          {[
-                            { label: 'D', val: countdown.d },
-                            { label: 'H', val: countdown.h },
-                            { label: 'M', val: countdown.m },
-                            { label: 'S', val: countdown.s }
-                          ].map(item => (
-                            <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '55px', height: '55px', flexShrink: 0 }}>
-                              <div className="h5 fw-bold text-white mb-0 line-height-1">{item.val}</div>
-                              <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.5rem', letterSpacing: '0.5px' }}>{item.label}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    ) : isRaceInProgress ? (
-                      <motion.div
-                        initial={isColdStart ? { opacity: 0 } : false}
-                        animate={{ opacity: 1 }}
-                      >
-                        <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
-                        <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
-                      </motion.div>
-                    ) : (
+                <AnimatePresence mode="wait">
+                  {!nextRace ? (
+                    <motion.div 
+                      key="countdown-skeleton"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="text-uppercase fw-bold text-danger mb-1 letter-spacing-2" style={{ fontSize: '0.6rem', opacity: 0.8 }}>Race Starts In</div>
+                      <CountdownSkeleton />
+                    </motion.div>
+                  ) : nextRace && showCountdown ? (
+                    <motion.div
+                      key="countdown-active"
+                      initial={isColdStart ? { opacity: 0, y: 5 } : { opacity: 0 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <div className="text-uppercase fw-bold text-danger mb-1 letter-spacing-2" style={{ fontSize: '0.6rem', opacity: 0.8 }}>Race Starts In</div>
+                      <div className="d-flex justify-content-center gap-2 px-2 mx-auto" style={{ maxWidth: '300px' }}>
+                        {[
+                          { label: 'D', val: countdown.d },
+                          { label: 'H', val: countdown.h },
+                          { label: 'M', val: countdown.m },
+                          { label: 'S', val: countdown.s }
+                        ].map(item => (
+                          <div key={item.label} className="bg-dark border border-secondary border-opacity-50 rounded shadow-sm d-flex flex-column align-items-center justify-content-center" style={{ width: '55px', height: '55px', flexShrink: 0 }}>
+                            <div className="h5 fw-bold text-white mb-0 line-height-1">{item.val}</div>
+                            <div className="text-muted text-uppercase fw-bold" style={{ fontSize: '0.5rem', letterSpacing: '0.5px' }}>{item.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ) : isRaceInProgress ? (
+                    <motion.div
+                      key="race-in-progress"
+                      initial={isColdStart ? { opacity: 0 } : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="text-uppercase fw-bold text-success mb-2 letter-spacing-2 animate-pulse" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race In Progress</div>
+                      <div className="h4 fw-bold text-white mb-0 letter-spacing-1">TRACK ACTION LIVE 🏎️</div>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="race-fallback"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
                       <div className="text-uppercase fw-bold text-danger mb-2 letter-spacing-2" style={{ fontSize: '0.65rem', opacity: 0.8 }}>Race Starts In</div>
-                    )}
-                  </>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -478,15 +516,27 @@ export default function Home() {
 
         <Row className="mt-2 g-3 px-1">
           <Col md={6}>
-            <div className="f1-glass-card p-3 border-secondary border-opacity-25 h-100" style={{ minHeight: '110px' }}>
-              <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
+            <AnimatePresence mode="wait">
               {loading && !nextRace ? (
-                <Spinner animation="border" size="sm" variant="danger" />
+                <motion.div
+                  key="next-race-skeleton"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-100"
+                >
+                  <NextRaceSkeleton />
+                </motion.div>
               ) : (
                 <motion.div
-                  initial={isColdStart ? { opacity: 0 } : false}
+                  key="next-race-card"
+                  initial={isColdStart ? { opacity: 0 } : { opacity: 0 }}
                   animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="f1-glass-card p-3 border-secondary border-opacity-25 h-100"
+                  style={{ minHeight: '110px' }}
                 >
+                  <h3 className="text-uppercase fw-bold text-danger letter-spacing-1 mb-2" style={{ fontSize: '0.65rem' }}>Next Race</h3>
                   <p className="fw-bold mb-0 text-white" style={{ fontSize: '1.1rem' }}>{nextRace?.name}</p>
                   <p className="text-white opacity-50 small mb-2">{nextRace?.circuit}</p>
                   <div className="badge bg-danger bg-opacity-10 text-danger px-2 py-1 border border-danger border-opacity-20 rounded-pill fw-bold" style={{ fontSize: '0.65rem' }}>
@@ -494,7 +544,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               )}
-            </div>
+            </AnimatePresence>
           </Col>
 
           <Col md={6}>

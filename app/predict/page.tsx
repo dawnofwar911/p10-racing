@@ -191,7 +191,7 @@ function PredictPage() {
   const [submitted, setSubmitted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
-  const { prediction, submitPrediction } = useSyncPredictions(nextRace?.id);
+  const { prediction, loading: predictionsLoading, submitPrediction } = useSyncPredictions(nextRace?.id);
 
   // Sync loaded prediction to local state if not editing
   useEffect(() => {
@@ -513,7 +513,11 @@ function PredictPage() {
     }
   };
 
-  if (!nextRace && (loadingRace || isAuthLoading)) {
+  // 1. Optimistic Render Check: If we have a cached race and we know who the user is,
+  // we can show the UI immediately (either the summary or the pick list).
+  const isOptimisticReady = !!nextRace && (!!prediction || !!currentUser);
+
+  if (loadingRace || (isAuthLoading && !isOptimisticReady) || (predictionsLoading && !isOptimisticReady)) {
     return <LoadingView />;
   }
 
@@ -543,7 +547,10 @@ function PredictPage() {
   };
   const guestSelection = getGuestSelection();
 
-  const hasPicks = p10Driver && dnfDriver;
+  // Determine effective picks to avoid 1-render gap during state sync
+  const effectiveP10 = !isEditing ? (prediction?.p10 || p10Driver) : p10Driver;
+  const effectiveDNF = !isEditing ? (prediction?.dnf || dnfDriver) : dnfDriver;
+  const hasPicks = !!effectiveP10 && !!effectiveDNF;
   const showSummary = (submitted || hasPicks) && !isEditing;
 
   const summaryView = (
@@ -574,8 +581,8 @@ function PredictPage() {
             {isRaceInProgress && (
               <Col xs={12} className="mb-2">
                 <LiveRaceCenter 
-                  p10Prediction={p10Driver} 
-                  dnfPrediction={dnfDriver} 
+                  p10Prediction={effectiveP10} 
+                  dnfPrediction={effectiveDNF} 
                   drivers={drivers} 
                   isRaceInProgress={isRaceInProgress} 
                 />
@@ -586,7 +593,7 @@ function PredictPage() {
                 <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">
                   Your Selection {isLocked && '🔒'}
                 </h3>
-                {hasPicks ? <SummaryPills drivers={drivers} p10Driver={p10Driver} dnfDriver={dnfDriver} isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
+                {hasPicks ? <SummaryPills drivers={drivers} p10Driver={effectiveP10} dnfDriver={effectiveDNF} isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
                 
                 {!isSeasonFinished && hasPicks && (
                   <div className="mt-4 text-center">
