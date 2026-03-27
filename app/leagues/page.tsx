@@ -218,43 +218,46 @@ function LeaguesContent() {
   }, []);
 
   const fetchLeagues = useCallback(async (quiet = false) => {
+    if (!session?.user?.id) return; // Must be authenticated
     if (!quiet && mountedRef.current) setLoading(true);
     try {
+      // 1. Fetch IDs of leagues the user is a member of
+      const { data: memberData, error: memberError } = await withTimeout(supabase
+        .from('league_members')
+        .select('league_id')
+        .eq('user_id', session.user.id));
+      
+      if (memberError) throw memberError;
+      const leagueIds = memberData?.map(m => m.league_id) || [];
+
+      if (leagueIds.length === 0) {
+        if (mountedRef.current) {
+          setLeagues([]);
+          setLoading(false);
+          localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, '[]');
+        }
+        return;
+      }
+
+      // 2. Fetch the league details for those specific leagues
       const { data: leaguesData, error: fetchError } = await withTimeout(supabase
         .from('leagues')
         .select('*')
+        .in('id', leagueIds)
         .order('created_at', { ascending: false }));
 
       if (fetchError) throw fetchError;
       
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      const currentUserId = currentSession?.user?.id;
-
-      const creatorIds = [...new Set((leaguesData || []).map(l => l.created_by).filter(Boolean))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', creatorIds);
-
-      const profileMap = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id]: p.username }), {} as Record<string, string>);
-
-      const filteredData = (leaguesData || []).filter(league => {
-        const creatorUsername = profileMap[league.created_by];
-        const isTest = /\b(tester|reviewer)\b/i.test(creatorUsername || '');
-        if (!isTest) return true;
-        return league.created_by === currentUserId;
-      });
-
       if (mountedRef.current) {
-        setLeagues(filteredData);
-        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(filteredData));
+        setLeagues(leaguesData || []);
+        localStorage.setItem(STORAGE_KEYS.CACHE_LEAGUES, JSON.stringify(leaguesData || []));
       }
     } catch (err: unknown) {
       if (err instanceof Error && mountedRef.current) setError(err.message);
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, session?.user?.id]);
 
   const init = useCallback(async () => {
     try {
