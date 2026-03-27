@@ -23,15 +23,13 @@ export default function HapticLink({
 }: HapticLinkProps) {
   const { triggerHaptic } = useHaptics();
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    triggerHaptic(haptic);
-    if (onClick) onClick(e);
-  };
-
   return (
     <Link 
       {...props} 
-      onClick={handleClick} 
+      onClick={(e) => {
+        triggerHaptic(haptic);
+        if (onClick) onClick(e);
+      }} 
       suppressHydrationWarning={suppressHydrationWarning}
       className={`text-decoration-none ${className || ''}`}
     >
