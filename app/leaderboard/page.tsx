@@ -194,7 +194,6 @@ export default function LeaderboardPage() {
             currentUser={currentUser || undefined}
             isSeasonComplete={isSeasonComplete}
             drivers={drivers}
-            emptyMessage={tabId === 'global' ? "No global players found." : "No guest data found on this device."}
           />
         )
       )}

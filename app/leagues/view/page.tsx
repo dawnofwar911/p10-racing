@@ -224,7 +224,6 @@ function LeagueDetailContent() {
             loading={loading} 
             isSeasonComplete={isSeasonComplete}
             drivers={allDrivers}
-            emptyMessage="No members in this league yet."
           />
         )}
       </div>
