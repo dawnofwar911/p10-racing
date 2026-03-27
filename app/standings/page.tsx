@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, Spinner } from 'react-bootstrap';
+import { Table } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { Driver, ConstructorStanding } from '@/lib/types';
 import { fetchDrivers, fetchConstructors } from '@/lib/api';
@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { Flag, Trophy, Users } from 'lucide-react';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
+import LeaderboardSkeleton from '@/components/LeaderboardSkeleton';
 
 const DriversTable = ({ data }: { data: Driver[] }) => (
   <div className="f1-premium-table-container">
@@ -156,7 +157,7 @@ export default function StandingsPage() {
       ]}
       renderTabContent={(tabId) => (
         loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div>
+          <LeaderboardSkeleton />
         ) : tabId === 'drivers' ? (
           <DriversTable data={standings} />
         ) : (
@@ -165,7 +166,7 @@ export default function StandingsPage() {
       )}
     >
       {/* Fallback for safety, though renderTabContent handles it */}
-      {loading ? <div className="text-center py-5"><Spinner animation="border" variant="danger" /></div> : null}
+      {loading ? <LeaderboardSkeleton /> : null}
     </SwipeablePageLayout>
   );
 }
