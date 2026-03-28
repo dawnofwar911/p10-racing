@@ -35,7 +35,11 @@ export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 6
     try {
       if (mountedRef.current) setLoading(true);
       
-      const { data: response, error: funcError } = await supabase.functions.invoke('f1-live-proxy');
+      const { data: response, error: funcError } = await supabase.functions.invoke('f1-live-proxy', {
+        headers: {
+          'X-Cron-Secret': process.env.NEXT_PUBLIC_CRON_SECRET || ''
+        }
+      });
       
       if (funcError) throw funcError;
       

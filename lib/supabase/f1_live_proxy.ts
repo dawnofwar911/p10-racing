@@ -72,6 +72,18 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // 2. Security: Verify Secret
+  const authHeader = req.headers.get('Authorization');
+  const customCronHeader = req.headers.get('X-Cron-Secret');
+  const CRON_SECRET = Deno.env.get('CRON_SECRET');
+  
+  if (CRON_SECRET) {
+    const expectedBearer = `Bearer ${CRON_SECRET}`;
+    if (authHeader !== expectedBearer && authHeader !== CRON_SECRET && customCronHeader !== CRON_SECRET) {
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    }
+  }
+
   try {
     // 2. Validate Environment
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
