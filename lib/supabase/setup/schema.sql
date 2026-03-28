@@ -57,6 +57,13 @@ CREATE TABLE public.races (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 5c. Key-Value Cache (Viral-Proofing)
+CREATE TABLE public.kv_cache (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- 6. Bug Reports
 CREATE TABLE public.bug_reports (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -327,6 +334,11 @@ CREATE POLICY "Users can manage own predictions" ON public.predictions FOR ALL U
 -- Results
 CREATE POLICY "Results are public" ON public.verified_results FOR SELECT USING (true);
 CREATE POLICY "Admin results manage" ON public.verified_results FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true));
+
+-- Cache
+ALTER TABLE public.kv_cache ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Cache is public" ON public.kv_cache FOR SELECT USING (true);
+CREATE POLICY "Admin cache manage" ON public.kv_cache FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true));
 
 -- Bug Reports
 CREATE POLICY "Anyone can report bugs" ON public.bug_reports FOR INSERT WITH CHECK (true);

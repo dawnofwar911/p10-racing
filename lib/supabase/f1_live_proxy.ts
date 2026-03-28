@@ -1,16 +1,27 @@
 // Supabase Edge Function: f1-live-proxy
 // Fetches live timing data from official F1 static JSON feeds
 
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const BASE_URL = 'https://livetiming.formula1.com/static';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Mapping from F1 Acronyms to internal Driver IDs
 const ACRONYM_TO_ID: { [key: string]: string } = {
-  'ALB': 'albon', 'ALO': 'alonso', 'ANT': 'antonelli', 'BEA': 'bearman',
-  'BOR': 'bortoleto', 'BOT': 'bottas', 'COL': 'colapinto', 'GAS': 'gasly',
-  'HAD': 'hadjar', 'HAM': 'hamilton', 'HUL': 'hulkenberg', 'LAW': 'lawson',
-  'LEC': 'leclerc', 'LIN': 'arvid_lindblad', 'NOR': 'norris', 'OCO': 'ocon',
-  'PIA': 'piastri', 'PER': 'perez', 'RUS': 'russell', 'SAI': 'sainz',
-  'STR': 'stroll', 'VER': 'max_verstappen'
+  'VER': 'max_verstappen', 'HAD': 'hadjar',
+  'HAM': 'hamilton', 'LEC': 'leclerc',
+  'NOR': 'norris', 'PIA': 'piastri',
+  'RUS': 'russell', 'ANT': 'antonelli',
+  'ALO': 'alonso', 'STR': 'stroll',
+  'GAS': 'gasly', 'COL': 'colapinto',
+  'ALB': 'albon', 'SAI': 'sainz',
+  'LAW': 'lawson', 'LIN': 'arvid_lindblad',
+  'HUL': 'hulkenberg', 'BOR': 'bortoleto',
+  'OCO': 'ocon', 'BEA': 'bearman',
+  'PER': 'perez', 'BOT': 'bottas'
 };
 
 interface F1Index {
@@ -66,6 +77,31 @@ Deno.serve(async (req) => {
     const forceSeason = url.searchParams.get('season');
     const forceMeeting = url.searchParams.get('meeting');
     const forceSession = url.searchParams.get('session');
+
+    // 1. Check Cache First (Viral-Proofing)
+    // Cache key is based on season/meeting/session to allow testing of different sessions
+    const cacheKey = `f1_live_${forceSeason || 'latest'}_${forceMeeting || 'latest'}_${forceSession || 'latest'}`;
+    const CACHE_TTL_SECONDS = 30;
+
+    const { data: cached } = await supabase
+      .from('kv_cache')
+      .select('value, updated_at')
+      .eq('key', cacheKey)
+      .maybeSingle();
+
+    if (cached) {
+      const updatedAt = new Date(cached.updated_at).getTime();
+      const now = new Date().getTime();
+      if (now - updatedAt < CACHE_TTL_SECONDS * 1000) {
+        return new Response(JSON.stringify(cached.value), {
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'X-Cache': 'HIT'
+          },
+        });
+      }
+    }
 
     let season = forceSeason;
     let meeting = forceMeeting;
@@ -137,10 +173,20 @@ Deno.serve(async (req) => {
       lastUpdated: new Date().toISOString()
     };
 
+    // 5. Update Cache (Background)
+    supabase.from('kv_cache').upsert({
+      key: cacheKey,
+      value: simplified,
+      updated_at: new Date().toISOString()
+    }).then(({ error }) => {
+      if (error) console.error('Cache Update Error:', error);
+    });
+
     return new Response(JSON.stringify(simplified), {
       headers: { 
         ...corsHeaders, 
         'Content-Type': 'application/json',
+        'X-Cache': 'MISS',
         'Cache-Control': 'public, max-age=30'
       },
     });
