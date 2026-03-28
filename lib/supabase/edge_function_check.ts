@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
   // 1. CORS Headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*', // System task, but good practice
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
   };
 
   if (req.method === 'OPTIONS') {
@@ -33,6 +33,8 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
   const customCronHeader = req.headers.get('X-Cron-Secret');
   const CRON_SECRET = Deno.env.get('CRON_SECRET');
+
+  console.log('Request received. Auth Header present:', !!authHeader, 'Custom Header present:', !!customCronHeader);
   
   if (CRON_SECRET) {
     const expectedBearer = `Bearer ${CRON_SECRET}`;
@@ -42,7 +44,7 @@ Deno.serve(async (req) => {
       customCronHeader === CRON_SECRET;
 
     if (!isAuthorized) {
-      console.warn('Unauthorized trigger attempt rejected');
+      console.warn('Unauthorized trigger attempt rejected. Secrets do not match.');
       return new Response('Unauthorized', { status: 401, headers: corsHeaders });
     }
   }
