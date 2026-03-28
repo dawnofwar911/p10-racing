@@ -40,7 +40,7 @@ const SelectionList: React.FC<SelectionListProps> = ({
         WebkitOverflowScrolling: 'touch',
         touchAction: 'pan-y',
         overscrollBehavior: 'contain', 
-        paddingBottom: '80px' 
+        paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' 
       }}>
         {sortedByTeam.map((driver) => {
           const form = driverForm[driver.id] || [];
