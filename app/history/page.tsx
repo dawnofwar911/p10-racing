@@ -5,7 +5,7 @@ import { Row, Col, Card } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { History, Trophy, Lock } from 'lucide-react';
+import { History as HistoryIcon, Trophy, Lock } from 'lucide-react';
 import { triggerLightHaptic, triggerMediumHaptic } from '@/lib/utils/haptics';
 import SwipeablePageLayout from '@/components/SwipeablePageLayout';
 import LoadingView from '@/components/LoadingView';
@@ -23,12 +23,14 @@ interface HistoryEntry {
   winner: string;
 }
 
+type HistoryTab = 'history' | 'achievements';
+
 const supabase = createClient();
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [dbLoading, setDbLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('history');
+  const [activeTab, setActiveTab] = useState<HistoryTab>('history');
   const { drivers, calendar, loading: f1Loading } = useF1Data(CURRENT_SEASON);
   const { unlocked, allAchievements, loading: achieveLoading } = useAchievements();
   const router = useRouter();
@@ -115,7 +117,7 @@ export default function HistoryPage() {
         </Row>
       ) : (
         <EmptyState 
-          icon={<History size={48} className="text-secondary opacity-25 mb-3" />}
+          icon={<HistoryIcon size={48} className="text-secondary opacity-25 mb-3" />}
           message={`No race results available yet for the ${CURRENT_SEASON} season.`}
         />
       )}
@@ -172,22 +174,26 @@ export default function HistoryPage() {
     </div>
   );
 
+  const renderTabContent = (tabId: HistoryTab) => {
+    if (loading) {
+      return <LoadingView text={tabId === 'history' ? "Loading Season History..." : "Checking Trophies..."} />;
+    }
+    return tabId === 'history' ? renderHistory() : renderAchievements();
+  };
+
   return (
     <SwipeablePageLayout
       title="Season Progress"
       subtitle={`${CURRENT_SEASON} Stats & Milestones`}
-      icon={<History size={24} className="text-white" />}
+      icon={<HistoryIcon size={24} className="text-white" />}
       onBack={() => { triggerLightHaptic(); router.back(); }}
       activeTab={activeTab}
-      onTabChange={(id) => { triggerMediumHaptic(); setActiveTab(id); }}
+      onTabChange={(id) => { triggerMediumHaptic(); setActiveTab(id as HistoryTab); }}
+      renderTabContent={renderTabContent}
       tabs={[
-        { id: 'history', label: 'History', icon: <History size={16} /> },
+        { id: 'history', label: 'History', icon: <HistoryIcon size={16} /> },
         { id: 'achievements', label: 'Trophies', icon: <Trophy size={16} /> }
       ]}
-    >
-      {loading ? (
-        <LoadingView text={activeTab === 'history' ? "Loading Season History..." : "Checking Trophies..."} />
-      ) : activeTab === 'history' ? renderHistory() : renderAchievements()}
-    </SwipeablePageLayout>
+    />
   );
 }

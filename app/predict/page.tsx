@@ -813,7 +813,7 @@ function PredictPage() {
           </div>
         }
       >
-        <div className="mt-3 flex-grow-1 d-flex flex-column pb-10 mb-5">
+        <div className="mt-3 flex-grow-1 d-flex flex-column mb-5" style={{ minHeight: 0, touchAction: 'pan-y' }}>
           {activeTab === 'grid' && startingGrid.length > 0 && <GridView startingGrid={startingGrid} drivers={drivers} />}
           {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} driverForm={driverForm} />}
           {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={drivers} driverForm={driverForm} />}
