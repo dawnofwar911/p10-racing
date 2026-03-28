@@ -484,6 +484,21 @@ function LeaguesContent() {
     />
   );
 
+  const renderTabContent = (tabId: 'my-leagues' | 'manage') => (
+    <div className="mt-3">
+      {/* Show alerts if it's the active tab (mobile) or always in the first pane (split view) */}
+      {((tabId === activeTab) || (tabId === 'my-leagues')) && (
+        <FeedbackAlerts 
+          error={error}
+          setError={setError}
+          success={success}
+          setSuccess={setSuccess}
+        />
+      )}
+      {tabId === 'my-leagues' ? myLeaguesView : manageLeaguesView}
+    </div>
+  );
+
   return (
     <SwipeablePageLayout
       title="Leagues"
@@ -494,21 +509,12 @@ function LeaguesContent() {
       onRefresh={undefined}
       splitOnWide={true}
       splitWidths={[7, 5]}
+      renderTabContent={renderTabContent}
       tabs={[
         { id: 'my-leagues', label: 'My Leagues', icon: <Trophy size={16} /> },
         { id: 'manage', label: 'Manage', icon: <SettingsIcon size={16} /> }
       ]}
-    >
-      <div className="mt-3">
-        <FeedbackAlerts 
-          error={error}
-          setError={setError}
-          success={success}
-          setSuccess={setSuccess}
-        />
-        {activeTab === 'my-leagues' ? myLeaguesView : manageLeaguesView}
-      </div>
-    </SwipeablePageLayout>
+    />
   );
 }
 
