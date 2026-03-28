@@ -160,7 +160,7 @@ export default function StandingsPage() {
           <LeaderboardSkeleton 
             columns={[
               { header: 'Pos', className: 'ps-3', width: '50px', skeletonWidth: '20px' },
-              { header: view === 'drivers' ? 'Driver / Team' : 'Team', skeletonWidth: '70%' },
+              { header: tabId === 'drivers' ? 'Driver / Team' : 'Team', skeletonWidth: '70%' },
               { header: 'PTS', className: 'text-end pe-4', width: '80px', skeletonWidth: '40px' }
             ]}
           />
