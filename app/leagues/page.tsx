@@ -486,8 +486,8 @@ function LeaguesContent() {
 
   const renderTabContent = (tabId: 'my-leagues' | 'manage') => (
     <div className="mt-3">
-      {/* Show alerts in the primary pane */}
-      {tabId === 'my-leagues' && (
+      {/* Show alerts if it's the active tab (mobile) or always in the first pane (split view) */}
+      {((tabId === activeTab) || (tabId === 'my-leagues')) && (
         <FeedbackAlerts 
           error={error}
           setError={setError}

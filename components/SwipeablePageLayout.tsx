@@ -22,7 +22,7 @@ interface SwipeablePageLayoutProps<T extends string> {
   icon: ReactNode;
   activeTab: T;
   onTabChange: (tabId: T) => void;
-  tabs: TabOption<T>[];
+  tabs: readonly TabOption<T>[];
   children?: ReactNode;
   onRefresh?: () => Promise<void>;
   badge?: ReactNode;
