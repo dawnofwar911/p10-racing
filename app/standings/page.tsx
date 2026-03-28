@@ -170,17 +170,6 @@ export default function StandingsPage() {
           <ConstructorsTable data={constructorStandings} drivers={standings} />
         )
       )}
-    >
-      {/* Fallback for safety, though renderTabContent handles it */}
-      {loading ? (
-        <LeaderboardSkeleton 
-          columns={[
-            { header: 'Pos', className: 'ps-3', width: '50px', skeletonWidth: '20px' },
-            { header: view === 'drivers' ? 'Driver / Team' : 'Team', skeletonWidth: '70%' },
-            { header: 'PTS', className: 'text-end pe-4', width: '80px', skeletonWidth: '40px' }
-          ]}
-        />
-      ) : null}
-    </SwipeablePageLayout>
+    />
   );
 }

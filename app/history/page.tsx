@@ -172,6 +172,13 @@ export default function HistoryPage() {
     </div>
   );
 
+  const renderTabContent = (tabId: string) => {
+    if (loading) {
+      return <LoadingView text={tabId === 'history' ? "Loading Season History..." : "Checking Trophies..."} />;
+    }
+    return tabId === 'history' ? renderHistory() : renderAchievements();
+  };
+
   return (
     <SwipeablePageLayout
       title="Season Progress"
@@ -180,14 +187,11 @@ export default function HistoryPage() {
       onBack={() => { triggerLightHaptic(); router.back(); }}
       activeTab={activeTab}
       onTabChange={(id) => { triggerMediumHaptic(); setActiveTab(id); }}
+      renderTabContent={renderTabContent}
       tabs={[
         { id: 'history', label: 'History', icon: <History size={16} /> },
         { id: 'achievements', label: 'Trophies', icon: <Trophy size={16} /> }
       ]}
-    >
-      {loading ? (
-        <LoadingView text={activeTab === 'history' ? "Loading Season History..." : "Checking Trophies..."} />
-      ) : activeTab === 'history' ? renderHistory() : renderAchievements()}
-    </SwipeablePageLayout>
+    />
   );
 }
