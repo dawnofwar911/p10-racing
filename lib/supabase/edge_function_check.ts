@@ -33,8 +33,12 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
   const CRON_SECRET = Deno.env.get('CRON_SECRET');
   
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+  if (CRON_SECRET) {
+    const expectedBearer = `Bearer ${CRON_SECRET}`;
+    if (authHeader !== expectedBearer && authHeader !== CRON_SECRET) {
+      console.warn('Unauthorized trigger attempt rejected');
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    }
   }
 
   const now = new Date();
