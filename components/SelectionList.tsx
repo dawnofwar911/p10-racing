@@ -34,7 +34,14 @@ const SelectionList: React.FC<SelectionListProps> = ({
       <h3 className={`h6 mb-3 border-start border-4 border-${type === 'p10' ? 'danger' : 'warning'} ps-2 fw-bold text-uppercase letter-spacing-1`}>
         {type === 'p10' ? 'P10 Finisher' : 'First DNF'}
       </h3>
-      <div className="driver-list-scroll px-1" style={{ maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain', paddingBottom: '80px' }}>
+      <div className="driver-list-scroll px-1" style={{ 
+        maxHeight: '60vh', 
+        overflowY: 'auto', 
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
+        overscrollBehavior: 'contain', 
+        paddingBottom: '80px' 
+      }}>
         {sortedByTeam.map((driver) => {
           const form = driverForm[driver.id] || [];
           return (

@@ -161,6 +161,7 @@ export default function SwipeablePageLayout<T extends string>({
               exit={{ opacity: 0, x: tabs.findIndex(t => t.id === activeTab) === 0 ? -20 : 20 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
               drag="x"
+              dragDirectionLock
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.15}
               onDragEnd={swipeHandlers.onDragEnd}
