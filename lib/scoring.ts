@@ -33,11 +33,8 @@ export function calculateP10Points(actualPosition: number): number {
     9: 1,  // P1, P19
   };
 
-  // Extension: Any pick that is 9 or more positions away (including the back of the grid) 
-  // gets a 1-point consolation, matching the points for P1.
-  if (distance >= 9) return 1;
-  
-  return pointsTable[distance] || 0;
+  // Consolation for any other distance (e.g. DNF or P20+)
+  return pointsTable[distance] ?? 1;
 }
 
 export function calculateDnfPoints(predictedDnfId: string, actualDnfId: string): number {

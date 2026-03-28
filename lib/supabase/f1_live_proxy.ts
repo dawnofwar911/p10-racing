@@ -5,12 +5,17 @@ const BASE_URL = 'https://livetiming.formula1.com/static';
 
 // Mapping from F1 Acronyms to internal Driver IDs
 const ACRONYM_TO_ID: { [key: string]: string } = {
-  'ALB': 'albon', 'ALO': 'alonso', 'ANT': 'antonelli', 'BEA': 'bearman',
-  'BOR': 'bortoleto', 'BOT': 'bottas', 'COL': 'colapinto', 'GAS': 'gasly',
-  'HAD': 'hadjar', 'HAM': 'hamilton', 'HUL': 'hulkenberg', 'LAW': 'lawson',
-  'LEC': 'leclerc', 'LIN': 'arvid_lindblad', 'NOR': 'norris', 'OCO': 'ocon',
-  'PIA': 'piastri', 'PER': 'perez', 'RUS': 'russell', 'SAI': 'sainz',
-  'STR': 'stroll', 'VER': 'max_verstappen'
+  'VER': 'max_verstappen', 'HAD': 'hadjar',
+  'HAM': 'hamilton', 'LEC': 'leclerc',
+  'NOR': 'norris', 'PIA': 'piastri',
+  'RUS': 'russell', 'ANT': 'antonelli',
+  'ALO': 'alonso', 'STR': 'stroll',
+  'GAS': 'gasly', 'COL': 'colapinto',
+  'ALB': 'albon', 'SAI': 'sainz',
+  'LAW': 'lawson', 'LIN': 'arvid_lindblad',
+  'HUL': 'hulkenberg', 'BOR': 'bortoleto',
+  'OCO': 'ocon', 'BEA': 'bearman',
+  'PER': 'perez', 'BOT': 'bottas'
 };
 
 interface F1Index {
@@ -52,13 +57,25 @@ Deno.serve(async (req) => {
 
   const corsHeaders = {
     'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Vary': 'Origin'
   };
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // 2. Security: Verify Secret
+  const authHeader = req.headers.get('Authorization');
+  const customCronHeader = req.headers.get('X-Cron-Secret');
+  const CRON_SECRET = Deno.env.get('CRON_SECRET');
+  
+  if (CRON_SECRET) {
+    const expectedBearer = `Bearer ${CRON_SECRET}`;
+    if (authHeader !== expectedBearer && authHeader !== CRON_SECRET && customCronHeader !== CRON_SECRET) {
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    }
   }
 
   try {
