@@ -31,11 +31,17 @@ Deno.serve(async (req) => {
 
   // 2. Security: Verify Secret (prevent manual/external trigger)
   const authHeader = req.headers.get('Authorization');
+  const customCronHeader = req.headers.get('X-Cron-Secret');
   const CRON_SECRET = Deno.env.get('CRON_SECRET');
   
   if (CRON_SECRET) {
     const expectedBearer = `Bearer ${CRON_SECRET}`;
-    if (authHeader !== expectedBearer && authHeader !== CRON_SECRET) {
+    const isAuthorized = 
+      authHeader === expectedBearer || 
+      authHeader === CRON_SECRET || 
+      customCronHeader === CRON_SECRET;
+
+    if (!isAuthorized) {
       console.warn('Unauthorized trigger attempt rejected');
       return new Response('Unauthorized', { status: 401, headers: corsHeaders });
     }
