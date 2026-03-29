@@ -5,7 +5,7 @@ import { Card, Modal, Spinner, Form, Badge, Container, Row, Col } from 'react-bo
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee, Settings, Heart } from 'lucide-react';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee, Settings, Heart, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
@@ -44,6 +44,7 @@ export default function SettingsPage() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [shakeToReportEnabled, setShakeToReportEnabled] = useState(true);
+  const [useTeamTheme, setUseTeamTheme] = useState(true);
 
   // Profile State
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -90,6 +91,7 @@ export default function SettingsPage() {
     // Load preferences
     setHapticsEnabled(localStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED) !== 'false');
     setShakeToReportEnabled(localStorage.getItem(STORAGE_KEYS.SHAKE_TO_REPORT_ENABLED) !== 'false');
+    setUseTeamTheme(localStorage.getItem(STORAGE_KEYS.USE_TEAM_THEME) !== 'false');
 
     // Load Profile
     if (session?.user?.id) {
@@ -278,6 +280,24 @@ export default function SettingsPage() {
           <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Preferences</h2>
           <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
             <div className="list-group list-group-flush bg-transparent">
+              <div className="list-group-item bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center">
+                  <Palette size={18} className="me-3 opacity-75" />
+                  <div>
+                    <span className="fw-bold d-block small">Team Theme</span>
+                    <small className="text-muted extra-small">Use team colors for UI accents</small>
+                  </div>
+                </div>
+                <Form.Check 
+                  type="switch"
+                  id="theme-switch"
+                  label={<span className="visually-hidden">Team Theme</span>}
+                  checked={useTeamTheme}
+                  onChange={(e) => togglePreference('USE_TEAM_THEME', setUseTeamTheme, e.target.checked)}
+                  className="custom-switch-lg"
+                />
+              </div>
+
               <div className="list-group-item bg-transparent text-white border-secondary border-opacity-25 p-3 d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center">
                   <Vibrate size={18} className="me-3 opacity-75" />

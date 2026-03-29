@@ -7,6 +7,8 @@ import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, setStorageItem, removeStorageItem, STORAGE_UPDATE_EVENT } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 
+import { Profile } from '@/lib/types';
+
 interface AuthContextType {
   session: Session | null;
   currentUser: string | null;
@@ -15,6 +17,7 @@ interface AuthContextType {
   hasSession: boolean;
   isAuthLoading: boolean;
   syncVersion: number;
+  profile: Profile | null;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   triggerRefresh: () => void;
@@ -28,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   hasSession: false,
   isAuthLoading: true,
   syncVersion: 0,
+  profile: null,
   logout: async () => {},
   refreshAuth: async () => {},
   triggerRefresh: () => {},
@@ -60,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [syncVersion, setSyncVersion] = useState(0);
 
@@ -78,18 +83,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setHasSession(true);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
         
-        const { data: profile } = await withTimeout(supabase
+        const { data: profileData } = await withTimeout(supabase
           .from('profiles')
-          .select('username, is_admin')
+          .select('*')
           .eq('id', currentSession.user.id)
           .single());
         
-        if (profile) {
-          setCurrentUser(profile.username);
-          setDisplayName(profile.username);
-          setIsAdmin(!!profile.is_admin);
-          setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profile.username);
-          setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!profile.is_admin));
+        if (profileData) {
+          setProfile(profileData);
+          setCurrentUser(profileData.username);
+          setDisplayName(profileData.username);
+          setIsAdmin(!!profileData.is_admin);
+          setStorageItem(STORAGE_KEYS.CACHE_USERNAME, profileData.username);
+          setStorageItem(STORAGE_KEYS.IS_ADMIN, String(!!profileData.is_admin));
         } else {
           const fallback = currentSession.user.email?.split('@')[0] || `User_${currentSession.user.id.substring(0, 5)}`;
           setCurrentUser(fallback);
@@ -98,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         setSession(null);
+        setProfile(null);
         setHasSession(false);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
         removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
@@ -126,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {
         setHasSession(false);
+        setProfile(null);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
         removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
         removeStorageItem(STORAGE_KEYS.IS_ADMIN);
@@ -141,11 +149,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
         supabase
           .from('profiles')
-          .select('username, is_admin')
+          .select('*')
           .eq('id', newSession.user.id)
           .single()
           .then(({ data }) => {
             if (data) {
+              setProfile(data);
               setCurrentUser(data.username);
               setDisplayName(data.username);
               setIsAdmin(!!data.is_admin);
@@ -170,8 +179,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         table: 'profiles',
         filter: session?.user.id ? `id=eq.${session.user.id}` : undefined
       }, (payload) => {
-        const updated = payload.new as { username: string; is_admin: boolean };
+        const updated = payload.new as Profile;
         console.log('AuthProvider: Profile updated in real-time:', updated);
+        setProfile(updated);
         if (updated.username) {
           setCurrentUser(updated.username);
           setDisplayName(updated.username);
@@ -214,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     triggerRefresh();
     setHasSession(false);
+    setProfile(null);
     setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
     removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
     removeStorageItem(STORAGE_KEYS.IS_ADMIN);
@@ -237,10 +248,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasSession,
     isAuthLoading,
     syncVersion,
+    profile,
     logout,
     refreshAuth: getSession,
     triggerRefresh
-  }), [session, currentUser, displayName, isAdmin, hasSession, isAuthLoading, syncVersion, logout, getSession, triggerRefresh]);
+  }), [session, currentUser, displayName, isAdmin, hasSession, isAuthLoading, syncVersion, profile, logout, getSession, triggerRefresh]);
 
   return (
     <AuthContext.Provider value={value}>
