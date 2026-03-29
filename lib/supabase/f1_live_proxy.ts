@@ -45,7 +45,7 @@ interface SessionInfo {
  * Shared utility to determine if a status string indicates a true DNF.
  */
 function isTrueDnf(status: string, laps: string | number = "1"): boolean {
-  const s = status.toLowerCase();
+  const s = status?.toLowerCase() || '';
   const isFinished = s === "finished" || s.includes("lap");
   const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
   const lapCount = typeof laps === 'string' ? parseInt(laps) : laps;
