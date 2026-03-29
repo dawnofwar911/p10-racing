@@ -12,68 +12,67 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const SIGNALR_BASE = 'https://livetiming.formula1.com/signalr';
 const STATIC_BASE = 'https://livetiming.formula1.com/static';
+const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
 const HUB_NAME = 'Streaming';
 
 // Robust 2026 Mapping (Number -> ID)
 const NUMBER_TO_ID: { [key: string]: string } = {
-  '1': 'norris',
-  '3': 'max_verstappen',
-  '5': 'bortoleto',
-  '6': 'hadjar',
-  '10': 'gasly',
-  '11': 'perez',
-  '12': 'antonelli',
-  '14': 'alonso',
-  '16': 'leclerc',
-  '18': 'stroll',
-  '23': 'albon',
-  '27': 'hulkenberg',
-  '30': 'lawson',
-  '31': 'ocon',
-  '41': 'arvid_lindblad',
-  '43': 'colapinto',
-  '44': 'hamilton',
-  '55': 'sainz',
-  '63': 'russell',
-  '77': 'bottas',
-  '81': 'piastri',
-  '87': 'bearman'
+  '1': 'norris', '3': 'max_verstappen', '5': 'bortoleto', '6': 'hadjar',
+  '10': 'gasly', '11': 'perez', '12': 'antonelli', '14': 'alonso',
+  '16': 'leclerc', '18': 'stroll', '23': 'albon', '27': 'hulkenberg',
+  '30': 'lawson', '31': 'ocon', '41': 'arvid_lindblad', '43': 'colapinto',
+  '44': 'hamilton', '55': 'sainz', '63': 'russell', '77': 'bottas',
+  '81': 'piastri', '87': 'bearman'
 };
 
 // Acronym mapping for display
 const ACRONYM_TO_ID: { [key: string]: string } = {
-  'NOR': 'norris',
-  'VER': 'max_verstappen',
-  'BOR': 'bortoleto',
-  'HAD': 'hadjar',
-  'GAS': 'gasly',
-  'PER': 'perez',
-  'ANT': 'antonelli',
-  'ALO': 'alonso',
-  'LEC': 'leclerc',
-  'STR': 'stroll',
-  'ALB': 'albon',
-  'HUL': 'hulkenberg',
-  'LAW': 'lawson',
-  'OCO': 'ocon',
-  'LIN': 'arvid_lindblad',
-  'COL': 'colapinto',
-  'HAM': 'hamilton',
-  'SAI': 'sainz',
-  'RUS': 'russell',
-  'BOT': 'bottas',
-  'PIA': 'piastri',
-  'BEA': 'bearman'
+  'NOR': 'norris', 'VER': 'max_verstappen', 'BOR': 'bortoleto', 'HAD': 'hadjar',
+  'GAS': 'gasly', 'PER': 'perez', 'ANT': 'antonelli', 'ALO': 'alonso',
+  'LEC': 'leclerc', 'STR': 'stroll', 'ALB': 'albon', 'HUL': 'hulkenberg',
+  'LAW': 'lawson', 'OCO': 'ocon', 'LIN': 'arvid_lindblad', 'COL': 'colapinto',
+  'HAM': 'hamilton', 'SAI': 'sainz', 'RUS': 'russell', 'BOT': 'bottas',
+  'PIA': 'piastri', 'BEA': 'bearman'
 };
 
 // Global state for the lifetime of this function execution
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const currentTiming: any = { Lines: {} };
 let driverList: any = {};
-let sessionInfo: any = { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' } };
+let sessionInfo: any = { Status: 'Active', Meeting: { Name: 'Japanese Grand Prix' }, Session: { Name: 'Race' } };
+
+// Dynamic mappings populated at runtime
+const DYNAMIC_NUMBER_TO_ID: Record<string, string> = {};
+const DYNAMIC_ACRONYM_TO_ID: Record<string, string> = {};
 
 /**
- * PATH DISCOVERY (To get initial DriverList and SessionInfo)
+ * PHASE 0: DYNAMIC METADATA
+ * Fetches the official driver list from Jolpica to build mappings automatically.
+ */
+async function fetchOfficialDrivers() {
+  try {
+    const season = new Date().getFullYear();
+    const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const drivers = data.MRData.DriverTable.Drivers;
+
+    drivers.forEach((d: any) => {
+      if (d.permanentNumber) {
+        DYNAMIC_NUMBER_TO_ID[d.permanentNumber] = d.driverId;
+      }
+      if (d.code) {
+        DYNAMIC_ACRONYM_TO_ID[d.code] = d.driverId;
+      }
+    });
+    console.log(`Loaded ${drivers.length} drivers from Jolpica.`);
+  } catch (e) {
+    console.warn("Failed to fetch official drivers", e);
+  }
+}
+
+/**
+ * PATH DISCOVERY (For initial static metadata)
  */
 async function discoverPathAndFetchInitial() {
   const season = new Date().getFullYear().toString();
@@ -123,8 +122,6 @@ async function discoverPathAndFetchInitial() {
       if (dlResp.ok) {
         driverList = await dlResp.json();
         console.log(`DriverList loaded: ${Object.keys(driverList).length} drivers.`);
-      } else {
-        console.warn(`DriverList fetch failed (${dlResp.status}). Using fallback NUMBER_TO_ID map.`);
       }
       if (siResp.ok) sessionInfo = await siResp.json();
     } catch (e) {
@@ -159,8 +156,7 @@ function decodeAndDecompress(base64Data: string) {
     }
     const decompressed = pako.inflateRaw(bytes, { to: 'string' });
     return JSON.parse(decompressed);
-  } catch (e) {
-    console.error('Decompression failed:', e instanceof Error ? e.message : String(e));
+  } catch {
     return null;
   }
 }
@@ -186,10 +182,7 @@ function handleMessage(msg: any) {
   if (msg.R) {
     const timingData = msg.R.TimingData || (msg.R.Lines ? msg.R : null);
     const infoData = msg.R.SessionInfo;
-    if (timingData) {
-      console.log('Merging full TimingData snapshot');
-      robustMerge(currentTiming, timingData);
-    }
+    if (timingData) robustMerge(currentTiming, timingData);
     if (infoData) robustMerge(sessionInfo, infoData);
   }
   
@@ -221,13 +214,15 @@ function handleMessage(msg: any) {
  */
 async function writeToCache() {
   const results = Object.entries(currentTiming.Lines || {}).map(([number, data]: [string, any]) => {
-    const driver = driverList[number];
-    const acronym = driver?.Tla || '';
+    const staticDriver = driverList[number];
+    const acronym = staticDriver?.Tla || '';
     
-    // FALLBACK: If driverList failed (403), use our static mapping
-    const driverId = driverList[number] 
-      ? (ACRONYM_TO_ID[acronym] || acronym.toLowerCase())
-      : (NUMBER_TO_ID[number] || `unknown_${number}`);
+    // PRIORITY: 1. Dynamic Map, 2. Static DriverList Map, 3. Hardcoded Fallback Map, 4. Unknown
+    const driverId = DYNAMIC_NUMBER_TO_ID[number] || 
+                     (acronym ? DYNAMIC_ACRONYM_TO_ID[acronym] : null) || 
+                     (staticDriver ? (ACRONYM_TO_ID[acronym] || acronym.toLowerCase()) : null) ||
+                     NUMBER_TO_ID[number] || 
+                     `unknown_${number}`;
 
     return {
       driverId,
@@ -257,7 +252,7 @@ async function writeToCache() {
     updated_at: new Date().toISOString()
   });
   
-  if (!error) console.log(`Cache updated: ${results.length} drivers mapped using ${Object.keys(driverList).length > 0 ? 'DriverList' : 'NUMBER_TO_ID fallback'}.`);
+  if (!error) console.log(`Cache updated with ${results.length} drivers.`);
 }
 
 /**
@@ -272,14 +267,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    await discoverPathAndFetchInitial();
-    const { token } = await negotiate();
+    // Start background setup
+    await Promise.all([fetchOfficialDrivers(), discoverPathAndFetchInitial()]);
     
+    const { token } = await negotiate();
     const wsUrl = `${SIGNALR_BASE.replace('https', 'wss')}/connect?transport=webSockets&connectionToken=${encodeURIComponent(token)}&connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log('F1 Stream Connected. Subscribing...');
+      console.log('F1 Stream Connected.');
       ws.send(JSON.stringify({ H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'TimingData.z', 'SessionInfo', 'SessionInfo.z']], I: 1 }));
       ws.send(JSON.stringify({ H: HUB_NAME, M: 'GetSessionState', A: [], I: 2 }));
     };
@@ -292,7 +288,7 @@ Deno.serve(async (req) => {
       writeToCache().catch(console.error);
     }, 5000);
 
-    // Stay alive for 59 seconds to support a 1-minute cron cycle
+    // Keep alive for 59 seconds (1-minute cron cycle)
     await new Promise(resolve => setTimeout(resolve, 59000));
     
     clearInterval(interval);
