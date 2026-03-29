@@ -292,7 +292,8 @@ Deno.serve(async (req) => {
       writeToCache().catch(console.error);
     }, 5000);
 
-    await new Promise(resolve => setTimeout(resolve, 55000));
+    // Stay alive for 59 seconds to support a 1-minute cron cycle
+    await new Promise(resolve => setTimeout(resolve, 59000));
     
     clearInterval(interval);
     ws.close();
