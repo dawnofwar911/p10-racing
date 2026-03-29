@@ -157,10 +157,21 @@ function handleMessage(msg: any) {
   if (Object.keys(msg).length === 0) return;
 
   // 1. Handle Response to 'GetSessionState' (Result field 'R')
-  if (msg.R && msg.R.TimingData) {
-    console.log('Received full Session State via Result object');
-    currentTiming = deepMerge(currentTiming, msg.R.TimingData);
-    if (msg.R.SessionInfo) sessionInfo = deepMerge(sessionInfo, msg.R.SessionInfo);
+  if (msg.R) {
+    console.log('Received full Session State Result object. Keys:', Object.keys(msg.R));
+    
+    // F1 sometimes wraps the state in a nested property or returns it directly
+    const timingData = msg.R.TimingData || msg.R.timingData || (msg.R.Lines ? msg.R : null);
+    const infoData = msg.R.SessionInfo || msg.R.sessionInfo;
+
+    if (timingData) {
+      console.log('Merging initial TimingData from Result');
+      currentTiming = deepMerge(currentTiming, timingData);
+    }
+    if (infoData) {
+      console.log('Merging initial SessionInfo from Result');
+      sessionInfo = deepMerge(sessionInfo, infoData);
+    }
   }
   
   // 2. Handle standard Method calls ('M')
