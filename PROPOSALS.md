@@ -60,6 +60,23 @@ This document outlines the strategic roadmap for upcoming features designed to i
 
 ---
 
+## 🚀 Future Technical Enhancements
+
+### 1. 🏁 Real-time "Smart Finish"
+**Goal:** Transition the app out of "Race Mode" immediately when the checkered flag drops, without waiting for the official results API (Jolpica).
+
+*   **Logic:** Use the `f1-signalr-relay` to detect the `SessionStatus: "Finished"` or `ArchiveStatus: "Generating"` flags from the track stream.
+*   **Action:** When detected, the relay updates the `kv_cache` with a "Completed" status, triggering the frontend to hide the live tracker and show a "Results Pending" state instead of waiting for the full 4-hour window to expire.
+
+### 📡 Real-time Data Expansion (SignalR)
+**Goal:** Leverage the low-latency track stream for more than just P10/DNF tracking.
+
+*   **🛞 Live Tire Insights:** Subscribe to the `TyreData` SignalR feed to display tire compounds (Soft, Medium, Hard) and tire age (laps) for drivers in the P10 battle.
+*   **🚥 Live Track Status:** Use the `SessionInfo` feed to display real-time track status banners (Yellow Flag, VSC, Safety Car, Red Flag) in the `LiveRaceCenter` header.
+*   **Constructor Battle:** Display a real-time "Constructor Battle" view, showing how midfield teams are shifting in the standings during the race.
+
+---
+
 ## 🛠️ Internal Maintenance & Refinement
 
 ### 1. 📐 Fix Maskable Icon Padding
