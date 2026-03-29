@@ -44,7 +44,13 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
         <div className="p-4 bg-black bg-opacity-25 border-bottom border-secondary border-opacity-25">
           <p className="text-muted small text-uppercase letter-spacing-1 mb-1">Signed in as</p>
           <div className="d-flex align-items-center">
-            <div className="text-white rounded-circle d-flex justify-content-center align-items-center fw-bold me-3" style={{ width: '45px', height: '45px', fontSize: '1.2rem', backgroundColor: 'var(--team-accent, #e10600)' }}>
+            <div className="rounded-circle d-flex justify-content-center align-items-center fw-bold me-3" style={{ 
+              width: '45px', 
+              height: '45px', 
+              fontSize: '1.2rem', 
+              backgroundColor: 'var(--team-accent, #e10600)',
+              color: 'var(--team-accent-contrast, #ffffff)'
+            }}>
               {currentUser ? (
                 currentUser.charAt(0).toUpperCase()
               ) : (
@@ -91,7 +97,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
                     }}
                     title={achievement.name}
                   >
-                    {isUnlocked ? achievement.icon : <Trophy size={14} className="text-white" />}
+                    {isUnlocked ? achievement.icon : <Trophy size={14} style={{ color: 'var(--team-accent-contrast, #ffffff)' }} />}
                   </div>
                 );
               })}
