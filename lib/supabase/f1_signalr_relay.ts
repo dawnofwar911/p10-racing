@@ -255,7 +255,7 @@ async function writeToCache() {
   };
 
   await supabase.from('kv_cache').upsert({
-    key: `f1_live_latest_latest_latest`,
+    key: `f1_live_timing_latest`,
     value: simplified,
     updated_at: new Date().toISOString()
   });

@@ -35,28 +35,29 @@ interface F1Index {
   Meetings?: F1Meeting[];
 }
 interface TimingData {
-  Lines: { [driverNumber: string]: { Position: string; GapToLeader: string; IntervalToNext: string; Stopped: boolean; InPit: boolean; Retired: boolean; } };
+  Lines: { [driverNumber: string]: { Position: string; GapToLeader: string; IntervalToNext: string; Stopped: boolean; InPit: boolean; Retired: boolean; Status: string; NumberOfLaps: string; } };
 }
 interface SessionInfo {
   Meeting: { Name: string }; Session: { Name: string }; Type: string; Status: string;
 }
 
-Deno.serve(async (req) => {
-  // 1. CORS Headers
-  const origin = req.headers.get('origin') || '';
-  const allowedOrigins = [
-    Deno.env.get('APP_URL'), 
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'capacitor://localhost',
-    'http://localhost'
-  ].filter(Boolean);
+/**
+ * Shared utility to determine if a status string indicates a true DNF.
+ */
+function isTrueDnf(status: string, laps: string | number = "1"): boolean {
+  const s = status.toLowerCase();
+  const isFinished = s === "finished" || s.includes("lap");
+  const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
+  const lapCount = typeof laps === 'string' ? parseInt(laps) : laps;
+  const hasLaps = lapCount > 0;
+  
+  return !isFinished && !isDns && hasLaps;
+}
 
+Deno.serve(async (req) => {
   const corsHeaders = {
-    'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || '*',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Vary': 'Origin'
   };
 
   if (req.method === 'OPTIONS') {
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
 
   try {
     // 3. CHECK CACHE FIRST (Prioritize SignalR Relay)
-    const cacheKey = `f1_live_latest_latest_latest`;
+    const cacheKey = `f1_live_timing_latest`;
     const { data: cached } = await supabase
       .from('kv_cache')
       .select('value, updated_at')
@@ -174,7 +175,7 @@ Deno.serve(async (req) => {
         position: parseInt(data.Position) || 0,
         gap: data.GapToLeader || '',
         interval: data.IntervalToNext || '',
-        isRetired: data.Retired || data.Stopped || false,
+        isRetired: isTrueDnf(data.Status || '', data.NumberOfLaps || '1') || data.Retired || data.Stopped || false,
         inPit: data.InPit || false,
         number
       };
