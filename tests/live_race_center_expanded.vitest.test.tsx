@@ -4,8 +4,9 @@ import React from 'react';
 import LiveRaceCenter from '@/components/LiveRaceCenter';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { Driver } from '@/lib/types';
 
-const mockDrivers = [
+const mockDrivers: Driver[] = [
   { id: 'leclerc', name: 'Charles Leclerc', code: 'LEC', color: '#E8002D', team: 'Ferrari', teamId: 'ferrari', number: 16, points: 0 },
   { id: 'albon', name: 'Alexander Albon', code: 'ALB', color: '#64C4FF', team: 'Williams', teamId: 'williams', number: 23, points: 0 },
 ];
@@ -37,7 +38,7 @@ describe('LiveRaceCenter Expanded Features', () => {
       <LiveRaceCenter 
         p10Prediction="albon" 
         dnfPrediction="perez" 
-        drivers={mockDrivers as any} 
+        drivers={mockDrivers} 
         isRaceInProgress={true} 
       />
     );
@@ -68,7 +69,7 @@ describe('LiveRaceCenter Expanded Features', () => {
       <LiveRaceCenter 
         p10Prediction="albon" 
         dnfPrediction="perez" 
-        drivers={mockDrivers as any} 
+        drivers={mockDrivers} 
         isRaceInProgress={true} 
       />
     );
@@ -108,7 +109,7 @@ describe('LiveRaceCenter Expanded Features', () => {
       <LiveRaceCenter 
         p10Prediction="albon" 
         dnfPrediction="perez" 
-        drivers={mockDrivers as any} 
+        drivers={mockDrivers} 
         isRaceInProgress={true} 
       />
     );

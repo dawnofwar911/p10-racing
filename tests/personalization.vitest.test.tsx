@@ -3,6 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import SettingsPage from '@/app/settings/page';
 
+interface SupabaseResponse {
+  data: any;
+  error: any;
+}
+
 // Stable session to avoid infinite re-renders
 const mockSession = { user: { id: 'user-123' } };
 
@@ -15,7 +20,7 @@ const mockSupabase = {
   select: vi.fn(() => mockSupabase),
   update: vi.fn(() => mockSupabase),
   eq: vi.fn(() => mockSupabase),
-  single: vi.fn(() => Promise.resolve({ 
+  single: vi.fn((): Promise<SupabaseResponse> => Promise.resolve({ 
     data: mockProfileData, 
     error: null 
   })),
@@ -57,7 +62,7 @@ vi.mock('@/components/Notification', () => ({
 describe('Settings Page - Personalization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default resolve for update
+    // Default resolve for profile loading
     mockSupabase.single.mockResolvedValue({ 
       data: mockProfileData, 
       error: null 
@@ -81,11 +86,10 @@ describe('Settings Page - Personalization', () => {
   it('should update favorite team and show success notification', async () => {
     render(<SettingsPage />);
     
-    // Set update mock for this test
-    mockSupabase.single.mockResolvedValueOnce({ 
-      data: mockProfileData, 
-      error: null 
-    }).mockResolvedValue({ data: null, error: null } as any);
+    // First call is for loadProfile, subsequent are for update
+    mockSupabase.single
+      .mockResolvedValueOnce({ data: mockProfileData, error: null }) // Initial load
+      .mockResolvedValue({ data: null, error: null }); // Update result
 
     await screen.findByText(/Personalization/i);
     const teamSelect = await screen.findByLabelText(/Favorite Team/i);
@@ -104,10 +108,9 @@ describe('Settings Page - Personalization', () => {
   it('should update favorite driver and show success notification', async () => {
     render(<SettingsPage />);
     
-    mockSupabase.single.mockResolvedValueOnce({ 
-      data: mockProfileData, 
-      error: null 
-    }).mockResolvedValue({ data: null, error: null } as any);
+    mockSupabase.single
+      .mockResolvedValueOnce({ data: mockProfileData, error: null }) // Initial load
+      .mockResolvedValue({ data: null, error: null }); // Update result
 
     await screen.findByText(/Personalization/i);
     const driverSelect = await screen.findByLabelText(/Favorite Driver/i);

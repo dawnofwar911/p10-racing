@@ -47,6 +47,10 @@ export default function SettingsPage() {
     return Array.from(uniqueTeams.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [drivers]);
 
+  const sortedDrivers = useMemo(() => {
+    return [...drivers].sort((a, b) => a.name.localeCompare(b.name));
+  }, [drivers]);
+
   const loadProfile = useCallback(async (userId: string) => {
     setLoadingProfile(true);
     try {
@@ -200,7 +204,7 @@ export default function SettingsPage() {
                                 disabled={savingProfile}
                               >
                                 <option value="">Select a driver...</option>
-                                {drivers.sort((a,b) => a.name.localeCompare(b.name)).map(d => (
+                                {sortedDrivers.map(d => (
                                   <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
                                 ))}
                               </Form.Select>
