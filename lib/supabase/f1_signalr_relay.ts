@@ -110,8 +110,12 @@ async function negotiate() {
     }
   });
   if (!resp.ok) throw new Error(`SignalR Negotiation Failed: ${resp.status}`);
+  
+  // Extract cookies for the subsequent WebSocket connection
+  const cookie = resp.headers.get('set-cookie') || '';
+  
   const data = await resp.json();
-  return { token: data.ConnectionToken };
+  return { token: data.ConnectionToken, cookie };
 }
 
 /**
@@ -125,7 +129,6 @@ function decodeAndDecompress(base64Data: string) {
       bytes[i] = binaryString.charCodeAt(i);
     }
     
-    // Try standard inflate first, then fall back to inflateRaw
     let decompressed;
     try {
       decompressed = pako.inflate(bytes, { to: 'string' });
@@ -135,7 +138,7 @@ function decodeAndDecompress(base64Data: string) {
     
     return JSON.parse(decompressed);
   } catch (e) {
-    console.error('Decompression Error Details:', e instanceof Error ? e.message : String(e));
+    console.error('Decompression Error:', e instanceof Error ? e.message : String(e));
     return null;
   }
 }
@@ -153,50 +156,35 @@ function deepMerge(target: any, source: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function handleMessage(msg: any) {
-  // Log keep-alives and other system messages
   if (Object.keys(msg).length === 0) return;
 
-  // 1. Handle Response to 'GetSessionState' (Result field 'R')
   if (msg.R) {
-    console.log('Received full Session State Result object. Keys:', Object.keys(msg.R));
-    
-    // F1 sometimes wraps the state in a nested property or returns it directly
+    console.log('Received Result (R) Object. Keys:', Object.keys(msg.R));
     const timingData = msg.R.TimingData || msg.R.timingData || (msg.R.Lines ? msg.R : null);
     const infoData = msg.R.SessionInfo || msg.R.sessionInfo;
-
-    if (timingData) {
-      console.log('Merging initial TimingData from Result');
-      currentTiming = deepMerge(currentTiming, timingData);
-    }
-    if (infoData) {
-      console.log('Merging initial SessionInfo from Result');
-      sessionInfo = deepMerge(sessionInfo, infoData);
-    }
+    if (timingData) currentTiming = deepMerge(currentTiming, timingData);
+    if (infoData) sessionInfo = deepMerge(sessionInfo, infoData);
   }
   
-  // 2. Handle standard Method calls ('M')
   if (msg.M && Array.isArray(msg.M)) {
     for (const m of msg.M) {
-      console.log(`Server called method: ${m.M} for feed: ${m.A?.[0]}`);
-      
-      // F1 uses both 'feed' and 'Receive' depending on the data type
       if (m.M === 'feed' || m.M === 'Receive') {
-        const feedName = m.A[0];
+        let feedName = m.A[0];
         const rawData = m.A[1];
         
         if (!rawData) continue;
-        const decoded = decodeAndDecompress(rawData);
+
+        // If the feed name ends in .z, it's definitely compressed
+        const isCompressed = typeof feedName === 'string' && feedName.endsWith('.z');
+        if (isCompressed) feedName = feedName.slice(0, -2);
+
+        const decoded = isCompressed ? decodeAndDecompress(rawData) : rawData;
         
-        if (!decoded) {
-          console.warn(`Failed to decode data for feed: ${feedName}`);
-          continue;
-        }
+        if (!decoded) continue;
 
         if (feedName === 'TimingData') {
-          console.log(`Processing TimingData update...`);
           currentTiming = deepMerge(currentTiming, decoded);
         } else if (feedName === 'SessionInfo') {
-          console.log(`Processing SessionInfo update: ${decoded.Status}`);
           sessionInfo = deepMerge(sessionInfo, decoded);
         }
       }
@@ -224,84 +212,58 @@ async function writeToCache() {
     };
   }).sort((a, b) => (a.position || 99) - (b.position || 99));
 
-  if (results.length === 0) {
-    console.log('No results to write to cache yet...');
-    return;
-  }
+  if (results.length === 0) return;
 
   const simplified = {
-    status: sessionInfo.Status,
+    status: sessionInfo.Status || 'Active',
     meeting: sessionInfo.Meeting?.Name || 'Unknown',
     session: sessionInfo.Session?.Name || 'Unknown',
     results: results,
     lastUpdated: new Date().toISOString()
   };
 
-  const cacheKey = `f1_live_latest_latest_latest`;
-  
-  console.log(`Writing ${results.length} positions to cache key: ${cacheKey}`);
-  const { error } = await supabase.from('kv_cache').upsert({
-    key: cacheKey,
+  await supabase.from('kv_cache').upsert({
+    key: `f1_live_latest_latest_latest`,
     value: simplified,
     updated_at: new Date().toISOString()
   });
-
-  if (error) {
-    console.error('Database Cache Error:', error.message);
-  } else {
-    console.log('Cache successfully updated.');
-  }
 }
 
 /**
  * MAIN EXECUTION
  */
 Deno.serve(async (req) => {
-  // We only expect internal trigger from pg_cron, but secure it anyway
   const authHeader = req.headers.get('Authorization');
   const customCronHeader = req.headers.get('X-Cron-Secret');
   const CRON_SECRET = Deno.env.get('CRON_SECRET');
-  
-  if (CRON_SECRET) {
-    const expectedBearer = `Bearer ${CRON_SECRET}`;
-    const isAuthorized = 
-      authHeader === expectedBearer || 
-      authHeader === CRON_SECRET || 
-      customCronHeader === CRON_SECRET;
-
-    if (!isAuthorized) {
-      return new Response('Unauthorized', { status: 401 });
-    }
+  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}` && authHeader !== CRON_SECRET && customCronHeader !== CRON_SECRET) {
+    return new Response('Unauthorized', { status: 401 });
   }
 
   try {
     await discoverPathAndFetchInitial();
     const { token } = await negotiate();
     
+    // Note: Deno WebSocket does not support manual cookie headers via the standard API.
+    // We rely on the ConnectionToken for session persistence.
     const wsUrl = `${SIGNALR_BASE.replace('https', 'wss')}/connect?transport=webSockets&connectionToken=${encodeURIComponent(token)}&connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log('F1 SignalR Stream Opened. Subscribing...');
-      // 1. Subscribe to live deltas
-      const subMessage = { H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'SessionInfo']], I: 1 };
+      // Subscribe to both compressed and uncompressed feeds for maximum compatibility
+      const subMessage = { H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'TimingData.z', 'SessionInfo', 'SessionInfo.z']], I: 1 };
       ws.send(JSON.stringify(subMessage));
-
-      // 2. Request current full state (very important for initial data)
-      const stateMessage = { H: HUB_NAME, M: 'GetSessionState', A: [], I: 2 };
-      ws.send(JSON.stringify(stateMessage));
+      ws.send(JSON.stringify({ H: HUB_NAME, M: 'GetSessionState', A: [], I: 2 }));
     };
 
     ws.onmessage = (event) => {
       try { handleMessage(JSON.parse(event.data)); } catch (_e) {} // eslint-disable-line @typescript-eslint/no-unused-vars
     };
 
-    // Keep the function alive and writing to DB for 55 seconds
     const interval = setInterval(() => {
       writeToCache().catch(console.error);
-    }, 5000); // Write every 5s
+    }, 5000);
 
-    // Wait 55 seconds then shut down
     await new Promise(resolve => setTimeout(resolve, 55000));
     
     clearInterval(interval);
