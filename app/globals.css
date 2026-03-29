@@ -13,6 +13,12 @@
   --z-index-offcanvas: 1045;
   --z-index-bottom-nav: 1050;
   --z-index-navbar: 1060;
+
+  /* Dynamic Theme Defaults (F1 Red) */
+  --team-accent: var(--f1-red);
+  --team-accent-glow: rgba(225, 6, 0, 0.15);
+  --team-accent-border: rgba(225, 6, 0, 0.3);
+  --team-accent-contrast: #ffffff;
 }
 
 /* Force dark theme at the root level */
@@ -302,14 +308,14 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 .text-danger {
-  color: var(--f1-red) !important;
+  color: var(--team-accent) !important;
 }
 
 /* Bespoke Buttons */
 .btn-f1 {
-  background-color: var(--f1-red) !important;
+  background-color: var(--team-accent) !important;
   border: none !important;
-  color: white !important;
+  color: var(--team-accent-contrast) !important;
   transition: all 0.2s ease;
   clip-path: polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%);
   font-weight: 800;
@@ -318,7 +324,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 .btn-f1:hover, .btn-f1:active {
-  background-color: #ff1e1e !important;
+  filter: brightness(1.2);
   transform: scale(0.98);
 }
 
@@ -335,7 +341,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
     border-radius: 10px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--f1-red);
+    background: var(--team-accent);
   }
 }
 
@@ -366,7 +372,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 .active-driver-card {
-  border-left: 6px solid var(--f1-red) !important;
+  border-left: 6px solid var(--team-accent) !important;
 }
 
 .cursor-pointer {
@@ -420,9 +426,9 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 @keyframes f1-pulse-border {
-  0% { border-color: rgba(225, 6, 0, 0.25); box-shadow: 0 0 0 0 rgba(225, 6, 0, 0.1); }
-  50% { border-color: rgba(225, 6, 0, 0.8); box-shadow: 0 0 15px 2px rgba(225, 6, 0, 0.2); }
-  100% { border-color: rgba(225, 6, 0, 0.25); box-shadow: 0 0 0 0 rgba(225, 6, 0, 0.1); }
+  0% { border-color: var(--team-accent-glow); box-shadow: 0 0 0 0 var(--team-accent-glow); }
+  50% { border-color: var(--team-accent); box-shadow: 0 0 15px 2px var(--team-accent-glow); }
+  100% { border-color: var(--team-accent-glow); box-shadow: 0 0 0 0 var(--team-accent-glow); }
 }
 
 .f1-focus-glow {
@@ -432,7 +438,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
 .f1-dashboard-pane {
   padding: 1rem;
-  border-left: 4px solid var(--f1-red) !important;
+  border-left: 4px solid var(--team-accent) !important;
   background-color: rgba(31, 31, 39, 0.25);
   border-top-right-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
@@ -456,8 +462,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 .f1-tab-container .nav-link.active {
-  background-color: var(--f1-red) !important;
-  color: white !important;
+  background-color: var(--team-accent) !important;
+  color: var(--team-accent-contrast) !important;
 }
 
 /* P10 DESIGN SYSTEM - Reusable Premium Styles */
@@ -488,7 +494,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-left: 4px solid var(--f1-red) !important;
+  border-left: 4px solid var(--team-accent) !important;
   border-radius: 1rem !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
   overflow: hidden;
@@ -555,8 +561,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 }
 
 .f1-input-dark:focus {
-  border-color: var(--f1-red) !important;
-  box-shadow: 0 0 0 0.25rem rgba(225, 6, 0, 0.25) !important;
+  border-color: var(--team-accent) !important;
+  box-shadow: 0 0 0 0.25rem var(--team-accent-glow) !important;
   outline: none;
 }
 

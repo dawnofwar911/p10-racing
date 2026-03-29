@@ -14,6 +14,8 @@ import { NotificationProvider } from '@/components/Notification';
 import { AuthProvider } from '@/components/AuthProvider';
 import GlobalBugTrigger from '@/components/GlobalBugTrigger';
 
+import DynamicThemeProvider from '@/components/DynamicThemeProvider';
+
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -41,22 +43,24 @@ export default function RootLayout({
         <AuthProvider>
           <NotificationProvider>
             <NativeWrapper>
-              <PushNotificationHandler />
-              <AppNavbar />
-              <OfflineStatus />
-              
-              {/* THE PERMANENT SCROLL CONTAINER */}
-              <main id="main-scroll-container">
-                <Suspense fallback={null}>
-                  <PageTransition>
-                    {children}
-                  </PageTransition>
-                </Suspense>
-              </main>
+              <DynamicThemeProvider>
+                <PushNotificationHandler />
+                <AppNavbar />
+                <OfflineStatus />
+                
+                {/* THE PERMANENT SCROLL CONTAINER */}
+                <main id="main-scroll-container">
+                  <Suspense fallback={null}>
+                    <PageTransition>
+                      {children}
+                    </PageTransition>
+                  </Suspense>
+                </main>
 
-              <GlobalBugTrigger />
-              <PWAInstallHint />
-              <MobileBottomNav />
+                <GlobalBugTrigger />
+                <PWAInstallHint />
+                <MobileBottomNav />
+              </DynamicThemeProvider>
             </NativeWrapper>
           </NotificationProvider>
         </AuthProvider>

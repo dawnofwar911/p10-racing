@@ -190,7 +190,7 @@ export default function HistoryPage() {
     <SwipeablePageLayout
       title="Season Progress"
       subtitle={`${CURRENT_SEASON} Stats & Milestones`}
-      icon={<HistoryIcon size={24} className="text-white" />}
+      icon={<HistoryIcon size={24} />}
       onBack={() => { triggerLightHaptic(); router.back(); }}
       activeTab={activeTab}
       onTabChange={(id) => { triggerMediumHaptic(); setActiveTab(id); }}

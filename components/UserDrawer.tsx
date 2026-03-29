@@ -44,7 +44,13 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
         <div className="p-4 bg-black bg-opacity-25 border-bottom border-secondary border-opacity-25">
           <p className="text-muted small text-uppercase letter-spacing-1 mb-1">Signed in as</p>
           <div className="d-flex align-items-center">
-            <div className="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center fw-bold me-3" style={{ width: '45px', height: '45px', fontSize: '1.2rem' }}>
+            <div className="rounded-circle d-flex justify-content-center align-items-center fw-bold me-3" style={{ 
+              width: '45px', 
+              height: '45px', 
+              fontSize: '1.2rem', 
+              backgroundColor: 'var(--team-accent, #e10600)',
+              color: 'var(--team-accent-contrast, #ffffff)'
+            }}>
               {currentUser ? (
                 currentUser.charAt(0).toUpperCase()
               ) : (
@@ -65,7 +71,12 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
           <div className="p-3 border-bottom border-secondary border-opacity-25 bg-black bg-opacity-10">
             <div className="d-flex justify-content-between align-items-center mb-2 px-1">
               <span className="text-muted extra-small text-uppercase fw-bold letter-spacing-1">Achievements</span>
-              <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20" style={{ fontSize: '0.6rem' }}>
+              <span className="badge" style={{ 
+                fontSize: '0.6rem',
+                backgroundColor: 'var(--team-accent-glow, rgba(225, 6, 0, 0.1))',
+                color: 'var(--team-accent, #e10600)',
+                border: '1px solid var(--team-accent-border, rgba(225, 6, 0, 0.2))'
+              }}>
                 {unlocked.length} / {allAchievements.length}
               </span>
             </div>
@@ -86,7 +97,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
                     }}
                     title={achievement.name}
                   >
-                    {isUnlocked ? achievement.icon : <Trophy size={14} className="text-white" />}
+                    {isUnlocked ? achievement.icon : <Trophy size={14} className="text-white opacity-50" />}
                   </div>
                 );
               })}

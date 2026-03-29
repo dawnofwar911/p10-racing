@@ -6,7 +6,7 @@ export default function LoadingView({ text = "Loading Data..." }: { text?: strin
   return (
     <div className="loading-view-container">
       <div className="text-center">
-        <Spinner animation="border" variant="danger" style={{ width: '3rem', height: '3rem' }} />
+        <Spinner animation="border" style={{ width: '3rem', height: '3rem', color: 'var(--team-accent, #e10600)' }} />
         <p className="mt-3 text-muted text-uppercase letter-spacing-1 fw-bold small">{text}</p>
       </div>
     </div>

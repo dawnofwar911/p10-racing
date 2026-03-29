@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   SYNC_QUEUE: 'p10_sync_queue',
   HAPTICS_ENABLED: 'p10_haptics_enabled',
   SHAKE_TO_REPORT_ENABLED: 'p10_shake_to_report_enabled',
+  USE_TEAM_THEME: 'p10_use_team_theme',
   HAS_SESSION: 'p10_has_session',
   CACHE_PWA_HINT_DISMISSED: 'p10_pwa_hint_dismissed',
   PRED_PREFIX: 'final_pred_',

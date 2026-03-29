@@ -120,7 +120,14 @@ export default function SwipeablePageLayout<T extends string>({
                 onClick={() => handleTabChange(tab.id)}
                 className="rounded-pill px-4 py-2 d-flex align-items-center"
               >
-                {tab.icon && <span className="me-2 d-flex align-items-center">{tab.icon}</span>}
+                {tab.icon && (
+                  <span 
+                    className="me-2 d-flex align-items-center"
+                    style={{ color: activeTab === tab.id ? 'var(--team-accent-contrast, #ffffff)' : 'rgba(255,255,255,0.6)' }}
+                  >
+                    {tab.icon}
+                  </span>
+                )}
                 {tab.label}
               </Nav.Link>
             </Nav.Item>
@@ -139,7 +146,7 @@ export default function SwipeablePageLayout<T extends string>({
                   <Col key={tab.id} lg={splitWidths?.[idx] || (12 / tabs.length)} className="mb-4">
                     <div className="f1-dashboard-pane">
                       <h3 className="h6 text-uppercase fw-bold text-muted mb-3 letter-spacing-1 d-flex align-items-center">
-                        {tab.icon && <span className="me-2 text-danger">{tab.icon}</span>}
+                        {tab.icon && <span className="me-2" style={{ color: 'var(--team-accent, #e10600)' }}>{tab.icon}</span>}
                         {tab.label}
                       </h3>
                       {renderTabContent ? renderTabContent(tab.id) : (children || null)}

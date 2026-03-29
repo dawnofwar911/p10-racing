@@ -313,7 +313,7 @@ export default function Home() {
         <StandardPageHeader 
           title="P10 Racing"
           subtitle={session ? `Hello, ${displayName}` : 'Play as Guest'}
-          icon={<User size={24} className="text-white" />}
+          icon={<User size={24} />}
 
         />
         <Row className="justify-content-center text-center mt-2 mt-md-3">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateP10Points, calculateDnfPoints, calculateTotalPoints, calculateSeasonPoints } from '@/lib/scoring';
+import { calculateP10Points, calculateDnfPoints, calculateTotalPoints, calculateSeasonPoints, calculateRacePoints } from '@/lib/scoring';
 import { SimplifiedResults } from '@/lib/types';
 
 describe('Scoring Logic Tests', () => {
@@ -49,6 +49,33 @@ describe('Scoring Logic Tests', () => {
     it('should not award points for matching empty strings or placeholders', () => {
       const placeholders = calculateTotalPoints('driverA', 10, '', '');
       expect(placeholders).toBe(25); // Just 25 from P10, DNF should be 0
+    });
+  });
+
+  describe('Unified calculateRacePoints Utility', () => {
+    const mockResults: SimplifiedResults = {
+      positions: { 'verstappen': 10, 'hamilton': 9 },
+      firstDnf: 'perez'
+    };
+
+    it('should correctly calculate points for a perfect round', () => {
+      const prediction = { p10: 'verstappen', dnf: 'perez' };
+      const res = calculateRacePoints(prediction, mockResults);
+      expect(res.total).toBe(50);
+      expect(res.p10Score).toBe(25);
+      expect(res.dnfScore).toBe(25);
+      expect(res.dnfCorrect).toBe(true);
+      expect(res.actualP10Pos).toBe(10);
+    });
+
+    it('should correctly calculate points for a partial round (Close P10, Wrong DNF)', () => {
+      const prediction = { p10: 'hamilton', dnf: 'leclerc' };
+      const res = calculateRacePoints(prediction, mockResults);
+      expect(res.total).toBe(18); // P11/P9 = 18pts
+      expect(res.p10Score).toBe(18);
+      expect(res.dnfScore).toBe(0);
+      expect(res.dnfCorrect).toBe(false);
+      expect(res.actualP10Pos).toBe(9);
     });
   });
 
