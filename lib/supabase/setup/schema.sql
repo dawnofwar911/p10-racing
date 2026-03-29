@@ -7,6 +7,8 @@ CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   avatar_url TEXT,
+  favorite_team TEXT,
+  favorite_driver TEXT,
   is_admin BOOLEAN DEFAULT false,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   CONSTRAINT username_length CHECK (char_length(username) >= 3)

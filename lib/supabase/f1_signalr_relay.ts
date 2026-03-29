@@ -52,6 +52,8 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
 // Global state for the lifetime of this function execution
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const currentTiming: any = { Lines: {} };
+const currentTyres: any = { Lines: {} };
+const trackStatus: any = { Status: '1', Message: 'Green' };
 let driverList: any = {};
 let sessionInfo: any = { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' } };
 
@@ -190,8 +192,13 @@ function handleMessage(msg: any) {
   if (msg.R) {
     const timingData = msg.R.TimingData || (msg.R.Lines ? msg.R : null);
     const infoData = msg.R.SessionInfo;
+    const tyreData = msg.R.TyreData;
+    const tsData = msg.R.TrackStatus;
+
     if (timingData) robustMerge(currentTiming, timingData);
     if (infoData) robustMerge(sessionInfo, infoData);
+    if (tyreData) robustMerge(currentTyres, tyreData);
+    if (tsData) robustMerge(trackStatus, tsData);
   }
   
   if (msg.M && Array.isArray(msg.M)) {
@@ -211,6 +218,10 @@ function handleMessage(msg: any) {
           robustMerge(currentTiming, decoded);
         } else if (feedName === 'SessionInfo') {
           robustMerge(sessionInfo, decoded);
+        } else if (feedName === 'TyreData') {
+          robustMerge(currentTyres, decoded);
+        } else if (feedName === 'TrackStatus') {
+          robustMerge(trackStatus, decoded);
         }
       }
     }
@@ -232,6 +243,8 @@ async function writeToCache() {
                      NUMBER_TO_ID[number] || 
                      `unknown_${number}`;
 
+    const tyreInfo = currentTyres.Lines?.[number] || {};
+
     return {
       driverId,
       acronym: acronym || driverId.slice(0, 3).toUpperCase(),
@@ -240,14 +253,25 @@ async function writeToCache() {
       interval: data.IntervalToNext || '',
       isRetired: isTrueDnf(data.Status || '', data.NumberOfLaps || '1') || data.Retired || data.Stopped || false,
       inPit: data.InPit || false,
-      number
+      number,
+      tyres: {
+        compound: tyreInfo.Compound || 'Unknown',
+        isNew: tyreInfo.New === 'true' || tyreInfo.New === true,
+        laps: tyreInfo.TyresNotChangedLaps || 0
+      }
     };
   }).sort((a, b) => (a.position || 99) - (b.position || 99));
 
   if (results.length === 0) return;
 
+  // Smart Finish detection
+  const isFinished = sessionInfo.Status === 'Finished' || sessionInfo.Status === 'Final' || 
+                    sessionInfo.ArchiveStatus?.Status === 'Generating';
+
   const simplified = {
-    status: sessionInfo.Status || 'Active',
+    status: isFinished ? 'Completed' : (sessionInfo.Status || 'Active'),
+    trackStatus: trackStatus.Status || '1',
+    trackMessage: trackStatus.Message || 'Green',
     meeting: sessionInfo.Meeting?.Name || 'Unknown',
     session: sessionInfo.Session?.Name || 'Race',
     results: results,
@@ -281,7 +305,7 @@ Deno.serve(async (req) => {
 
     ws.onopen = () => {
       console.log('F1 Stream Connected.');
-      ws.send(JSON.stringify({ H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'TimingData.z', 'SessionInfo', 'SessionInfo.z']], I: 1 }));
+      ws.send(JSON.stringify({ H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'TimingData.z', 'SessionInfo', 'SessionInfo.z', 'TyreData', 'TyreData.z', 'TrackStatus', 'TrackStatus.z']], I: 1 }));
       ws.send(JSON.stringify({ H: HUB_NAME, M: 'GetSessionState', A: [], I: 2 }));
     };
 
