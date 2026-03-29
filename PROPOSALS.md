@@ -48,44 +48,35 @@ This document outlines the strategic roadmap for upcoming features designed to i
 
 ---
 
-## 🎨 Personalized User Profiles
+## 🎨 Personalized User Profiles [COMPLETED ✅]
 **Goal:** Deepen the connection between the user and the F1 sport.
 
-### Implementation Plan:
-*   **Backend:** Add `favorite_team` (ID) and `favorite_driver` (ID) columns to the `profiles` table.
+### Implementation Status:
+*   **Backend:** Added `favorite_team` and `favorite_driver` columns to `profiles` table.
+*   **Dynamic Theme:** Created `DynamicThemeProvider` to inject user-specific CSS variables (`--team-accent`) globally.
 *   **UI:** 
-    *   Create a "Profile Customization" section in `app/settings/page.tsx`.
-    *   Use the `favorite_team` color to dynamically theme the user's UI (accent colors, buttons).
-*   **Social:** Display the user's favorite driver/team icon next to their name on the global and league leaderboards.
+    *   "Personalization" section in `app/settings/page.tsx` with Skeleton loader and Framer Motion transitions.
+    *   Active navigation, headers, and buttons automatically adjust to the user's favorite team colors.
+    *   Added a "Team Theme" opt-out toggle for users who prefer the standard F1 Red.
 
 ---
 
-## 🚀 Future Technical Enhancements
+## 🚀 Technical Enhancements [COMPLETED ✅]
 
 ### 1. 🏁 Real-time "Smart Finish"
-**Goal:** Transition the app out of "Race Mode" immediately when the checkered flag drops, without waiting for the official results API (Jolpica).
+**Goal:** Transition the app out of "Race Mode" immediately when the checkered flag drops.
+*   **Implementation:** `f1-signalr-relay` detects `Finished` or `Final` session status and updates `kv_cache`. Frontend displays "RESULTS PENDING" badge instantly.
 
-*   **Logic:** Use the `f1-signalr-relay` to detect the `SessionStatus: "Finished"` or `ArchiveStatus: "Generating"` flags from the track stream.
-*   **Action:** When detected, the relay updates the `kv_cache` with a "Completed" status, triggering the frontend to hide the live tracker and show a "Results Pending" state instead of waiting for the full 4-hour window to expire.
-
-### 📡 Real-time Data Expansion (SignalR)
+### 2. 📡 Real-time Data Expansion (SignalR)
 **Goal:** Leverage the low-latency track stream for more than just P10/DNF tracking.
+*   **🛞 Live Tire Insights:** Real-time tire compound and age displayed in the P10 Tracker.
+*   **🚥 Live Track Status:** Dynamic banners for Yellow Flag, VSC, Safety Car, and Red Flag.
 
-*   **🛞 Live Tire Insights:** Subscribe to the `TyreData` SignalR feed to display tire compounds (Soft, Medium, Hard) and tire age (laps) for drivers in the P10 battle.
-*   **🚥 Live Track Status:** Use the `SessionInfo` feed to display real-time track status banners (Yellow Flag, VSC, Safety Car, Red Flag) in the `LiveRaceCenter` header.
-*   **Real-time Achievement Unlocking:** Use live telemetry to trigger certain achievements immediately.
-    *   **The Sniper 🎯:** Awarded if a user's P10 pick occupies the 10th position for at least **50% of the total race laps**. The relay tracks this lap-by-lap and unlocks the trophy the moment the threshold is hit, providing instant gratification.
-
----
-
-## 🛠️ Internal Maintenance & Refinement
-
-### 1. 📐 Fix Maskable Icon Padding
+### 3. 📐 Fix Maskable Icon Padding
 **Goal:** Ensure the PWA icon looks polished on all Android launchers.
-*   **Issue:** Current `logo.svg` is cropped by Android's circular/squircle mask because it lacks sufficient safe-zone padding.
-*   **Action:** Update the SVG to have more transparent padding around the central logo.
+*   **Action:** Updated `logo.svg` with 20% safe-zone padding to prevent cropping on Android.
 
-### 2. 🧮 Unified Scoring Utility
+### 4. 🧮 Unified Scoring Utility
 **Goal:** Centralize all prediction-to-point logic to prevent duplication.
-*   **Action:** Continue refactoring `lib/scoring.ts` to provide a single entry point for season-wide and single-race point calculations.
+*   **Action:** Refactored `lib/scoring.ts` with `calculateRacePoints` as the single source of truth for all score calculations.
 
