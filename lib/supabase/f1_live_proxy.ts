@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
       if (now - updatedAt < 60000) {
         console.log('Serving from SignalR Relay Cache');
         return new Response(JSON.stringify(cached.value), {
+          status: 200, // Explicitly return 200
           headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'HIT-RELAY' },
         });
       }
