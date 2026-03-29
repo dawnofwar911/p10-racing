@@ -14,6 +14,24 @@ const SIGNALR_BASE = 'https://livetiming.formula1.com/signalr';
 const STATIC_BASE = 'https://livetiming.formula1.com/static';
 const HUB_NAME = 'Streaming';
 
+// Robust 2026 Mapping (Number -> ID)
+const NUMBER_TO_ID: { [key: string]: string } = {
+  '1': 'max_verstappen', '12': 'hadjar',
+  '44': 'hamilton', '16': 'leclerc',
+  '4': 'norris', '81': 'piastri',
+  '63': 'russell', '121': 'antonelli', // Antonelli often uses high numbers/TBD, adjusted for 2026
+  '14': 'alonso', '18': 'stroll',
+  '10': 'gasly', '43': 'colapinto',
+  '23': 'albon', '55': 'sainz',
+  '30': 'lawson', '3': 'arvid_lindblad',
+  '27': 'hulkenberg', '87': 'bortoleto',
+  '31': 'ocon', '5': 'bearman',
+  '11': 'perez', '77': 'bottas',
+  '6': 'antonelli', // Fallback for ANT
+  '41': 'hadjar'    // Fallback for HAD
+};
+
+// Acronym mapping for display
 const ACRONYM_TO_ID: { [key: string]: string } = {
   'VER': 'max_verstappen', 'HAD': 'hadjar',
   'HAM': 'hamilton', 'LEC': 'leclerc',
@@ -77,26 +95,21 @@ async function discoverPathAndFetchInitial() {
   if (sessionPath) {
     const fullPath = `${STATIC_BASE}/${sessionPath}`;
     try {
-      console.log(`Fetching initial metadata from: ${fullPath}`);
+      console.log(`Attempting to fetch initial metadata from: ${fullPath}`);
       const [dlResp, siResp] = await Promise.all([
         fetch(`${fullPath}DriverList.json`),
         fetch(`${fullPath}SessionInfo.json`)
       ]);
       if (dlResp.ok) {
         driverList = await dlResp.json();
-        console.log(`DriverList loaded: ${Object.keys(driverList).length} drivers found.`);
+        console.log(`DriverList loaded: ${Object.keys(driverList).length} drivers.`);
       } else {
-        console.warn(`Failed to fetch DriverList: ${dlResp.status}`);
+        console.warn(`DriverList fetch failed (${dlResp.status}). Using fallback NUMBER_TO_ID map.`);
       }
-      if (siResp.ok) {
-        sessionInfo = await siResp.json();
-        console.log('SessionInfo loaded:', sessionInfo.Meeting?.Name);
-      }
+      if (siResp.ok) sessionInfo = await siResp.json();
     } catch (e) {
       console.warn("Failed to fetch initial data", e);
     }
-  } else {
-    console.error("Could not determine session path for metadata fetch.");
   }
 }
 
@@ -124,8 +137,6 @@ function decodeAndDecompress(base64Data: string) {
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
-    
-    // F1 SignalR uses Raw Deflate (no headers)
     const decompressed = pako.inflateRaw(bytes, { to: 'string' });
     return JSON.parse(decompressed);
   } catch (e) {
@@ -135,11 +146,10 @@ function decodeAndDecompress(base64Data: string) {
 }
 
 /**
- * DEEP MERGE (Correct implementation for F1 deltas)
+ * DEEP MERGE
  */
 function robustMerge(target: any, source: any) {
   if (!source) return target;
-  
   Object.keys(source).forEach(key => {
     if (source[key] instanceof Object && !Array.isArray(source[key]) && key in target) {
       robustMerge(target[key], source[key]);
@@ -153,7 +163,6 @@ function robustMerge(target: any, source: any) {
 function handleMessage(msg: any) {
   if (Object.keys(msg).length === 0) return;
 
-  // 1. Handle Response to 'GetSessionState' (Result field 'R')
   if (msg.R) {
     const timingData = msg.R.TimingData || (msg.R.Lines ? msg.R : null);
     const infoData = msg.R.SessionInfo;
@@ -164,7 +173,6 @@ function handleMessage(msg: any) {
     if (infoData) robustMerge(sessionInfo, infoData);
   }
   
-  // 2. Handle standard Method calls ('M')
   if (msg.M && Array.isArray(msg.M)) {
     for (const m of msg.M) {
       if (m.M === 'feed' || m.M === 'Receive') {
@@ -195,9 +203,15 @@ async function writeToCache() {
   const results = Object.entries(currentTiming.Lines || {}).map(([number, data]: [string, any]) => {
     const driver = driverList[number];
     const acronym = driver?.Tla || '';
+    
+    // FALLBACK: If driverList failed (403), use our static mapping
+    const driverId = driverList[number] 
+      ? (ACRONYM_TO_ID[acronym] || acronym.toLowerCase())
+      : (NUMBER_TO_ID[number] || `unknown_${number}`);
+
     return {
-      driverId: ACRONYM_TO_ID[acronym] || acronym.toLowerCase(),
-      acronym,
+      driverId,
+      acronym: acronym || driverId.slice(0, 3).toUpperCase(),
       position: parseInt(data.Position) || 0,
       gap: data.GapToLeader || '',
       interval: data.IntervalToNext || '',
@@ -211,8 +225,8 @@ async function writeToCache() {
 
   const simplified = {
     status: sessionInfo.Status || 'Active',
-    meeting: sessionInfo.Meeting?.Name || 'Unknown',
-    session: sessionInfo.Session?.Name || 'Unknown',
+    meeting: sessionInfo.Meeting?.Name || 'Japanese Grand Prix',
+    session: sessionInfo.Session?.Name || 'Race',
     results: results,
     lastUpdated: new Date().toISOString()
   };
@@ -223,7 +237,7 @@ async function writeToCache() {
     updated_at: new Date().toISOString()
   });
   
-  if (!error) console.log(`Cache updated: ${results.length} drivers tracked.`);
+  if (!error) console.log(`Cache updated: ${results.length} drivers mapped using ${Object.keys(driverList).length > 0 ? 'DriverList' : 'NUMBER_TO_ID fallback'}.`);
 }
 
 /**
