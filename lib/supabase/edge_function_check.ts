@@ -18,6 +18,20 @@ interface RaceResultItem {
   };
 }
 
+/**
+ * Shared utility to determine if a status string indicates a true DNF (Retired during race).
+ * Excludes DNS (Did not start) and other non-participation statuses.
+ */
+function isTrueDnf(status: string, laps: string | number = "1"): boolean {
+  const s = status.toLowerCase();
+  const isFinished = s === "finished" || s.includes("lap");
+  const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
+  const lapCount = typeof laps === 'string' ? parseInt(laps) : laps;
+  const hasLaps = lapCount > 0;
+  
+  return !isFinished && !isDns && hasLaps;
+}
+
 Deno.serve(async (req) => {
   // 1. CORS Headers
   const corsHeaders = {
@@ -217,15 +231,8 @@ Deno.serve(async (req) => {
       if (!existingResults) {
         console.log(`Race results found for Round ${round} (${upcomingRace.raceName})! Automating publication...`);
         
-        // Find first DNF
-        const retirements = raceResult.Results.filter((r: RaceResultItem) => {
-          const s = r.status.toLowerCase();
-          const isFinished = s === "finished";
-          const isLapped = s.includes("lap"); 
-          const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
-          const hasLaps = parseInt(r.laps) > 0;
-          return !isFinished && !isLapped && !isDns && hasLaps;
-        });
+        // Find first DNF using the standardized logic
+        const retirements = raceResult.Results.filter((r: RaceResultItem) => isTrueDnf(r.status, r.laps));
         
         retirements.sort((a: RaceResultItem, b: RaceResultItem) => {
           const lapsA = parseInt(a.laps);
