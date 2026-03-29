@@ -73,7 +73,8 @@ This document outlines the strategic roadmap for upcoming features designed to i
 
 *   **🛞 Live Tire Insights:** Subscribe to the `TyreData` SignalR feed to display tire compounds (Soft, Medium, Hard) and tire age (laps) for drivers in the P10 battle.
 *   **🚥 Live Track Status:** Use the `SessionInfo` feed to display real-time track status banners (Yellow Flag, VSC, Safety Car, Red Flag) in the `LiveRaceCenter` header.
-*   **Real-time Achievement Unlocking:** Use live telemetry to trigger certain achievements immediately (e.g., "The Sniper").
+*   **Real-time Achievement Unlocking:** Use live telemetry to trigger certain achievements immediately.
+    *   **The Sniper 🎯:** Awarded if a user's P10 pick occupies the 10th position for at least **50% of the total race laps**. The relay tracks this lap-by-lap and unlocks the trophy the moment the threshold is hit, providing instant gratification.
 
 ---
 
