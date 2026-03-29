@@ -120,7 +120,14 @@ export default function SwipeablePageLayout<T extends string>({
                 onClick={() => handleTabChange(tab.id)}
                 className="rounded-pill px-4 py-2 d-flex align-items-center"
               >
-                {tab.icon && <span className="me-2 d-flex align-items-center">{tab.icon}</span>}
+                {tab.icon && (
+                  <span 
+                    className="me-2 d-flex align-items-center"
+                    style={{ color: activeTab === tab.id ? 'var(--team-accent-contrast, #ffffff)' : 'rgba(255,255,255,0.6)' }}
+                  >
+                    {tab.icon}
+                  </span>
+                )}
                 {tab.label}
               </Nav.Link>
             </Nav.Item>
