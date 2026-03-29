@@ -124,9 +124,18 @@ function decodeAndDecompress(base64Data: string) {
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
-    const decompressed = pako.inflateRaw(bytes, { to: 'string' });
+    
+    // Try standard inflate first, then fall back to inflateRaw
+    let decompressed;
+    try {
+      decompressed = pako.inflate(bytes, { to: 'string' });
+    } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      decompressed = pako.inflateRaw(bytes, { to: 'string' });
+    }
+    
     return JSON.parse(decompressed);
-  } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
+  } catch (e) {
+    console.error('Decompression Error Details:', e instanceof Error ? e.message : String(e));
     return null;
   }
 }
@@ -144,20 +153,31 @@ function deepMerge(target: any, source: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function handleMessage(msg: any) {
+  // Log keep-alives and other system messages
+  if (Object.keys(msg).length === 0) return;
+  
   if (msg.M && Array.isArray(msg.M)) {
     for (const m of msg.M) {
-      if (m.M === 'feed') {
+      console.log(`Server called method: ${m.M} for feed: ${m.A?.[0]}`);
+      
+      // F1 uses both 'feed' and 'Receive' depending on the data type
+      if (m.M === 'feed' || m.M === 'Receive') {
         const feedName = m.A[0];
         const rawData = m.A[1];
+        
+        if (!rawData) continue;
         const decoded = decodeAndDecompress(rawData);
         
-        if (!decoded) continue;
+        if (!decoded) {
+          console.warn(`Failed to decode data for feed: ${feedName}`);
+          continue;
+        }
 
         if (feedName === 'TimingData') {
-          console.log(`Received TimingData update for ${Object.keys(decoded.Lines || {}).length} drivers`);
+          console.log(`Processing TimingData update...`);
           currentTiming = deepMerge(currentTiming, decoded);
         } else if (feedName === 'SessionInfo') {
-          console.log(`Received SessionInfo update: ${decoded.Status}`);
+          console.log(`Processing SessionInfo update: ${decoded.Status}`);
           sessionInfo = deepMerge(sessionInfo, decoded);
         }
       }
