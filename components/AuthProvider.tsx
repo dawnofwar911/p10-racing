@@ -18,6 +18,7 @@ interface AuthContextType {
   isAuthLoading: boolean;
   syncVersion: number;
   profile: Profile | null;
+  setProfile: React.Dispatch<React.SetStateAction<Profile | null>>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   triggerRefresh: () => void;
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthLoading: true,
   syncVersion: 0,
   profile: null,
+  setProfile: () => {},
   logout: async () => {},
   refreshAuth: async () => {},
   triggerRefresh: () => {},
@@ -249,10 +251,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthLoading,
     syncVersion,
     profile,
+    setProfile,
     logout,
     refreshAuth: getSession,
     triggerRefresh
-  }), [session, currentUser, displayName, isAdmin, hasSession, isAuthLoading, syncVersion, profile, logout, getSession, triggerRefresh]);
+  }), [session, currentUser, displayName, isAdmin, hasSession, isAuthLoading, syncVersion, profile, setProfile, logout, getSession, triggerRefresh]);
 
   return (
     <AuthContext.Provider value={value}>

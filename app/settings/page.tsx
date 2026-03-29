@@ -36,7 +36,7 @@ export default function SettingsPage() {
   const supabase = createClient();
   const { showNotification } = useNotification();
   const mountedRef = useRef(true);
-  const { session, isAdmin } = useAuth();
+  const { session, isAdmin, profile, setProfile } = useAuth();
   const { drivers } = useF1Data();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -47,7 +47,6 @@ export default function SettingsPage() {
   const [useTeamTheme, setUseTeamTheme] = useState(true);
 
   // Profile State
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 

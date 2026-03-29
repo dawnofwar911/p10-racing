@@ -31,11 +31,14 @@ vi.mock('@/lib/supabase/client', () => ({
 }));
 
 // Mock Auth
+const mockSetProfile = vi.fn();
 vi.mock('@/components/AuthProvider', () => ({
   useAuth: () => ({
     session: mockSession,
     isAdmin: false,
-    user: mockSession.user
+    user: mockSession.user,
+    profile: mockProfileData,
+    setProfile: mockSetProfile
   }),
 }));
 
@@ -86,10 +89,7 @@ describe('Settings Page - Personalization', () => {
   it('should update favorite team and show success notification', async () => {
     render(<SettingsPage />);
     
-    // First call is for loadProfile, subsequent are for update
-    mockSupabase.single
-      .mockResolvedValueOnce({ data: mockProfileData, error: null }) // Initial load
-      .mockResolvedValue({ data: null, error: null }); // Update result
+    mockSupabase.single.mockResolvedValue({ data: null, error: null });
 
     await screen.findByText(/Personalization/i);
     const teamSelect = await screen.findByLabelText(/Favorite Team/i);
@@ -101,6 +101,7 @@ describe('Settings Page - Personalization', () => {
       expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({
         favorite_team: 'red_bull'
       }));
+      expect(mockSetProfile).toHaveBeenCalled();
       expect(mockShowNotification).toHaveBeenCalledWith(expect.stringContaining('successfully'), 'success');
     });
   });
@@ -108,9 +109,7 @@ describe('Settings Page - Personalization', () => {
   it('should update favorite driver and show success notification', async () => {
     render(<SettingsPage />);
     
-    mockSupabase.single
-      .mockResolvedValueOnce({ data: mockProfileData, error: null }) // Initial load
-      .mockResolvedValue({ data: null, error: null }); // Update result
+    mockSupabase.single.mockResolvedValue({ data: null, error: null });
 
     await screen.findByText(/Personalization/i);
     const driverSelect = await screen.findByLabelText(/Favorite Driver/i);
@@ -121,6 +120,7 @@ describe('Settings Page - Personalization', () => {
       expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({
         favorite_driver: 'verstappen'
       }));
+      expect(mockSetProfile).toHaveBeenCalled();
       expect(mockShowNotification).toHaveBeenCalledWith(expect.stringContaining('successfully'), 'success');
     });
   });
