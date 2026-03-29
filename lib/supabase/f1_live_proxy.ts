@@ -42,22 +42,41 @@ interface SessionInfo {
 }
 
 Deno.serve(async (req) => {
+  // 1. CORS Headers
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigins = [
+    Deno.env.get('APP_URL'), 
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'capacitor://localhost',
+    'http://localhost'
+  ].filter(Boolean);
+
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Vary': 'Origin'
   };
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  try {
-    const url = new URL(req.url);
-    const forceSeason = url.searchParams.get('season');
-    const forceSession = url.searchParams.get('session');
+  // 2. Security: Verify Secret
+  const authHeader = req.headers.get('Authorization');
+  const customCronHeader = req.headers.get('X-Cron-Secret');
+  const CRON_SECRET = Deno.env.get('CRON_SECRET');
+  
+  if (CRON_SECRET) {
+    const expectedBearer = `Bearer ${CRON_SECRET}`;
+    if (authHeader !== expectedBearer && authHeader !== CRON_SECRET && customCronHeader !== CRON_SECRET) {
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    }
+  }
 
-    // 1. CHECK CACHE FIRST (SignalR Relay data)
-    // The relay writes to this specific key
+  try {
+    // 3. CHECK CACHE FIRST (Prioritize SignalR Relay)
     const cacheKey = `f1_live_latest_latest_latest`;
     const { data: cached } = await supabase
       .from('kv_cache')
@@ -68,40 +87,41 @@ Deno.serve(async (req) => {
     if (cached) {
       const updatedAt = new Date(cached.updated_at).getTime();
       const now = new Date().getTime();
-      // If the cache is less than 60 seconds old, trust the SignalR relay
-      if (now - updatedAt < 60000) {
-        console.log('Serving from SignalR Relay Cache');
+      // Trust the SignalR relay cache for up to 10 minutes (Viral-Proofing Shield)
+      if (now - updatedAt < 600000) {
         return new Response(JSON.stringify(cached.value), {
-          status: 200, // Explicitly return 200
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'HIT-RELAY' },
         });
       }
     }
 
-    // 2. FALLBACK TO STATIC FILES (Current logic)
+    // 4. FALLBACK TO STATIC FILES (Only if relay is down)
+    const url = new URL(req.url);
+    const forceSeason = url.searchParams.get('season');
+    const forceSession = url.searchParams.get('session');
     const season = forceSeason || new Date().getFullYear().toString();
+    
     let sessionPath = '';
-
     const resp = await fetch(`${BASE_URL}/${season}/Index.json`);
-    if (!resp.ok) throw new Error(`Failed to fetch ${season} index: ${resp.status}`);
+    if (!resp.ok) throw new Error(`Failed to fetch index: ${resp.status}`);
     const data: F1Index = await resp.json();
 
-    if (!data.Meetings || data.Meetings.length === 0) throw new Error(`No meetings found`);
-
-    const nowTime = new Date();
-    const sortedMeetings = data.Meetings.sort((a, b) => {
-      const aStart = new Date(a.Sessions?.[0]?.StartDate || 0);
-      const bStart = new Date(b.Sessions?.[0]?.StartDate || 0);
-      return bStart.getTime() - aStart.getTime();
+    const sortedMeetings = data.Meetings?.sort((a, b) => {
+      const aStart = new Date(a.Sessions?.[0]?.StartDate || 0).getTime();
+      const bStart = new Date(b.Sessions?.[0]?.StartDate || 0).getTime();
+      return bStart - aStart;
     });
 
-    const currentMeeting = sortedMeetings.find(m => {
+    const currentMeeting = sortedMeetings?.find(m => {
       return m.Sessions?.some((s: F1Session) => {
-        const start = new Date(s.StartDate);
-        const diffDays = Math.abs(nowTime.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+        const start = new Date(s.StartDate).getTime();
+        const diffDays = Math.abs(new Date().getTime() - start) / (1000 * 60 * 60 * 24);
         return diffDays < 4;
       });
-    }) || sortedMeetings[0];
+    }) || sortedMeetings?.[0];
+
+    if (!currentMeeting) throw new Error("No meeting found");
 
     const sessions = currentMeeting.Sessions || [];
     const raceSession = sessions.find((s: F1Session) => s.Type === 'Race' || s.Name === 'Race');
