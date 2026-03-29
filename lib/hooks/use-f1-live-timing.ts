@@ -22,7 +22,7 @@ export interface LiveRaceData {
   lastUpdated: string;
 }
 
-export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 60000) {
+export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 15000) {
   const [data, setData] = useState<LiveRaceData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
