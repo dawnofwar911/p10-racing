@@ -155,7 +155,15 @@ function deepMerge(target: any, source: any) {
 function handleMessage(msg: any) {
   // Log keep-alives and other system messages
   if (Object.keys(msg).length === 0) return;
+
+  // 1. Handle Response to 'GetSessionState' (Result field 'R')
+  if (msg.R && msg.R.TimingData) {
+    console.log('Received full Session State via Result object');
+    currentTiming = deepMerge(currentTiming, msg.R.TimingData);
+    if (msg.R.SessionInfo) sessionInfo = deepMerge(sessionInfo, msg.R.SessionInfo);
+  }
   
+  // 2. Handle standard Method calls ('M')
   if (msg.M && Array.isArray(msg.M)) {
     for (const m of msg.M) {
       console.log(`Server called method: ${m.M} for feed: ${m.A?.[0]}`);
@@ -263,8 +271,14 @@ Deno.serve(async (req) => {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
+      console.log('F1 SignalR Stream Opened. Subscribing...');
+      // 1. Subscribe to live deltas
       const subMessage = { H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'SessionInfo']], I: 1 };
       ws.send(JSON.stringify(subMessage));
+
+      // 2. Request current full state (very important for initial data)
+      const stateMessage = { H: HUB_NAME, M: 'GetSessionState', A: [], I: 2 };
+      ws.send(JSON.stringify(stateMessage));
     };
 
     ws.onmessage = (event) => {
