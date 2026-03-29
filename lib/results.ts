@@ -2,7 +2,7 @@ import { createClient } from './supabase/client';
 import { fetchCalendar, fetchRaceResults, getFirstDnfDriver, ApiCalendarRace } from './api';
 import { CURRENT_SEASON } from './data';
 import { SimplifiedResults } from './types';
-import { getResultsKey } from './utils/storage';
+import { getResultsKey, STORAGE_KEYS } from './utils/storage';
 
 export interface EnhancedSimplifiedResults extends SimplifiedResults {
   date: Date;
@@ -14,8 +14,20 @@ export interface EnhancedSimplifiedResults extends SimplifiedResults {
  */
 export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: EnhancedSimplifiedResults }> {
   const supabase = createClient();
-  const races = await fetchCalendar(CURRENT_SEASON);
+  let races = await fetchCalendar(CURRENT_SEASON);
   const raceResultsMap: { [round: string]: EnhancedSimplifiedResults } = {};
+
+  // If calendar fetch fails, fallback to localStorage cache to prevent "deleted points" bug
+  if (races.length === 0 && typeof window !== 'undefined') {
+    const cachedCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR);
+    if (cachedCalendar) {
+      try {
+        races = JSON.parse(cachedCalendar);
+      } catch (e) {
+        console.warn('Results: Failed to load cached calendar fallback', e);
+      }
+    }
+  }
   
   // 1. Fetch all "Gold Standard" verified results from Supabase (filtered by current season)
   const { data: verifiedData } = await supabase
