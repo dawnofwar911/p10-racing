@@ -1,4 +1,5 @@
 import { Driver, ConstructorStanding, TEAM_COLORS } from '@/lib/types';
+import { isTrueDnf } from './utils/drivers';
 
 export interface ApiDriver {
   driverId: string;
@@ -56,7 +57,7 @@ export async function fetchRaceResults(season: number, round: number): Promise<A
     if (!contentType || !contentType.includes("application/json")) return null;
 
     const data = await response.json();
-    const race = data.MRData.RaceTable.Races[0];
+    const race = data?.MRData?.RaceTable?.Races?.[0];
     
     if (!race) return null;
     return race;
@@ -72,7 +73,7 @@ export async function fetchCalendar(season: number): Promise<ApiCalendarRace[]> 
     if (!response.ok) return [];
     
     const data = await response.json();
-    return data.MRData.RaceTable.Races || [];
+    return data?.MRData?.RaceTable?.Races || [];
   } catch (error) {
     console.error('Error fetching calendar:', error);
     return [];
@@ -96,8 +97,8 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
     const apiDrivers: Driver[] = [];
     if (response.ok) {
       const data = await response.json();
-      const standings = data.MRData.StandingsTable.StandingsLists[0];
-      if (standings && standings.DriverStandings.length > 0) {
+      const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
+      if (standings?.DriverStandings?.length > 0) {
         interface ApiStanding {
           points: string;
           Driver: ApiDriver;
@@ -121,7 +122,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
     const r1Response = await fetch(`${BASE_URL}/${season}/1/results.json`);
     if (r1Response.ok) {
       const r1Data = await r1Response.json();
-      const race = r1Data.MRData.RaceTable.Races[0];
+      const race = r1Data?.MRData?.RaceTable?.Races?.[0];
       if (race && race.Results) {
         race.Results.forEach((r: ApiResult) => {
           const existing = apiDrivers.find(d => d.id === r.Driver.driverId);
@@ -157,7 +158,7 @@ export async function fetchConstructors(season: number): Promise<ConstructorStan
     
     const data = await response.json();
     const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
-    if (!standings || !standings.ConstructorStandings) return [];
+    if (!standings?.ConstructorStandings) return [];
 
     interface ApiConstructorStanding {
       Constructor: {
@@ -223,7 +224,7 @@ export async function fetchQualifyingResults(season: number, round: number): Pro
     if (!response.ok) return [];
     
     const data = await response.json();
-    const race = data.MRData.RaceTable.Races[0];
+    const race = data?.MRData?.RaceTable?.Races?.[0];
     if (race && race.QualifyingResults) {
       return race.QualifyingResults;
     }
@@ -233,8 +234,6 @@ export async function fetchQualifyingResults(season: number, round: number): Pro
     return [];
   }
 }
-
-import { isTrueDnf } from './utils/drivers';
 
 export type DriverFormMap = Record<string, { pos: number, status: string }[]>;
 
@@ -256,7 +255,7 @@ export async function fetchRecentResults(season: number, count: number = 3): Pro
     if (!response.ok) return {};
 
     const data = await response.json();
-    const races = (data.MRData.RaceTable.Races || [])
+    const races = (data?.MRData?.RaceTable?.Races || [])
       .sort((a: ApiRace, b: ApiRace) => parseInt(a.round, 10) - parseInt(b.round, 10));
     
     // Take the latest 'count' races
