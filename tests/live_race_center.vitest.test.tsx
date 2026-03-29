@@ -119,4 +119,31 @@ describe('LiveRaceCenter Component', () => {
     
     expect(await screen.findByText(/Waiting for live timing data/i)).toBeDefined();
   });
+
+  it('should show stale data warning when lastUpdated is old', async () => {
+    const staleDate = new Date(Date.now() - 300000).toISOString(); // 5 mins ago
+    const mockData = {
+      status: 'Finished',
+      results: [],
+      lastUpdated: staleDate
+    };
+
+    server.use(
+      http.post('https://mock-project.supabase.co/functions/v1/f1-live-proxy', () => {
+        return HttpResponse.json(mockData);
+      })
+    );
+    
+    render(
+      <LiveRaceCenter 
+        p10Prediction="albon" 
+        dnfPrediction="perez" 
+        drivers={mockDrivers as any} 
+        isRaceInProgress={true} 
+      />
+    );
+    
+    expect(await screen.findByText(/STALE DATA/i)).toBeDefined();
+    expect(screen.getByText(/Outdated data. Reconnecting/i)).toBeDefined();
+  });
 });

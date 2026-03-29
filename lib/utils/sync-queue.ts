@@ -98,7 +98,21 @@ export async function flushSyncQueue(
       onLocked(raceId);
     }
   }
+  
+  if (successCount > 0) {
+    window.dispatchEvent(new CustomEvent(SYNC_COMPLETE_EVENT, { detail: { count: successCount } }));
+  }
+  
   return successCount;
+}
+
+/**
+ * Dispatches a manual sync complete event.
+ */
+export function dispatchSyncComplete() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(SYNC_COMPLETE_EVENT, { detail: { count: 0, manual: true } }));
+  }
 }
 
 /**

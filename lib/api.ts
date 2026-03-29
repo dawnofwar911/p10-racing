@@ -47,10 +47,25 @@ export interface ApiCalendarRace {
 }
 
 const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
+const DEFAULT_TIMEOUT = 10000;
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(id);
+  }
+}
 
 export async function fetchRaceResults(season: number, round: number): Promise<ApiRace | null> {
   try {
-    const response = await fetch(`${BASE_URL}/${season}/${round}/results.json`);
+    const response = await fetchWithTimeout(`${BASE_URL}/${season}/${round}/results.json`);
     if (!response.ok) return null;
     
     const contentType = response.headers.get("content-type");
@@ -69,7 +84,7 @@ export async function fetchRaceResults(season: number, round: number): Promise<A
 
 export async function fetchCalendar(season: number): Promise<ApiCalendarRace[]> {
   try {
-    const response = await fetch(`${BASE_URL}/${season}.json`);
+    const response = await fetchWithTimeout(`${BASE_URL}/${season}.json`);
     if (!response.ok) return [];
     
     const data = await response.json();
@@ -93,7 +108,7 @@ function shortenDriverName(givenName: string, familyName: string): string {
 
 export async function fetchDrivers(season: number): Promise<Driver[]> {
   try {
-    const response = await fetch(`${BASE_URL}/${season}/driverStandings.json`);
+    const response = await fetchWithTimeout(`${BASE_URL}/${season}/driverStandings.json`);
     const apiDrivers: Driver[] = [];
     if (response.ok) {
       const data = await response.json();
@@ -119,7 +134,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
       }
     }
 
-    const r1Response = await fetch(`${BASE_URL}/${season}/1/results.json`);
+    const r1Response = await fetchWithTimeout(`${BASE_URL}/${season}/1/results.json`);
     if (r1Response.ok) {
       const r1Data = await r1Response.json();
       const race = r1Data?.MRData?.RaceTable?.Races?.[0];
@@ -153,7 +168,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
 
 export async function fetchConstructors(season: number): Promise<ConstructorStanding[]> {
   try {
-    const response = await fetch(`${BASE_URL}/${season}/constructorStandings.json`);
+    const response = await fetchWithTimeout(`${BASE_URL}/${season}/constructorStandings.json`);
     if (!response.ok) return [];
     
     const data = await response.json();
@@ -191,7 +206,7 @@ export async function fetchDriversFromOpenF1(sessionKey: number): Promise<Driver
   };
 
   try {
-    const response = await fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
+    const response = await fetchWithTimeout(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
     if (!response.ok) return [];
     
     const data = await response.json();
@@ -220,7 +235,7 @@ export async function fetchDriversFromOpenF1(sessionKey: number): Promise<Driver
 
 export async function fetchQualifyingResults(season: number, round: number): Promise<ApiResult[]> {
   try {
-    const response = await fetch(`${BASE_URL}/${season}/${round}/qualifying.json`);
+    const response = await fetchWithTimeout(`${BASE_URL}/${season}/${round}/qualifying.json`);
     if (!response.ok) return [];
     
     const data = await response.json();
@@ -251,7 +266,7 @@ export function isDnfStatus(status: unknown, laps: string = "1"): boolean {
  */
 export async function fetchRecentResults(season: number, count: number = 3): Promise<DriverFormMap> {
   try {
-    const response = await fetch(`${BASE_URL}/${season}/results.json?limit=500`);
+    const response = await fetchWithTimeout(`${BASE_URL}/${season}/results.json?limit=500`);
     if (!response.ok) return {};
 
     const data = await response.json();

@@ -19,7 +19,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
   drivers,
   isRaceInProgress 
 }) => {
-  const { data, loading, error } = useF1LiveTiming(isRaceInProgress);
+  const { data, loading, error, isStale } = useF1LiveTiming(isRaceInProgress);
 
   const driversMap = useMemo(() => {
     return drivers.reduce((acc, d) => {
@@ -44,17 +44,27 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
     <Card className="f1-glass-card border-danger border-opacity-25 mb-4 overflow-hidden">
       <div className="f1-card-header d-flex justify-content-between align-items-center bg-danger bg-opacity-10 py-2 px-3">
         <div className="d-flex align-items-center gap-2">
-          <div className="live-indicator pulsing"></div>
-          <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-2">Live Race Center</h3>
+          <div className={`live-indicator ${isStale ? 'bg-secondary' : 'pulsing'}`}></div>
+          <h3 className="extra-small mb-0 text-uppercase fw-bold text-danger letter-spacing-2">
+            {isStale ? 'Connection Weak' : 'Live Race Center'}
+          </h3>
         </div>
         {loading ? (
           <Spinner animation="border" size="sm" variant="danger" />
         ) : (
-          <span className="extra-small text-white opacity-50 fw-bold">{data?.status || 'TRACK LIVE'}</span>
+          <span className={`extra-small fw-bold ${isStale ? 'text-warning' : 'text-white opacity-50'}`}>
+            {isStale ? 'STALE DATA' : (data?.status || 'TRACK LIVE')}
+          </span>
         )}
       </div>
       
       <Card.Body className="p-3">
+        {isStale && (
+          <div className="alert alert-warning py-1 px-2 extra-small mb-3 d-flex align-items-center gap-2 border-0 bg-warning bg-opacity-10 text-warning" style={{ fontSize: '0.65rem' }}>
+            <Spinner animation="grow" size="sm" variant="warning" style={{ width: '8px', height: '8px' }} />
+            <span>Outdated data. Reconnecting...</span>
+          </div>
+        )}
         {error ? (
           <div className="text-center py-3">
             <p className="extra-small text-muted mb-0">Waiting for live timing data...</p>

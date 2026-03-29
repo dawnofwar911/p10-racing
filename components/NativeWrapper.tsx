@@ -8,6 +8,7 @@ import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 import { Motion } from '@capacitor/motion';
+import { useSyncQueue } from '@/lib/hooks/use-sync-queue';
 
 // Declare global for console logs
 declare global {
@@ -19,6 +20,7 @@ declare global {
 
 export default function NativeWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  useSyncQueue();
 
   // Global console error interceptor
   useEffect(() => {

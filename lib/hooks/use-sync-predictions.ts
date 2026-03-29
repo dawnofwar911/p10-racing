@@ -7,6 +7,7 @@ import { STORAGE_KEYS, getPredictionKey, setStorageItem, STORAGE_UPDATE_EVENT } 
 import { useAuth } from '@/components/AuthProvider';
 import { useNotification } from '@/components/Notification';
 import { triggerHeavyHaptic } from '@/lib/utils/haptics';
+import { addToSyncQueue } from '@/lib/utils/sync-queue';
 
 export interface Prediction {
   p10: string;
@@ -95,17 +96,29 @@ export function useSyncPredictions(raceId: string | number | undefined) {
     try {
       triggerHeavyHaptic();
       const predData = { p10, dnf, username: displayName || 'User', raceId: String(raceId), season: CURRENT_SEASON };
+      const dbPayload = {
+        user_id: session?.user?.id || '',
+        race_id: `${CURRENT_SEASON}_${raceId}`,
+        p10_driver_id: p10,
+        dnf_driver_id: dnf,
+        updated_at: new Date().toISOString()
+      };
 
       if (session) {
-        const { error } = await supabase.from('predictions').upsert({
-          user_id: session.user.id,
-          race_id: `${CURRENT_SEASON}_${raceId}`,
-          p10_driver_id: p10,
-          dnf_driver_id: dnf,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id, race_id' });
+        // 1. Attempt immediate Sync
+        const { error } = await supabase.from('predictions').upsert(dbPayload, { onConflict: 'user_id, race_id' });
         
         if (error) {
+          // 2. If network error, add to Sync Queue (Reliability Win)
+          const isNetworkError = !window.navigator.onLine || error.message.toLowerCase().includes('fetch') || error.code === 'PGRST301';
+          if (isNetworkError) {
+            await addToSyncQueue(dbPayload);
+            showNotification('Saved locally! Your prediction will sync when you are back online.', 'warning');
+            setStorageItem(getPredictionKey(CURRENT_SEASON, session.user.id, String(raceId)), JSON.stringify(predData));
+            setPrediction({ p10, dnf });
+            return true;
+          }
+
           showNotification('Error saving prediction: ' + error.message, 'error');
           return false;
         }
@@ -133,6 +146,22 @@ export function useSyncPredictions(raceId: string | number | undefined) {
       return true;
     } catch (err) {
       console.error('useSyncPredictions: Submit error:', err);
+      // Fallback to local queue if entire block fails (e.g. server down)
+      if (session) {
+        const predData = { p10, dnf, username: displayName || 'User', raceId: String(raceId), season: CURRENT_SEASON };
+        const dbPayload = {
+          user_id: session.user.id,
+          race_id: `${CURRENT_SEASON}_${raceId}`,
+          p10_driver_id: p10,
+          dnf_driver_id: dnf,
+          updated_at: new Date().toISOString()
+        };
+        await addToSyncQueue(dbPayload);
+        setStorageItem(getPredictionKey(CURRENT_SEASON, session.user.id, String(raceId)), JSON.stringify(predData));
+        showNotification('Saved locally (Offline)', 'warning');
+        setPrediction({ p10, dnf });
+        return true;
+      }
       return false;
     }
   }, [raceId, session, displayName, supabase, showNotification]);

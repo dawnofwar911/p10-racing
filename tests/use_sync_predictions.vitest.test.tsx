@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useSyncPredictions } from '@/lib/hooks/use-sync-predictions';
 import { useAuth } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
@@ -17,6 +17,10 @@ vi.mock('@/components/Notification', () => ({
 
 vi.mock('@/lib/utils/haptics', () => ({
   triggerHeavyHaptic: vi.fn(),
+}));
+
+vi.mock('@/lib/utils/sync-queue', () => ({
+  addToSyncQueue: vi.fn(),
 }));
 
 vi.mock('@/lib/utils/storage', async (importOriginal) => {
@@ -139,5 +143,43 @@ describe('useSyncPredictions', () => {
       getPredictionKey(CURRENT_SEASON, userId, raceId),
       expect.stringContaining('driverX')
     );
+  });
+
+  it('should queue prediction in SyncQueue if network fails', async () => {
+    const { addToSyncQueue } = await import('@/lib/utils/sync-queue');
+    const raceId = 'test-race-4';
+    const userId = 'user-uuid-offline';
+    
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: userId } },
+      currentUser: 'AuthUser',
+      displayName: 'AuthUser',
+      syncVersion: 0,
+    });
+
+    mockSupabase.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    // Mock network error
+    mockSupabase.upsert.mockResolvedValueOnce({ 
+      error: { message: 'Failed to fetch', code: '' } 
+    });
+
+    const { result } = renderHook(() => useSyncPredictions(raceId));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Action
+    let success = false;
+    await act(async () => {
+      success = await result.current.submitPrediction('driverX', 'driverY');
+    });
+    
+    expect(success).toBe(true); // Should return true because it saved locally
+    expect(addToSyncQueue).toHaveBeenCalled();
+    
+    await waitFor(() => {
+      expect(result.current.prediction).toEqual({ p10: 'driverX', dnf: 'driverY' });
+    });
   });
 });

@@ -10,6 +10,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 // Mapping from F1 Acronyms to internal Driver IDs (2026 Lineup)
 const ACRONYM_TO_ID: { [key: string]: string } = {
   'NOR': 'norris', 'VER': 'max_verstappen',
@@ -104,7 +117,7 @@ Deno.serve(async (req) => {
     const season = forceSeason || new Date().getFullYear().toString();
     
     let sessionPath = '';
-    const resp = await fetch(`${BASE_URL}/${season}/Index.json`);
+    const resp = await fetchWithTimeout(`${BASE_URL}/${season}/Index.json`);
     if (!resp.ok) throw new Error(`Failed to fetch index: ${resp.status}`);
     const data: F1Index = await resp.json();
 
@@ -146,9 +159,9 @@ Deno.serve(async (req) => {
 
     const fullPath = `${BASE_URL}/${sessionPath}`;
     const [timingResp, sessionResp, driverListResp] = await Promise.all([
-      fetch(`${fullPath}TimingData.json`),
-      fetch(`${fullPath}SessionInfo.json`),
-      fetch(`${fullPath}DriverList.json`)
+      fetchWithTimeout(`${fullPath}TimingData.json`),
+      fetchWithTimeout(`${fullPath}SessionInfo.json`),
+      fetchWithTimeout(`${fullPath}DriverList.json`)
     ]);
 
     if (timingResp.status === 403 || timingResp.status === 404) {
