@@ -22,12 +22,27 @@ export interface LiveRaceData {
   lastUpdated: string;
 }
 
+const STALE_DATA_THRESHOLD_MS = 120000; // 2 minutes
+
 export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 15000) {
   const [data, setData] = useState<LiveRaceData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
   const supabase = useMemo(() => createClient(), []);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    if (!enabled || !data?.lastUpdated) return;
+    const interval = setInterval(() => setNow(Date.now()), 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [enabled, data?.lastUpdated]);
+
+  const isStale = useMemo(() => {
+    if (!data?.lastUpdated) return false;
+    const lastUpdate = new Date(data.lastUpdated).getTime();
+    return (now - lastUpdate) > STALE_DATA_THRESHOLD_MS;
+  }, [data?.lastUpdated, now]);
 
   const fetchData = useCallback(async () => {
     if (!enabled) return;
@@ -74,5 +89,5 @@ export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 1
     };
   }, [enabled, fetchData, intervalMs]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, isStale, refetch: fetchData };
 }

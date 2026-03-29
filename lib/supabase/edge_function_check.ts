@@ -9,6 +9,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 15000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 interface RaceResultItem {
   status: string;
   laps: string;
@@ -68,7 +81,7 @@ Deno.serve(async (req) => {
 
   try {
     // 1. Fetch Calendar to find current/next race
-    const calResponse = await fetch(`${BASE_URL}/${season}.json`);
+    const calResponse = await fetchWithTimeout(`${BASE_URL}/${season}.json`);
     const calData = calResponse.ok ? await calResponse.json() : null;
     const races = calData?.MRData?.RaceTable?.Races;
 
@@ -189,7 +202,7 @@ Deno.serve(async (req) => {
 
     // 2. Check for Qualifying Results
 
-    const qualiResponse = await fetch(`${BASE_URL}/${season}/${round}/qualifying.json`);
+    const qualiResponse = await fetchWithTimeout(`${BASE_URL}/${season}/${round}/qualifying.json`);
     const qualiData = qualiResponse.ok ? await qualiResponse.json() : null;
     const hasQuali = (qualiData?.MRData?.RaceTable?.Races?.[0]?.QualifyingResults?.length || 0) > 0;
 
@@ -213,7 +226,7 @@ Deno.serve(async (req) => {
     }
 
     // 3. Check for Race Results
-    const raceResponse = await fetch(`${BASE_URL}/${season}/${round}/results.json`);
+    const raceResponse = await fetchWithTimeout(`${BASE_URL}/${season}/${round}/results.json`);
     const raceData = raceResponse.ok ? await raceResponse.json() : null;
     const raceResult = raceData?.MRData?.RaceTable?.Races?.[0];
     const hasResults = (raceResult?.Results?.length || 0) > 0;

@@ -32,25 +32,32 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     if (!isInitial) setLoading(true);
     
     try {
-      const [driversData, calendarData, formData] = await Promise.all([
+      const results = await Promise.allSettled([
         fetchDrivers(season),
         fetchCalendar(season),
         fetchRecentResults(season)
       ]);
 
-      if (driversData && driversData.length > 0) {
-        setDrivers(driversData);
-        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(driversData));
+      const [driversResult, calendarResult, formResult] = results;
+
+      if (driversResult.status === 'fulfilled' && driversResult.value.length > 0) {
+        setDrivers(driversResult.value);
+        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(driversResult.value));
       }
 
-      if (calendarData && calendarData.length > 0) {
-        setCalendar(calendarData);
-        localStorage.setItem(STORAGE_KEYS.CACHE_CALENDAR, JSON.stringify(calendarData));
+      if (calendarResult.status === 'fulfilled' && calendarResult.value.length > 0) {
+        setCalendar(calendarResult.value);
+        localStorage.setItem(STORAGE_KEYS.CACHE_CALENDAR, JSON.stringify(calendarResult.value));
       }
 
-      if (formData && Object.keys(formData).length > 0) {
-        setDriverForm(formData);
-        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVER_FORM, JSON.stringify(formData));
+      if (formResult.status === 'fulfilled' && Object.keys(formResult.value).length > 0) {
+        setDriverForm(formResult.value);
+        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVER_FORM, JSON.stringify(formResult.value));
+      }
+
+      // Only set error if all critical requests failed
+      if (driversResult.status === 'rejected' && calendarResult.status === 'rejected') {
+        throw new Error('Critical F1 data could not be fetched');
       }
 
       setError(null);

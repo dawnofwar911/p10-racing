@@ -89,6 +89,35 @@ describe('Sync Queue Logic Tests', () => {
     expect(getSyncQueue()).toEqual({});
   });
 
+  it('should dispatch SYNC_COMPLETE_EVENT on successful flush', async () => {
+    const { SYNC_COMPLETE_EVENT } = await import('@/lib/utils/sync-queue');
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    
+    const payload = {
+      user_id: 'user1',
+      race_id: '2026_1',
+      p10_driver_id: 'verstappen',
+      dnf_driver_id: 'perez',
+      updated_at: new Date().toISOString()
+    };
+
+    await addToSyncQueue(payload);
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      upsert: vi.fn().mockResolvedValue({ error: null })
+    } as any;
+
+    await flushSyncQueue(mockSupabase, vi.fn(), vi.fn());
+
+    expect(dispatchSpy).toHaveBeenCalled();
+    const event = dispatchSpy.mock.calls[0][0] as CustomEvent;
+    expect(event.type).toBe(SYNC_COMPLETE_EVENT);
+    expect(event.detail.count).toBe(1);
+    
+    dispatchSpy.mockRestore();
+  });
+
   it('should handle locked predictions during flush', async () => {
     const payload = {
       user_id: 'user1',
