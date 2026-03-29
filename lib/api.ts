@@ -234,19 +234,17 @@ export async function fetchQualifyingResults(season: number, round: number): Pro
   }
 }
 
+import { isTrueDnf } from './utils/drivers';
+
 export type DriverFormMap = Record<string, { pos: number, status: string }[]>;
 
 /**
  * Shared utility to determine if a status string indicates a DNF (Retired during race).
  * Excludes DNS (Did not start) and other non-participation statuses.
+ * @deprecated Use isTrueDnf from @/lib/utils/drivers
  */
-export function isDnfStatus(status: string, laps: string = "1"): boolean {
-  const s = status.toLowerCase();
-  const isFinished = s === "finished" || s.includes("lap");
-  const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
-  const hasLaps = parseInt(laps) > 0;
-  
-  return !isFinished && !isDns && hasLaps;
+export function isDnfStatus(status: unknown, laps: string = "1"): boolean {
+  return isTrueDnf(status, laps);
 }
 
 /**
