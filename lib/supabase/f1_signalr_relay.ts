@@ -208,9 +208,19 @@ async function writeToCache() {
 Deno.serve(async (req) => {
   // We only expect internal trigger from pg_cron, but secure it anyway
   const authHeader = req.headers.get('Authorization');
+  const customCronHeader = req.headers.get('X-Cron-Secret');
   const CRON_SECRET = Deno.env.get('CRON_SECRET');
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}` && authHeader !== CRON_SECRET) {
-    return new Response('Unauthorized', { status: 401 });
+  
+  if (CRON_SECRET) {
+    const expectedBearer = `Bearer ${CRON_SECRET}`;
+    const isAuthorized = 
+      authHeader === expectedBearer || 
+      authHeader === CRON_SECRET || 
+      customCronHeader === CRON_SECRET;
+
+    if (!isAuthorized) {
+      return new Response('Unauthorized', { status: 401 });
+    }
   }
 
   try {
