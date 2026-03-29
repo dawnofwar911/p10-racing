@@ -52,8 +52,8 @@ export default function AppNavbar() {
             height={28} 
             className="d-inline-block align-top me-2"
           />
-          <span className="d-none d-sm-inline letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>RACING</span></span>
-          <span className="d-inline d-sm-none letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: '#e10600' }}>R</span></span>
+          <span className="d-none d-sm-inline letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: 'var(--team-accent, #e10600)' }}>RACING</span></span>
+          <span className="d-inline d-sm-none letter-spacing-1" style={{ fontSize: '1.1rem' }}>P10 <span style={{ color: 'var(--team-accent, #e10600)' }}>R</span></span>
           {isOnAdminPage && <span className="ms-2 badge bg-danger" style={{ fontSize: '0.6rem' }}>ADMIN</span>}
         </Navbar.Brand>
       </HapticLink>

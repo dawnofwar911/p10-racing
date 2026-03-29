@@ -36,12 +36,17 @@ export default function MobileBottomNav() {
                 <Icon 
                   size={20} 
                   strokeWidth={isActive ? 2.5 : 2}
-                  className={`transition-all ${isActive ? 'text-danger' : 'text-white opacity-40'}`} 
+                  className="transition-all"
+                  style={{ color: isActive ? 'var(--team-accent)' : 'rgba(255,255,255,0.4)' }}
                 />
               </div>
               <span 
-                className={`extra-small fw-bold text-uppercase letter-spacing-1 mt-1 transition-all ${isActive ? 'text-danger' : 'text-white opacity-40'}`}
-                style={{ fontSize: '0.62rem', whiteSpace: 'nowrap' }}
+                className="extra-small fw-bold text-uppercase letter-spacing-1 mt-1 transition-all"
+                style={{ 
+                  fontSize: '0.62rem', 
+                  whiteSpace: 'nowrap',
+                  color: isActive ? 'var(--team-accent)' : 'rgba(255,255,255,0.4)'
+                }}
               >
                 {item.label}
               </span>

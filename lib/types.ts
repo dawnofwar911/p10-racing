@@ -50,6 +50,16 @@ export interface SimplifiedResults {
   firstDnf: string | null;
 }
 
+export interface Profile {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  favorite_team?: string;
+  favorite_driver?: string;
+  is_admin?: boolean;
+  updated_at?: string;
+}
+
 export interface DbPrediction {
   id: string;
   user_id: string;
@@ -58,9 +68,7 @@ export interface DbPrediction {
   dnf_driver_id: string;
   created_at: string;
   updated_at: string;
-  profiles?: {
-    username: string;
-  };
+  profiles?: Profile;
 }
 
 export interface UserPrediction {

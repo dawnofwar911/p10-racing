@@ -12,10 +12,17 @@ export interface LiveResult {
   isRetired: boolean;
   inPit: boolean;
   number: string;
+  tyres?: {
+    compound: string;
+    isNew: boolean;
+    laps: number;
+  };
 }
 
 export interface LiveRaceData {
   status: string;
+  trackStatus: string;
+  trackMessage: string;
   meeting: string;
   session: string;
   results: LiveResult[];

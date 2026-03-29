@@ -75,7 +75,7 @@ const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], driver
           const teamColor = driverInfo?.color || '#B6BABD';
           return (
             <div key={result.Driver.driverId} className="col-6">
-              <div className={`position-relative p-0 rounded-3 overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid #e10600' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
+              <div className={`position-relative p-0 rounded-3 overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid var(--team-accent, #e10600)' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
                 <div style={{ height: '3px', backgroundColor: teamColor }}></div>
                 <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
                   <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
@@ -562,7 +562,7 @@ function PredictPage() {
             {nextRace?.name} • {displayName}
           </span>
         }
-        icon={<Target size={24} className="text-white" />}
+        icon={<Target size={24} />}
         rightElement={
           <div className="d-flex gap-2 align-items-center">
             {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill small">Switch</HapticButton>)}
@@ -676,7 +676,7 @@ function PredictPage() {
           <StandardPageHeader
             title="Predictions"
             subtitle="Who is Predicting?"
-            icon={<Target size={24} className="text-white" />}
+            icon={<Target size={24} />}
           />
           <Row className="justify-content-center mt-4">
             <Col md={6} lg={5}>
@@ -796,7 +796,7 @@ function PredictPage() {
             {nextRace?.name} • {displayName}
           </span>
         }
-        icon={<Target size={24} className="text-white" />}
+        icon={<Target size={24} />}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         tabs={tabs}

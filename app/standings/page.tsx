@@ -146,7 +146,7 @@ export default function StandingsPage() {
           <span className="d-none d-lg-block">Driver & Constructor Standings</span>
         </>
       }
-      icon={<Flag size={24} className="text-white" />}
+      icon={<Flag size={24} />}
       activeTab={view}
       onTabChange={setView}
       onRefresh={() => load(true)}

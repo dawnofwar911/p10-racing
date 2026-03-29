@@ -37,7 +37,7 @@ export function calculateP10Points(actualPosition: number): number {
   return pointsTable[distance] ?? 1;
 }
 
-export function calculateDnfPoints(predictedDnfId: string, actualDnfId: string): number {
+export function calculateDnfPoints(predictedDnfId: string, actualDnfId: string | null): number {
   if (!predictedDnfId || !actualDnfId) return 0;
   return predictedDnfId === actualDnfId ? 25 : 0;
 }
@@ -46,11 +46,31 @@ export function calculateTotalPoints(
   predictedP10Id: string,
   actualP10Position: number, 
   predictedDnfId: string,
-  actualDnfId: string
+  actualDnfId: string | null
 ): number {
   const p10Points = calculateP10Points(actualP10Position);
   const dnfPoints = calculateDnfPoints(predictedDnfId, actualDnfId);
   return p10Points + dnfPoints;
+}
+
+/**
+ * Calculates total points for a single race.
+ */
+export function calculateRacePoints(
+  prediction: { p10: string, dnf: string },
+  results: SimplifiedResults
+) {
+  const actualP10Pos = results.positions[prediction.p10] ?? 20;
+  const p10Score = calculateP10Points(actualP10Pos);
+  const dnfScore = calculateDnfPoints(prediction.dnf, results.firstDnf);
+  
+  return {
+    total: p10Score + dnfScore,
+    p10Score,
+    dnfScore,
+    dnfCorrect: dnfScore === 25,
+    actualP10Pos
+  };
 }
 
 /**
@@ -86,32 +106,28 @@ export function calculateSeasonPoints(
         if (comparisonDate < minDate) return;
       }
 
-      const actualPosOfPredictedP10 = results.positions[prediction.p10] ?? 20;
-      const p10Score = calculateP10Points(actualPosOfPredictedP10);
-      const dnfCorrect = prediction.dnf === (results.firstDnf || '');
-      const dnfScore = dnfCorrect ? 25 : 0;
-      const roundPoints = p10Score + dnfScore;
+      const { total, p10Score, dnfScore, dnfCorrect, actualP10Pos } = calculateRacePoints(prediction, results);
 
-      totalPoints += roundPoints;
+      totalPoints += total;
       
       history.push({
         round,
-        points: roundPoints,
+        points: total,
         totalSoFar: totalPoints,
         p10Driver: prediction.p10,
         dnfDriver: prediction.dnf,
-        p10Pos: actualPosOfPredictedP10,
+        p10Pos: actualP10Pos,
         dnfCorrect
       });
 
       if (index === sortedRounds.length - 1) {
-        lastRacePoints = roundPoints;
+        lastRacePoints = total;
         latestBreakdown = {
           p10Points: p10Score,
           dnfPoints: dnfScore,
           p10Driver: prediction.p10,
           dnfDriver: prediction.dnf,
-          actualP10Pos: actualPosOfPredictedP10
+          actualP10Pos: actualP10Pos
         };
       }
     }
