@@ -81,7 +81,7 @@ export default function SettingsPage() {
     } finally {
       if (mountedRef.current) setLoadingProfile(false);
     }
-  }, [supabase]);
+  }, [supabase, setProfile]);
 
   // Lifecycle
   useEffect(() => {
@@ -251,7 +251,7 @@ export default function SettingsPage() {
                   </AnimatePresence>
                 </Card.Body>
                 <div className="bg-black bg-opacity-25 p-2 text-center border-top border-secondary border-opacity-25">
-                   <p className="extra-small text-muted mb-0">These selections will be used for profile theming in future updates.</p>
+                   <p className="extra-small text-muted mb-0">Your favorite team&apos;s colors are used to theme the app&apos;s UI.</p>
                 </div>
               </Card>
             </>
