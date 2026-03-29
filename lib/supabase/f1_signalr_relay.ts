@@ -1,4 +1,5 @@
 // Supabase Edge Function: f1-signalr-relay
+// REAL-TIME RELAY V3: Enhanced with community proven logic
 // Connects to F1 SignalR real-time stream and caches data to DB
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -28,11 +29,9 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
 };
 
 // Global state for the lifetime of this function execution
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let currentTiming: any = { Lines: {} };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const currentTiming: any = { Lines: {} };
 let driverList: any = {};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let sessionInfo: any = { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' } };
 
 /**
@@ -47,18 +46,13 @@ async function discoverPathAndFetchInitial() {
   if (!data.Meetings) return;
   
   const now = new Date();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sortedMeetings = data.Meetings.sort((a: any, b: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const aStart = new Date(a.Sessions?.[0]?.StartDate || 0);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bStart = new Date(b.Sessions?.[0]?.StartDate || 0);
     return bStart.getTime() - aStart.getTime();
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentMeeting = sortedMeetings.find((m: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return m.Sessions?.some((s: any) => {
       const start = new Date(s.StartDate);
       const diffDays = Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
@@ -67,12 +61,10 @@ async function discoverPathAndFetchInitial() {
   }) || sortedMeetings[0];
 
   const sessions = currentMeeting.Sessions || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const targetSession = sessions.find((s: any) => s.Type === 'Race' || s.Name === 'Race') || sessions[sessions.length - 1];
 
   let sessionPath = targetSession.Path;
   if (!sessionPath) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sessionWithPadding = sessions.find((s: any) => s.Path);
     if (sessionWithPadding) {
       const parts = sessionWithPadding.Path.split('/');
@@ -91,6 +83,7 @@ async function discoverPathAndFetchInitial() {
       ]);
       if (dlResp.ok) driverList = await dlResp.json();
       if (siResp.ok) sessionInfo = await siResp.json();
+      console.log('Initial metadata loaded for:', sessionInfo.Meeting?.Name);
     } catch (e) {
       console.warn("Failed to fetch initial data", e);
     }
@@ -104,22 +97,15 @@ async function negotiate() {
   const negotiateUrl = `${SIGNALR_BASE}/negotiate?connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
   const resp = await fetch(negotiateUrl, {
     method: 'GET',
-    headers: {
-      'User-Agent': 'BestRacingApp/1.0',
-      'Accept': 'application/json'
-    }
+    headers: { 'User-Agent': 'BestRacingApp/1.0', 'Accept': 'application/json' }
   });
   if (!resp.ok) throw new Error(`SignalR Negotiation Failed: ${resp.status}`);
-  
-  // Extract cookies for the subsequent WebSocket connection
-  const cookie = resp.headers.get('set-cookie') || '';
-  
   const data = await resp.json();
-  return { token: data.ConnectionToken, cookie };
+  return { token: data.ConnectionToken };
 }
 
 /**
- * DECOMPRESSION & MERGING
+ * DECOMPRESSION
  */
 function decodeAndDecompress(base64Data: string) {
   try {
@@ -129,63 +115,63 @@ function decodeAndDecompress(base64Data: string) {
       bytes[i] = binaryString.charCodeAt(i);
     }
     
-    let decompressed;
-    try {
-      decompressed = pako.inflate(bytes, { to: 'string' });
-    } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      decompressed = pako.inflateRaw(bytes, { to: 'string' });
-    }
-    
+    // F1 SignalR uses Raw Deflate (no headers)
+    const decompressed = pako.inflateRaw(bytes, { to: 'string' });
     return JSON.parse(decompressed);
   } catch (e) {
-    console.error('Decompression Error:', e instanceof Error ? e.message : String(e));
+    console.error('Decompression failed:', e instanceof Error ? e.message : String(e));
     return null;
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function deepMerge(target: any, source: any) {
-  for (const key of Object.keys(source)) {
-    if (source[key] instanceof Object && !Array.isArray(source[key]) && target[key]) {
-      Object.assign(source[key], deepMerge(target[key], source[key]));
+/**
+ * DEEP MERGE (Correct implementation for F1 deltas)
+ */
+function robustMerge(target: any, source: any) {
+  if (!source) return target;
+  
+  Object.keys(source).forEach(key => {
+    if (source[key] instanceof Object && !Array.isArray(source[key]) && key in target) {
+      robustMerge(target[key], source[key]);
+    } else {
+      target[key] = source[key];
     }
-  }
-  Object.assign(target || {}, source);
+  });
   return target;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function handleMessage(msg: any) {
   if (Object.keys(msg).length === 0) return;
 
+  // 1. Handle Response to 'GetSessionState' (Result field 'R')
   if (msg.R) {
-    console.log('Received Result (R) Object. Keys:', Object.keys(msg.R));
-    const timingData = msg.R.TimingData || msg.R.timingData || (msg.R.Lines ? msg.R : null);
-    const infoData = msg.R.SessionInfo || msg.R.sessionInfo;
-    if (timingData) currentTiming = deepMerge(currentTiming, timingData);
-    if (infoData) sessionInfo = deepMerge(sessionInfo, infoData);
+    const timingData = msg.R.TimingData || (msg.R.Lines ? msg.R : null);
+    const infoData = msg.R.SessionInfo;
+    if (timingData) {
+      console.log('Merging full TimingData snapshot');
+      robustMerge(currentTiming, timingData);
+    }
+    if (infoData) robustMerge(sessionInfo, infoData);
   }
   
+  // 2. Handle standard Method calls ('M')
   if (msg.M && Array.isArray(msg.M)) {
     for (const m of msg.M) {
       if (m.M === 'feed' || m.M === 'Receive') {
         let feedName = m.A[0];
         const rawData = m.A[1];
-        
         if (!rawData) continue;
 
-        // If the feed name ends in .z, it's definitely compressed
         const isCompressed = typeof feedName === 'string' && feedName.endsWith('.z');
         if (isCompressed) feedName = feedName.slice(0, -2);
 
         const decoded = isCompressed ? decodeAndDecompress(rawData) : rawData;
-        
         if (!decoded) continue;
 
         if (feedName === 'TimingData') {
-          currentTiming = deepMerge(currentTiming, decoded);
+          robustMerge(currentTiming, decoded);
         } else if (feedName === 'SessionInfo') {
-          sessionInfo = deepMerge(sessionInfo, decoded);
+          robustMerge(sessionInfo, decoded);
         }
       }
     }
@@ -196,7 +182,6 @@ function handleMessage(msg: any) {
  * DB CACHE WRITING
  */
 async function writeToCache() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results = Object.entries(currentTiming.Lines || {}).map(([number, data]: [string, any]) => {
     const driver = driverList[number];
     const acronym = driver?.Tla || '';
@@ -222,11 +207,13 @@ async function writeToCache() {
     lastUpdated: new Date().toISOString()
   };
 
-  await supabase.from('kv_cache').upsert({
+  const { error } = await supabase.from('kv_cache').upsert({
     key: `f1_live_latest_latest_latest`,
     value: simplified,
     updated_at: new Date().toISOString()
   });
+  
+  if (!error) console.log(`Cache updated: ${results.length} drivers tracked.`);
 }
 
 /**
@@ -244,20 +231,17 @@ Deno.serve(async (req) => {
     await discoverPathAndFetchInitial();
     const { token } = await negotiate();
     
-    // Note: Deno WebSocket does not support manual cookie headers via the standard API.
-    // We rely on the ConnectionToken for session persistence.
     const wsUrl = `${SIGNALR_BASE.replace('https', 'wss')}/connect?transport=webSockets&connectionToken=${encodeURIComponent(token)}&connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      // Subscribe to both compressed and uncompressed feeds for maximum compatibility
-      const subMessage = { H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'TimingData.z', 'SessionInfo', 'SessionInfo.z']], I: 1 };
-      ws.send(JSON.stringify(subMessage));
+      console.log('F1 Stream Connected. Subscribing...');
+      ws.send(JSON.stringify({ H: HUB_NAME, M: 'Subscribe', A: [['TimingData', 'TimingData.z', 'SessionInfo', 'SessionInfo.z']], I: 1 }));
       ws.send(JSON.stringify({ H: HUB_NAME, M: 'GetSessionState', A: [], I: 2 }));
     };
 
     ws.onmessage = (event) => {
-      try { handleMessage(JSON.parse(event.data)); } catch (_e) {} // eslint-disable-line @typescript-eslint/no-unused-vars
+      try { handleMessage(JSON.parse(event.data)); } catch { /* ignore */ }
     };
 
     const interval = setInterval(() => {
@@ -269,7 +253,7 @@ Deno.serve(async (req) => {
     clearInterval(interval);
     ws.close();
 
-    return new Response(JSON.stringify({ status: 'Relay execution completed' }), {
+    return new Response(JSON.stringify({ status: 'Relay completed' }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -278,3 +262,4 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 });
+/* eslint-enable @typescript-eslint/no-explicit-any */
