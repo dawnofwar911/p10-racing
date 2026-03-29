@@ -1,22 +1,41 @@
 // Supabase Edge Function: f1-live-proxy
+// Emergency Version: Robust 2026 Path Discovery
 // Fetches live timing data from official F1 static JSON feeds
 
 const BASE_URL = 'https://livetiming.formula1.com/static';
 
-// Mapping from F1 Acronyms to internal Driver IDs
+// Mapping from F1 Acronyms to internal Driver IDs (2026 Lineup)
 const ACRONYM_TO_ID: { [key: string]: string } = {
-  'ALB': 'albon', 'ALO': 'alonso', 'ANT': 'antonelli', 'BEA': 'bearman',
-  'BOR': 'bortoleto', 'BOT': 'bottas', 'COL': 'colapinto', 'GAS': 'gasly',
-  'HAD': 'hadjar', 'HAM': 'hamilton', 'HUL': 'hulkenberg', 'LAW': 'lawson',
-  'LEC': 'leclerc', 'LIN': 'arvid_lindblad', 'NOR': 'norris', 'OCO': 'ocon',
-  'PIA': 'piastri', 'PER': 'perez', 'RUS': 'russell', 'SAI': 'sainz',
-  'STR': 'stroll', 'VER': 'max_verstappen'
+  'VER': 'max_verstappen', 'HAD': 'hadjar',
+  'HAM': 'hamilton', 'LEC': 'leclerc',
+  'NOR': 'norris', 'PIA': 'piastri',
+  'RUS': 'russell', 'ANT': 'antonelli',
+  'ALO': 'alonso', 'STR': 'stroll',
+  'GAS': 'gasly', 'COL': 'colapinto',
+  'ALB': 'albon', 'SAI': 'sainz',
+  'LAW': 'lawson', 'LIN': 'arvid_lindblad',
+  'HUL': 'hulkenberg', 'BOR': 'bortoleto',
+  'OCO': 'ocon', 'BEA': 'bearman',
+  'PER': 'perez', 'BOT': 'bottas'
 };
 
+interface F1Session {
+  Key: number;
+  Type: string;
+  Name: string;
+  StartDate: string;
+  EndDate: string;
+  Path?: string;
+}
+
+interface F1Meeting {
+  Key: number;
+  Name: string;
+  Sessions: F1Session[];
+}
+
 interface F1Index {
-  Seasons?: { Year: number }[];
-  Meetings?: { Path: string }[];
-  Sessions?: { Path: string, Name: string }[];
+  Meetings?: F1Meeting[];
 }
 
 interface TimingData {
@@ -40,21 +59,9 @@ interface SessionInfo {
 }
 
 Deno.serve(async (req) => {
-  // 1. CORS Headers - Securely derived from environment
-  const origin = req.headers.get('origin') || '';
-  const allowedOrigins = [
-    Deno.env.get('APP_URL'), 
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'capacitor://localhost',
-    'http://localhost'
-  ].filter(Boolean);
-
   const corsHeaders = {
-    'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || '*',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Vary': 'Origin'
   };
 
   if (req.method === 'OPTIONS') {
@@ -64,56 +71,94 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const forceSeason = url.searchParams.get('season');
-    const forceMeeting = url.searchParams.get('meeting');
     const forceSession = url.searchParams.get('session');
 
-    let season = forceSeason;
-    let meeting = forceMeeting;
-    let session = forceSession;
+    const season = forceSeason || new Date().getFullYear().toString();
+    let sessionPath = '';
 
-    // 2. Discover Path if not forced
-    if (!season) {
-      const resp = await fetch(`${BASE_URL}/Index.json`);
-      if (!resp.ok) throw new Error('Failed to fetch Seasons index');
-      const data: F1Index = await resp.json();
-      season = data.Seasons?.[data.Seasons.length - 1]?.Year.toString() || new Date().getFullYear().toString();
+    // 1. Discover Active Path for 2026
+    const resp = await fetch(`${BASE_URL}/${season}/Index.json`);
+    if (!resp.ok) throw new Error(`Failed to fetch ${season} index: ${resp.status}`);
+    const data: F1Index = await resp.json();
+
+    if (!data.Meetings || data.Meetings.length === 0) {
+      throw new Error(`No meetings found for season ${season}`);
     }
 
-    if (!meeting) {
-      const resp = await fetch(`${BASE_URL}/${season}/Index.json`);
-      if (!resp.ok) throw new Error('Failed to fetch Meetings index');
-      const data: F1Index = await resp.json();
-      meeting = data.Meetings?.[data.Meetings.length - 1]?.Path || '';
+    // Find the current or most recent meeting
+    const now = new Date();
+    // Sort meetings by session dates to find the current one
+    const sortedMeetings = data.Meetings.sort((a, b) => {
+      const aStart = new Date(a.Sessions?.[0]?.StartDate || 0);
+      const bStart = new Date(b.Sessions?.[0]?.StartDate || 0);
+      return bStart.getTime() - aStart.getTime(); // Descending (latest first)
+    });
+
+    // Strategy: Find meeting that has a session starting today/yesterday or is closest to now
+    const currentMeeting = sortedMeetings.find(m => {
+      return m.Sessions?.some((s: F1Session) => {
+        const start = new Date(s.StartDate);
+        const diffDays = Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays < 4; // Within 4 days of any session
+      });
+    }) || sortedMeetings[0];
+
+    // Find the 'Race' session in this meeting
+    const sessions = currentMeeting.Sessions || [];
+    const raceSession = sessions.find((s: F1Session) => s.Type === 'Race' || s.Name === 'Race');
+    const targetSession = forceSession ? sessions.find((s: F1Session) => s.Name === forceSession) : (raceSession || sessions[sessions.length - 1]);
+
+    if (!targetSession) {
+      throw new Error("Target session not found");
     }
 
-    if (!session) {
-      const resp = await fetch(`${BASE_URL}/${season}/${meeting}Index.json`);
-      if (!resp.ok) throw new Error('Failed to fetch Sessions index');
-      const data: F1Index = await resp.json();
-      const raceSession = data.Sessions?.find(s => s.Name.toLowerCase() === 'race');
-      session = raceSession?.Path || data.Sessions?.[data.Sessions.length - 1]?.Path || '';
+    if (targetSession.Path) {
+      sessionPath = targetSession.Path;
+    } else {
+      // INFER PATH: Use another session's path to find the meeting root
+      const sessionWithPadding = sessions.find((s: F1Session) => s.Path);
+      if (sessionWithPadding && sessionWithPadding.Path) {
+        // Example path: 2026/2026-03-29_Japanese_Grand_Prix/2026-03-27_Practice_1/
+        const parts = sessionWithPadding.Path.split('/');
+        const meetingRoot = parts.slice(0, 2).join('/'); // 2026/2026-03-29_Japanese_Grand_Prix
+        
+        // Expected session folder name format: YYYY-MM-DD_Name
+        const sessionDate = targetSession.StartDate.split('T')[0];
+        sessionPath = `${meetingRoot}/${sessionDate}_${targetSession.Name.replace(/ /g, '_')}/`;
+      }
     }
 
-    const sessionPath = `${BASE_URL}/${season}/${meeting}${session}`;
+    if (!sessionPath) {
+      throw new Error("Could not discover session path");
+    }
 
-    // 3. Fetch Timing, Session Info, and Driver List in parallel
+    const fullPath = `${BASE_URL}/${sessionPath}`;
+    console.log(`Fetching from: ${fullPath}`);
+
+    // 2. Fetch Data
     const [timingResp, sessionResp, driverListResp] = await Promise.all([
-      fetch(`${sessionPath}TimingData.json`),
-      fetch(`${sessionPath}SessionInfo.json`),
-      fetch(`${sessionPath}DriverList.json`)
+      fetch(`${fullPath}TimingData.json`),
+      fetch(`${fullPath}SessionInfo.json`),
+      fetch(`${fullPath}DriverList.json`)
     ]);
 
-    if (!timingResp.ok) throw new Error(`Failed to fetch timing data: ${timingResp.status}`);
-    if (!sessionResp.ok) throw new Error(`Failed to fetch session info: ${sessionResp.status}`);
-    if (!driverListResp.ok) throw new Error(`Failed to fetch driver list: ${driverListResp.status}`);
+    // Handle 403/404 specifically for better error messages
+    if (timingResp.status === 403 || timingResp.status === 404) {
+      return new Response(JSON.stringify({ error: "Waiting for track data..." }), {
+        status: timingResp.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
+    if (!timingResp.ok) throw new Error(`Timing fetch failed: ${timingResp.status}`);
+    
     const [timingData, sessionInfo, driverListData] = await Promise.all([
       timingResp.json() as Promise<TimingData>,
       sessionResp.json() as Promise<SessionInfo>,
       driverListResp.json()
     ]);
 
-    // 4. Map and Simplify Results
+    // 3. Map and Simplify Results
     const results = Object.entries(timingData.Lines).map(([number, data]) => {
       const driver = driverListData[number];
       const acronym = driver?.Tla || '';
@@ -138,11 +183,7 @@ Deno.serve(async (req) => {
     };
 
     return new Response(JSON.stringify(simplified), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=30'
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (err) {
