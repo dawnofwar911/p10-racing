@@ -67,14 +67,16 @@ This document outlines the strategic roadmap for upcoming features designed to i
 **Goal:** Transition the app out of "Race Mode" immediately when the checkered flag drops.
 *   **Implementation:** `f1-signalr-relay` detects `Finished` or `Final` session status and updates `kv_cache`. Frontend displays "RESULTS PENDING" badge instantly.
 
-### 2. 📡 Real-time Data Expansion (SignalR)
+### 2. 📡 Real-time Data Expansion (SignalR) [COMPLETED ✅]
 **Goal:** Leverage the low-latency track stream for more than just P10/DNF tracking.
 *   **🛞 Live Tire Insights:** Real-time tire compound and age displayed in the P10 Tracker.
 *   **🚥 Live Track Status:** Dynamic banners for Yellow Flag, VSC, Safety Car, and Red Flag.
 
-### 3. 📐 Fix Maskable Icon Padding
-**Goal:** Ensure the PWA icon looks polished on all Android launchers.
-*   **Action:** Updated `logo.svg` with 20% safe-zone padding to prevent cropping on Android.
+### 3. 🎯 Future: Real-time Achievement Unlocking
+**Goal:** Use live telemetry to trigger certain achievements immediately.
+*   **The Sniper 🎯:** Awarded if a user's P10 pick occupies the 10th position for at least **50% of the total race laps**. The relay tracks this lap-by-lap and unlocks the trophy the moment the threshold is hit, providing instant gratification.
+
+### 4. 📐 Fix Maskable Icon Padding [COMPLETED ✅]
 
 ### 4. 🧮 Unified Scoring Utility
 **Goal:** Centralize all prediction-to-point logic to prevent duplication.
