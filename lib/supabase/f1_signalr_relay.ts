@@ -33,7 +33,7 @@ function isTrueDnf(status: string, laps: string | number = "1"): boolean {
 const NUMBER_TO_ID: { [key: string]: string } = {
   '1': 'norris', '3': 'max_verstappen', '5': 'bortoleto', '6': 'hadjar',
   '10': 'gasly', '11': 'perez', '12': 'antonelli', '14': 'alonso',
-  '16': 'leclerc', '18': 'stroll', '23': 'albon', '55': 'sainz',
+  '16': 'leclerc', '18': 'stroll', '23': 'albon', '27': 'hulkenberg',
   '30': 'lawson', '31': 'ocon', '41': 'arvid_lindblad', '43': 'colapinto',
   '44': 'hamilton', '55': 'sainz', '63': 'russell', '77': 'bottas',
   '81': 'piastri', '87': 'bearman'
