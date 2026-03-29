@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
     }).sort((a, b) => (a.position || 99) - (b.position || 99));
 
     const simplified = {
-      status: sessionInfo.Status, meeting: sessionInfo.Meeting.Name, session: sessionInfo.Session.Name,
+      status: sessionInfo.Status, meeting: sessionInfo.Meeting?.Name || 'Unknown', session: sessionInfo.Session?.Name || 'Unknown',
       results: results, lastUpdated: new Date().toISOString()
     };
 
