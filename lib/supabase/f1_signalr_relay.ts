@@ -1,5 +1,4 @@
 // Supabase Edge Function: f1-signalr-relay
-// REAL-TIME RELAY V3: Enhanced with community proven logic
 // Connects to F1 SignalR real-time stream and caches data to DB
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -15,11 +14,26 @@ const STATIC_BASE = 'https://livetiming.formula1.com/static';
 const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
 const HUB_NAME = 'Streaming';
 
+/**
+ * Shared utility to determine if a status string or telemetry state indicates 
+ * a true DNF (Retired during race). Excludes DNS (Did not start) and 
+ * other non-participation statuses.
+ */
+function isTrueDnf(status: string, laps: string | number = "1"): boolean {
+  const s = status.toLowerCase();
+  const isFinished = s === "finished" || s.includes("lap");
+  const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
+  const lapCount = typeof laps === 'string' ? parseInt(laps) : laps;
+  const hasLaps = lapCount > 0;
+  
+  return !isFinished && !isDns && hasLaps;
+}
+
 // Robust 2026 Mapping (Number -> ID)
 const NUMBER_TO_ID: { [key: string]: string } = {
   '1': 'norris', '3': 'max_verstappen', '5': 'bortoleto', '6': 'hadjar',
   '10': 'gasly', '11': 'perez', '12': 'antonelli', '14': 'alonso',
-  '16': 'leclerc', '18': 'stroll', '23': 'albon', '27': 'hulkenberg',
+  '16': 'leclerc', '18': 'stroll', '23': 'albon', '55': 'sainz',
   '30': 'lawson', '31': 'ocon', '41': 'arvid_lindblad', '43': 'colapinto',
   '44': 'hamilton', '55': 'sainz', '63': 'russell', '77': 'bottas',
   '81': 'piastri', '87': 'bearman'
@@ -39,7 +53,7 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const currentTiming: any = { Lines: {} };
 let driverList: any = {};
-let sessionInfo: any = { Status: 'Active', Meeting: { Name: 'Japanese Grand Prix' }, Session: { Name: 'Race' } };
+let sessionInfo: any = { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' } };
 
 // Dynamic mappings populated at runtime
 const DYNAMIC_NUMBER_TO_ID: Record<string, string> = {};
@@ -72,7 +86,7 @@ async function fetchOfficialDrivers() {
 }
 
 /**
- * PATH DISCOVERY (For initial static metadata)
+ * PATH DISCOVERY
  */
 async function discoverPathAndFetchInitial() {
   const season = new Date().getFullYear().toString();
@@ -131,7 +145,7 @@ async function discoverPathAndFetchInitial() {
 }
 
 /**
- * SIGNALR NEGOTIATION
+ * SIGNALR HUB
  */
 async function negotiate() {
   const negotiateUrl = `${SIGNALR_BASE}/negotiate?connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
@@ -144,9 +158,6 @@ async function negotiate() {
   return { token: data.ConnectionToken };
 }
 
-/**
- * DECOMPRESSION
- */
 function decodeAndDecompress(base64Data: string) {
   try {
     const binaryString = atob(base64Data);
@@ -161,9 +172,6 @@ function decodeAndDecompress(base64Data: string) {
   }
 }
 
-/**
- * DEEP MERGE
- */
 function robustMerge(target: any, source: any) {
   if (!source) return target;
   Object.keys(source).forEach(key => {
@@ -230,7 +238,7 @@ async function writeToCache() {
       position: parseInt(data.Position) || 0,
       gap: data.GapToLeader || '',
       interval: data.IntervalToNext || '',
-      isRetired: data.Retired || data.Stopped || false,
+      isRetired: isTrueDnf(data.Status || '', data.NumberOfLaps || '1') || data.Retired || data.Stopped || false,
       inPit: data.InPit || false,
       number
     };
@@ -240,19 +248,17 @@ async function writeToCache() {
 
   const simplified = {
     status: sessionInfo.Status || 'Active',
-    meeting: sessionInfo.Meeting?.Name || 'Japanese Grand Prix',
+    meeting: sessionInfo.Meeting?.Name || 'Unknown',
     session: sessionInfo.Session?.Name || 'Race',
     results: results,
     lastUpdated: new Date().toISOString()
   };
 
-  const { error } = await supabase.from('kv_cache').upsert({
+  await supabase.from('kv_cache').upsert({
     key: `f1_live_latest_latest_latest`,
     value: simplified,
     updated_at: new Date().toISOString()
   });
-  
-  if (!error) console.log(`Cache updated with ${results.length} drivers.`);
 }
 
 /**
@@ -267,10 +273,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Start background setup
     await Promise.all([fetchOfficialDrivers(), discoverPathAndFetchInitial()]);
-    
     const { token } = await negotiate();
+    
     const wsUrl = `${SIGNALR_BASE.replace('https', 'wss')}/connect?transport=webSockets&connectionToken=${encodeURIComponent(token)}&connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
     const ws = new WebSocket(wsUrl);
 
