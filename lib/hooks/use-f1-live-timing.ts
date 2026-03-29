@@ -29,6 +29,14 @@ export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 1
   const supabase = useMemo(() => createClient(), []);
   const mountedRef = useRef(true);
 
+  const isStale = useMemo(() => {
+    if (!data?.lastUpdated) return false;
+    const lastUpdate = new Date(data.lastUpdated).getTime();
+    const now = new Date().getTime();
+    // Consider stale if older than 2 minutes (8 poll intervals)
+    return (now - lastUpdate) > 120000;
+  }, [data?.lastUpdated]);
+
   const fetchData = useCallback(async () => {
     if (!enabled) return;
     
@@ -74,5 +82,5 @@ export function useF1LiveTiming(enabled: boolean = false, intervalMs: number = 1
     };
   }, [enabled, fetchData, intervalMs]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, isStale, refetch: fetchData };
 }

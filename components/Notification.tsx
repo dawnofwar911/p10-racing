@@ -2,9 +2,9 @@
 
 import React, { useState, createContext, useContext, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info, X, AlertTriangle } from 'lucide-react';
 
-type NotificationType = 'success' | 'error' | 'info';
+type NotificationType = 'success' | 'error' | 'info' | 'warning';
 
 interface Notification {
   id: string;
@@ -59,8 +59,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 pointerEvents: 'auto',
                 marginBottom: '10px',
                 background: '#1f1f27',
-                border: `1px solid ${n.type === 'success' ? '#28a745' : n.type === 'error' ? '#e10600' : '#007bff'}`,
-                borderLeft: `4px solid ${n.type === 'success' ? '#28a745' : n.type === 'error' ? '#e10600' : '#007bff'}`,
+                border: `1px solid ${
+                  n.type === 'success' ? '#28a745' : 
+                  n.type === 'error' ? '#e10600' : 
+                  n.type === 'warning' ? '#ffc107' : 
+                  '#007bff'
+                }`,
+                borderLeft: `4px solid ${
+                  n.type === 'success' ? '#28a745' : 
+                  n.type === 'error' ? '#e10600' : 
+                  n.type === 'warning' ? '#ffc107' : 
+                  '#007bff'
+                }`,
                 borderRadius: '8px',
                 padding: '12px 16px',
                 color: 'white',
@@ -73,6 +83,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 {n.type === 'success' && <CheckCircle size={20} className="text-success" />}
                 {n.type === 'error' && <AlertCircle size={20} className="text-danger" />}
                 {n.type === 'info' && <Info size={20} className="text-primary" />}
+                {n.type === 'warning' && <AlertTriangle size={20} className="text-warning" />}
               </div>
               <div className="flex-grow-1 fw-bold small text-uppercase letter-spacing-1">
                 {n.message}
