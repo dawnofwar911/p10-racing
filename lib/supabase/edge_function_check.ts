@@ -18,6 +18,20 @@ interface RaceResultItem {
   };
 }
 
+/**
+ * Shared utility to determine if a status string indicates a true DNF (Retired during race).
+ * Excludes DNS (Did not start) and other non-participation statuses.
+ */
+function isTrueDnf(status: string, laps: string | number = "1"): boolean {
+  const s = String(status || '').toLowerCase();
+  const isFinished = s === "finished" || s.includes("lap");
+  const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
+  const lapCount = typeof laps === 'string' ? parseInt(laps) : laps;
+  const hasLaps = lapCount > 0;
+  
+  return !isFinished && !isDns && hasLaps;
+}
+
 Deno.serve(async (req) => {
   // 1. CORS Headers
   const corsHeaders = {
@@ -55,8 +69,8 @@ Deno.serve(async (req) => {
   try {
     // 1. Fetch Calendar to find current/next race
     const calResponse = await fetch(`${BASE_URL}/${season}.json`);
-    const calData = await calResponse.json();
-    const races = calData.MRData.RaceTable.Races;
+    const calData = calResponse.ok ? await calResponse.json() : null;
+    const races = calData?.MRData?.RaceTable?.Races;
 
     if (!races || races.length === 0) return new Response('No races found');
 
@@ -176,8 +190,8 @@ Deno.serve(async (req) => {
     // 2. Check for Qualifying Results
 
     const qualiResponse = await fetch(`${BASE_URL}/${season}/${round}/qualifying.json`);
-    const qualiData = await qualiResponse.json();
-    const hasQuali = qualiData.MRData.RaceTable.Races[0]?.QualifyingResults?.length > 0;
+    const qualiData = qualiResponse.ok ? await qualiResponse.json() : null;
+    const hasQuali = (qualiData?.MRData?.RaceTable?.Races?.[0]?.QualifyingResults?.length || 0) > 0;
 
     if (hasQuali) {
       const notificationId = `${season}_${round}_quali`;
@@ -200,9 +214,9 @@ Deno.serve(async (req) => {
 
     // 3. Check for Race Results
     const raceResponse = await fetch(`${BASE_URL}/${season}/${round}/results.json`);
-    const raceData = await raceResponse.json();
-    const raceResult = raceData.MRData.RaceTable.Races[0];
-    const hasResults = raceResult?.Results?.length > 0;
+    const raceData = raceResponse.ok ? await raceResponse.json() : null;
+    const raceResult = raceData?.MRData?.RaceTable?.Races?.[0];
+    const hasResults = (raceResult?.Results?.length || 0) > 0;
 
     if (hasResults) {
       const resultsId = `${season}_${round}`;
@@ -217,15 +231,8 @@ Deno.serve(async (req) => {
       if (!existingResults) {
         console.log(`Race results found for Round ${round} (${upcomingRace.raceName})! Automating publication...`);
         
-        // Find first DNF
-        const retirements = raceResult.Results.filter((r: RaceResultItem) => {
-          const s = r.status.toLowerCase();
-          const isFinished = s === "finished";
-          const isLapped = s.includes("lap"); 
-          const isDns = s.includes("not start") || s === "dns" || s.includes("qualify") || s.includes("withdrawn");
-          const hasLaps = parseInt(r.laps) > 0;
-          return !isFinished && !isLapped && !isDns && hasLaps;
-        });
+        // Find first DNF using the standardized logic
+        const retirements = raceResult.Results.filter((r: RaceResultItem) => isTrueDnf(r.status, r.laps));
         
         retirements.sort((a: RaceResultItem, b: RaceResultItem) => {
           const lapsA = parseInt(a.laps);
