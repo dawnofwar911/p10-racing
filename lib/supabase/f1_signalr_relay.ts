@@ -16,34 +16,54 @@ const HUB_NAME = 'Streaming';
 
 // Robust 2026 Mapping (Number -> ID)
 const NUMBER_TO_ID: { [key: string]: string } = {
-  '1': 'max_verstappen', '12': 'hadjar',
-  '44': 'hamilton', '16': 'leclerc',
-  '4': 'norris', '81': 'piastri',
-  '63': 'russell', '121': 'antonelli', // Antonelli often uses high numbers/TBD, adjusted for 2026
-  '14': 'alonso', '18': 'stroll',
-  '10': 'gasly', '43': 'colapinto',
-  '23': 'albon', '55': 'sainz',
-  '30': 'lawson', '3': 'arvid_lindblad',
-  '27': 'hulkenberg', '87': 'bortoleto',
-  '31': 'ocon', '5': 'bearman',
-  '11': 'perez', '77': 'bottas',
-  '6': 'antonelli', // Fallback for ANT
-  '41': 'hadjar'    // Fallback for HAD
+  '1': 'norris',
+  '3': 'max_verstappen',
+  '5': 'bortoleto',
+  '6': 'hadjar',
+  '10': 'gasly',
+  '11': 'perez',
+  '12': 'antonelli',
+  '14': 'alonso',
+  '16': 'leclerc',
+  '18': 'stroll',
+  '23': 'albon',
+  '27': 'hulkenberg',
+  '30': 'lawson',
+  '31': 'ocon',
+  '41': 'arvid_lindblad',
+  '43': 'colapinto',
+  '44': 'hamilton',
+  '55': 'sainz',
+  '63': 'russell',
+  '77': 'bottas',
+  '81': 'piastri',
+  '87': 'bearman'
 };
 
 // Acronym mapping for display
 const ACRONYM_TO_ID: { [key: string]: string } = {
-  'VER': 'max_verstappen', 'HAD': 'hadjar',
-  'HAM': 'hamilton', 'LEC': 'leclerc',
-  'NOR': 'norris', 'PIA': 'piastri',
-  'RUS': 'russell', 'ANT': 'antonelli',
-  'ALO': 'alonso', 'STR': 'stroll',
-  'GAS': 'gasly', 'COL': 'colapinto',
-  'ALB': 'albon', 'SAI': 'sainz',
-  'LAW': 'lawson', 'LIN': 'arvid_lindblad',
-  'HUL': 'hulkenberg', 'BOR': 'bortoleto',
-  'OCO': 'ocon', 'BEA': 'bearman',
-  'PER': 'perez', 'BOT': 'bottas'
+  'NOR': 'norris',
+  'VER': 'max_verstappen',
+  'BOR': 'bortoleto',
+  'HAD': 'hadjar',
+  'GAS': 'gasly',
+  'PER': 'perez',
+  'ANT': 'antonelli',
+  'ALO': 'alonso',
+  'LEC': 'leclerc',
+  'STR': 'stroll',
+  'ALB': 'albon',
+  'HUL': 'hulkenberg',
+  'LAW': 'lawson',
+  'OCO': 'ocon',
+  'LIN': 'arvid_lindblad',
+  'COL': 'colapinto',
+  'HAM': 'hamilton',
+  'SAI': 'sainz',
+  'RUS': 'russell',
+  'BOT': 'bottas',
+  'PIA': 'piastri',
+  'BEA': 'bearman'
 };
 
 // Global state for the lifetime of this function execution
