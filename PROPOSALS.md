@@ -73,7 +73,7 @@ This document outlines the strategic roadmap for upcoming features designed to i
 
 *   **🛞 Live Tire Insights:** Subscribe to the `TyreData` SignalR feed to display tire compounds (Soft, Medium, Hard) and tire age (laps) for drivers in the P10 battle.
 *   **🚥 Live Track Status:** Use the `SessionInfo` feed to display real-time track status banners (Yellow Flag, VSC, Safety Car, Red Flag) in the `LiveRaceCenter` header.
-*   **Constructor Battle:** Display a real-time "Constructor Battle" view, showing how midfield teams are shifting in the standings during the race.
+*   **Real-time Achievement Unlocking:** Use live telemetry to trigger certain achievements immediately (e.g., "The Sniper").
 
 ---
 
