@@ -148,6 +148,7 @@ export function useSyncPredictions(raceId: string | number | undefined) {
       console.error('useSyncPredictions: Submit error:', err);
       // Fallback to local queue if entire block fails (e.g. server down)
       if (session) {
+        const predData = { p10, dnf, username: displayName || 'User', raceId: String(raceId), season: CURRENT_SEASON };
         const dbPayload = {
           user_id: session.user.id,
           race_id: `${CURRENT_SEASON}_${raceId}`,
@@ -156,6 +157,7 @@ export function useSyncPredictions(raceId: string | number | undefined) {
           updated_at: new Date().toISOString()
         };
         await addToSyncQueue(dbPayload);
+        setStorageItem(getPredictionKey(CURRENT_SEASON, session.user.id, String(raceId)), JSON.stringify(predData));
         showNotification('Saved locally (Offline)', 'warning');
         setPrediction({ p10, dnf });
         return true;

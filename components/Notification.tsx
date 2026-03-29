@@ -16,6 +16,13 @@ interface NotificationContextType {
   showNotification: (message: string, type?: NotificationType) => void;
 }
 
+const COLOR_MAP = {
+  success: '#28a745',
+  error: '#e10600',
+  warning: '#ffc107',
+  info: '#007bff',
+} as const;
+
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
@@ -49,54 +56,48 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         pointerEvents: 'none'
       }}>
         <AnimatePresence>
-          {notifications.map((n) => (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-              style={{
-                pointerEvents: 'auto',
-                marginBottom: '10px',
-                background: '#1f1f27',
-                border: `1px solid ${
-                  n.type === 'success' ? '#28a745' : 
-                  n.type === 'error' ? '#e10600' : 
-                  n.type === 'warning' ? '#ffc107' : 
-                  '#007bff'
-                }`,
-                borderLeft: `4px solid ${
-                  n.type === 'success' ? '#28a745' : 
-                  n.type === 'error' ? '#e10600' : 
-                  n.type === 'warning' ? '#ffc107' : 
-                  '#007bff'
-                }`,
-                borderRadius: '8px',
-                padding: '12px 16px',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-              }}
-            >
-              <div className="me-3">
-                {n.type === 'success' && <CheckCircle size={20} className="text-success" />}
-                {n.type === 'error' && <AlertCircle size={20} className="text-danger" />}
-                {n.type === 'info' && <Info size={20} className="text-primary" />}
-                {n.type === 'warning' && <AlertTriangle size={20} className="text-warning" />}
-              </div>
-              <div className="flex-grow-1 fw-bold small text-uppercase letter-spacing-1">
-                {n.message}
-              </div>
-              <button 
-                onClick={() => removeNotification(n.id)}
-                className="btn btn-link p-0 text-white opacity-50 hover-opacity-100 border-0 ms-2"
-                style={{ background: 'none', boxShadow: 'none' }}
+          {notifications.map((n) => {
+            const borderColor = COLOR_MAP[n.type] || COLOR_MAP.info;
+            
+            return (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                style={{
+                  pointerEvents: 'auto',
+                  marginBottom: '10px',
+                  background: '#1f1f27',
+                  border: `1px solid ${borderColor}`,
+                  borderLeft: `4px solid ${borderColor}`,
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                }}
               >
-                <X size={16} />
-              </button>
-            </motion.div>
-          ))}
+                <div className="me-3">
+                  {n.type === 'success' && <CheckCircle size={20} className="text-success" />}
+                  {n.type === 'error' && <AlertCircle size={20} className="text-danger" />}
+                  {n.type === 'info' && <Info size={20} className="text-primary" />}
+                  {n.type === 'warning' && <AlertTriangle size={20} className="text-warning" />}
+                </div>
+                <div className="flex-grow-1 fw-bold small text-uppercase letter-spacing-1">
+                  {n.message}
+                </div>
+                <button 
+                  onClick={() => removeNotification(n.id)}
+                  className="btn btn-link p-0 text-white opacity-50 hover-opacity-100 border-0 ms-2"
+                  style={{ background: 'none', boxShadow: 'none' }}
+                >
+                  <X size={16} />
+                </button>
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
     </NotificationContext.Provider>
