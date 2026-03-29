@@ -154,8 +154,10 @@ function handleMessage(msg: any) {
         if (!decoded) continue;
 
         if (feedName === 'TimingData') {
+          console.log(`Received TimingData update for ${Object.keys(decoded.Lines || {}).length} drivers`);
           currentTiming = deepMerge(currentTiming, decoded);
         } else if (feedName === 'SessionInfo') {
+          console.log(`Received SessionInfo update: ${decoded.Status}`);
           sessionInfo = deepMerge(sessionInfo, decoded);
         }
       }
@@ -183,7 +185,10 @@ async function writeToCache() {
     };
   }).sort((a, b) => (a.position || 99) - (b.position || 99));
 
-  if (results.length === 0) return;
+  if (results.length === 0) {
+    console.log('No results to write to cache yet...');
+    return;
+  }
 
   const simplified = {
     status: sessionInfo.Status,
@@ -193,13 +198,20 @@ async function writeToCache() {
     lastUpdated: new Date().toISOString()
   };
 
-  const cacheKey = `f1_live_latest_latest_latest`; // Simplified key for the relay
+  const cacheKey = `f1_live_latest_latest_latest`;
   
-  await supabase.from('kv_cache').upsert({
+  console.log(`Writing ${results.length} positions to cache key: ${cacheKey}`);
+  const { error } = await supabase.from('kv_cache').upsert({
     key: cacheKey,
     value: simplified,
     updated_at: new Date().toISOString()
   });
+
+  if (error) {
+    console.error('Database Cache Error:', error.message);
+  } else {
+    console.log('Cache successfully updated.');
+  }
 }
 
 /**
