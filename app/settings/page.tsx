@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee, Settings, Heart } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
@@ -17,6 +18,19 @@ import { STORAGE_KEYS, setStorageItem } from '@/lib/utils/storage';
 import StandardPageHeader from '@/components/StandardPageHeader';
 import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { Profile, TEAM_COLORS } from '@/lib/types';
+
+const PersonalizationSkeleton = () => (
+  <div className="animate-pulse">
+    <Row className="g-3">
+      {[1, 2].map((i) => (
+        <Col xs={12} key={i}>
+          <div className="bg-secondary bg-opacity-10 rounded-pill mb-1" style={{ width: '80px', height: '12px' }} />
+          <div className="bg-secondary bg-opacity-20 rounded-pill" style={{ width: '100%', height: '31px' }} />
+        </Col>
+      ))}
+    </Row>
+  </div>
+);
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -151,75 +165,89 @@ export default function SettingsPage() {
             <>
               <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Personalization</h2>
               <Card className="f1-glass-card mb-4 border-secondary border-opacity-50 overflow-hidden">
-                <Card.Body className="p-3">
-                  {loadingProfile ? (
-                    <div className="text-center py-4">
-                      <Spinner animation="border" size="sm" variant="danger" />
-                    </div>
-                  ) : (
-                    <Form>
-                      <Row className="g-3">
-                        <Col xs={12}>
-                          <Form.Group controlId="favorite-team-select">
-                            <Form.Label className="extra-small text-muted text-uppercase fw-bold letter-spacing-1 mb-1">
-                              Favorite Team
-                            </Form.Label>
-                            <div className="d-flex gap-2 align-items-center">
-                              <div 
-                                className="rounded-circle" 
-                                style={{ 
-                                  width: '12px', 
-                                  height: '12px', 
-                                  backgroundColor: profile?.favorite_team ? (TEAM_COLORS[profile.favorite_team] || '#333') : '#333',
-                                  flexShrink: 0
-                                }} 
-                              />
-                              <Form.Select 
-                                size="sm"
-                                className="bg-dark text-white border-secondary border-opacity-50 rounded-pill px-3"
-                                value={profile?.favorite_team || ''}
-                                onChange={(e) => handleUpdateProfile({ favorite_team: e.target.value })}
-                                disabled={savingProfile}
-                              >
-                                <option value="">Select a team...</option>
-                                {teams.map(t => (
-                                  <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                              </Form.Select>
+                <Card.Body className="p-3" style={{ minHeight: '120px' }}>
+                  <AnimatePresence mode="wait">
+                    {loadingProfile ? (
+                      <motion.div
+                        key="skeleton"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <PersonalizationSkeleton />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="content"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Form>
+                          <Row className="g-3">
+                            <Col xs={12}>
+                              <Form.Group controlId="favorite-team-select">
+                                <Form.Label className="extra-small text-muted text-uppercase fw-bold letter-spacing-1 mb-1">
+                                  Favorite Team
+                                </Form.Label>
+                                <div className="d-flex gap-2 align-items-center">
+                                  <div 
+                                    className="rounded-circle" 
+                                    style={{ 
+                                      width: '12px', 
+                                      height: '12px', 
+                                      backgroundColor: profile?.favorite_team ? (TEAM_COLORS[profile.favorite_team] || '#333') : '#333',
+                                      flexShrink: 0
+                                    }} 
+                                  />
+                                  <Form.Select 
+                                    size="sm"
+                                    className="bg-dark text-white border-secondary border-opacity-50 rounded-pill px-3"
+                                    value={profile?.favorite_team || ''}
+                                    onChange={(e) => handleUpdateProfile({ favorite_team: e.target.value })}
+                                    disabled={savingProfile}
+                                  >
+                                    <option value="">Select a team...</option>
+                                    {teams.map(t => (
+                                      <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                  </Form.Select>
+                                </div>
+                              </Form.Group>
+                            </Col>
+                            <Col xs={12}>
+                              <Form.Group controlId="favorite-driver-select">
+                                <Form.Label className="extra-small text-muted text-uppercase fw-bold letter-spacing-1 mb-1">
+                                  Favorite Driver
+                                </Form.Label>
+                                <div className="d-flex gap-2 align-items-center">
+                                  <Heart size={12} className={profile?.favorite_driver ? "text-danger" : "text-muted"} />
+                                  <Form.Select 
+                                    size="sm"
+                                    className="bg-dark text-white border-secondary border-opacity-50 rounded-pill px-3"
+                                    value={profile?.favorite_driver || ''}
+                                    onChange={(e) => handleUpdateProfile({ favorite_driver: e.target.value })}
+                                    disabled={savingProfile}
+                                  >
+                                    <option value="">Select a driver...</option>
+                                    {sortedDrivers.map(d => (
+                                      <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                                    ))}
+                                  </Form.Select>
+                                </div>
+                              </Form.Group>
+                            </Col>
+                          </Row>
+                          
+                          {savingProfile && (
+                            <div className="position-absolute top-0 start-0 w-100 h-100 bg-black bg-opacity-25 d-flex align-items-center justify-content-center" style={{ zIndex: 10 }}>
+                              <Spinner animation="border" size="sm" variant="danger" />
                             </div>
-                          </Form.Group>
-                        </Col>
-                        <Col xs={12}>
-                          <Form.Group controlId="favorite-driver-select">
-                            <Form.Label className="extra-small text-muted text-uppercase fw-bold letter-spacing-1 mb-1">
-                              Favorite Driver
-                            </Form.Label>
-                            <div className="d-flex gap-2 align-items-center">
-                              <Heart size={12} className={profile?.favorite_driver ? "text-danger" : "text-muted"} />
-                              <Form.Select 
-                                size="sm"
-                                className="bg-dark text-white border-secondary border-opacity-50 rounded-pill px-3"
-                                value={profile?.favorite_driver || ''}
-                                onChange={(e) => handleUpdateProfile({ favorite_driver: e.target.value })}
-                                disabled={savingProfile}
-                              >
-                                <option value="">Select a driver...</option>
-                                {sortedDrivers.map(d => (
-                                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-                                ))}
-                              </Form.Select>
-                            </div>
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      
-                      {savingProfile && (
-                        <div className="position-absolute top-0 start-0 w-100 h-100 bg-black bg-opacity-25 d-flex align-items-center justify-content-center" style={{ zIndex: 10 }}>
-                          <Spinner animation="border" size="sm" variant="danger" />
-                        </div>
-                      )}
-                    </Form>
-                  )}
+                          )}
+                        </Form>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Card.Body>
                 <div className="bg-black bg-opacity-25 p-2 text-center border-top border-secondary border-opacity-25">
                    <p className="extra-small text-muted mb-0">These selections will be used for profile theming in future updates.</p>
