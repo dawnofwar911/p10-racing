@@ -97,7 +97,7 @@ export default function UserDrawer({ show, onHide, currentUser, session, isAdmin
                     }}
                     title={achievement.name}
                   >
-                    {isUnlocked ? achievement.icon : <Trophy size={14} style={{ color: 'var(--team-accent-contrast, #ffffff)' }} />}
+                    {isUnlocked ? achievement.icon : <Trophy size={14} className="text-white opacity-50" />}
                   </div>
                 );
               })}

@@ -562,7 +562,7 @@ function PredictPage() {
             {nextRace?.name} • {displayName}
           </span>
         }
-        icon={<Target size={24} className="text-white" />}
+        icon={<Target size={24} />}
         rightElement={
           <div className="d-flex gap-2 align-items-center">
             {!isLocked && !session && (<HapticButton variant="outline-warning" size="sm" onClick={handleSwitchGuest} className="rounded-pill small">Switch</HapticButton>)}
@@ -676,7 +676,7 @@ function PredictPage() {
           <StandardPageHeader
             title="Predictions"
             subtitle="Who is Predicting?"
-            icon={<Target size={24} className="text-white" />}
+            icon={<Target size={24} />}
           />
           <Row className="justify-content-center mt-4">
             <Col md={6} lg={5}>
@@ -796,7 +796,7 @@ function PredictPage() {
             {nextRace?.name} • {displayName}
           </span>
         }
-        icon={<Target size={24} className="text-white" />}
+        icon={<Target size={24} />}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         tabs={tabs}

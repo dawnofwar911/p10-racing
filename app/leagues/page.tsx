@@ -441,7 +441,7 @@ function LeaguesContent() {
       <SwipeablePageLayout
         title="Leagues"
         subtitle="Private Competitions"
-        icon={<Trophy size={24} className="text-white" />}
+        icon={<Trophy size={24} />}
         activeTab="my-leagues"
         onTabChange={() => {}}
         tabs={[{ id: 'my-leagues', label: 'My Leagues' }]}
@@ -503,7 +503,7 @@ function LeaguesContent() {
     <SwipeablePageLayout
       title="Leagues"
       subtitle="Private Competitions"
-      icon={<Trophy size={24} className="text-white" />}
+      icon={<Trophy size={24} />}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       onRefresh={undefined}

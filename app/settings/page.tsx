@@ -158,7 +158,7 @@ export default function SettingsPage() {
         <StandardPageHeader
           title="Settings"
           subtitle="Preferences & Info"
-          icon={<Settings size={24} className="text-white" />}
+          icon={<Settings size={24} />}
         />
 
         <div className="mt-3">
