@@ -61,7 +61,7 @@ export default function StandardPageHeader({
                 <ChevronLeft size={28} />
               </HapticButton>
             )}
-            <div className="bg-danger rounded-3 header-icon-container me-3 shadow-sm">
+            <div className="rounded-3 header-icon-container me-3 shadow-sm" style={{ backgroundColor: 'var(--team-accent, #e10600)' }}>
               {icon}
             </div>
             <div className="overflow-hidden">
