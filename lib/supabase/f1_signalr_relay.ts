@@ -77,16 +77,26 @@ async function discoverPathAndFetchInitial() {
   if (sessionPath) {
     const fullPath = `${STATIC_BASE}/${sessionPath}`;
     try {
+      console.log(`Fetching initial metadata from: ${fullPath}`);
       const [dlResp, siResp] = await Promise.all([
         fetch(`${fullPath}DriverList.json`),
         fetch(`${fullPath}SessionInfo.json`)
       ]);
-      if (dlResp.ok) driverList = await dlResp.json();
-      if (siResp.ok) sessionInfo = await siResp.json();
-      console.log('Initial metadata loaded for:', sessionInfo.Meeting?.Name);
+      if (dlResp.ok) {
+        driverList = await dlResp.json();
+        console.log(`DriverList loaded: ${Object.keys(driverList).length} drivers found.`);
+      } else {
+        console.warn(`Failed to fetch DriverList: ${dlResp.status}`);
+      }
+      if (siResp.ok) {
+        sessionInfo = await siResp.json();
+        console.log('SessionInfo loaded:', sessionInfo.Meeting?.Name);
+      }
     } catch (e) {
       console.warn("Failed to fetch initial data", e);
     }
+  } else {
+    console.error("Could not determine session path for metadata fetch.");
   }
 }
 
