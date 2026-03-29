@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   try {
     // 1. Fetch Calendar to find current/next race
     const calResponse = await fetch(`${BASE_URL}/${season}.json`);
-    const calData = await calResponse.json();
+    const calData = calResponse.ok ? await calResponse.json() : null;
     const races = calData?.MRData?.RaceTable?.Races;
 
     if (!races || races.length === 0) return new Response('No races found');
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
     // 2. Check for Qualifying Results
 
     const qualiResponse = await fetch(`${BASE_URL}/${season}/${round}/qualifying.json`);
-    const qualiData = await qualiResponse.json();
+    const qualiData = qualiResponse.ok ? await qualiResponse.json() : null;
     const hasQuali = (qualiData?.MRData?.RaceTable?.Races?.[0]?.QualifyingResults?.length || 0) > 0;
 
     if (hasQuali) {
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
 
     // 3. Check for Race Results
     const raceResponse = await fetch(`${BASE_URL}/${season}/${round}/results.json`);
-    const raceData = await raceResponse.json();
+    const raceData = raceResponse.ok ? await raceResponse.json() : null;
     const raceResult = raceData?.MRData?.RaceTable?.Races?.[0];
     const hasResults = (raceResult?.Results?.length || 0) > 0;
 

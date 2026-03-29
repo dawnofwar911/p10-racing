@@ -22,7 +22,11 @@ export async function fetchAllSimplifiedResults(): Promise<{ [round: string]: En
     const cachedCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR);
     if (cachedCalendar) {
       try {
-        races = JSON.parse(cachedCalendar);
+        const parsedData = JSON.parse(cachedCalendar);
+        if (Array.isArray(parsedData)) {
+          races = parsedData;
+          console.info('Results: Using cached calendar fallback');
+        }
       } catch (e) {
         console.warn('Results: Failed to load cached calendar fallback', e);
       }

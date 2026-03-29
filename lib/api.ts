@@ -98,7 +98,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
     if (response.ok) {
       const data = await response.json();
       const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
-      if (standings && standings.DriverStandings && standings.DriverStandings.length > 0) {
+      if (standings?.DriverStandings?.length > 0) {
         interface ApiStanding {
           points: string;
           Driver: ApiDriver;
@@ -158,7 +158,7 @@ export async function fetchConstructors(season: number): Promise<ConstructorStan
     
     const data = await response.json();
     const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
-    if (!standings || !standings.ConstructorStandings) return [];
+    if (!standings?.ConstructorStandings) return [];
 
     interface ApiConstructorStanding {
       Constructor: {
