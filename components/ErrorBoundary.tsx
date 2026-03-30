@@ -19,6 +19,8 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
+  private hasReported = false;
+
   constructor(props: Props) {
     super(props);
     this.state = { 
@@ -40,7 +42,8 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   async reportCrash(error: Error, errorInfo: React.ErrorInfo) {
-    if (this.state.reportingStatus !== 'idle') return;
+    if (this.hasReported) return;
+    this.hasReported = true;
 
     this.setState({ reportingStatus: 'reporting' });
 
@@ -69,6 +72,7 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleReset = () => {
+    this.hasReported = false;
     this.setState({ hasError: false, error: null, reportingStatus: 'idle' });
     window.location.reload();
   };
@@ -130,7 +134,10 @@ class ErrorBoundary extends React.Component<Props, State> {
                 href="/" 
                 haptic="medium" 
                 className="btn btn-outline-light btn-lg fw-bold rounded-pill py-3 opacity-75 d-flex align-items-center justify-content-center text-decoration-none"
-                onClick={() => this.setState({ hasError: false, error: null, reportingStatus: 'idle' })}
+                onClick={() => {
+                  this.hasReported = false;
+                  this.setState({ hasError: false, error: null, reportingStatus: 'idle' });
+                }}
               >
                 <Home size={18} className="me-2" />
                 RETURN HOME
