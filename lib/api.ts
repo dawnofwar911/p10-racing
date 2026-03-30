@@ -114,11 +114,12 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
       const data = await response.json();
       const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
       if (standings?.DriverStandings?.length > 0) {
-        standings.DriverStandings.forEach((s: { 
-          points: string; 
-          Driver: ApiDriver; 
-          Constructors: { constructorId: string; name: string }[] 
-        }) => {
+        interface ApiStanding {
+          points: string;
+          Driver: ApiDriver;
+          Constructors: { constructorId: string; name: string }[];
+        }
+        standings.DriverStandings.forEach((s: ApiStanding) => {
           apiDrivers.push({
             id: s.Driver.driverId,
             name: shortenDriverName(s.Driver.givenName, s.Driver.familyName),
