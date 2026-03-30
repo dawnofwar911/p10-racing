@@ -15,8 +15,10 @@ export default function DynamicThemeProvider({ children }: { children: React.Rea
 
   useEffect(() => {
     // Initial load
-    const stored = localStorage.getItem(STORAGE_KEYS.USE_TEAM_THEME);
-    setIsEnabled(stored !== 'false');
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEYS.USE_TEAM_THEME);
+      setIsEnabled(stored !== 'false');
+    }
 
     // Listen for changes in Settings
     const handleStorage = (e: Event) => {

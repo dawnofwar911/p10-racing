@@ -114,12 +114,11 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
       const data = await response.json();
       const standings = data?.MRData?.StandingsTable?.StandingsLists?.[0];
       if (standings?.DriverStandings?.length > 0) {
-        interface ApiStanding {
-          points: string;
-          Driver: ApiDriver;
-          Constructors: { constructorId: string; name: string }[];
-        }
-        standings.DriverStandings.forEach((s: ApiStanding) => {
+        standings.DriverStandings.forEach((s: { 
+          points: string; 
+          Driver: ApiDriver; 
+          Constructors: { constructorId: string; name: string }[] 
+        }) => {
           apiDrivers.push({
             id: s.Driver.driverId,
             name: shortenDriverName(s.Driver.givenName, s.Driver.familyName),
@@ -257,7 +256,7 @@ export type DriverFormMap = Record<string, { pos: number, status: string }[]>;
  * Excludes DNS (Did not start) and other non-participation statuses.
  * @deprecated Use isTrueDnf from @/lib/utils/drivers
  */
-export function isDnfStatus(status: unknown, laps: string = "1"): boolean {
+export function isDnfStatus(status: string | null | undefined, laps: string = "1"): boolean {
   return isTrueDnf(status, laps);
 }
 
@@ -270,7 +269,7 @@ export async function fetchRecentResults(season: number, count: number = 3): Pro
     if (!response.ok) return {};
 
     const data = await response.json();
-    const races = (data?.MRData?.RaceTable?.Races || [])
+    const races: ApiRace[] = (data?.MRData?.RaceTable?.Races || [])
       .sort((a: ApiRace, b: ApiRace) => parseInt(a.round, 10) - parseInt(b.round, 10));
     
     // Take the latest 'count' races
