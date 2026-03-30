@@ -8,6 +8,10 @@ import HapticLink from './HapticLink';
 import { gatherDiagnostics } from '@/lib/utils/diagnostics';
 import { createClient } from '@/lib/supabase/client';
 
+// Module-level flag to ensure only one report is sent per page load session,
+// even if React retries the render or StrictMode runs twice.
+let hasReportedGlobal = false;
+
 interface Props {
   children: React.ReactNode;
 }
@@ -19,8 +23,6 @@ interface State {
 }
 
 class ErrorBoundary extends React.Component<Props, State> {
-  private hasReported = false;
-
   constructor(props: Props) {
     super(props);
     this.state = { 
@@ -42,8 +44,8 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   async reportCrash(error: Error, errorInfo: React.ErrorInfo) {
-    if (this.hasReported) return;
-    this.hasReported = true;
+    if (hasReportedGlobal) return;
+    hasReportedGlobal = true;
 
     this.setState({ reportingStatus: 'reporting' });
 
@@ -72,7 +74,7 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleReset = () => {
-    this.hasReported = false;
+    hasReportedGlobal = false;
     this.setState({ hasError: false, error: null, reportingStatus: 'idle' });
     window.location.reload();
   };
@@ -135,7 +137,7 @@ class ErrorBoundary extends React.Component<Props, State> {
                 haptic="medium" 
                 className="btn btn-outline-light btn-lg fw-bold rounded-pill py-3 opacity-75 d-flex align-items-center justify-content-center text-decoration-none"
                 onClick={() => {
-                  this.hasReported = false;
+                  hasReportedGlobal = false;
                   this.setState({ hasError: false, error: null, reportingStatus: 'idle' });
                 }}
               >
