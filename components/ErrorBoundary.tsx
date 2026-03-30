@@ -8,9 +8,28 @@ import HapticLink from './HapticLink';
 import { gatherDiagnostics } from '@/lib/utils/diagnostics';
 import { createClient } from '@/lib/supabase/client';
 
-// Module-level flag to ensure only one report is sent per page load session,
-// even if React retries the render or StrictMode runs twice.
+// Module-level flag for in-memory prevention
 let hasReportedGlobal = false;
+
+// Helper to check sessionStorage for a recent report to prevent duplicates 
+// across hydration retries or fast reloads.
+const checkSessionGuard = (error: Error): boolean => {
+  if (typeof window === 'undefined') return true; // Don't report on server
+  try {
+    const key = `p10_crash_${error.message.substring(0, 20)}`;
+    const lastReport = sessionStorage.getItem(key);
+    const now = Date.now();
+    
+    if (lastReport && (now - parseInt(lastReport)) < 30000) {
+      return true; // Already reported in the last 30s
+    }
+    
+    sessionStorage.setItem(key, now.toString());
+    return false;
+  } catch {
+    return false; // Fallback to in-memory only
+  }
+};
 
 interface Props {
   children: React.ReactNode;
@@ -45,8 +64,9 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   async reportCrash(error: Error, errorInfo: React.ErrorInfo) {
     if (hasReportedGlobal) return;
-    hasReportedGlobal = true;
+    if (checkSessionGuard(error)) return;
 
+    hasReportedGlobal = true;
     this.setState({ reportingStatus: 'reporting' });
 
     try {
