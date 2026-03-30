@@ -16,6 +16,7 @@ import GlobalBugTrigger from '@/components/GlobalBugTrigger';
 
 import DynamicThemeProvider from '@/components/DynamicThemeProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import ScrollReset from '@/components/ScrollReset';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,6 +43,7 @@ export default function RootLayout({
     <html lang="en" data-bs-theme="dark">
       <body className={inter.className}>
         <AuthProvider>
+          <ScrollReset />
           <NotificationProvider>
             <ErrorBoundary>
               <NativeWrapper>

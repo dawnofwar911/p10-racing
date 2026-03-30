@@ -31,6 +31,15 @@ export default function MobileBottomNav() {
               href={item.href}
               className="d-flex flex-column align-items-center text-decoration-none"
               style={{ flex: '1 1 0', minWidth: 0 }}
+              onClick={() => {
+                // If already on this page, scroll main container to top
+                if (isActive) {
+                  const scrollContainer = document.getElementById('main-scroll-container');
+                  if (scrollContainer) {
+                    scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }
+              }}
             >
               <div style={{ height: '24px', display: 'flex', alignItems: 'center' }}>
                 <Icon 
