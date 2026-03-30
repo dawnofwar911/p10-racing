@@ -15,6 +15,7 @@ import { AuthProvider } from '@/components/AuthProvider';
 import GlobalBugTrigger from '@/components/GlobalBugTrigger';
 
 import DynamicThemeProvider from '@/components/DynamicThemeProvider';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,26 +43,28 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <NotificationProvider>
-            <NativeWrapper>
-              <DynamicThemeProvider>
-                <PushNotificationHandler />
-                <AppNavbar />
-                <OfflineStatus />
-                
-                {/* THE PERMANENT SCROLL CONTAINER */}
-                <main id="main-scroll-container">
-                  <Suspense fallback={null}>
-                    <PageTransition>
-                      {children}
-                    </PageTransition>
-                  </Suspense>
-                </main>
+            <ErrorBoundary>
+              <NativeWrapper>
+                <DynamicThemeProvider>
+                  <PushNotificationHandler />
+                  <AppNavbar />
+                  <OfflineStatus />
+                  
+                  {/* THE PERMANENT SCROLL CONTAINER */}
+                  <main id="main-scroll-container">
+                    <Suspense fallback={null}>
+                      <PageTransition>
+                        {children}
+                      </PageTransition>
+                    </Suspense>
+                  </main>
 
-                <GlobalBugTrigger />
-                <PWAInstallHint />
-                <MobileBottomNav />
-              </DynamicThemeProvider>
-            </NativeWrapper>
+                  <GlobalBugTrigger />
+                  <PWAInstallHint />
+                  <MobileBottomNav />
+                </DynamicThemeProvider>
+              </NativeWrapper>
+            </ErrorBoundary>
           </NotificationProvider>
         </AuthProvider>
       </body>

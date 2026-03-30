@@ -257,7 +257,7 @@ export type DriverFormMap = Record<string, { pos: number, status: string }[]>;
  * Excludes DNS (Did not start) and other non-participation statuses.
  * @deprecated Use isTrueDnf from @/lib/utils/drivers
  */
-export function isDnfStatus(status: unknown, laps: string = "1"): boolean {
+export function isDnfStatus(status: string | null | undefined, laps: string = "1"): boolean {
   return isTrueDnf(status, laps);
 }
 
@@ -270,7 +270,7 @@ export async function fetchRecentResults(season: number, count: number = 3): Pro
     if (!response.ok) return {};
 
     const data = await response.json();
-    const races = (data?.MRData?.RaceTable?.Races || [])
+    const races: ApiRace[] = (data?.MRData?.RaceTable?.Races || [])
       .sort((a: ApiRace, b: ApiRace) => parseInt(a.round, 10) - parseInt(b.round, 10));
     
     // Take the latest 'count' races
