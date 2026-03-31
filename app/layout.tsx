@@ -18,6 +18,8 @@ import DynamicThemeProvider from '@/components/DynamicThemeProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ScrollReset from '@/components/ScrollReset';
 
+import { MAIN_SCROLL_CONTAINER_ID } from '@/lib/navigation';
+
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -53,7 +55,7 @@ export default function RootLayout({
                   <OfflineStatus />
                   
                   {/* THE PERMANENT SCROLL CONTAINER */}
-                  <main id="main-scroll-container">
+                  <main id={MAIN_SCROLL_CONTAINER_ID}>
                     <Suspense fallback={null}>
                       <PageTransition>
                         {children}

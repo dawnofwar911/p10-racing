@@ -3,7 +3,7 @@
 import React from 'react';
 import HapticLink from './HapticLink';
 import { usePathname } from 'next/navigation';
-import { NAV_ITEMS } from '@/lib/navigation';
+import { NAV_ITEMS, MAIN_SCROLL_CONTAINER_ID } from '@/lib/navigation';
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -34,7 +34,7 @@ export default function MobileBottomNav() {
               onClick={() => {
                 // If already on this page, scroll main container to top
                 if (isActive) {
-                  const scrollContainer = document.getElementById('main-scroll-container');
+                  const scrollContainer = document.getElementById(MAIN_SCROLL_CONTAINER_ID);
                   if (scrollContainer) {
                     scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
                   }
