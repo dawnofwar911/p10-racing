@@ -45,7 +45,9 @@ export default function RootLayout({
     <html lang="en" data-bs-theme="dark">
       <body className={inter.className}>
         <AuthProvider>
-          <ScrollReset />
+          <Suspense fallback={null}>
+            <ScrollReset />
+          </Suspense>
           <NotificationProvider>
             <ErrorBoundary>
               <NativeWrapper>
