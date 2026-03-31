@@ -44,9 +44,10 @@ export default function DynamicThemeProvider({ children }: { children: React.Rea
     '--team-accent-border': palette.border,
     '--team-accent-contrast': palette.contrast,
     transition: 'all 0.5s ease', // Smooth transition when changing teams
-    minHeight: '100vh',
+    minHeight: '100dvh', // Use dynamic viewport height
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    flexGrow: 1
   } as React.CSSProperties;
 
   return (

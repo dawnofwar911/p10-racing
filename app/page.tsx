@@ -590,6 +590,9 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Spacer to prevent content clipping under fixed bottom nav */}
+        <div className="mobile-nav-spacer" />
       </Container>
     </>
   );

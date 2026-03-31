@@ -4,11 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Modal, Form, Alert, Spinner, Row, Col } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
 import { triggerMediumHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '@/lib/utils/haptics';
-import { Capacitor } from '@capacitor/core';
-import { Device } from '@capacitor/device';
-import { Network } from '@capacitor/network';
-import { STORAGE_KEYS } from '@/lib/utils/storage';
-import packageInfo from '../package.json';
+import { gatherDiagnostics } from '@/lib/utils/diagnostics';
 import HapticButton from './HapticButton';
 
 interface BugReportModalProps {
@@ -30,24 +26,6 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
-
-  const getStorageSummary = () => {
-    if (typeof window === 'undefined') return {};
-    try {
-      const keys = Object.keys(localStorage);
-      const summary: Record<string, string | number | boolean | string[]> = {
-        total_keys: keys.length,
-        all_keys: keys,
-        has_session: !!localStorage.getItem(STORAGE_KEYS.HAS_SESSION),
-        has_predictions: keys.some(k => k.startsWith(STORAGE_KEYS.PRED_PREFIX)),
-        has_drivers: !!localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS),
-        has_grid: keys.some(k => k.startsWith(STORAGE_KEYS.GRID_PREFIX)),
-      };
-      return summary;
-    } catch {
-      return { error: -1 };
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,30 +56,8 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
         imageUrl = publicUrl;
       }
 
-      // 2. Gather rich diagnostic data
-      const info = await Device.getInfo();
-      const battery = await Device.getBatteryInfo();
-      const network = await Network.getStatus();
-
-      const deviceInfo = {
-        app_version: packageInfo.version,
-        platform: Capacitor.getPlatform(),
-        os_version: info.osVersion,
-        manufacturer: info.manufacturer,
-        model: info.model,
-        is_virtual: info.isVirtual,
-        mem_used: info.memUsed,
-        battery_level: battery.batteryLevel,
-        is_charging: battery.isCharging,
-        network_status: network.connected ? 'online' : 'offline',
-        connection_type: network.connectionType,
-        url: typeof window !== 'undefined' ? window.location.href : 'unknown',
-        source_url: typeof window !== 'undefined' ? window.__P10_LAST_URL__ || window.location.href : 'unknown',
-        screen: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown',
-        user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
-        storage_summary: getStorageSummary(),
-        recent_errors: typeof window !== 'undefined' ? window.__P10_ERROR_LOGS__ || [] : []
-      };
+      // 2. Gather rich diagnostic data using shared utility
+      const diagnostics = await gatherDiagnostics();
 
       // 3. Insert bug report
       const { error: insertError } = await supabase
@@ -111,7 +67,7 @@ export default function BugReportModal({ show, onHide }: BugReportModalProps) {
           title,
           description: `### Summary\n${description}\n\n### Steps to Reproduce\n${steps}`,
           severity,
-          device_info: deviceInfo,
+          device_info: diagnostics,
           image_url: imageUrl
         }]);
 
