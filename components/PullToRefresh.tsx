@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { triggerLightHaptic } from '@/lib/utils/haptics';
 import { RefreshCw } from 'lucide-react';
+import { MAIN_SCROLL_CONTAINER_ID } from '@/lib/navigation';
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
@@ -25,7 +26,7 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
   const PULL_MAX = 100;
 
   useEffect(() => {
-    const el = document.getElementById('main-scroll-container');
+    const el = document.getElementById(MAIN_SCROLL_CONTAINER_ID);
     if (!el) return;
 
     const handleTouchStart = (e: TouchEvent) => {

@@ -13,3 +13,5 @@ export const NAV_ITEMS = [
   { label: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { label: 'Standings', href: '/standings', icon: BarChart3 },
 ];
+
+export const MAIN_SCROLL_CONTAINER_ID = 'main-scroll-container';

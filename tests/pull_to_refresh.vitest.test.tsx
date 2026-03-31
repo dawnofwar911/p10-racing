@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PullToRefresh from '@/components/PullToRefresh';
+import { MAIN_SCROLL_CONTAINER_ID } from '@/lib/navigation';
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
@@ -30,7 +31,7 @@ vi.mock('@capacitor/haptics', () => ({
 describe('PullToRefresh Component Tests', () => {
   beforeEach(() => {
     // Create the scroll container that PullToRefresh expects
-    document.body.innerHTML = '<div id="main-scroll-container"></div>';
+    document.body.innerHTML = `<div id="${MAIN_SCROLL_CONTAINER_ID}"></div>`;
   });
 
   it('renders children correctly', () => {
@@ -39,7 +40,7 @@ describe('PullToRefresh Component Tests', () => {
       <PullToRefresh onRefresh={onRefresh}>
         <div data-testid="content">Test Content</div>
       </PullToRefresh>,
-      { container: document.getElementById('main-scroll-container')! }
+      { container: document.getElementById(MAIN_SCROLL_CONTAINER_ID)! }
     );
 
     expect(screen.getByTestId('content')).toBeDefined();
@@ -47,7 +48,7 @@ describe('PullToRefresh Component Tests', () => {
   });
 
   it('should attach touch listeners to the scroll container', () => {
-    const el = document.getElementById('main-scroll-container')!;
+    const el = document.getElementById(MAIN_SCROLL_CONTAINER_ID)!;
     const addSpy = vi.spyOn(el, 'addEventListener');
     
     const onRefresh = vi.fn();
@@ -65,7 +66,7 @@ describe('PullToRefresh Component Tests', () => {
 
   it('should not trigger refresh if pulled insufficiently', async () => {
     const onRefresh = vi.fn();
-    const el = document.getElementById('main-scroll-container')!;
+    const el = document.getElementById(MAIN_SCROLL_CONTAINER_ID)!;
     
     render(
       <PullToRefresh onRefresh={onRefresh}>
@@ -84,7 +85,7 @@ describe('PullToRefresh Component Tests', () => {
 
   it('should trigger onRefresh when pulled past threshold', async () => {
     const onRefresh = vi.fn().mockImplementation(() => Promise.resolve());
-    const el = document.getElementById('main-scroll-container')!;
+    const el = document.getElementById(MAIN_SCROLL_CONTAINER_ID)!;
     
     const { act } = await import('@testing-library/react');
 

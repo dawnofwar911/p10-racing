@@ -4,6 +4,7 @@ import React, { ReactNode, useState, useEffect } from 'react';
 import { Row, Col } from 'react-bootstrap';
 import { ChevronLeft } from 'lucide-react';
 import HapticButton from './HapticButton';
+import { MAIN_SCROLL_CONTAINER_ID } from '@/lib/navigation';
 
 interface StandardPageHeaderProps {
   title: string;
@@ -29,7 +30,7 @@ export default function StandardPageHeader({
   const [headerShrunk, setHeaderShrunk] = useState(false);
 
   useEffect(() => {
-    const scrollContainer = document.getElementById('main-scroll-container');
+    const scrollContainer = document.getElementById(MAIN_SCROLL_CONTAINER_ID);
     if (!scrollContainer) return;
 
     const handleScroll = () => {
