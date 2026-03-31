@@ -104,7 +104,14 @@ class ErrorBoundary extends React.Component<Props, State> {
       const { reportingStatus } = this.state;
 
       return (
-        <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100 text-center px-4">
+        <Container 
+          className="d-flex flex-column align-items-center justify-content-center text-center px-4"
+          style={{ 
+            minHeight: '100dvh',
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+          }}
+        >
           <div className="f1-glass-card p-4 border-danger border-opacity-25 shadow-lg w-100" style={{ maxWidth: '400px' }}>
             <div className="bg-danger bg-opacity-10 p-3 rounded-circle d-inline-flex align-items-center justify-content-center mb-3 border border-danger border-opacity-20">
               <AlertCircle size={48} className="text-danger" />
