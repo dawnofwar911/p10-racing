@@ -26,7 +26,6 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout 
 }
 
 // Fallback Mapping from F1 Acronyms to internal Driver IDs
-// Fallback Mapping from F1 Acronyms to internal Driver IDs
 const ACRONYM_TO_ID: { [key: string]: string } = {
   'NOR': 'norris', 'VER': 'max_verstappen',
   'BOR': 'bortoleto', 'HAD': 'hadjar',

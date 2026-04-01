@@ -86,9 +86,9 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
         setCalendar(JSON.parse(cachedCalendar));
         if (cachedForm) setDriverForm(JSON.parse(cachedForm));
         hasValidCache = true;
-      } else if (!initialHydrationRef.current) {
-        // Only clear if it's the very first mount and no cache exists
-        // This avoids clearing state when switching seasons if we already have data
+      } else {
+        // Clear stale state from previously viewed seasons if no cache exists for the current one.
+        // This ensures the user sees a clean loading state instead of old data.
         setDrivers([]);
         setCalendar([]);
         setDriverForm({});
