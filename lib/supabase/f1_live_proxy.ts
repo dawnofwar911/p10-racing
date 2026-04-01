@@ -217,11 +217,11 @@ Deno.serve(async (req) => {
       const driver = driverListData[number];
       const acronym = driver?.Tla || '';
       
-      // PRIORITY: 1. Dynamic Number Map, 2. Dynamic Acronym Map, 3. Static Fallback, 4. Lowercase Acronym
+      // PRIORITY: 1. Dynamic Number Map, 2. Dynamic Acronym Map, 3. Static Fallback, 4. Lowercase Acronym or Unknown
       const driverId = dynamicNumberToId[number] || 
                        (acronym ? dynamicAcronymToId[acronym] : null) || 
                        ACRONYM_TO_ID[acronym] || 
-                       acronym.toLowerCase();
+                       (acronym ? acronym.toLowerCase() : `unknown_${number}`);
 
       return {
         driverId,

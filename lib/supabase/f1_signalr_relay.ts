@@ -60,7 +60,9 @@ async function fetchOfficialDrivers(
 ) {
   try {
     const season = new Date().getFullYear();
-    const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`);
+    const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`, { 
+      signal: (AbortSignal as any).timeout(10000) 
+    });
     if (!resp.ok) return;
     const data = await resp.json();
     const drivers = data.MRData.DriverTable.Drivers;
