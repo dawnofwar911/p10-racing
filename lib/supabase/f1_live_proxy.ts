@@ -40,25 +40,54 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
   'PIA': 'piastri', 'BEA': 'bearman'
 };
 
+// Warm-start cache for dynamic mappings (Season -> Mapping)
+const GLOBAL_DRIVER_CACHE: Record<string, { 
+  numberMap: Record<string, string>; 
+  acronymMap: Record<string, string>;
+  expires: number;
+}> = {};
+
 async function fetchOfficialDrivers(
   season: string, 
   numberMap: Record<string, string>, 
   acronymMap: Record<string, string>
 ) {
+  // Check warm-start cache first (1 hour expiry)
+  const cached = GLOBAL_DRIVER_CACHE[season];
+  if (cached && cached.expires > Date.now()) {
+    Object.assign(numberMap, cached.numberMap);
+    Object.assign(acronymMap, cached.acronymMap);
+    return;
+  }
+
   try {
     const resp = await fetchWithTimeout(`${JOLPICA_BASE}/${season}/drivers.json`);
     if (!resp.ok) return;
     const data = await resp.json();
     const drivers = data.MRData.DriverTable.Drivers;
 
+    const newNumberMap: Record<string, string> = {};
+    const newAcronymMap: Record<string, string> = {};
+
     drivers.forEach((d: { permanentNumber?: string; code?: string; driverId: string }) => {
       if (d.permanentNumber) {
-        numberMap[d.permanentNumber] = d.driverId;
+        newNumberMap[d.permanentNumber] = d.driverId;
       }
       if (d.code) {
-        acronymMap[d.code] = d.driverId;
+        newAcronymMap[d.code] = d.driverId;
       }
     });
+
+    // Update local maps for current request
+    Object.assign(numberMap, newNumberMap);
+    Object.assign(acronymMap, newAcronymMap);
+
+    // Update global cache for warm starts
+    GLOBAL_DRIVER_CACHE[season] = {
+      numberMap: newNumberMap,
+      acronymMap: newAcronymMap,
+      expires: Date.now() + 3600000 // 1 hour
+    };
   } catch (e) {
     console.warn("Failed to fetch official drivers", e);
   }

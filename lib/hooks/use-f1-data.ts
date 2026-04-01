@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ApiCalendarRace, fetchDrivers, fetchCalendar, fetchRecentResults, DriverFormMap } from '@/lib/api';
 import { Driver } from '@/lib/types';
 import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
@@ -25,7 +25,6 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
   const [driverForm, setDriverForm] = useState<DriverFormMap>({});
   const [loading, setLoading] = useState(false); // Default to false to prevent layout shift if cache exists
   const [error, setError] = useState<Error | null>(null);
-  const initialHydrationRef = useRef(false);
 
   const fetchData = useCallback(async (isInitial: boolean = false) => {
     // If initial, and we have valid cache, we can skip full loading state
@@ -97,8 +96,6 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       console.warn('useF1Data: Failed to load cache', e);
     }
 
-    initialHydrationRef.current = true;
-    
     // Always trigger a background refresh to ensure freshness for the selected season.
     fetchData(hasValidCache);
   }, [fetchData, season]);
