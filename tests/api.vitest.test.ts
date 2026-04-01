@@ -6,7 +6,6 @@ import {
   fetchCalendar, 
   fetchDrivers, 
   fetchConstructors,
-  fetchDriversFromOpenF1,
   fetchQualifyingResults,
   getP10DriverId,
   getFirstDnfDriver,
@@ -204,44 +203,6 @@ describe('API Logic Tests', () => {
 
       const constructors = await fetchConstructors(2026);
       expect(constructors).toHaveLength(0);
-    });
-  });
-
-  describe('fetchDriversFromOpenF1', () => {
-    it('should fetch and map OpenF1 drivers', async () => {
-      server.use(
-        http.get(`https://api.openf1.org/v1/drivers`, ({ request }) => {
-          const url = new URL(request.url);
-          if (url.searchParams.get('session_key') === '9159') {
-            return HttpResponse.json([
-              {
-                name_acronym: 'VER',
-                full_name: 'Max Verstappen',
-                team_name: 'Red Bull Racing',
-                driver_number: 1,
-                team_colour: '3671C6'
-              }
-            ]);
-          }
-          return new HttpResponse(null, { status: 404 });
-        })
-      );
-
-      const drivers = await fetchDriversFromOpenF1(9159);
-      expect(drivers).toHaveLength(1);
-      expect(drivers[0].id).toBe('max_verstappen');
-      expect(drivers[0].color).toBe('#3671C6');
-    });
-
-    it('should handle error for OpenF1 API', async () => {
-      server.use(
-        http.get(`https://api.openf1.org/v1/drivers`, () => {
-          return new HttpResponse(null, { status: 500 });
-        })
-      );
-
-      const drivers = await fetchDriversFromOpenF1(9159);
-      expect(drivers).toHaveLength(0);
     });
   });
 

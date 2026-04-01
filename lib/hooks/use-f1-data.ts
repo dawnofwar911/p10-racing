@@ -20,7 +20,7 @@ export interface UseF1DataReturn {
  * Optimized with stale-while-revalidate and hydration safety.
  */
 export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
-  const [drivers, setDrivers] = useState<Driver[]>(FALLBACK_DRIVERS as unknown as Driver[]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [calendar, setCalendar] = useState<ApiCalendarRace[]>([]);
   const [driverForm, setDriverForm] = useState<DriverFormMap>({});
   const [loading, setLoading] = useState(false); // Default to false to prevent layout shift if cache exists
@@ -42,17 +42,17 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
 
       if (driversResult.status === 'fulfilled' && driversResult.value.length > 0) {
         setDrivers(driversResult.value);
-        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVERS, JSON.stringify(driversResult.value));
+        localStorage.setItem(`${STORAGE_KEYS.CACHE_DRIVERS}_${season}`, JSON.stringify(driversResult.value));
       }
 
       if (calendarResult.status === 'fulfilled' && calendarResult.value.length > 0) {
         setCalendar(calendarResult.value);
-        localStorage.setItem(STORAGE_KEYS.CACHE_CALENDAR, JSON.stringify(calendarResult.value));
+        localStorage.setItem(`${STORAGE_KEYS.CACHE_CALENDAR}_${season}`, JSON.stringify(calendarResult.value));
       }
 
       if (formResult.status === 'fulfilled' && Object.keys(formResult.value).length > 0) {
         setDriverForm(formResult.value);
-        localStorage.setItem(STORAGE_KEYS.CACHE_DRIVER_FORM, JSON.stringify(formResult.value));
+        localStorage.setItem(`${STORAGE_KEYS.CACHE_DRIVER_FORM}_${season}`, JSON.stringify(formResult.value));
       }
 
       // Only set error if all critical requests failed
@@ -64,6 +64,9 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     } catch (err) {
       console.error('Error in useF1Data:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch F1 data'));
+      
+      // Fallback to static data ONLY if we have absolutely nothing else
+      setDrivers(prev => prev.length === 0 ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
     } finally {
       setLoading(false);
     }
@@ -76,9 +79,9 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     // Load from cache first
     let hasValidCache = false;
     try {
-      const cachedDrivers = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVERS);
-      const cachedCalendar = localStorage.getItem(STORAGE_KEYS.CACHE_CALENDAR);
-      const cachedForm = localStorage.getItem(STORAGE_KEYS.CACHE_DRIVER_FORM);
+      const cachedDrivers = localStorage.getItem(`${STORAGE_KEYS.CACHE_DRIVERS}_${season}`);
+      const cachedCalendar = localStorage.getItem(`${STORAGE_KEYS.CACHE_CALENDAR}_${season}`);
+      const cachedForm = localStorage.getItem(`${STORAGE_KEYS.CACHE_DRIVER_FORM}_${season}`);
 
       if (cachedDrivers && cachedCalendar) {
         setDrivers(JSON.parse(cachedDrivers));
@@ -95,7 +98,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     // Always trigger a background refresh on mount to ensure freshness, 
     // but only if it's the first time this mount.
     fetchData(hasValidCache);
-  }, [fetchData]);
+  }, [fetchData, season]);
 
   return { drivers, calendar, driverForm, loading, error, refresh: () => fetchData(false) };
 }

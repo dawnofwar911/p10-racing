@@ -5,6 +5,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const BASE_URL = 'https://livetiming.formula1.com/static';
+const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -23,7 +24,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout 
   }
 }
 
-// Mapping from F1 Acronyms to internal Driver IDs (2026 Lineup)
+// Fallback Mapping from F1 Acronyms to internal Driver IDs
 const ACRONYM_TO_ID: { [key: string]: string } = {
   'NOR': 'norris', 'VER': 'max_verstappen',
   'BOR': 'bortoleto', 'HAD': 'hadjar',
@@ -37,6 +38,30 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
   'RUS': 'russell', 'BOT': 'bottas',
   'PIA': 'piastri', 'BEA': 'bearman'
 };
+
+// Dynamic mappings populated at runtime
+const DYNAMIC_NUMBER_TO_ID: Record<string, string> = {};
+const DYNAMIC_ACRONYM_TO_ID: Record<string, string> = {};
+
+async function fetchOfficialDrivers(season: string) {
+  try {
+    const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const drivers = data.MRData.DriverTable.Drivers;
+
+    drivers.forEach((d: { permanentNumber?: string; code?: string; driverId: string }) => {
+      if (d.permanentNumber) {
+        DYNAMIC_NUMBER_TO_ID[d.permanentNumber] = d.driverId;
+      }
+      if (d.code) {
+        DYNAMIC_ACRONYM_TO_ID[d.code] = d.driverId;
+      }
+    });
+  } catch (e) {
+    console.warn("Failed to fetch official drivers", e);
+  }
+}
 
 interface F1Session {
   Key: number; Type: string; Name: string; StartDate: string; EndDate: string; Path?: string;
@@ -158,10 +183,13 @@ Deno.serve(async (req) => {
     if (!sessionPath) throw new Error("Could not discover session path");
 
     const fullPath = `${BASE_URL}/${sessionPath}`;
+    
+    // Fetch dynamic drivers concurrently with static timing data
     const [timingResp, sessionResp, driverListResp] = await Promise.all([
       fetchWithTimeout(`${fullPath}TimingData.json`),
       fetchWithTimeout(`${fullPath}SessionInfo.json`),
-      fetchWithTimeout(`${fullPath}DriverList.json`)
+      fetchWithTimeout(`${fullPath}DriverList.json`),
+      fetchOfficialDrivers(season)
     ]);
 
     if (timingResp.status === 403 || timingResp.status === 404) {
