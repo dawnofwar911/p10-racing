@@ -72,11 +72,9 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     }
   }, [season]);
 
-  // 1. Initial Cache Load & Refresh Trigger
+  // 1. Cache Load & Refresh Trigger
   useEffect(() => {
-    if (initialHydrationRef.current) return;
-    
-    // Load from cache first
+    // Load from cache for the specific season
     let hasValidCache = false;
     try {
       const cachedDrivers = localStorage.getItem(`${STORAGE_KEYS.CACHE_DRIVERS}_${season}`);
@@ -88,6 +86,12 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
         setCalendar(JSON.parse(cachedCalendar));
         if (cachedForm) setDriverForm(JSON.parse(cachedForm));
         hasValidCache = true;
+      } else if (!initialHydrationRef.current) {
+        // Only clear if it's the very first mount and no cache exists
+        // This avoids clearing state when switching seasons if we already have data
+        setDrivers([]);
+        setCalendar([]);
+        setDriverForm({});
       }
     } catch (e) {
       console.warn('useF1Data: Failed to load cache', e);
@@ -95,8 +99,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
 
     initialHydrationRef.current = true;
     
-    // Always trigger a background refresh on mount to ensure freshness, 
-    // but only if it's the first time this mount.
+    // Always trigger a background refresh to ensure freshness for the selected season.
     fetchData(hasValidCache);
   }, [fetchData, season]);
 

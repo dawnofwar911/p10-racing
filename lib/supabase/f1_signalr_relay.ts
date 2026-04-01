@@ -55,11 +55,11 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
  * Fetches the official driver list from Jolpica to build mappings automatically.
  */
 async function fetchOfficialDrivers(
+  season: string,
   numberMap: Record<string, string>,
   acronymMap: Record<string, string>
 ) {
   try {
-    const season = new Date().getFullYear();
     const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`, { 
       signal: (AbortSignal as any).timeout(10000) 
     });
@@ -84,8 +84,7 @@ async function fetchOfficialDrivers(
 /**
  * PATH DISCOVERY
  */
-async function discoverPathAndFetchInitial(state: { driverList: any, sessionInfo: any }) {
-  const season = new Date().getFullYear().toString();
+async function discoverPathAndFetchInitial(season: string, state: { driverList: any, sessionInfo: any }) {
   const resp = await fetch(`${STATIC_BASE}/${season}/Index.json`);
   if (!resp.ok) return;
   const data = await resp.json();
@@ -298,6 +297,10 @@ Deno.serve(async (req) => {
     return new Response('Unauthorized', { status: 401 });
   }
 
+  // 0. Determine Season
+  const url = new URL(req.url);
+  const season = url.searchParams.get('season') || new Date().getFullYear().toString();
+
   // 1. Per-request state to ensure concurrency safety
   const state = {
     currentTiming: { Lines: {} } as any,
@@ -311,8 +314,8 @@ Deno.serve(async (req) => {
 
   try {
     await Promise.all([
-      fetchOfficialDrivers(state.dynamicNumberToId, state.dynamicAcronymToId), 
-      discoverPathAndFetchInitial(state)
+      fetchOfficialDrivers(season, state.dynamicNumberToId, state.dynamicAcronymToId), 
+      discoverPathAndFetchInitial(season, state)
     ]);
     const { token } = await negotiate();
     
