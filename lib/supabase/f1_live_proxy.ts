@@ -145,8 +145,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 3. CHECK CACHE FIRST (Prioritize SignalR Relay)
-    const cacheKey = `f1_live_timing_latest`;
+    // 3. Determine Season
+    const url = new URL(req.url);
+    const forceSeason = url.searchParams.get('season');
+    const forceSession = url.searchParams.get('session');
+    const season = forceSeason || new Date().getFullYear().toString();
+
+    // 4. CHECK CACHE FIRST (Prioritize SignalR Relay)
+    const cacheKey = `f1_live_timing_latest_${season}`;
     const { data: cached } = await supabase
       .from('kv_cache')
       .select('value, updated_at')
@@ -165,12 +171,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. FALLBACK TO STATIC FILES (Only if relay is down)
-    const url = new URL(req.url);
-    const forceSeason = url.searchParams.get('season');
-    const forceSession = url.searchParams.get('session');
-    const season = forceSeason || new Date().getFullYear().toString();
-    
+    // 5. FALLBACK TO STATIC FILES (Only if relay is down)
     let sessionPath = '';
     const resp = await fetchWithTimeout(`${BASE_URL}/${season}/Index.json`);
     if (!resp.ok) throw new Error(`Failed to fetch index: ${resp.status}`);

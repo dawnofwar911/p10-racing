@@ -64,8 +64,9 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       console.error('Error in useF1Data:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch F1 data'));
       
-      // Fallback to static data ONLY if we have absolutely nothing else and it's the current season
-      setDrivers(prev => (prev.length === 0 && season === CURRENT_SEASON) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
+      // Fallback to static data ONLY if we have absolutely nothing else and it's the current year
+      const currentYear = new Date().getFullYear();
+      setDrivers(prev => (prev.length === 0 && season === currentYear) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
     } finally {
       setLoading(false);
     }

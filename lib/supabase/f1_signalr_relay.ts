@@ -272,7 +272,7 @@ async function writeToCache(state: {
   sessionInfo: any,
   dynamicNumberToId: Record<string, string>,
   dynamicAcronymToId: Record<string, string>
-}) {
+}, season: string) {
   const results = Object.entries(state.currentTiming.Lines || {}).map(([number, data]: [string, any]) => {
     const staticDriver = state.driverList[number];
     const acronym = staticDriver?.Tla || '';
@@ -320,7 +320,7 @@ async function writeToCache(state: {
   };
 
   await supabase.from('kv_cache').upsert({
-    key: `f1_live_timing_latest`,
+    key: `f1_live_timing_latest_${season}`,
     value: simplified,
     updated_at: new Date().toISOString()
   });
@@ -373,7 +373,7 @@ Deno.serve(async (req) => {
     };
 
     const interval = setInterval(() => {
-      writeToCache(state).catch(console.error);
+      writeToCache(state, season).catch(console.error);
     }, 5000);
 
     // Keep alive for 59 seconds (1-minute cron cycle)
