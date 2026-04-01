@@ -75,9 +75,14 @@ async function fetchOfficialDrivers(
   }
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
     const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`, { 
-      signal: (AbortSignal as any).timeout(10000) 
+      signal: controller.signal 
     });
+    clearTimeout(timeoutId);
+    
     if (!resp.ok) return;
     const data = await resp.json();
     const drivers = data.MRData.DriverTable.Drivers;
