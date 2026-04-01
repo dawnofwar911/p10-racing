@@ -125,7 +125,7 @@ async function fetchOfficialDrivers(
  * PATH DISCOVERY
  */
 async function discoverPathAndFetchInitial(season: string, state: { driverList: any, sessionInfo: any }) {
-  const resp = await fetch(`${STATIC_BASE}/${season}/Index.json`);
+  const resp = await fetchWithTimeout(`${STATIC_BASE}/${season}/Index.json`);
   if (!resp.ok) return;
   const data = await resp.json();
   
@@ -165,8 +165,8 @@ async function discoverPathAndFetchInitial(season: string, state: { driverList: 
     try {
       console.log(`Attempting to fetch initial metadata from: ${fullPath}`);
       const [dlResp, siResp] = await Promise.all([
-        fetch(`${fullPath}DriverList.json`),
-        fetch(`${fullPath}SessionInfo.json`)
+        fetchWithTimeout(`${fullPath}DriverList.json`),
+        fetchWithTimeout(`${fullPath}SessionInfo.json`)
       ]);
       if (dlResp.ok) {
         state.driverList = await dlResp.json();
@@ -184,7 +184,7 @@ async function discoverPathAndFetchInitial(season: string, state: { driverList: 
  */
 async function negotiate() {
   const negotiateUrl = `${SIGNALR_BASE}/negotiate?connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
-  const resp = await fetch(negotiateUrl, {
+  const resp = await fetchWithTimeout(negotiateUrl, {
     method: 'GET',
     headers: { 'User-Agent': 'BestRacingApp/1.0', 'Accept': 'application/json' }
   });
