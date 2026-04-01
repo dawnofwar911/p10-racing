@@ -10,6 +10,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 const SIGNALR_BASE = 'https://livetiming.formula1.com/signalr';
 const STATIC_BASE = 'https://livetiming.formula1.com/static';
 const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
@@ -75,14 +88,7 @@ async function fetchOfficialDrivers(
   }
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
-    const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`, { 
-      signal: controller.signal 
-    });
-    clearTimeout(timeoutId);
-    
+    const resp = await fetchWithTimeout(`${JOLPICA_BASE}/${season}/drivers.json`);
     if (!resp.ok) return;
     const data = await resp.json();
     const drivers = data.MRData.DriverTable.Drivers;
