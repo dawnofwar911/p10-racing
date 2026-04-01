@@ -2,7 +2,6 @@
 // Cache-First version: Prioritizes SignalR relay data from DB
 // Fetches live timing data from official F1 static JSON feeds
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const BASE_URL = 'https://livetiming.formula1.com/static';

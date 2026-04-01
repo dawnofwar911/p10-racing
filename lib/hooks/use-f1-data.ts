@@ -64,9 +64,9 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       console.error('Error in useF1Data:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch F1 data'));
       
-      // Fallback to static data ONLY if we have absolutely nothing else and it's the current year
-      const currentYear = new Date().getFullYear();
-      setDrivers(prev => (prev.length === 0 && season === currentYear) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
+      // Fallback to static data ONLY if we have absolutely nothing else and it's the 2026 season
+      // This ensures 2026 data doesn't leak into 2027 if the API is down.
+      setDrivers(prev => (prev.length === 0 && season === 2026) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
     } finally {
       setLoading(false);
     }
@@ -87,11 +87,11 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
         if (cachedForm) setDriverForm(JSON.parse(cachedForm));
         hasValidCache = true;
       } else {
-        // Clear stale state from previously viewed seasons if no cache exists for the current one.
-        // This ensures the user sees a clean loading state instead of old data.
-        setDrivers([]);
-        setCalendar([]);
-        setDriverForm({});
+        // No cache for this season; clear state to prevent showing stale data from another season.
+        // Optimization: Only clear if not already empty to avoid redundant re-renders.
+        if (drivers.length > 0) setDrivers([]);
+        if (calendar.length > 0) setCalendar([]);
+        if (Object.keys(driverForm).length > 0) setDriverForm({});
       }
     } catch (e) {
       console.warn('useF1Data: Failed to load cache', e);
@@ -99,7 +99,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
 
     // Always trigger a background refresh to ensure freshness for the selected season.
     fetchData(hasValidCache);
-  }, [fetchData, season]);
+  }, [fetchData, season, drivers.length, calendar.length, driverForm]);
 
   return { drivers, calendar, driverForm, loading, error, refresh: () => fetchData(false) };
 }

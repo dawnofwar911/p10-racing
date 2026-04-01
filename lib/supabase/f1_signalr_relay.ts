@@ -1,7 +1,6 @@
 // Supabase Edge Function: f1-signalr-relay
 // Connects to F1 SignalR real-time stream and caches data to DB
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import pako from 'npm:pako';
 
@@ -27,6 +26,38 @@ const SIGNALR_BASE = 'https://livetiming.formula1.com/signalr';
 const STATIC_BASE = 'https://livetiming.formula1.com/static';
 const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
 const HUB_NAME = 'Streaming';
+
+interface F1Session {
+  Key: number; Type: string; Name: string; StartDate: string; EndDate: string; Path?: string;
+}
+interface F1Meeting {
+  Key: number; Name: string; Sessions: F1Session[];
+}
+interface F1Index {
+  Meetings?: F1Meeting[];
+}
+interface TimingData {
+  Lines: { [driverNumber: string]: { Position: string; GapToLeader: string; IntervalToNext: string; Stopped: boolean; InPit: boolean; Retired: boolean; Status: string; NumberOfLaps: string; } };
+}
+interface SessionInfo {
+  Meeting: { Name: string }; Session: { Name: string }; Type: string; Status: string; ArchiveStatus?: { Status: string };
+}
+interface TyreData {
+  Lines: { [driverNumber: string]: { Compound: string; New: string | boolean; TyresNotChangedLaps: number; } };
+}
+interface TrackStatus {
+  Status: string; Message: string;
+}
+
+interface RelayState {
+  currentTiming: TimingData;
+  currentTyres: TyreData;
+  trackStatus: TrackStatus;
+  driverList: Record<string, { Tla: string; [key: string]: unknown }>;
+  sessionInfo: SessionInfo;
+  dynamicNumberToId: Record<string, string>;
+  dynamicAcronymToId: Record<string, string>;
+}
 
 /**
  * Shared utility to determine if a status string or telemetry state indicates 
@@ -96,7 +127,7 @@ async function fetchOfficialDrivers(
     const newNumberMap: Record<string, string> = {};
     const newAcronymMap: Record<string, string> = {};
 
-    drivers.forEach((d: any) => {
+    drivers.forEach((d: { permanentNumber?: string; code?: string; driverId: string }) => {
       if (d.permanentNumber) {
         newNumberMap[d.permanentNumber] = d.driverId;
       }
@@ -124,22 +155,22 @@ async function fetchOfficialDrivers(
 /**
  * PATH DISCOVERY
  */
-async function discoverPathAndFetchInitial(season: string, state: { driverList: any, sessionInfo: any }) {
+async function discoverPathAndFetchInitial(season: string, state: RelayState) {
   const resp = await fetchWithTimeout(`${STATIC_BASE}/${season}/Index.json`);
   if (!resp.ok) return;
-  const data = await resp.json();
+  const data: F1Index = await resp.json();
   
   if (!data.Meetings) return;
   
   const now = new Date();
-  const sortedMeetings = data.Meetings.sort((a: any, b: any) => {
+  const sortedMeetings = data.Meetings.sort((a: F1Meeting, b: F1Meeting) => {
     const aStart = new Date(a.Sessions?.[0]?.StartDate || 0);
     const bStart = new Date(b.Sessions?.[0]?.StartDate || 0);
     return bStart.getTime() - aStart.getTime();
   });
 
-  const currentMeeting = sortedMeetings.find((m: any) => {
-    return m.Sessions?.some((s: any) => {
+  const currentMeeting = sortedMeetings.find((m: F1Meeting) => {
+    return m.Sessions?.some((s: F1Session) => {
       const start = new Date(s.StartDate);
       const diffDays = Math.abs(now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
       return diffDays < 4;
@@ -147,11 +178,11 @@ async function discoverPathAndFetchInitial(season: string, state: { driverList: 
   }) || sortedMeetings[0];
 
   const sessions = currentMeeting.Sessions || [];
-  const targetSession = sessions.find((s: any) => s.Type === 'Race' || s.Name === 'Race') || sessions[sessions.length - 1];
+  const targetSession = sessions.find((s: F1Session) => s.Type === 'Race' || s.Name === 'Race') || sessions[sessions.length - 1];
 
   let sessionPath = targetSession.Path;
   if (!sessionPath) {
-    const sessionWithPadding = sessions.find((s: any) => s.Path);
+    const sessionWithPadding = sessions.find((s: F1Session) => s.Path);
     if (sessionWithPadding) {
       const parts = sessionWithPadding.Path.split('/');
       const meetingRoot = parts.slice(0, 2).join('/');
@@ -207,11 +238,11 @@ function decodeAndDecompress(base64Data: string) {
   }
 }
 
-function robustMerge(target: any, source: any) {
+function robustMerge(target: Record<string, unknown>, source: Record<string, unknown>) {
   if (!source) return target;
   Object.keys(source).forEach(key => {
     if (source[key] instanceof Object && !Array.isArray(source[key]) && key in target) {
-      robustMerge(target[key], source[key]);
+      robustMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
     } else {
       target[key] = source[key];
     }
@@ -219,7 +250,7 @@ function robustMerge(target: any, source: any) {
   return target;
 }
 
-function handleMessage(msg: any, state: { currentTiming: any, currentTyres: any, trackStatus: any, sessionInfo: any }) {
+function handleMessage(msg: Record<string, unknown>, state: RelayState) {
   if (Object.keys(msg).length === 0) return;
 
   if (msg.R) {
@@ -264,16 +295,8 @@ function handleMessage(msg: any, state: { currentTiming: any, currentTyres: any,
 /**
  * DB CACHE WRITING
  */
-async function writeToCache(state: { 
-  currentTiming: any, 
-  currentTyres: any, 
-  trackStatus: any, 
-  driverList: any, 
-  sessionInfo: any,
-  dynamicNumberToId: Record<string, string>,
-  dynamicAcronymToId: Record<string, string>
-}, season: string) {
-  const results = Object.entries(state.currentTiming.Lines || {}).map(([number, data]: [string, any]) => {
+async function writeToCache(state: RelayState, season: string) {
+  const results = Object.entries(state.currentTiming.Lines || {}).map(([number, data]) => {
     const staticDriver = state.driverList[number];
     const acronym = staticDriver?.Tla || '';
     
@@ -342,14 +365,14 @@ Deno.serve(async (req) => {
   const season = url.searchParams.get('season') || new Date().getFullYear().toString();
 
   // 1. Per-request state to ensure concurrency safety
-  const state = {
-    currentTiming: { Lines: {} } as any,
-    currentTyres: { Lines: {} } as any,
-    trackStatus: { Status: '1', Message: 'Green' } as any,
-    driverList: {} as any,
-    sessionInfo: { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' } } as any,
-    dynamicNumberToId: {} as Record<string, string>,
-    dynamicAcronymToId: {} as Record<string, string>
+  const state: RelayState = {
+    currentTiming: { Lines: {} },
+    currentTyres: { Lines: {} },
+    trackStatus: { Status: '1', Message: 'Green' },
+    driverList: {},
+    sessionInfo: { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' }, Type: 'Unknown' },
+    dynamicNumberToId: {},
+    dynamicAcronymToId: {}
   };
 
   try {
@@ -391,4 +414,3 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 });
-/* eslint-enable @typescript-eslint/no-explicit-any */
