@@ -46,7 +46,7 @@ async function fetchOfficialDrivers(
   acronymMap: Record<string, string>
 ) {
   try {
-    const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`);
+    const resp = await fetchWithTimeout(`${JOLPICA_BASE}/${season}/drivers.json`);
     if (!resp.ok) return;
     const data = await resp.json();
     const drivers = data.MRData.DriverTable.Drivers;
