@@ -1,6 +1,7 @@
 // Supabase Edge Function: f1-signalr-relay
 // Connects to F1 SignalR real-time stream and caches data to DB
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import pako from 'npm:pako';
 
@@ -49,23 +50,14 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
   'PIA': 'piastri', 'BEA': 'bearman'
 };
 
-// Global state for the lifetime of this function execution
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const currentTiming: any = { Lines: {} };
-const currentTyres: any = { Lines: {} };
-const trackStatus: any = { Status: '1', Message: 'Green' };
-let driverList: any = {};
-let sessionInfo: any = { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' } };
-
-// Dynamic mappings populated at runtime
-const DYNAMIC_NUMBER_TO_ID: Record<string, string> = {};
-const DYNAMIC_ACRONYM_TO_ID: Record<string, string> = {};
-
 /**
  * PHASE 0: DYNAMIC METADATA
  * Fetches the official driver list from Jolpica to build mappings automatically.
  */
-async function fetchOfficialDrivers() {
+async function fetchOfficialDrivers(
+  numberMap: Record<string, string>,
+  acronymMap: Record<string, string>
+) {
   try {
     const season = new Date().getFullYear();
     const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`);
@@ -75,10 +67,10 @@ async function fetchOfficialDrivers() {
 
     drivers.forEach((d: any) => {
       if (d.permanentNumber) {
-        DYNAMIC_NUMBER_TO_ID[d.permanentNumber] = d.driverId;
+        numberMap[d.permanentNumber] = d.driverId;
       }
       if (d.code) {
-        DYNAMIC_ACRONYM_TO_ID[d.code] = d.driverId;
+        acronymMap[d.code] = d.driverId;
       }
     });
     console.log(`Loaded ${drivers.length} drivers from Jolpica.`);
@@ -90,7 +82,7 @@ async function fetchOfficialDrivers() {
 /**
  * PATH DISCOVERY
  */
-async function discoverPathAndFetchInitial() {
+async function discoverPathAndFetchInitial(state: { driverList: any, sessionInfo: any }) {
   const season = new Date().getFullYear().toString();
   const resp = await fetch(`${STATIC_BASE}/${season}/Index.json`);
   if (!resp.ok) return;
@@ -136,10 +128,10 @@ async function discoverPathAndFetchInitial() {
         fetch(`${fullPath}SessionInfo.json`)
       ]);
       if (dlResp.ok) {
-        driverList = await dlResp.json();
-        console.log(`DriverList loaded: ${Object.keys(driverList).length} drivers.`);
+        state.driverList = await dlResp.json();
+        console.log(`DriverList loaded: ${Object.keys(state.driverList).length} drivers.`);
       }
-      if (siResp.ok) sessionInfo = await siResp.json();
+      if (siResp.ok) state.sessionInfo = await siResp.json();
     } catch (e) {
       console.warn("Failed to fetch initial data", e);
     }
@@ -186,7 +178,7 @@ function robustMerge(target: any, source: any) {
   return target;
 }
 
-function handleMessage(msg: any) {
+function handleMessage(msg: any, state: { currentTiming: any, currentTyres: any, trackStatus: any, sessionInfo: any }) {
   if (Object.keys(msg).length === 0) return;
 
   if (msg.R) {
@@ -195,10 +187,10 @@ function handleMessage(msg: any) {
     const tyreData = msg.R.TyreData;
     const tsData = msg.R.TrackStatus;
 
-    if (timingData) robustMerge(currentTiming, timingData);
-    if (infoData) robustMerge(sessionInfo, infoData);
-    if (tyreData) robustMerge(currentTyres, tyreData);
-    if (tsData) robustMerge(trackStatus, tsData);
+    if (timingData) robustMerge(state.currentTiming, timingData);
+    if (infoData) robustMerge(state.sessionInfo, infoData);
+    if (tyreData) robustMerge(state.currentTyres, tyreData);
+    if (tsData) robustMerge(state.trackStatus, tsData);
   }
   
   if (msg.M && Array.isArray(msg.M)) {
@@ -215,13 +207,13 @@ function handleMessage(msg: any) {
         if (!decoded) continue;
 
         if (feedName === 'TimingData') {
-          robustMerge(currentTiming, decoded);
+          robustMerge(state.currentTiming, decoded);
         } else if (feedName === 'SessionInfo') {
-          robustMerge(sessionInfo, decoded);
+          robustMerge(state.sessionInfo, decoded);
         } else if (feedName === 'TyreData') {
-          robustMerge(currentTyres, decoded);
+          robustMerge(state.currentTyres, decoded);
         } else if (feedName === 'TrackStatus') {
-          robustMerge(trackStatus, decoded);
+          robustMerge(state.trackStatus, decoded);
         }
       }
     }
@@ -231,19 +223,27 @@ function handleMessage(msg: any) {
 /**
  * DB CACHE WRITING
  */
-async function writeToCache() {
-  const results = Object.entries(currentTiming.Lines || {}).map(([number, data]: [string, any]) => {
-    const staticDriver = driverList[number];
+async function writeToCache(state: { 
+  currentTiming: any, 
+  currentTyres: any, 
+  trackStatus: any, 
+  driverList: any, 
+  sessionInfo: any,
+  dynamicNumberToId: Record<string, string>,
+  dynamicAcronymToId: Record<string, string>
+}) {
+  const results = Object.entries(state.currentTiming.Lines || {}).map(([number, data]: [string, any]) => {
+    const staticDriver = state.driverList[number];
     const acronym = staticDriver?.Tla || '';
     
     // PRIORITY: 1. Dynamic Map, 2. Static DriverList Map, 3. Hardcoded Fallback Map, 4. Unknown
-    const driverId = DYNAMIC_NUMBER_TO_ID[number] || 
-                     (acronym ? DYNAMIC_ACRONYM_TO_ID[acronym] : null) || 
+    const driverId = state.dynamicNumberToId[number] || 
+                     (acronym ? state.dynamicAcronymToId[acronym] : null) || 
                      (staticDriver ? (ACRONYM_TO_ID[acronym] || acronym.toLowerCase()) : null) ||
                      NUMBER_TO_ID[number] || 
                      `unknown_${number}`;
 
-    const tyreInfo = currentTyres.Lines?.[number] || {};
+    const tyreInfo = state.currentTyres.Lines?.[number] || {};
 
     return {
       driverId,
@@ -265,15 +265,15 @@ async function writeToCache() {
   if (results.length === 0) return;
 
   // Smart Finish detection
-  const isFinished = sessionInfo.Status === 'Finished' || sessionInfo.Status === 'Final' || 
-                    sessionInfo.ArchiveStatus?.Status === 'Generating';
+  const isFinished = state.sessionInfo.Status === 'Finished' || state.sessionInfo.Status === 'Final' || 
+                    state.sessionInfo.ArchiveStatus?.Status === 'Generating';
 
   const simplified = {
-    status: isFinished ? 'Completed' : (sessionInfo.Status || 'Active'),
-    trackStatus: trackStatus.Status || '1',
-    trackMessage: trackStatus.Message || 'Green',
-    meeting: sessionInfo.Meeting?.Name || 'Unknown',
-    session: sessionInfo.Session?.Name || 'Race',
+    status: isFinished ? 'Completed' : (state.sessionInfo.Status || 'Active'),
+    trackStatus: state.trackStatus.Status || '1',
+    trackMessage: state.trackStatus.Message || 'Green',
+    meeting: state.sessionInfo.Meeting?.Name || 'Unknown',
+    session: state.sessionInfo.Session?.Name || 'Race',
     results: results,
     lastUpdated: new Date().toISOString()
   };
@@ -296,8 +296,22 @@ Deno.serve(async (req) => {
     return new Response('Unauthorized', { status: 401 });
   }
 
+  // 1. Per-request state to ensure concurrency safety
+  const state = {
+    currentTiming: { Lines: {} } as any,
+    currentTyres: { Lines: {} } as any,
+    trackStatus: { Status: '1', Message: 'Green' } as any,
+    driverList: {} as any,
+    sessionInfo: { Status: 'Unknown', Meeting: { Name: 'Unknown' }, Session: { Name: 'Unknown' } } as any,
+    dynamicNumberToId: {} as Record<string, string>,
+    dynamicAcronymToId: {} as Record<string, string>
+  };
+
   try {
-    await Promise.all([fetchOfficialDrivers(), discoverPathAndFetchInitial()]);
+    await Promise.all([
+      fetchOfficialDrivers(state.dynamicNumberToId, state.dynamicAcronymToId), 
+      discoverPathAndFetchInitial(state)
+    ]);
     const { token } = await negotiate();
     
     const wsUrl = `${SIGNALR_BASE.replace('https', 'wss')}/connect?transport=webSockets&connectionToken=${encodeURIComponent(token)}&connectionData=${encodeURIComponent(JSON.stringify([{ name: HUB_NAME }]))}&clientProtocol=1.5`;
@@ -310,11 +324,11 @@ Deno.serve(async (req) => {
     };
 
     ws.onmessage = (event) => {
-      try { handleMessage(JSON.parse(event.data)); } catch { /* ignore */ }
+      try { handleMessage(JSON.parse(event.data), state); } catch { /* ignore */ }
     };
 
     const interval = setInterval(() => {
-      writeToCache().catch(console.error);
+      writeToCache(state).catch(console.error);
     }, 5000);
 
     // Keep alive for 59 seconds (1-minute cron cycle)

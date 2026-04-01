@@ -2,6 +2,7 @@
 // Cache-First version: Prioritizes SignalR relay data from DB
 // Fetches live timing data from official F1 static JSON feeds
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const BASE_URL = 'https://livetiming.formula1.com/static';
@@ -25,6 +26,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout 
 }
 
 // Fallback Mapping from F1 Acronyms to internal Driver IDs
+// Fallback Mapping from F1 Acronyms to internal Driver IDs
 const ACRONYM_TO_ID: { [key: string]: string } = {
   'NOR': 'norris', 'VER': 'max_verstappen',
   'BOR': 'bortoleto', 'HAD': 'hadjar',
@@ -39,11 +41,11 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
   'PIA': 'piastri', 'BEA': 'bearman'
 };
 
-// Dynamic mappings populated at runtime
-const DYNAMIC_NUMBER_TO_ID: Record<string, string> = {};
-const DYNAMIC_ACRONYM_TO_ID: Record<string, string> = {};
-
-async function fetchOfficialDrivers(season: string) {
+async function fetchOfficialDrivers(
+  season: string, 
+  numberMap: Record<string, string>, 
+  acronymMap: Record<string, string>
+) {
   try {
     const resp = await fetch(`${JOLPICA_BASE}/${season}/drivers.json`);
     if (!resp.ok) return;
@@ -52,10 +54,10 @@ async function fetchOfficialDrivers(season: string) {
 
     drivers.forEach((d: { permanentNumber?: string; code?: string; driverId: string }) => {
       if (d.permanentNumber) {
-        DYNAMIC_NUMBER_TO_ID[d.permanentNumber] = d.driverId;
+        numberMap[d.permanentNumber] = d.driverId;
       }
       if (d.code) {
-        DYNAMIC_ACRONYM_TO_ID[d.code] = d.driverId;
+        acronymMap[d.code] = d.driverId;
       }
     });
   } catch (e) {
@@ -184,12 +186,16 @@ Deno.serve(async (req) => {
 
     const fullPath = `${BASE_URL}/${sessionPath}`;
     
+    // 5. Build per-request dynamic mapping to ensure concurrency safety
+    const dynamicNumberToId: Record<string, string> = {};
+    const dynamicAcronymToId: Record<string, string> = {};
+
     // Fetch dynamic drivers concurrently with static timing data
     const [timingResp, sessionResp, driverListResp] = await Promise.all([
       fetchWithTimeout(`${fullPath}TimingData.json`),
       fetchWithTimeout(`${fullPath}SessionInfo.json`),
       fetchWithTimeout(`${fullPath}DriverList.json`),
-      fetchOfficialDrivers(season)
+      fetchOfficialDrivers(season, dynamicNumberToId, dynamicAcronymToId)
     ]);
 
     if (timingResp.status === 403 || timingResp.status === 404) {
@@ -210,8 +216,15 @@ Deno.serve(async (req) => {
     const results = Object.entries(timingData.Lines).map(([number, data]) => {
       const driver = driverListData[number];
       const acronym = driver?.Tla || '';
+      
+      // PRIORITY: 1. Dynamic Number Map, 2. Dynamic Acronym Map, 3. Static Fallback, 4. Lowercase Acronym
+      const driverId = dynamicNumberToId[number] || 
+                       (acronym ? dynamicAcronymToId[acronym] : null) || 
+                       ACRONYM_TO_ID[acronym] || 
+                       acronym.toLowerCase();
+
       return {
-        driverId: ACRONYM_TO_ID[acronym] || acronym.toLowerCase(),
+        driverId,
         acronym,
         position: parseInt(data.Position) || 0,
         gap: data.GapToLeader || '',
