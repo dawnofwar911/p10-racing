@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ApiCalendarRace, fetchDrivers, fetchCalendar, fetchRecentResults, DriverFormMap } from '@/lib/api';
 import { Driver } from '@/lib/types';
-import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS } from '@/lib/data';
+import { CURRENT_SEASON, DRIVERS as FALLBACK_DRIVERS, LEGACY_FALLBACK_SEASON } from '@/lib/data';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export interface UseF1DataReturn {
@@ -64,9 +64,9 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       console.error('Error in useF1Data:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch F1 data'));
       
-      // Fallback to static data ONLY if we have absolutely nothing else and it's the 2026 season
-      // This ensures 2026 data doesn't leak into 2027 if the API is down.
-      setDrivers(prev => (prev.length === 0 && season === 2026) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
+      // Fallback to static data ONLY if we have absolutely nothing else and it's the legacy fallback season
+      // This ensures stale data doesn't leak into future years if the API is down.
+      setDrivers(prev => (prev.length === 0 && season === LEGACY_FALLBACK_SEASON) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
     } finally {
       setLoading(false);
     }
