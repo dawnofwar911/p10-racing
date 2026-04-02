@@ -88,10 +88,10 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
         hasValidCache = true;
       } else {
         // No cache for this season; clear state to prevent showing stale data from another season.
-        // Optimization: Only clear if not already empty to avoid redundant re-renders.
-        if (drivers.length > 0) setDrivers([]);
-        if (calendar.length > 0) setCalendar([]);
-        if (Object.keys(driverForm).length > 0) setDriverForm({});
+        // Optimization: Use functional updates to avoid dependency on the state itself.
+        setDrivers(prev => prev.length > 0 ? [] : prev);
+        setCalendar(prev => prev.length > 0 ? [] : prev);
+        setDriverForm(prev => Object.keys(prev).length > 0 ? {} : prev);
       }
     } catch (e) {
       console.warn('useF1Data: Failed to load cache', e);
@@ -99,7 +99,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
 
     // Always trigger a background refresh to ensure freshness for the selected season.
     fetchData(hasValidCache);
-  }, [fetchData, season, drivers.length, calendar.length, driverForm]);
+  }, [fetchData, season]);
 
   return { drivers, calendar, driverForm, loading, error, refresh: () => fetchData(false) };
 }
