@@ -102,10 +102,10 @@ interface F1Index {
   Meetings?: F1Meeting[];
 }
 interface TimingData {
-  Lines: { [driverNumber: string]: { Position: string; GapToLeader: string; IntervalToNext: string; Stopped: boolean; InPit: boolean; Retired: boolean; Status: string; NumberOfLaps: string; } };
+  Lines: { [driverNumber: string]: { Position?: string; GapToLeader?: string; IntervalToNext?: string; Stopped?: boolean; InPit?: boolean; Retired?: boolean; Status?: string; NumberOfLaps?: string; [key: string]: unknown; } };
 }
 interface SessionInfo {
-  Meeting: { Name: string }; Session: { Name: string }; Type: string; Status: string;
+  Meeting: { Name: string; [key: string]: unknown; }; Session: { Name: string; [key: string]: unknown; }; Type: string; Status: string; [key: string]: unknown;
 }
 
 /**
@@ -238,7 +238,8 @@ Deno.serve(async (req) => {
     const [timingData, sessionInfo, driverListData] = await Promise.all([
       timingResp.json() as Promise<TimingData>,
       sessionResp.json() as Promise<SessionInfo>,
-      driverListResp.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      driverListResp.json() as Promise<any>
     ]);
 
     const results = Object.entries(timingData.Lines).map(([number, data]) => {
@@ -254,7 +255,7 @@ Deno.serve(async (req) => {
       return {
         driverId,
         acronym,
-        position: parseInt(data.Position) || 0,
+        position: parseInt(data.Position || '0') || 0,
         gap: data.GapToLeader || '',
         interval: data.IntervalToNext || '',
         isRetired: isTrueDnf(data.Status || '', data.NumberOfLaps || '1') || data.Retired || data.Stopped || false,

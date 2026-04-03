@@ -37,16 +37,30 @@ interface F1Index {
   Meetings?: F1Meeting[];
 }
 interface TimingData {
-  Lines: { [driverNumber: string]: { Position: string; GapToLeader: string; IntervalToNext: string; Stopped: boolean; InPit: boolean; Retired: boolean; Status: string; NumberOfLaps: string; } };
+  Lines: { [driverNumber: string]: { Position?: string; GapToLeader?: string; IntervalToNext?: string; Stopped?: boolean; InPit?: boolean; Retired?: boolean; Status?: string; NumberOfLaps?: string; [key: string]: unknown; } };
 }
 interface SessionInfo {
-  Meeting: { Name: string }; Session: { Name: string }; Type: string; Status: string; ArchiveStatus?: { Status: string };
+  Meeting: { Name: string; [key: string]: unknown; }; Session: { Name: string; [key: string]: unknown; }; Type: string; Status: string; ArchiveStatus?: { Status: string; [key: string]: unknown; }; [key: string]: unknown;
 }
 interface TyreData {
-  Lines: { [driverNumber: string]: { Compound: string; New: string | boolean; TyresNotChangedLaps: number; } };
+  Lines: { [driverNumber: string]: { Compound?: string; New?: string | boolean; TyresNotChangedLaps?: number; [key: string]: unknown; } };
 }
 interface TrackStatus {
   Status: string; Message: string;
+}
+
+interface SignalRMessage {
+  R?: {
+    TimingData?: TimingData;
+    Lines?: Record<string, unknown>;
+    SessionInfo?: SessionInfo;
+    TyreData?: TyreData;
+    TrackStatus?: TrackStatus;
+  };
+  M?: Array<{
+    M: string;
+    A: unknown[];
+  }>;
 }
 
 interface RelayState {
@@ -250,26 +264,26 @@ function robustMerge(target: Record<string, unknown>, source: Record<string, unk
   return target;
 }
 
-function handleMessage(msg: Record<string, unknown>, state: RelayState) {
+function handleMessage(msg: SignalRMessage, state: RelayState) {
   if (Object.keys(msg).length === 0) return;
 
   if (msg.R) {
-    const timingData = msg.R.TimingData || (msg.R.Lines ? msg.R : null);
+    const timingData = msg.R.TimingData || (msg.R.Lines ? msg.R as unknown as TimingData : null);
     const infoData = msg.R.SessionInfo;
     const tyreData = msg.R.TyreData;
     const tsData = msg.R.TrackStatus;
 
-    if (timingData) robustMerge(state.currentTiming, timingData);
-    if (infoData) robustMerge(state.sessionInfo, infoData);
-    if (tyreData) robustMerge(state.currentTyres, tyreData);
-    if (tsData) robustMerge(state.trackStatus, tsData);
+    if (timingData) robustMerge(state.currentTiming as unknown as Record<string, unknown>, timingData as unknown as Record<string, unknown>);
+    if (infoData) robustMerge(state.sessionInfo as unknown as Record<string, unknown>, infoData as unknown as Record<string, unknown>);
+    if (tyreData) robustMerge(state.currentTyres as unknown as Record<string, unknown>, tyreData as unknown as Record<string, unknown>);
+    if (tsData) robustMerge(state.trackStatus as unknown as Record<string, unknown>, tsData as unknown as Record<string, unknown>);
   }
   
   if (msg.M && Array.isArray(msg.M)) {
     for (const m of msg.M) {
       if (m.M === 'feed' || m.M === 'Receive') {
-        let feedName = m.A[0];
-        const rawData = m.A[1];
+        let feedName = m.A[0] as string;
+        const rawData = m.A[1] as string;
         if (!rawData) continue;
 
         const isCompressed = typeof feedName === 'string' && feedName.endsWith('.z');
@@ -279,13 +293,13 @@ function handleMessage(msg: Record<string, unknown>, state: RelayState) {
         if (!decoded) continue;
 
         if (feedName === 'TimingData') {
-          robustMerge(state.currentTiming, decoded);
+          robustMerge(state.currentTiming as unknown as Record<string, unknown>, decoded as unknown as Record<string, unknown>);
         } else if (feedName === 'SessionInfo') {
-          robustMerge(state.sessionInfo, decoded);
+          robustMerge(state.sessionInfo as unknown as Record<string, unknown>, decoded as unknown as Record<string, unknown>);
         } else if (feedName === 'TyreData') {
-          robustMerge(state.currentTyres, decoded);
+          robustMerge(state.currentTyres as unknown as Record<string, unknown>, decoded as unknown as Record<string, unknown>);
         } else if (feedName === 'TrackStatus') {
-          robustMerge(state.trackStatus, decoded);
+          robustMerge(state.trackStatus as unknown as Record<string, unknown>, decoded as unknown as Record<string, unknown>);
         }
       }
     }
@@ -307,12 +321,12 @@ async function writeToCache(state: RelayState, season: string) {
                      NUMBER_TO_ID[number] || 
                      `unknown_${number}`;
 
-    const tyreInfo = state.currentTyres.Lines?.[number] || {};
+    const tyreInfo = (state.currentTyres.Lines?.[number] || {}) as TyreData['Lines'][string];
 
     return {
       driverId,
       acronym: acronym || driverId.slice(0, 3).toUpperCase(),
-      position: parseInt(data.Position) || 0,
+      position: parseInt(data.Position || '0') || 0,
       gap: data.GapToLeader || '',
       interval: data.IntervalToNext || '',
       isRetired: isTrueDnf(data.Status || '', data.NumberOfLaps || '1') || data.Retired || data.Stopped || false,
@@ -392,7 +406,10 @@ Deno.serve(async (req) => {
     };
 
     ws.onmessage = (event) => {
-      try { handleMessage(JSON.parse(event.data), state); } catch { /* ignore */ }
+      try { 
+        const data = JSON.parse(event.data) as SignalRMessage;
+        handleMessage(data, state); 
+      } catch { /* ignore */ }
     };
 
     const interval = setInterval(() => {
