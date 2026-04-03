@@ -85,3 +85,4 @@ export const isPreseason = (date?: Date) => {
 export const CURRENT_SEASON = isPreseason() ? getSystemSeason() - 1 : getSystemSeason();
 export const NEXT_SEASON = CURRENT_SEASON + 1;
 export const DISPLAY_SEASON = CURRENT_SEASON;
+export const LEGACY_FALLBACK_SEASON = 2026;
