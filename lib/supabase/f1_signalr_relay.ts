@@ -37,13 +37,13 @@ interface F1Index {
   Meetings?: F1Meeting[];
 }
 interface TimingData {
-  Lines: { [driverNumber: string]: { Position: string; GapToLeader: string; IntervalToNext: string; Stopped: boolean; InPit: boolean; Retired: boolean; Status: string; NumberOfLaps: string; } };
+  Lines: { [driverNumber: string]: { Position?: string; GapToLeader?: string; IntervalToNext?: string; Stopped?: boolean; InPit?: boolean; Retired?: boolean; Status?: string; NumberOfLaps?: string; [key: string]: unknown; } };
 }
 interface SessionInfo {
-  Meeting: { Name: string }; Session: { Name: string }; Type: string; Status: string; ArchiveStatus?: { Status: string };
+  Meeting: { Name: string; [key: string]: unknown; }; Session: { Name: string; [key: string]: unknown; }; Type: string; Status: string; ArchiveStatus?: { Status: string; [key: string]: unknown; }; [key: string]: unknown;
 }
 interface TyreData {
-  Lines: { [driverNumber: string]: { Compound: string; New: string | boolean; TyresNotChangedLaps: number; } };
+  Lines: { [driverNumber: string]: { Compound?: string; New?: string | boolean; TyresNotChangedLaps?: number; [key: string]: unknown; } };
 }
 interface TrackStatus {
   Status: string; Message: string;
@@ -321,12 +321,12 @@ async function writeToCache(state: RelayState, season: string) {
                      NUMBER_TO_ID[number] || 
                      `unknown_${number}`;
 
-    const tyreInfo = state.currentTyres.Lines?.[number] || {};
+    const tyreInfo = (state.currentTyres.Lines?.[number] || {}) as TyreData['Lines'][string];
 
     return {
       driverId,
       acronym: acronym || driverId.slice(0, 3).toUpperCase(),
-      position: parseInt(data.Position) || 0,
+      position: parseInt(data.Position || '0') || 0,
       gap: data.GapToLeader || '',
       interval: data.IntervalToNext || '',
       isRetired: isTrueDnf(data.Status || '', data.NumberOfLaps || '1') || data.Retired || data.Stopped || false,
