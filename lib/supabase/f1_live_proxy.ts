@@ -5,6 +5,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const BASE_URL = 'https://livetiming.formula1.com/static';
+const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -23,7 +24,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout 
   }
 }
 
-// Mapping from F1 Acronyms to internal Driver IDs (2026 Lineup)
+// Fallback Mapping from F1 Acronyms to internal Driver IDs
 const ACRONYM_TO_ID: { [key: string]: string } = {
   'NOR': 'norris', 'VER': 'max_verstappen',
   'BOR': 'bortoleto', 'HAD': 'hadjar',
@@ -37,6 +38,59 @@ const ACRONYM_TO_ID: { [key: string]: string } = {
   'RUS': 'russell', 'BOT': 'bottas',
   'PIA': 'piastri', 'BEA': 'bearman'
 };
+
+// Warm-start cache for dynamic mappings (Season -> Mapping)
+const GLOBAL_DRIVER_CACHE: Record<string, { 
+  numberMap: Record<string, string>; 
+  acronymMap: Record<string, string>;
+  expires: number;
+}> = {};
+
+async function fetchOfficialDrivers(
+  season: string, 
+  numberMap: Record<string, string>, 
+  acronymMap: Record<string, string>
+) {
+  // Check warm-start cache first (1 hour expiry)
+  const cached = GLOBAL_DRIVER_CACHE[season];
+  if (cached && cached.expires > Date.now()) {
+    Object.assign(numberMap, cached.numberMap);
+    Object.assign(acronymMap, cached.acronymMap);
+    return;
+  }
+
+  try {
+    const resp = await fetchWithTimeout(`${JOLPICA_BASE}/${season}/drivers.json`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const drivers = data.MRData.DriverTable.Drivers;
+
+    const newNumberMap: Record<string, string> = {};
+    const newAcronymMap: Record<string, string> = {};
+
+    drivers.forEach((d: { permanentNumber?: string; code?: string; driverId: string }) => {
+      if (d.permanentNumber) {
+        newNumberMap[d.permanentNumber] = d.driverId;
+      }
+      if (d.code) {
+        newAcronymMap[d.code] = d.driverId;
+      }
+    });
+
+    // Update local maps for current request
+    Object.assign(numberMap, newNumberMap);
+    Object.assign(acronymMap, newAcronymMap);
+
+    // Update global cache for warm starts
+    GLOBAL_DRIVER_CACHE[season] = {
+      numberMap: newNumberMap,
+      acronymMap: newAcronymMap,
+      expires: Date.now() + 3600000 // 1 hour
+    };
+  } catch (e) {
+    console.warn("Failed to fetch official drivers", e);
+  }
+}
 
 interface F1Session {
   Key: number; Type: string; Name: string; StartDate: string; EndDate: string; Path?: string;
@@ -90,8 +144,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 3. CHECK CACHE FIRST (Prioritize SignalR Relay)
-    const cacheKey = `f1_live_timing_latest`;
+    // 3. Determine Season
+    const url = new URL(req.url);
+    const forceSeason = url.searchParams.get('season');
+    const forceSession = url.searchParams.get('session');
+    const season = forceSeason || new Date().getFullYear().toString();
+
+    // 4. CHECK CACHE FIRST (Prioritize SignalR Relay)
+    const cacheKey = `f1_live_timing_latest_${season}`;
     const { data: cached } = await supabase
       .from('kv_cache')
       .select('value, updated_at')
@@ -110,12 +170,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. FALLBACK TO STATIC FILES (Only if relay is down)
-    const url = new URL(req.url);
-    const forceSeason = url.searchParams.get('season');
-    const forceSession = url.searchParams.get('session');
-    const season = forceSeason || new Date().getFullYear().toString();
-    
+    // 5. FALLBACK TO STATIC FILES (Only if relay is down)
     let sessionPath = '';
     const resp = await fetchWithTimeout(`${BASE_URL}/${season}/Index.json`);
     if (!resp.ok) throw new Error(`Failed to fetch index: ${resp.status}`);
@@ -158,10 +213,17 @@ Deno.serve(async (req) => {
     if (!sessionPath) throw new Error("Could not discover session path");
 
     const fullPath = `${BASE_URL}/${sessionPath}`;
+    
+    // 5. Build per-request dynamic mapping to ensure concurrency safety
+    const dynamicNumberToId: Record<string, string> = {};
+    const dynamicAcronymToId: Record<string, string> = {};
+
+    // Fetch dynamic drivers concurrently with static timing data
     const [timingResp, sessionResp, driverListResp] = await Promise.all([
       fetchWithTimeout(`${fullPath}TimingData.json`),
       fetchWithTimeout(`${fullPath}SessionInfo.json`),
-      fetchWithTimeout(`${fullPath}DriverList.json`)
+      fetchWithTimeout(`${fullPath}DriverList.json`),
+      fetchOfficialDrivers(season, dynamicNumberToId, dynamicAcronymToId)
     ]);
 
     if (timingResp.status === 403 || timingResp.status === 404) {
@@ -182,8 +244,15 @@ Deno.serve(async (req) => {
     const results = Object.entries(timingData.Lines).map(([number, data]) => {
       const driver = driverListData[number];
       const acronym = driver?.Tla || '';
+      
+      // PRIORITY: 1. Dynamic Number Map, 2. Dynamic Acronym Map, 3. Static Fallback, 4. Lowercase Acronym or Unknown
+      const driverId = dynamicNumberToId[number] || 
+                       (acronym ? dynamicAcronymToId[acronym] : null) || 
+                       ACRONYM_TO_ID[acronym] || 
+                       (acronym ? acronym.toLowerCase() : `unknown_${number}`);
+
       return {
-        driverId: ACRONYM_TO_ID[acronym] || acronym.toLowerCase(),
+        driverId,
         acronym,
         position: parseInt(data.Position) || 0,
         gap: data.GapToLeader || '',
