@@ -126,6 +126,9 @@ test.describe('Predict Flow (Guest User)', () => {
     const charles = page.getByTestId('driver-card-leclerc').filter({ visible: true }).first();
     await expect(charles).toBeVisible({ timeout: 15000 });
     await charles.click();
+    
+    // Give handleDnfSelect 300ms timeout time to trigger performSubmit
+    await page.waitForTimeout(1000);
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
     const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));
