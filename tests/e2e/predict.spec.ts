@@ -119,7 +119,7 @@ test.describe('Predict Flow (Guest User)', () => {
       
       const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i }).first();
       if (await playBtn.isVisible()) {
-        await playBtn.click({ force: true });
+        await playBtn.click();
       }
       
       console.log('Waiting for guest login transition...');
@@ -135,33 +135,25 @@ test.describe('Predict Flow (Guest User)', () => {
     await lewisCard.waitFor({ state: 'visible', timeout: 20000 });
     
     console.log('Verifying we are on /predict and cards are visible...');
-    // Ensure we are definitely on /predict and not redirected
-    if (!page.url().includes('/predict')) {
-      await page.goto('/predict');
-      await lewisCard.waitFor({ state: 'visible', timeout: 20000 });
-    }
+    // Ensure we are on /predict
+    await expect(page).toHaveURL(/\/predict/);
 
     // 3. Select P10 Driver
     console.log('Selecting P10 driver...');
-    await lewisCard.click({ force: true });
-    // Give handleP10Select 300ms timeout time to trigger tab switch
-    await page.waitForTimeout(1000);
+    await lewisCard.click();
 
     // 4. Switch to DNF tab
     console.log('Switching to DNF tab...');
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i).filter({ visible: true }).first();
-    await dnfTab.click({ force: true });
-    await page.waitForTimeout(500);
+    await dnfTab.click();
     
     // 5. Select DNF Driver
     console.log('Selecting DNF driver...');
     const charles = page.getByTestId('driver-card-leclerc').filter({ visible: true }).first();
     await expect(charles).toBeVisible({ timeout: 15000 });
-    await charles.click({ force: true });
+    await charles.click();
     
     console.log('Waiting for submission transition...');
-    // Give handleDnfSelect 300ms timeout time to trigger performSubmit
-    await page.waitForTimeout(2000);
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
     console.log('Checking summary view...');
