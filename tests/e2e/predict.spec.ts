@@ -79,44 +79,39 @@ test.describe('Predict Flow (Guest User)', () => {
   });
 
   test('should complete a prediction flow as a guest', async ({ page }) => {
+    // Give more time for the initial load and build if needed
+    test.slow();
+
     // 1. Navigate to Predict directly
     await page.goto('/predict');
     await expect(page).toHaveURL(/\/predict/);
 
-    // 2. Handle Login Wall (Wait for it if it's appearing)
+    // 2. Handle Login Wall
     const guestInput = page.getByPlaceholder(/Enter name/i);
-    try {
-      // We wait up to 10s for either the login wall OR the driver list
-      await Promise.race([
-        guestInput.waitFor({ state: 'visible', timeout: 10000 }),
-        page.getByTestId('driver-card-hamilton').waitFor({ state: 'visible', timeout: 10000 })
-      ]);
-    } catch (e) {
-      // Ignore timeout, we'll check manually
-    }
+    const lewisCard = page.getByTestId('driver-card-hamilton').filter({ visible: true }).first();
 
-    if (await guestInput.isVisible()) {
+    // Check what we are seeing
+    const isGuestWallVisible = await guestInput.isVisible();
+    
+    if (isGuestWallVisible) {
       await guestInput.fill('E2EGuest');
       const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i });
       await playBtn.click();
       
-      // Wait for login wall to disappear
+      // Wait for login wall to disappear and driver cards to appear
       await expect(guestInput).not.toBeVisible({ timeout: 15000 });
-      // The driver cards should appear after guest login
-      // We filter by visible: true because SwipeablePageLayout renders both mobile and desktop views
-      await page.getByTestId('driver-card-hamilton').filter({ visible: true }).first().waitFor({ state: 'visible', timeout: 10000 });
+      await lewisCard.waitFor({ state: 'visible', timeout: 15000 });
     }
     
-    // Ensure we are definitely on /predict after any potential guest login redirect
+    // Ensure we are definitely on /predict
     if (!page.url().includes('/predict')) {
       await page.goto('/predict');
+      await lewisCard.waitFor({ state: 'visible', timeout: 15000 });
     }
 
     // 3. Select P10 Driver
-    // Use data-testid for absolute reliability
-    const lewis = page.getByTestId('driver-card-hamilton').filter({ visible: true }).first();
-    await expect(lewis).toBeVisible({ timeout: 15000 });
-    await lewis.click();
+    await expect(lewisCard).toBeVisible({ timeout: 15000 });
+    await lewisCard.click();
 
     // 4. Switch to DNF tab
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i).filter({ visible: true }).first();
@@ -126,9 +121,6 @@ test.describe('Predict Flow (Guest User)', () => {
     const charles = page.getByTestId('driver-card-leclerc').filter({ visible: true }).first();
     await expect(charles).toBeVisible({ timeout: 15000 });
     await charles.click();
-    
-    // Give handleDnfSelect 300ms timeout time to trigger performSubmit
-    await page.waitForTimeout(1000);
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
     const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i)).first();
