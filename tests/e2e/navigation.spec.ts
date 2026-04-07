@@ -133,8 +133,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await expect(page).toHaveURL(/\/$/, { timeout: 15000 });
     
     // Click Predict from the UI (specifically bottom nav to avoid ambiguity)
-    // or navigate directly if overlay is suspected
-    await page.goto('/predict');
+    await page.locator('.mobile-bottom-nav').getByRole('link', { name: /Predict/i }).click();
     
     // Check for "Grand Prix" which is part of the race heading (e.g. "Japanese Grand Prix")
     // or the login wall if session dropped. 
