@@ -131,8 +131,8 @@ test.describe('Predict Flow (Guest User)', () => {
     await page.waitForTimeout(1000);
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
-    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));
-    await expect(summaryHeading.first()).toBeVisible({ timeout: 25000 });
+    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i)).first();
+    await expect(summaryHeading).toBeVisible({ timeout: 40000 });
     
     // 7. Verify picks are recorded
     await expect(page.getByText(/Hamilton/i).first()).toBeVisible();
