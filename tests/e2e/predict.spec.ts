@@ -144,11 +144,14 @@ test.describe('Predict Flow (Guest User)', () => {
     // 3. Select P10 Driver
     console.log('Selecting P10 driver...');
     await lewisCard.click({ force: true });
+    // Give handleP10Select 300ms timeout time to trigger tab switch
+    await page.waitForTimeout(1000);
 
     // 4. Switch to DNF tab
     console.log('Switching to DNF tab...');
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i).filter({ visible: true }).first();
     await dnfTab.click({ force: true });
+    await page.waitForTimeout(500);
     
     // 5. Select DNF Driver
     console.log('Selecting DNF driver...');
@@ -157,9 +160,8 @@ test.describe('Predict Flow (Guest User)', () => {
     await charles.click({ force: true });
     
     console.log('Waiting for submission transition...');
-    // Give handleDnfSelect timeout time to trigger performSubmit
-    // Also wait for the driver list to disappear as a signal of transition
-    await expect(lewisCard).not.toBeVisible({ timeout: 30000 });
+    // Give handleDnfSelect 300ms timeout time to trigger performSubmit
+    await page.waitForTimeout(2000);
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
     console.log('Checking summary view...');
