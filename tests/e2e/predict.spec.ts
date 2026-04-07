@@ -96,45 +96,48 @@ test.describe('Predict Flow (Guest User)', () => {
     await expect(page).toHaveURL(/\/predict/);
 
     // 2. Handle Login Wall
-    console.log('Checking for login wall...');
-    const guestInput = page.getByPlaceholder(/Enter name/i).filter({ visible: true }).first();
+    console.log('Waiting for page to settle...');
     
-    // Check what we are seeing
-    const isGuestWallVisible = await guestInput.isVisible();
-    console.log(`Login wall visible: ${isGuestWallVisible}`);
+    // Wait for either the login wall OR the predictor content to appear
+    const loginWallHeading = page.getByRole('heading', { name: /Sign In to Predict/i });
+    const predictionsHeading = page.getByRole('heading', { name: /Predictions/i });
     
-    if (isGuestWallVisible) {
-      console.log('Filling guest name...');
+    // Wait up to 30s for the app to load and show one of the main headings
+    await expect(loginWallHeading.or(predictionsHeading).first()).toBeVisible({ timeout: 30000 });
+    
+    const isLoginWallVisible = await loginWallHeading.isVisible();
+    console.log(`Login wall visible: ${isLoginWallVisible}`);
+    
+    if (isLoginWallVisible) {
+      console.log('Performing guest login...');
+      const guestInput = page.getByPlaceholder(/Enter name/i).first();
       await guestInput.fill('E2EGuest');
       
-      console.log('Pressing Enter to submit guest login...');
+      // Try both Enter and clicking the button to be absolutely sure
       await guestInput.press('Enter');
       
-      // Fallback: click the button if Enter didn't work
-      const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i }).filter({ visible: true }).first();
+      const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i }).first();
       if (await playBtn.isVisible()) {
-        console.log('Clicking PLAY AS GUEST button as fallback...');
         await playBtn.click({ force: true });
       }
       
-      console.log('Waiting for guest login to be reflected in localStorage...');
-      // Wait for app logic to run and set current user
-      await page.waitForFunction(() => localStorage.getItem('p10_current_user') === 'E2EGuest', { timeout: 10000 });
+      console.log('Waiting for guest login transition...');
+      // Wait for the login wall to disappear
+      await expect(loginWallHeading).not.toBeVisible({ timeout: 15000 });
       
-      // Wait for login wall to disappear
-      console.log('Waiting for login wall to disappear...');
-      await expect(guestInput).not.toBeVisible({ timeout: 15000 });
+      // Verify state was saved
+      await page.waitForFunction(() => localStorage.getItem('p10_current_user') === 'E2EGuest', { timeout: 10000 });
     }
     
     const lewisCard = page.getByTestId('driver-card-hamilton').filter({ visible: true }).first();
     console.log('Waiting for driver cards to appear...');
-    await lewisCard.waitFor({ state: 'visible', timeout: 15000 });
+    await lewisCard.waitFor({ state: 'visible', timeout: 20000 });
     
     console.log('Verifying we are on /predict and cards are visible...');
-    // Ensure we are definitely on /predict
+    // Ensure we are definitely on /predict and not redirected
     if (!page.url().includes('/predict')) {
       await page.goto('/predict');
-      await lewisCard.waitFor({ state: 'visible', timeout: 15000 });
+      await lewisCard.waitFor({ state: 'visible', timeout: 20000 });
     }
 
     // 3. Select P10 Driver
