@@ -167,7 +167,7 @@ test.describe('Mobile Navigation and Core Flow', () => {
       await firstDriverP10.click();
       
       // Select the first available driver for DNF
-      const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
+      const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i).filter({ visible: true }).first();
       await dnfTab.click();
       
       const firstDriverDNF = page.locator('.driver-list-scroll').filter({ visible: true }).locator('.cursor-pointer').first();

@@ -103,7 +103,8 @@ test.describe('Predict Flow (Guest User)', () => {
       // Wait for login wall to disappear
       await expect(guestInput).not.toBeVisible({ timeout: 15000 });
       // The driver cards should appear after guest login
-      await page.getByTestId('driver-card-hamilton').waitFor({ state: 'visible', timeout: 10000 });
+      // We filter by visible: true because SwipeablePageLayout renders both mobile and desktop views
+      await page.getByTestId('driver-card-hamilton').filter({ visible: true }).first().waitFor({ state: 'visible', timeout: 10000 });
     }
     
     // Ensure we are definitely on /predict after any potential guest login redirect
@@ -118,7 +119,7 @@ test.describe('Predict Flow (Guest User)', () => {
     await lewis.click();
 
     // 4. Switch to DNF tab
-    const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
+    const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i).filter({ visible: true }).first();
     await dnfTab.click();
     
     // 5. Select DNF Driver
