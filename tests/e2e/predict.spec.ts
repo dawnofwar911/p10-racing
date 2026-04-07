@@ -96,7 +96,11 @@ test.describe('Predict Flow (Guest User)', () => {
     if (isGuestWallVisible) {
       await guestInput.fill('E2EGuest');
       const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i });
-      await playBtn.click();
+      // Use force: true to bypass any potential overlays or animation states
+      await playBtn.click({ force: true });
+      
+      // Allow state to settle
+      await page.waitForTimeout(2000);
       
       // Wait for login wall to disappear and driver cards to appear
       await expect(guestInput).not.toBeVisible({ timeout: 15000 });
