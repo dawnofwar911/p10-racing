@@ -5,6 +5,10 @@
 
 # testing
 /coverage
+playwright-report/
+test-results/
+err.txt
+test-fails.json
 
 # next.js
 /.next/

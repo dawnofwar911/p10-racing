@@ -73,44 +73,88 @@ test.describe('Predict Flow (Guest User)', () => {
       }
     });
 
+    // 3. Mock Supabase Auth
+    await page.route('**/*.supabase.co/auth/v1/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ session: null, user: null })
+      });
+    });
+
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
   });
 
-  test.skip('should complete a prediction flow as a guest', async ({ page }) => {
-    // 1. Navigate to Predict
-    const bottomNav = page.locator('.mobile-bottom-nav');
-    await bottomNav.getByRole('link', { name: /Predict/i }).click();
+  test('should complete a prediction flow as a guest', async ({ page }) => {
+    // Give more time for the initial load and build if needed
+    test.slow();
+
+    // 1. Navigate to Predict directly
+    await page.goto('/predict');
     await expect(page).toHaveURL(/\/predict/);
 
     // 2. Handle Login Wall
-    const guestInput = page.getByPlaceholder(/Enter name/i);
-    if (await guestInput.isVisible()) {
+    console.log('Waiting for page to settle...');
+    
+    // Wait for either the login wall OR the predictor content to appear
+    // The login wall has text 'OR PLAY AS GUEST'
+    const loginWallText = page.getByText(/OR PLAY AS GUEST/i);
+    const predictionsHeading = page.getByRole('heading', { name: /Predictions/i });
+    
+    // Wait up to 30s for the app to load and show one of the main components
+    await expect(loginWallText.or(predictionsHeading).first()).toBeVisible({ timeout: 30000 });
+    
+    const isLoginWallVisible = await loginWallText.isVisible();
+    console.log(`Login wall visible: ${isLoginWallVisible}`);
+    
+    if (isLoginWallVisible) {
+      console.log('Performing guest login...');
+      const guestInput = page.getByPlaceholder(/Enter name/i).first();
       await guestInput.fill('E2EGuest');
-      await page.getByRole('button', { name: /PLAY AS GUEST/i }).click();
-      await expect(guestInput).not.toBeVisible({ timeout: 10000 });
+      
+      // Try both Enter and clicking the button to be absolutely sure
+      await guestInput.press('Enter');
+      
+      const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i }).first();
+      if (await playBtn.isVisible()) {
+        await playBtn.click();
+      }
+      
+      console.log('Waiting for guest login transition...');
+      // Wait for the login wall to disappear
+      await expect(loginWallText).not.toBeVisible({ timeout: 15000 });
+      
+      // Verify state was saved
+      await page.waitForFunction(() => localStorage.getItem('p10_current_user') === 'E2EGuest', { timeout: 10000 });
     }
+    
+    const lewisCard = page.getByTestId('driver-card-p10-hamilton').filter({ visible: true }).first();
+    console.log('Waiting for driver cards to appear...');
+    await lewisCard.waitFor({ state: 'visible', timeout: 20000 });
+    
+    console.log('Verifying we are on /predict and cards are visible...');
+    // Ensure we are on /predict
+    await expect(page).toHaveURL(/\/predict$/);
 
     // 3. Select P10 Driver
-    // Use :visible pseudo-class to ensure we only target the currently animating/visible list
-    // and exclude any hidden desktop views or exiting animations.
-    const lewis = page.locator('.driver-list-scroll').getByText('Lewis Hamilton').filter({ visible: true }).first();
-    await expect(lewis).toBeVisible({ timeout: 15000 });
-    await lewis.click();
+    console.log('Selecting P10 driver...');
+    await lewisCard.click();
 
-    // 4. Switch to DNF tab
-    const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
-    await dnfTab.click();
     
     // 5. Select DNF Driver
-    const charles = page.locator('.driver-list-scroll').getByText('Charles Leclerc').filter({ visible: true }).first();
-    await expect(charles).toBeVisible({ timeout: 10000 });
+    console.log('Selecting DNF driver...');
+    const charles = page.getByTestId('driver-card-dnf-leclerc').filter({ visible: true }).first();
+    await expect(charles).toBeVisible({ timeout: 15000 });
     await charles.click();
+    
+    console.log('Waiting for submission transition...');
 
-    // 6. Verify Summary View
-    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));
-    await expect(summaryHeading.first()).toBeVisible({ timeout: 20000 });
+    // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
+    console.log('Checking summary view...');
+    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i)).filter({ visible: true }).first();
+    await expect(summaryHeading).toBeVisible({ timeout: 20000 });
     
     // 7. Verify picks are recorded
     await expect(page.getByText(/Hamilton/i).first()).toBeVisible();

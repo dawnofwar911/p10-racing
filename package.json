@@ -1,6 +1,6 @@
 {
   "name": "p10-racing",
-  "version": "1.45.0",
+  "version": "1.46.0",
   "private": false,
   "license": "UNLICENSED",
   "scripts": {
@@ -61,6 +61,7 @@
     "msw": "^2.12.10",
     "pg-mem": "^3.0.14",
     "serve": "^14.2.4",
+    "supabase": "^2.85.0",
     "typescript": "^5",
     "vitest": "^4.1.0"
   }

@@ -45,7 +45,12 @@ const SelectionList: React.FC<SelectionListProps> = ({
         {sortedByTeam.map((driver) => {
           const form = driverForm[driver.id] || [];
           return (
-            <div key={`${type}-${driver.id}`} className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${currentPick === driver.id ? 'border-danger bg-danger bg-opacity-20 shadow-sm' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} onClick={() => onSelect(driver.id)}>
+            <div 
+              key={`${type}-${driver.id}`} 
+              data-testid={`driver-card-${type}-${driver.id}`}
+              className={`d-flex align-items-center p-2 mb-2 rounded-pill border transition-all cursor-pointer ${currentPick === driver.id ? 'border-danger bg-danger bg-opacity-20 shadow-sm' : 'border-secondary border-opacity-25 bg-dark bg-opacity-50'}`} 
+              onClick={() => onSelect(driver.id)}
+            >
               <div className="driver-number ms-3 me-3 text-white fw-bold d-flex align-items-center" style={{ width: '35px' }}>
                 <span style={{ fontSize: '1.1rem', opacity: 0.8 }}>{driver.number}</span>
               </div>
