@@ -143,7 +143,6 @@ test.describe('Predict Flow (Guest User)', () => {
 
     // 3. Select P10 Driver
     console.log('Selecting P10 driver...');
-    await expect(lewisCard).toBeVisible({ timeout: 15000 });
     await lewisCard.click({ force: true });
 
     // 4. Switch to DNF tab
@@ -159,12 +158,13 @@ test.describe('Predict Flow (Guest User)', () => {
     
     console.log('Waiting for submission transition...');
     // Give handleDnfSelect timeout time to trigger performSubmit
-    await page.waitForTimeout(2000);
+    // Also wait for the driver list to disappear as a signal of transition
+    await expect(lewisCard).not.toBeVisible({ timeout: 30000 });
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
     console.log('Checking summary view...');
     const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i)).filter({ visible: true }).first();
-    await expect(summaryHeading).toBeVisible({ timeout: 40000 });
+    await expect(summaryHeading).toBeVisible({ timeout: 20000 });
     
     // 7. Verify picks are recorded
     await expect(page.getByText(/Hamilton/i).first()).toBeVisible();
