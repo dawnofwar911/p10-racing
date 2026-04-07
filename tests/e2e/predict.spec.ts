@@ -99,13 +99,14 @@ test.describe('Predict Flow (Guest User)', () => {
     console.log('Waiting for page to settle...');
     
     // Wait for either the login wall OR the predictor content to appear
-    const loginWallHeading = page.getByRole('heading', { name: /Sign In to Predict/i });
+    // The login wall has text 'OR PLAY AS GUEST'
+    const loginWallText = page.getByText(/OR PLAY AS GUEST/i);
     const predictionsHeading = page.getByRole('heading', { name: /Predictions/i });
     
-    // Wait up to 30s for the app to load and show one of the main headings
-    await expect(loginWallHeading.or(predictionsHeading).first()).toBeVisible({ timeout: 30000 });
+    // Wait up to 30s for the app to load and show one of the main components
+    await expect(loginWallText.or(predictionsHeading).first()).toBeVisible({ timeout: 30000 });
     
-    const isLoginWallVisible = await loginWallHeading.isVisible();
+    const isLoginWallVisible = await loginWallText.isVisible();
     console.log(`Login wall visible: ${isLoginWallVisible}`);
     
     if (isLoginWallVisible) {
@@ -123,7 +124,7 @@ test.describe('Predict Flow (Guest User)', () => {
       
       console.log('Waiting for guest login transition...');
       // Wait for the login wall to disappear
-      await expect(loginWallHeading).not.toBeVisible({ timeout: 15000 });
+      await expect(loginWallText).not.toBeVisible({ timeout: 15000 });
       
       // Verify state was saved
       await page.waitForFunction(() => localStorage.getItem('p10_current_user') === 'E2EGuest', { timeout: 10000 });
