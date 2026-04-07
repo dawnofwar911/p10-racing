@@ -130,7 +130,7 @@ test.describe('Predict Flow (Guest User)', () => {
       await page.waitForFunction(() => localStorage.getItem('p10_current_user') === 'E2EGuest', { timeout: 10000 });
     }
     
-    const lewisCard = page.getByTestId('driver-card-hamilton').filter({ visible: true }).first();
+    const lewisCard = page.getByTestId('driver-card-p10-hamilton').filter({ visible: true }).first();
     console.log('Waiting for driver cards to appear...');
     await lewisCard.waitFor({ state: 'visible', timeout: 20000 });
     
@@ -149,7 +149,7 @@ test.describe('Predict Flow (Guest User)', () => {
     
     // 5. Select DNF Driver
     console.log('Selecting DNF driver...');
-    const charles = page.getByTestId('driver-card-leclerc').filter({ visible: true }).first();
+    const charles = page.getByTestId('driver-card-dnf-leclerc').filter({ visible: true }).first();
     await expect(charles).toBeVisible({ timeout: 15000 });
     await charles.click();
     
