@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load local environment variables for tests (used specifically for the build step)
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 
 /**
  * Playwright configuration for P10 Racing.
@@ -15,6 +20,16 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Disable all animations/transitions to improve stability and speed
+    styles: [
+      `*, *::before, *::after {
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+      }`
+    ],
   },
 
   projects: [

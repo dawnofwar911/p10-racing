@@ -88,7 +88,7 @@ npx cap open android
 - **External API**: [Jolpica (Ergast) F1 API](https://jolpica.github.io/jolpica-f1/ergast/f1) for real-time race data.
 
 ### Automated Results Ingestion
-The app uses **Supabase Edge Functions** (located in `lib/supabase/`) to automate the season:
+The app uses **Supabase Edge Functions** (located in `supabase/functions/`) to automate the season:
 1. **Checker Function**: A scheduled Deno function (`check-f1-results`) periodically polls the Jolpica API, syncs the race calendar to the database, and sends prediction reminders.
 2. **Auto-Publication**: Once official race results are available, the function extracts the finishing positions and the first DNF, then `upserts` this data into the `verified_results` table.
 3. **Manual Override**: The Admin page allows manual adjustments to `verified_results` if the API is delayed or incorrect.

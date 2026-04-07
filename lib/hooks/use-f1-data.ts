@@ -39,9 +39,16 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
 
       const [driversResult, calendarResult, formResult] = results;
 
-      if (driversResult.status === 'fulfilled' && driversResult.value.length > 0) {
-        setDrivers(driversResult.value);
-        localStorage.setItem(`${STORAGE_KEYS.CACHE_DRIVERS}_${season}`, JSON.stringify(driversResult.value));
+      if (driversResult.status === 'fulfilled') {
+        const incomingDrivers = driversResult.value;
+        const effectiveDrivers = (incomingDrivers.length === 0 && season === LEGACY_FALLBACK_SEASON) 
+          ? FALLBACK_DRIVERS 
+          : incomingDrivers;
+
+        if (effectiveDrivers.length > 0) {
+          setDrivers(effectiveDrivers);
+          localStorage.setItem(`${STORAGE_KEYS.CACHE_DRIVERS}_${season}`, JSON.stringify(effectiveDrivers));
+        }
       }
 
       if (calendarResult.status === 'fulfilled' && calendarResult.value.length > 0) {
@@ -66,7 +73,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       
       // Fallback to static data ONLY if we have absolutely nothing else and it's the legacy fallback season
       // This ensures stale data doesn't leak into future years if the API is down.
-      setDrivers(prev => (prev.length === 0 && season === LEGACY_FALLBACK_SEASON) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
+      setDrivers(prev => (prev.length === 0 && season === LEGACY_FALLBACK_SEASON) ? FALLBACK_DRIVERS : prev);
     } finally {
       setLoading(false);
     }
