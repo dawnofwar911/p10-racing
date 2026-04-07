@@ -108,5 +108,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     fetchData(hasValidCache);
   }, [fetchData, season]);
 
-  return { drivers, calendar, driverForm, loading, error, refresh: () => fetchData(false) };
+  const refresh = useCallback(() => fetchData(false), [fetchData]);
+
+  return { drivers, calendar, driverForm, loading, error, refresh };
 }

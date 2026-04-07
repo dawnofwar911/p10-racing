@@ -1,0 +1,110 @@
+.howToPlayBox {
+  font-size: 0.65rem;
+}
+
+.tableHeader {
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+}
+
+.tableCellCenter {
+  vertical-align: middle;
+}
+
+.pointsText {
+  font-size: 0.65rem;
+}
+
+.howToPlaySubtitle {
+  font-size: 0.65rem;
+}
+
+.glassCard {
+  max-width: 900px;
+}
+
+.resultsPendingBadge {
+  font-size: 0.75rem;
+}
+
+.shareButton {
+  max-width: 300px;
+}
+
+.emptyText {
+  font-size: 0.7rem;
+}
+
+.gridItem {
+  background-color: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.1);
+  z-index: 1;
+}
+
+.gridItemP10 {
+  background-color: #1a1a1a;
+  border: 1.5px solid var(--team-accent, #e10600);
+  z-index: 10;
+}
+
+.gridItemRight {
+  transform: translateY(8px);
+}
+
+.gridTeamLine {
+  height: 3px;
+  background-color: var(--team-accent, #B6BABD);
+}
+
+.gridContent {
+  min-height: 38px;
+}
+
+.gridPos {
+  font-size: 0.75rem;
+  width: 18px;
+}
+
+.gridDriverCode {
+  font-size: 0.7rem;
+}
+
+.gridTeamName {
+  font-size: 0.55rem;
+  opacity: 0.7;
+}
+
+.summaryPill {
+  min-width: 240px;
+  width: fit-content;
+}
+
+.pillLabel {
+  font-size: 0.55rem;
+  width: 30px;
+  display: inline-block;
+  text-align: left;
+}
+
+.modalContent {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.sectionTitle {
+  font-size: 0.65rem;
+}
+
+.communityDriverLine {
+  height: 12px;
+  background-color: var(--team-color, #B6BABD);
+}
+
+.resultsPendingContainer {
+  background-color: rgba(25, 135, 84, 0.1); /* bg-success bg-opacity-10 */
+  border: 1px solid rgba(25, 135, 84, 0.25);
+}
+
+.badgePillSmall {
+  font-size: 0.65rem;
+}
