@@ -146,27 +146,33 @@ test.describe('Mobile Navigation and Core Flow', () => {
     
     // If the user already has predictions and predictions are open, test the Change Picks flow
     const changePicksBtn = page.getByRole('button', { name: /Change Picks/i });
-    if (await changePicksBtn.isVisible({ timeout: 2000 })) {
+    let isChangePicksVisible = false;
+    try {
+      await changePicksBtn.waitFor({ state: 'visible', timeout: 5000 });
+      isChangePicksVisible = true;
+    } catch (e) {
+      // Button not visible, likely no previous picks
+    }
+
+    if (isChangePicksVisible) {
       await changePicksBtn.click();
       
       // Wait for the driver list to appear
-      await expect(page.locator('.driver-list-scroll').filter({ visible: true }).first()).toBeVisible({ timeout: 15000 });
+      const driverList = page.locator('.driver-list-scroll').filter({ visible: true }).first();
+      await expect(driverList).toBeVisible({ timeout: 15000 });
       
       // Select the first available driver for P10
-      const firstDriverP10 = page.locator('.driver-list-scroll').filter({ visible: true }).locator('.cursor-pointer').first();
+      const firstDriverP10 = driverList.locator('.cursor-pointer').first();
       await expect(firstDriverP10).toBeVisible({ timeout: 15000 });
-      await firstDriverP10.click({ force: true });
-      await page.waitForTimeout(500);
+      await firstDriverP10.click();
       
       // Select the first available driver for DNF
       const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
-      await dnfTab.click({ force: true });
-      await page.waitForTimeout(500);
+      await dnfTab.click();
       
       const firstDriverDNF = page.locator('.driver-list-scroll').filter({ visible: true }).locator('.cursor-pointer').first();
       await expect(firstDriverDNF).toBeVisible({ timeout: 15000 });
-      await firstDriverDNF.click({ force: true });
-      await page.waitForTimeout(500);
+      await firstDriverDNF.click();
       
       // Verify it goes back to the Summary Current Picks screen
       const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));

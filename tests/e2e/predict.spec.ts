@@ -98,11 +98,12 @@ test.describe('Predict Flow (Guest User)', () => {
     if (await guestInput.isVisible()) {
       await guestInput.fill('E2EGuest');
       const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i });
-      await playBtn.click({ force: true });
+      await playBtn.click();
       
       // Wait for login wall to disappear
       await expect(guestInput).not.toBeVisible({ timeout: 15000 });
-      await page.waitForTimeout(1000); 
+      // The driver cards should appear after guest login
+      await page.getByTestId('driver-card-hamilton').waitFor({ state: 'visible', timeout: 10000 });
     }
     
     // Ensure we are definitely on /predict after any potential guest login redirect
@@ -114,19 +115,16 @@ test.describe('Predict Flow (Guest User)', () => {
     // Use data-testid for absolute reliability
     const lewis = page.getByTestId('driver-card-hamilton').filter({ visible: true }).first();
     await expect(lewis).toBeVisible({ timeout: 15000 });
-    await lewis.click({ force: true });
-    await page.waitForTimeout(500);
+    await lewis.click();
 
     // 4. Switch to DNF tab
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i);
     await dnfTab.click();
-    await page.waitForTimeout(500);
     
     // 5. Select DNF Driver
     const charles = page.getByTestId('driver-card-leclerc').filter({ visible: true }).first();
     await expect(charles).toBeVisible({ timeout: 15000 });
-    await charles.click({ force: true });
-    await page.waitForTimeout(1000);
+    await charles.click();
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
     const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i));

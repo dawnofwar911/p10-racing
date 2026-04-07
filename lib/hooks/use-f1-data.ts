@@ -42,7 +42,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       if (driversResult.status === 'fulfilled') {
         const incomingDrivers = driversResult.value;
         const effectiveDrivers = (incomingDrivers.length === 0 && season === LEGACY_FALLBACK_SEASON) 
-          ? (FALLBACK_DRIVERS as unknown as Driver[]) 
+          ? FALLBACK_DRIVERS 
           : incomingDrivers;
 
         if (effectiveDrivers.length > 0) {
@@ -73,7 +73,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
       
       // Fallback to static data ONLY if we have absolutely nothing else and it's the legacy fallback season
       // This ensures stale data doesn't leak into future years if the API is down.
-      setDrivers(prev => (prev.length === 0 && season === LEGACY_FALLBACK_SEASON) ? (FALLBACK_DRIVERS as unknown as Driver[]) : prev);
+      setDrivers(prev => (prev.length === 0 && season === LEGACY_FALLBACK_SEASON) ? FALLBACK_DRIVERS : prev);
     } finally {
       setLoading(false);
     }
