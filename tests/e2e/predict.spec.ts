@@ -73,6 +73,15 @@ test.describe('Predict Flow (Guest User)', () => {
       }
     });
 
+    // 3. Mock Supabase Auth
+    await page.route('**/*.supabase.co/auth/v1/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ session: null, user: null })
+      });
+    });
+
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
@@ -87,26 +96,41 @@ test.describe('Predict Flow (Guest User)', () => {
     await expect(page).toHaveURL(/\/predict/);
 
     // 2. Handle Login Wall
-    const guestInput = page.getByPlaceholder(/Enter name/i);
-    const lewisCard = page.getByTestId('driver-card-hamilton').filter({ visible: true }).first();
-
+    console.log('Checking for login wall...');
+    const guestInput = page.getByPlaceholder(/Enter name/i).filter({ visible: true }).first();
+    
     // Check what we are seeing
     const isGuestWallVisible = await guestInput.isVisible();
+    console.log(`Login wall visible: ${isGuestWallVisible}`);
     
     if (isGuestWallVisible) {
+      console.log('Filling guest name...');
       await guestInput.fill('E2EGuest');
-      const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i });
-      // Use force: true to bypass any potential overlays or animation states
-      await playBtn.click({ force: true });
       
-      // Allow state to settle
-      await page.waitForTimeout(2000);
+      console.log('Pressing Enter to submit guest login...');
+      await guestInput.press('Enter');
       
-      // Wait for login wall to disappear and driver cards to appear
+      // Fallback: click the button if Enter didn't work
+      const playBtn = page.getByRole('button', { name: /PLAY AS GUEST/i }).filter({ visible: true }).first();
+      if (await playBtn.isVisible()) {
+        console.log('Clicking PLAY AS GUEST button as fallback...');
+        await playBtn.click({ force: true });
+      }
+      
+      console.log('Waiting for guest login to be reflected in localStorage...');
+      // Wait for app logic to run and set current user
+      await page.waitForFunction(() => localStorage.getItem('p10_current_user') === 'E2EGuest', { timeout: 10000 });
+      
+      // Wait for login wall to disappear
+      console.log('Waiting for login wall to disappear...');
       await expect(guestInput).not.toBeVisible({ timeout: 15000 });
-      await lewisCard.waitFor({ state: 'visible', timeout: 15000 });
     }
     
+    const lewisCard = page.getByTestId('driver-card-hamilton').filter({ visible: true }).first();
+    console.log('Waiting for driver cards to appear...');
+    await lewisCard.waitFor({ state: 'visible', timeout: 15000 });
+    
+    console.log('Verifying we are on /predict and cards are visible...');
     // Ensure we are definitely on /predict
     if (!page.url().includes('/predict')) {
       await page.goto('/predict');
@@ -114,20 +138,28 @@ test.describe('Predict Flow (Guest User)', () => {
     }
 
     // 3. Select P10 Driver
+    console.log('Selecting P10 driver...');
     await expect(lewisCard).toBeVisible({ timeout: 15000 });
-    await lewisCard.click();
+    await lewisCard.click({ force: true });
 
     // 4. Switch to DNF tab
+    console.log('Switching to DNF tab...');
     const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i).filter({ visible: true }).first();
-    await dnfTab.click();
+    await dnfTab.click({ force: true });
     
     // 5. Select DNF Driver
+    console.log('Selecting DNF driver...');
     const charles = page.getByTestId('driver-card-leclerc').filter({ visible: true }).first();
     await expect(charles).toBeVisible({ timeout: 15000 });
-    await charles.click();
+    await charles.click({ force: true });
+    
+    console.log('Waiting for submission transition...');
+    // Give handleDnfSelect timeout time to trigger performSubmit
+    await page.waitForTimeout(2000);
 
     // 6. Verify Summary View - Wait for the "Locked and Loaded!" state
-    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i)).first();
+    console.log('Checking summary view...');
+    const summaryHeading = page.getByText(/Locked and Loaded!/i).or(page.getByText(/Current Picks/i)).filter({ visible: true }).first();
     await expect(summaryHeading).toBeVisible({ timeout: 40000 });
     
     // 7. Verify picks are recorded
