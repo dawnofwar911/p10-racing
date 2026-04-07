@@ -136,16 +136,12 @@ test.describe('Predict Flow (Guest User)', () => {
     
     console.log('Verifying we are on /predict and cards are visible...');
     // Ensure we are on /predict
-    await expect(page).toHaveURL(/\/predict/);
+    await expect(page).toHaveURL(/\/predict$/);
 
     // 3. Select P10 Driver
     console.log('Selecting P10 driver...');
     await lewisCard.click();
 
-    // 4. Switch to DNF tab
-    console.log('Switching to DNF tab...');
-    const dnfTab = page.locator('.f1-tab-container').getByText(/Pick DNF/i).filter({ visible: true }).first();
-    await dnfTab.click();
     
     // 5. Select DNF Driver
     console.log('Selecting DNF driver...');
