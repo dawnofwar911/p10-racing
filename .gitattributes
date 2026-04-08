@@ -1,0 +1,3 @@
+# Force LF line endings for Husky scripts to ensure cross-platform compatibility (Windows/Termux)
+.husky/* text eol=lf
+package-lock.json binary
