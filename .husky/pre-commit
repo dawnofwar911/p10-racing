@@ -1,16 +1,19 @@
+#!/bin/sh
 # 1. Quality Gates (Lint, Type Check, Test)
 echo "🔍 Running Linting..."
-npm run lint
+npm run lint || exit 1
 
 echo "⌨️ Running Type Checks..."
-npm run type-check
+npm run type-check || exit 1
 
 echo "🧪 Running Tests..."
-npm test
+npm test || exit 1
 
 # 2. Sync package-lock.json if package.json is staged
-if git diff --cached --name-only | grep -q "^package.json$"; then
+if git diff --cached --quiet package.json; then
+  : # No changes detected in package.json
+else
   echo "📦 package.json change detected. Synchronizing package-lock.json..."
-  npm install --package-lock-only
-  git add package-lock.json
+  npm install --package-lock-only || exit 1
+  git add package-lock.json || exit 1
 fi
