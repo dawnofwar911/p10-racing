@@ -25,6 +25,7 @@ export const STORAGE_KEYS = {
   USE_TEAM_THEME: 'p10_use_team_theme',
   HAS_SESSION: 'p10_has_session',
   CACHE_PWA_HINT_DISMISSED: 'p10_pwa_hint_dismissed',
+  CACHE_MIGRATION_PROMPT_DISMISSED: 'p10_migration_prompt_dismissed',
   PRED_PREFIX: 'final_pred_',
   GRID_PREFIX: 'p10_cache_grid_',
   COMMUNITY_PREFIX: 'p10_cache_community_',

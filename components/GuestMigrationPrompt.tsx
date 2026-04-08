@@ -6,6 +6,7 @@ import { useAuth } from './AuthProvider';
 import { useGuestMigration } from '@/lib/hooks/use-guest-migration';
 import HapticButton from './HapticButton';
 import { RefreshCw, UserCheck } from 'lucide-react';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export default function GuestMigrationPrompt() {
   const { session } = useAuth();
@@ -15,7 +16,7 @@ export default function GuestMigrationPrompt() {
 
   useEffect(() => {
     // Show modal if logged in, has local guests, not yet dismissed in this session
-    const isSessionDismissed = sessionStorage.getItem('p10_migration_prompt_dismissed') === 'true';
+    const isSessionDismissed = sessionStorage.getItem(STORAGE_KEYS.CACHE_MIGRATION_PROMPT_DISMISSED) === 'true';
     if (session && localGuests.length > 0 && !isSessionDismissed && !internalDismissed) {
       setShow(true);
     }
@@ -24,7 +25,7 @@ export default function GuestMigrationPrompt() {
   const handleClose = () => {
     setShow(false);
     setInternalDismissed(true);
-    sessionStorage.setItem('p10_migration_prompt_dismissed', 'true');
+    sessionStorage.setItem(STORAGE_KEYS.CACHE_MIGRATION_PROMPT_DISMISSED, 'true');
   };
 
   if (!show && !isImporting) return null;

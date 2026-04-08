@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Clear migration prompt flag so it re-evaluates on next login
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('p10_migration_prompt_dismissed');
+        sessionStorage.removeItem(STORAGE_KEYS.CACHE_MIGRATION_PROMPT_DISMISSED);
       }
 
       if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {

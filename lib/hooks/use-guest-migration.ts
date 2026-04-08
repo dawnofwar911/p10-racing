@@ -21,9 +21,16 @@ export function useGuestMigration() {
       let guests: string[] = [];
       const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
       if (stored) {
-        guests = JSON.parse(stored);
+        try {
+          guests = JSON.parse(stored);
+        } catch (e) {
+          console.warn('useGuestMigration: Failed to parse players list from storage', e);
+        }
       }
-      if (!Array.isArray(guests)) guests = [];
+      
+      const validatedGuests = (Array.isArray(guests) ? guests : []).filter((g: unknown) => 
+        typeof g === 'string' && g.trim().length > 0
+      ) as string[];
 
       // Dynamically scan localStorage for orphaned guest predictions
       const prefix = `${STORAGE_KEYS.PRED_PREFIX}${CURRENT_SEASON}_`;
@@ -39,18 +46,18 @@ export function useGuestMigration() {
             const username = parts.join('_');
             
             // Exclude valid UUIDs (which signify authenticated users)
-            if (username && !isUUID(username) && !guests.includes(username)) {
-              guests.push(username);
+            if (username && !isUUID(username) && !validatedGuests.includes(username)) {
+              validatedGuests.push(username);
             }
           }
         }
       }
 
       if (mountedRef.current) {
-        setLocalGuests(guests.filter(g => typeof g === 'string' && g.trim().length > 0));
+        setLocalGuests(validatedGuests.filter(g => typeof g === 'string' && g.trim().length > 0));
       }
     } catch (e) {
-      console.warn('useGuestMigration: Failed to parse players list', e);
+      console.warn('useGuestMigration: Fatal error during load', e);
       if (mountedRef.current) setLocalGuests([]);
     }
   }, []);
@@ -133,11 +140,8 @@ export function useGuestMigration() {
         triggerRefresh();
       }
 
-      // Update players list
-      const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
-      const currentPlayers = stored ? JSON.parse(stored) : [];
-      const updatedPlayers = (Array.isArray(currentPlayers) ? currentPlayers : []).filter(p => p !== guestName);
-      
+      // Update players list and state (Cleanup)
+      const updatedPlayers = localGuests.filter(p => p !== guestName);
       localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
       if (mountedRef.current) setLocalGuests(updatedPlayers);
       
