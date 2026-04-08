@@ -9,6 +9,7 @@ import OfflineStatus from '@/components/OfflineStatus';
 import AppNavbar from '@/components/AppNavbar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import PushNotificationHandler from '@/components/PushNotificationHandler';
+import GuestMigrationPrompt from '@/components/GuestMigrationPrompt';
 import PWAInstallHint from '@/components/PWAInstallHint';
 import { NotificationProvider } from '@/components/Notification';
 import { AuthProvider } from '@/components/AuthProvider';
@@ -53,6 +54,7 @@ export default function RootLayout({
               <NativeWrapper>
                 <DynamicThemeProvider>
                   <PushNotificationHandler />
+                  <GuestMigrationPrompt />
                   <AppNavbar />
                   <OfflineStatus />
                   
