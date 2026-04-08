@@ -1,3 +1,4 @@
+import React from 'react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import { setupServer } from 'msw/node';
@@ -23,6 +24,16 @@ vi.mock('@capacitor/haptics', () => ({
     selectionChanged: vi.fn(),
     selectionEnd: vi.fn(),
   },
+  ImpactStyle: {
+    Heavy: 'HEAVY',
+    Medium: 'MEDIUM',
+    Light: 'LIGHT',
+  },
+  NotificationType: {
+    Success: 'SUCCESS',
+    Warning: 'WARNING',
+    Error: 'ERROR',
+  },
 }));
 
 vi.mock('@capacitor/status-bar', () => ({
@@ -41,8 +52,25 @@ vi.mock('@capacitor/splash-screen', () => ({
   },
 }));
 
+vi.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ children, href, onClick, ...props }: any) => {
+    return React.createElement('a', {
+      href,
+      onClick: (e: any) => {
+        if (onClick) onClick(e);
+      },
+      ...props
+    }, children);
+  },
+}));
+
 // --- Supabase / MSW Mocks ---
-export const server = setupServer();
+export const server = setupServer(
+  http.post('*/functions/v1/f1-live-proxy', () => {
+    return HttpResponse.json({ status: 'No Data' });
+  })
+);
 
 // Global console override to suppress noisy environment warnings
 const originalError = console.error;
