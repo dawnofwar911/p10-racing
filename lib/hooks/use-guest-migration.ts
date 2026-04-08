@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
 import { CURRENT_SEASON } from '@/lib/data';
 import { triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { useAuth } from '@/components/AuthProvider';
 
 export function useGuestMigration() {
   const supabase = createClient();
-  const { session } = useAuth();
+  const { session, triggerRefresh, displayName } = useAuth();
   const [localGuests, setLocalGuests] = useState<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,9 +18,33 @@ export function useGuestMigration() {
 
   const loadLocalGuests = useCallback(() => {
     try {
+      let guests: string[] = [];
       const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
-      const guests = stored ? JSON.parse(stored) : [];
-      if (mountedRef.current) setLocalGuests(Array.isArray(guests) ? guests : []);
+      if (stored) {
+        guests = JSON.parse(stored);
+      }
+      if (!Array.isArray(guests)) guests = [];
+
+      // Dynamically scan localStorage for orphaned guest predictions
+      const prefix = `${STORAGE_KEYS.PRED_PREFIX}${CURRENT_SEASON}_`;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+          const remainder = key.substring(prefix.length);
+          const parts = remainder.split('_');
+          if (parts.length >= 2) {
+            parts.pop(); // Remove raceId
+            const username = parts.join('_');
+            
+            // Exclude valid UUIDs (which signify authenticated users)
+            if (username && username.length !== 36 && !username.includes('-') && !guests.includes(username)) {
+              guests.push(username);
+            }
+          }
+        }
+      }
+
+      if (mountedRef.current) setLocalGuests(guests);
     } catch (e) {
       console.warn('useGuestMigration: Failed to parse players list', e);
       if (mountedRef.current) setLocalGuests([]);
@@ -47,6 +71,7 @@ export function useGuestMigration() {
     try {
       let count = 0;
       const importPromises = [];
+      const predictionsToSync: {round: number, p10: string, dnf: string}[] = [];
       
       // Check all 24 rounds for predictions
       for (let round = 1; round <= 24; round++) {
@@ -56,6 +81,7 @@ export function useGuestMigration() {
         if (predStr) {
           try {
             const pred = JSON.parse(predStr);
+            predictionsToSync.push({ round, p10: pred.p10, dnf: pred.dnf });
             importPromises.push(
               supabase.from('predictions').upsert({
                 user_id: session.user.id,
@@ -84,10 +110,23 @@ export function useGuestMigration() {
         throw new Error('Some predictions failed to import. Please try again.');
       }
 
+      // Sync to local cache for the AUTH user
+      predictionsToSync.forEach(pred => {
+        const authKey = getPredictionKey(CURRENT_SEASON, session.user.id, pred.round);
+        setStorageItem(authKey, JSON.stringify({
+          p10: pred.p10,
+          dnf: pred.dnf,
+          username: displayName,
+          raceId: String(pred.round),
+          season: CURRENT_SEASON
+        }));
+      });
+
       // Success! Cleanup local storage
       if (mountedRef.current) {
         setSuccess(`Successfully imported ${count} predictions from ${guestName}!`);
         triggerSuccessHaptic();
+        triggerRefresh();
       }
 
       // Update players list

@@ -125,7 +125,9 @@ const localStorageMock = (() => {
     removeItem: vi.fn((key: string) => {
       delete store[key];
     }),
-    length: 0,
+    get length() {
+      return Object.keys(store).length;
+    },
     key: vi.fn((index: number) => Object.keys(store)[index] || null),
   };
 })();

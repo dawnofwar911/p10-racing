@@ -7,7 +7,11 @@ import { CURRENT_SEASON } from '@/lib/data';
 
 // Mock dependencies
 vi.mock('@/components/AuthProvider', () => ({
-  useAuth: vi.fn(),
+  useAuth: vi.fn(() => ({
+    session: null,
+    triggerRefresh: vi.fn(),
+    displayName: 'AuthUser',
+  })),
 }));
 
 vi.mock('@/lib/utils/haptics', () => ({
@@ -35,15 +39,36 @@ describe('useGuestMigration', () => {
     const guests = ['Alice', 'Bob'];
     localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(guests));
     
-    (useAuth as any).mockReturnValue({ session: null });
+    (useAuth as any).mockReturnValue({ 
+      session: null, 
+      triggerRefresh: vi.fn() 
+    });
 
     const { result } = renderHook(() => useGuestMigration());
 
     expect(result.current.localGuests).toEqual(guests);
   });
 
+  it('should dynamically scan localStorage for guests if PLAYERS_LIST is empty', () => {
+    // Empty PLAYERS_LIST
+    localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify([]));
+
+    // Orphanded guest prediction
+    const guestName = 'OrphanedGuest';
+    localStorage.setItem(getPredictionKey(CURRENT_SEASON, guestName, 1), JSON.stringify({ p10: 'VER', dnf: 'SAR' }));
+
+    (useAuth as any).mockReturnValue({ session: null, triggerRefresh: vi.fn() });
+
+    const { result } = renderHook(() => useGuestMigration());
+
+    expect(result.current.localGuests).toContain(guestName);
+  });
+
   it('should not allow import when signed out', async () => {
-    (useAuth as any).mockReturnValue({ session: null });
+    (useAuth as any).mockReturnValue({ 
+      session: null, 
+      triggerRefresh: vi.fn() 
+    });
 
     const { result } = renderHook(() => useGuestMigration());
 
@@ -68,7 +93,11 @@ describe('useGuestMigration', () => {
     localStorage.setItem(getPredictionKey(CURRENT_SEASON, guestName, 1), JSON.stringify(pred1));
     localStorage.setItem(getPredictionKey(CURRENT_SEASON, guestName, 2), JSON.stringify(pred2));
 
-    (useAuth as any).mockReturnValue({ session: { user: { id: userId } } });
+    const triggerRefresh = vi.fn();
+    (useAuth as any).mockReturnValue({ 
+      session: { user: { id: userId } },
+      triggerRefresh
+    });
     mockSupabase.upsert.mockResolvedValue({ error: null });
 
     const { result } = renderHook(() => useGuestMigration());
@@ -93,15 +122,25 @@ describe('useGuestMigration', () => {
     // Verify success state
     expect(result.current.success).toContain('Successfully imported 2 predictions');
     expect(result.current.error).toBeNull();
+    expect(triggerRefresh).toHaveBeenCalled();
 
     // Verify cleanup
     const updatedGuests = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     expect(updatedGuests).toEqual(['Bob']);
     expect(result.current.localGuests).toEqual(['Bob']);
     
-    // Verify individual predictions removed
+    // Verify individual predictions removed from guest
     expect(localStorage.getItem(getPredictionKey(CURRENT_SEASON, guestName, 1))).toBeNull();
     expect(localStorage.getItem(getPredictionKey(CURRENT_SEASON, guestName, 2))).toBeNull();
+
+    // Verify individual predictions added to auth user cache
+    const authKey1 = getPredictionKey(CURRENT_SEASON, userId, 1);
+    const authKey2 = getPredictionKey(CURRENT_SEASON, userId, 2);
+    expect(localStorage.getItem(authKey1)).not.toBeNull();
+    expect(JSON.parse(localStorage.getItem(authKey1) || '{}')).toEqual(expect.objectContaining({
+      p10: 'VER',
+      dnf: 'SAR'
+    }));
   });
 
   it('should handle errors during import', async () => {
@@ -110,7 +149,10 @@ describe('useGuestMigration', () => {
     localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify([guestName]));
     localStorage.setItem(getPredictionKey(CURRENT_SEASON, guestName, 1), JSON.stringify({ p10: 'VER', dnf: 'SAR' }));
 
-    (useAuth as any).mockReturnValue({ session: { user: { id: userId } } });
+    (useAuth as any).mockReturnValue({ 
+      session: { user: { id: userId } },
+      triggerRefresh: vi.fn() 
+    });
     mockSupabase.upsert.mockResolvedValue({ error: { message: 'DB Error' } });
 
     const { result } = renderHook(() => useGuestMigration());
