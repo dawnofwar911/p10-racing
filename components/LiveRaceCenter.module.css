@@ -1,0 +1,65 @@
+.statusMessage {
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.warningBox {
+  font-size: 0.65rem;
+}
+
+.spinnerSmall {
+  width: 8px;
+  height: 8px;
+}
+
+.labelSmall {
+  font-size: 0.55rem;
+}
+
+.labelExtraSmall {
+  font-size: 0.55rem;
+}
+
+.driverLine {
+  height: 12px;
+  background-color: var(--team-color);
+}
+
+.badgeSmall {
+  font-size: 0.6rem;
+}
+
+.positionText {
+  width: 20px;
+  font-size: 0.75rem;
+}
+
+.tyreDot {
+  width: 8px;
+  height: 8px;
+}
+
+.tyreSoft { background-color: #E10600; }
+.tyreMedium { background-color: #FFD700; }
+.tyreHard { background-color: #FFFFFF; }
+.tyreInter { background-color: #43B02A; }
+.tyreWet { background-color: #0042BB; }
+.tyreDefault { background-color: #B6BABD; }
+
+.tyreText {
+  font-size: 0.6rem;
+}
+
+.yourPickText {
+  font-size: 0.55rem;
+}
+
+.gapText {
+  font-size: 0.65rem;
+  min-width: 45px;
+  text-align: right;
+}
+
+.trackLiveText {
+  font-size: 0.6rem;
+}

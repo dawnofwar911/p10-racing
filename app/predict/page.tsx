@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { Container, Row, Col, Form, Card, Modal, Table } from 'react-bootstrap';
+import { Container, Row, Col, Form, Card, Modal, Table, Badge } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
 import { fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
 import { Driver } from '@/lib/types';
@@ -29,6 +29,8 @@ import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 import { useSyncPredictions } from '@/lib/hooks/use-sync-predictions';
 import SelectionList from '@/components/SelectionList';
 import LiveRaceCenter from '@/components/LiveRaceCenter';
+import { motion, AnimatePresence } from 'framer-motion';
+import styles from './page.module.css';
 
 interface PredictRace {
   id: string;
@@ -75,13 +77,16 @@ const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], driver
           const teamColor = driverInfo?.color || '#B6BABD';
           return (
             <div key={result.Driver.driverId} className="col-6">
-              <div className={`position-relative p-0 rounded-3 overflow-hidden shadow-sm ${isP10 ? 'ring-1 ring-danger' : ''}`} style={{ backgroundColor: '#1a1a1a', border: isP10 ? '1.5px solid var(--team-accent, #e10600)' : '1px solid rgba(255,255,255,0.1)', transform: !isLeft ? 'translateY(8px)' : 'none', zIndex: isP10 ? 10 : 1 }}>
-                <div style={{ height: '3px', backgroundColor: teamColor }}></div>
-                <div className="p-1 px-2 d-flex align-items-center" style={{ minHeight: '38px' }}>
-                  <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ fontSize: '0.75rem', width: '18px' }}>{result.position}</div>
+              <div 
+                className={`position-relative p-0 rounded-3 overflow-hidden shadow-sm ${isP10 ? styles.gridItemP10 : styles.gridItem} ${!isLeft ? styles.gridItemRight : ''}`} 
+                style={{ '--team-accent': teamColor } as React.CSSProperties}
+              >
+                <div className={styles.gridTeamLine}></div>
+                <div className={`p-1 px-2 d-flex align-items-center ${styles.gridContent}`}>
+                  <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'} ${styles.gridPos}`}>{result.position}</div>
                   <div className="flex-grow-1 overflow-hidden">
-                    <div className="text-white fw-bold text-uppercase letter-spacing-1 text-truncate" style={{ fontSize: '0.7rem' }}>{result.Driver.code}</div>
-                    <div className="text-muted extra-small text-uppercase fw-semibold text-truncate" style={{ fontSize: '0.55rem', opacity: 0.7 }}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
+                    <div className={`text-white fw-bold text-uppercase letter-spacing-1 text-truncate ${styles.gridDriverCode}`}>{result.Driver.code}</div>
+                    <div className={`text-muted extra-small text-uppercase fw-semibold text-truncate ${styles.gridTeamName}`}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
                   </div>
                 </div>
               </div>
@@ -95,14 +100,14 @@ const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], driver
 
 const SummaryPills = ({ drivers, p10Driver, dnfDriver, isSideBySide = false }: { drivers: Driver[], p10Driver: string, dnfDriver: string, isSideBySide?: boolean }) => (
   <div className={`d-flex flex-column ${isSideBySide ? 'flex-md-row' : ''} gap-2 mb-3 align-items-center justify-content-center`}>
-    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>P10</small>
-      <div className="f1-driver-line me-2" style={{ backgroundColor: drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' }}></div>
+    <div className={`p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center ${styles.summaryPill}`}>
+      <small className={`text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2 ${styles.pillLabel}`}>P10</small>
+      <div className="f1-driver-line me-2" style={{ '--team-color': drivers.find(d => d.id === p10Driver)?.color || '#B6BABD' } as React.CSSProperties}></div>
       <span className="fw-bold text-white small flex-grow-1 text-start ps-1">{getDriverDisplayName(p10Driver, drivers)}</span>
     </div>
-    <div className="p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center" style={{ minWidth: '240px', width: 'fit-content' }}>
-      <small className="text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2" style={{ fontSize: '0.55rem', width: '30px', display: 'inline-block', textAlign: 'left' }}>DNF</small>
-      <div className="f1-driver-line me-2" style={{ backgroundColor: drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' }}></div>
+    <div className={`p-2 px-3 bg-dark rounded-pill border border-secondary border-opacity-50 d-flex align-items-center justify-content-center ${styles.summaryPill}`}>
+      <small className={`text-white opacity-50 text-uppercase fw-bold letter-spacing-1 me-2 ${styles.pillLabel}`}>DNF</small>
+      <div className="f1-driver-line me-2" style={{ '--team-color': drivers.find(d => d.id === dnfDriver)?.color || '#B6BABD' } as React.CSSProperties}></div>
       <span className="text-danger fw-bold small flex-grow-1 text-start ps-1">{getDriverDisplayName(dnfDriver, drivers)}</span>
     </div>
   </div>
@@ -114,21 +119,20 @@ const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void })
     onHide={onHide} 
     centered 
     scrollable 
-    contentClassName="f1-glass-modal border-secondary border-opacity-50 mx-auto"
-    style={{ maxWidth: '400px', margin: '0 auto' }}
+    contentClassName={`f1-glass-modal border-secondary border-opacity-50 mx-auto ${styles.modalContent}`}
   >
     <Modal.Header closeButton closeVariant="white" className="border-secondary border-opacity-25 px-3 py-2">
       <Modal.Title className="fw-bold text-uppercase letter-spacing-1 text-white fs-6">How to <span className="text-danger">Play</span></Modal.Title>
     </Modal.Header>
     <Modal.Body className="p-3">
       <section className="mb-3">
-        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-1" style={{ fontSize: '0.65rem' }}>The Objective</h3>
+        <h3 className={`fw-bold text-danger text-uppercase letter-spacing-2 mb-1 ${styles.sectionTitle}`}>The Objective</h3>
         <p className="text-white opacity-75 extra-small mb-0">Predict the driver who finishes in <span className="fw-bold text-white">10th Place</span> and the driver who is the <span className="fw-bold text-danger">First DNF</span>.</p>
       </section>
       <section className="mb-3">
-        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-2" style={{ fontSize: '0.65rem' }}>Scoring: P10 Finisher</h3>
+        <h3 className={`fw-bold text-danger text-uppercase letter-spacing-2 mb-2 ${styles.sectionTitle}`}>Scoring: P10 Finisher</h3>
         <div className="f1-premium-table-container">
-          <Table variant="dark" size="sm" className="f1-premium-table f1-premium-table-sm mb-0 extra-small">
+          <Table variant="dark" size="sm" className={`f1-premium-table f1-premium-table-sm mb-0 extra-small`}>
             <thead>
               <tr>
                 <th className="ps-3 border-0">Actual Finish</th>
@@ -151,7 +155,7 @@ const HowToPlayModal = ({ show, onHide }: { show: boolean, onHide: () => void })
         </div>
       </section>
       <section>
-        <h3 className="fw-bold text-danger text-uppercase letter-spacing-2 mb-1" style={{ fontSize: '0.65rem' }}>Scoring: First DNF</h3>
+        <h3 className={`fw-bold text-danger text-uppercase letter-spacing-2 mb-1 ${styles.sectionTitle}`}>Scoring: First DNF</h3>
         <p className="text-white opacity-75 extra-small mb-0">Get the first retirement correctly and earn <span className="fw-bold text-danger">+25 Points</span>.</p>
       </section>
     </Modal.Body>
@@ -204,6 +208,7 @@ function PredictPage() {
   const [loadingRace, setLoadingRace] = useState(!nextRace);
   const [isLocked, setIsLocked] = useState(false);
   const [isRaceInProgress, setIsRaceInProgress] = useState(false);
+  const [hasRaceFinished, setHasRaceFinished] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
@@ -211,6 +216,10 @@ function PredictPage() {
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
 
   const [activeTab, setActiveTab] = useState<PredictTab>('p10');
+
+  const handleRaceFinish = useCallback(() => {
+    setHasRaceFinished(true);
+  }, []);
 
   // Lifecycle status
   useEffect(() => {
@@ -571,37 +580,84 @@ function PredictPage() {
         }
       />
       <div className="text-center mt-3">
-        <Card className={`p-4 border-${isLocked ? 'danger' : 'success'} bg-dark mb-4 shadow-sm mx-auto`} style={{ maxWidth: '900px' }}>
-          <div className="display-6 mb-2">{isSeasonFinished ? '🏆' : (isLocked ? '🔒' : '✅')}</div>
+        <Card className={`p-4 border-${isLocked ? 'danger' : 'success'} bg-dark mb-4 shadow-sm mx-auto ${styles.glassCard}`}>
+          <div className="display-6 mb-2">{isSeasonFinished ? '🏆' : (hasRaceFinished ? '🏁' : (isLocked ? '🔒' : '✅'))}</div>
           <h2 className="h4 mb-3 fw-bold">
-            {isSeasonFinished ? 'Season Finished' : (isLocked ? 'Predictions Closed' : (submitted ? 'Locked and Loaded!' : 'Current Picks'))}
+            {isSeasonFinished ? 'Season Finished' : (hasRaceFinished ? 'Results Pending' : (isLocked ? 'Predictions Closed' : (submitted ? 'Locked and Loaded!' : 'Current Picks')))}
           </h2>
           
+          <AnimatePresence>
+            {hasRaceFinished && !isSeasonFinished && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`mb-4 text-center p-3 rounded-4 ${styles.resultsPendingContainer}`}
+              >
+                <Badge bg="success" className={`px-3 py-2 text-uppercase letter-spacing-1 shadow-sm mb-3 ${styles.resultsPendingBadge}`}>
+                  RESULTS PENDING
+                </Badge>
+                
+                <div className="text-white fw-bold small mb-3">Live Race Concluded. Verification in progress.</div>
+                
+                {/* Embedded Picks Summary */}
+                <div className="d-flex justify-content-center gap-2 mb-2">
+                  <div className="text-center px-2 py-1 bg-black bg-opacity-20 rounded-3 border border-secondary border-opacity-10">
+                    <div className={`extra-small text-muted text-uppercase fw-bold mb-1 ${styles.miniLabel}`}>Your P10</div>
+                    <Badge bg="dark" className={`text-uppercase ${styles.badgePillSmall}`}>
+                      {drivers.find(d => d.id === effectiveP10)?.code || '---'}
+                    </Badge>
+                  </div>
+                  <div className="text-center px-2 py-1 bg-black bg-opacity-20 rounded-3 border border-secondary border-opacity-10">
+                    <div className={`extra-small text-muted text-uppercase fw-bold mb-1 ${styles.miniLabel}`}>Your DNF</div>
+                    <Badge bg="danger" className={`bg-opacity-10 text-danger border border-danger border-opacity-25 text-uppercase ${styles.badgePillSmall}`}>
+                      {drivers.find(d => d.id === effectiveDNF)?.code || '---'}
+                    </Badge>
+                  </div>
+                </div>
+                
+                <p className="text-muted extra-small mt-2 mb-3">Official points will be applied automatically once verified.</p>
+                
+                <div className="pt-2 border-top border-secondary border-opacity-10">
+                  <HapticButton 
+                    variant="success" 
+                    className={`w-100 py-2 fw-bold shadow-sm rounded-pill small ${styles.shareButton}`} 
+                    onClick={handleShare}
+                  >
+                    SHARE YOUR PICKS ↗
+                  </HapticButton>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
           <Row className="text-start justify-content-center">
-            {isRaceInProgress && (
+            {isRaceInProgress && !hasRaceFinished && (
               <Col xs={12} className="mb-2">
                 <LiveRaceCenter 
                   p10Prediction={effectiveP10} 
                   dnfPrediction={effectiveDNF} 
                   drivers={drivers} 
                   isRaceInProgress={isRaceInProgress} 
+                  onRaceFinish={handleRaceFinish}
                 />
               </Col>
             )}
-            <Col xs={12} lg={isLocked ? 6 : 8} className="mb-4">
-              <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
-                <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">
-                  Your Selection {isLocked && '🔒'}
-                </h3>
-                {hasPicks ? <SummaryPills drivers={drivers} p10Driver={effectiveP10} dnfDriver={effectiveDNF} isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
-                
-                {!isSeasonFinished && hasPicks && (
-                  <div className="mt-4 text-center">
-                    <HapticButton variant="success" className="w-100 py-2 fw-bold shadow-sm rounded-pill small" style={{ maxWidth: '300px' }} onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
-                  </div>
-                )}
-              </div>
-            </Col>
+            {!hasRaceFinished && (
+              <Col xs={12} lg={isLocked ? 6 : 8} className="mb-4">
+                <div className="p-4 border border-secondary rounded bg-dark bg-opacity-50 h-100 shadow-sm">
+                  <h3 className="h6 mb-4 text-uppercase border-bottom border-secondary pb-3 fw-bold text-danger letter-spacing-1 text-center">
+                    Your Selection {isLocked && '🔒'}
+                  </h3>
+                  {hasPicks ? <SummaryPills drivers={drivers} p10Driver={effectiveP10} dnfDriver={effectiveDNF} isSideBySide={true} /> : <p className="text-warning small mb-0 text-center">No prediction submitted.</p>}
+                  
+                  {!isSeasonFinished && hasPicks && (
+                    <div className="mt-4 text-center">
+                      <HapticButton variant="success" className={`w-100 py-2 fw-bold shadow-sm rounded-pill small ${styles.shareButton}`} onClick={handleShare}>SHARE YOUR PICKS ↗</HapticButton>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            )}
 
             {isLocked && (
               <Col xs={12} lg={6} className="mb-4">
@@ -623,13 +679,13 @@ function PredictPage() {
                               <td className="ps-3 text-white fw-bold small">{pred.username}</td>
                               <td className="text-center">
                                 <div className="d-flex align-items-center justify-content-center gap-2">
-                                  <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.p10)?.color || '#B6BABD' }}></div>
+                                  <div className={styles.communityDriverLine} style={{ '--team-color': drivers.find(d => d.id === pred.p10)?.color || '#B6BABD' } as React.CSSProperties}></div>
                                   <span className="badge bg-secondary bg-opacity-25 rounded-pill px-2 py-1 extra-small">{drivers.find(d => d.id === pred.p10)?.code || pred.p10}</span>
                                 </div>
                               </td>
                               <td className="text-center">
                                 <div className="d-flex align-items-center justify-content-center gap-2">
-                                  <div className="f1-driver-line" style={{ height: '12px', backgroundColor: drivers.find(d => d.id === pred.dnf)?.color || '#B6BABD' }}></div>
+                                  <div className={styles.communityDriverLine} style={{ '--team-color': drivers.find(d => d.id === pred.dnf)?.color || '#B6BABD' } as React.CSSProperties}></div>
                                   <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 border border-danger border-opacity-25 extra-small">{drivers.find(d => d.id === pred.dnf)?.code || pred.dnf}</span>
                                 </div>
                               </td>
@@ -672,7 +728,7 @@ function PredictPage() {
   if (!session && !currentUser) {
     return (
       <>
-        <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: '1400px' }}>
+        <Container className={`mt-2 mt-md-3 mb-4 ${styles.pageContainer}`}>
           <StandardPageHeader
             title="Predictions"
             subtitle="Who is Predicting?"
@@ -710,7 +766,7 @@ function PredictPage() {
 
                 <div className="text-center mb-4">
                   <hr className="border-secondary opacity-25" />
-                  <span className="bg-dark px-2 text-muted small position-relative" style={{ top: '-13px' }}>OR PLAY AS GUEST</span>
+                  <span className={`bg-dark px-2 text-muted small position-relative ${styles.orDivider}`}>OR PLAY AS GUEST</span>
                 </div>
 
                 {existingPlayers.length > 0 && (
@@ -753,7 +809,7 @@ function PredictPage() {
   if (showSummary || isLocked) {
     return (
       <>
-        <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: '1400px' }}>
+        <Container className={`mt-2 mt-md-3 mb-4 ${styles.pageContainer}`}>
           {summaryView}
         </Container>
         <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
@@ -813,7 +869,7 @@ function PredictPage() {
           </div>
         }
       >
-        <div className="mt-3 flex-grow-1 d-flex flex-column mb-5" style={{ minHeight: 0, touchAction: 'pan-y' }}>
+        <div className={`mt-3 flex-grow-1 d-flex flex-column mb-5 ${styles.predictTabContent}`}>
           {activeTab === 'grid' && startingGrid.length > 0 && <GridView startingGrid={startingGrid} drivers={drivers} />}
           {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} driverForm={driverForm} />}
           {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={drivers} driverForm={driverForm} />}
@@ -828,7 +884,7 @@ function PredictPage() {
 export default function PredictPageWrapper() {
   return (
     <Suspense fallback={
-      <div className="container mt-2 mt-md-3" style={{ maxWidth: '1400px' }}>
+      <div className={`container mt-2 mt-md-3 ${styles.pageContainer}`}>
         <LoadingView text="Loading Predictor..." />
       </div>
     }>
