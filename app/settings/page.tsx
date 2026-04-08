@@ -39,7 +39,7 @@ export default function SettingsPage() {
   const mountedRef = useRef(true);
   const { session, isAdmin, profile, setProfile } = useAuth();
   const { drivers } = useF1Data();
-  const { localGuests, isImporting, error: migrationError, success: migrationSuccess, importGuestData } = useGuestMigration();
+  const { localGuests, isImporting, importingGuest, error: migrationError, success: migrationSuccess, importGuestData } = useGuestMigration();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -369,7 +369,7 @@ export default function SettingsPage() {
                               onClick={() => importGuestData(guest)} 
                               disabled={isImporting}
                             >
-                              {isImporting ? <Spinner animation="border" size="sm" /> : 'Import'}
+                              {importingGuest === guest ? <Spinner animation="border" size="sm" /> : 'Import'}
                             </HapticButton>
                           </div>
                         ))}

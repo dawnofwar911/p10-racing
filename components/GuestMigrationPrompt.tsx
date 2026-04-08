@@ -10,7 +10,7 @@ import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export default function GuestMigrationPrompt() {
   const { session } = useAuth();
-  const { localGuests, isImporting, error, success, importGuestData } = useGuestMigration();
+  const { localGuests, isImporting, importingGuest, error, success, importGuestData } = useGuestMigration();
   const [show, setShow] = useState(false);
   const [internalDismissed, setInternalDismissed] = useState(false);
 
@@ -77,7 +77,7 @@ export default function GuestMigrationPrompt() {
                     onClick={() => importGuestData(guest)} 
                     disabled={isImporting}
                   >
-                    {isImporting ? <Spinner animation="border" size="sm" /> : 'Import'}
+                    {importingGuest === guest ? <Spinner animation="border" size="sm" /> : 'Import'}
                   </HapticButton>
                 </div>
               ))}

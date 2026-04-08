@@ -41,7 +41,8 @@ describe('useGuestMigration', () => {
     
     (useAuth as any).mockReturnValue({ 
       session: null, 
-      triggerRefresh: vi.fn() 
+      triggerRefresh: vi.fn(),
+      displayName: 'AuthUser'
     });
 
     const { result } = renderHook(() => useGuestMigration());
@@ -57,7 +58,11 @@ describe('useGuestMigration', () => {
     const guestName = 'OrphanedGuest';
     localStorage.setItem(getPredictionKey(CURRENT_SEASON, guestName, 1), JSON.stringify({ p10: 'VER', dnf: 'SAR' }));
 
-    (useAuth as any).mockReturnValue({ session: null, triggerRefresh: vi.fn() });
+    (useAuth as any).mockReturnValue({ 
+      session: null, 
+      triggerRefresh: vi.fn(),
+      displayName: 'AuthUser'
+    });
 
     const { result } = renderHook(() => useGuestMigration());
 
@@ -67,7 +72,8 @@ describe('useGuestMigration', () => {
   it('should not allow import when signed out', async () => {
     (useAuth as any).mockReturnValue({ 
       session: null, 
-      triggerRefresh: vi.fn() 
+      triggerRefresh: vi.fn(),
+      displayName: 'AuthUser'
     });
 
     const { result } = renderHook(() => useGuestMigration());
@@ -96,7 +102,8 @@ describe('useGuestMigration', () => {
     const triggerRefresh = vi.fn();
     (useAuth as any).mockReturnValue({ 
       session: { user: { id: userId } },
-      triggerRefresh
+      triggerRefresh,
+      displayName: 'AuthUser'
     });
     mockSupabase.upsert.mockResolvedValue({ error: null });
 
@@ -106,16 +113,24 @@ describe('useGuestMigration', () => {
       await result.current.importGuestData(guestName);
     });
 
-    // Verify upsert calls (one for each prediction)
+    // Verify upsert calls (one bulk call)
     expect(mockSupabase.from).toHaveBeenCalledWith('predictions');
-    expect(mockSupabase.upsert).toHaveBeenCalledTimes(2);
+    expect(mockSupabase.upsert).toHaveBeenCalledTimes(1);
     expect(mockSupabase.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: userId,
-        race_id: `${CURRENT_SEASON}_1`,
-        p10_driver_id: 'VER',
-        dnf_driver_id: 'SAR',
-      }),
+      expect.arrayContaining([
+        expect.objectContaining({
+          user_id: userId,
+          race_id: `${CURRENT_SEASON}_1`,
+          p10_driver_id: 'VER',
+          dnf_driver_id: 'SAR',
+        }),
+        expect.objectContaining({
+          user_id: userId,
+          race_id: `${CURRENT_SEASON}_2`,
+          p10_driver_id: 'PER',
+          dnf_driver_id: 'LEC',
+        })
+      ]),
       expect.any(Object)
     );
 
@@ -149,9 +164,11 @@ describe('useGuestMigration', () => {
     localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify([guestName]));
     localStorage.setItem(getPredictionKey(CURRENT_SEASON, guestName, 1), JSON.stringify({ p10: 'VER', dnf: 'SAR' }));
 
+    const triggerRefresh = vi.fn();
     (useAuth as any).mockReturnValue({ 
       session: { user: { id: userId } },
-      triggerRefresh: vi.fn() 
+      triggerRefresh,
+      displayName: 'AuthUser'
     });
     mockSupabase.upsert.mockResolvedValue({ error: { message: 'DB Error' } });
 
@@ -161,7 +178,7 @@ describe('useGuestMigration', () => {
       await result.current.importGuestData(guestName);
     });
 
-    expect(result.current.error).toBe('Some predictions failed to import. Please try again.');
+    expect(result.current.error).toBe('Failed to import predictions. Please try again.');
     expect(result.current.success).toBeNull();
     
     // Should NOT cleanup on error

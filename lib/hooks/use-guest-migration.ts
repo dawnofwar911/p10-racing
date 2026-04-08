@@ -11,7 +11,7 @@ export function useGuestMigration() {
   const supabase = createClient();
   const { session, triggerRefresh, displayName } = useAuth();
   const [localGuests, setLocalGuests] = useState<string[]>([]);
-  const [isImporting, setIsImporting] = useState(false);
+  const [importingGuest, setImportingGuest] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const mountedRef = useRef(true);
@@ -74,15 +74,21 @@ export function useGuestMigration() {
       return;
     }
 
-    setIsImporting(true);
+    setImportingGuest(guestName);
     setError(null);
     setSuccess(null);
     triggerHeavyHaptic();
 
     try {
       let count = 0;
-      const importPromises = [];
       const predictionsToSync: {round: number, p10: string, dnf: string}[] = [];
+      const upsertPayloads: {
+        user_id: string;
+        race_id: string;
+        p10_driver_id: string;
+        dnf_driver_id: string;
+        updated_at: string;
+      }[] = [];
       
       // Check all 24 rounds for predictions
       for (let round = 1; round <= 24; round++) {
@@ -93,15 +99,13 @@ export function useGuestMigration() {
           try {
             const pred = JSON.parse(predStr);
             predictionsToSync.push({ round, p10: pred.p10, dnf: pred.dnf });
-            importPromises.push(
-              supabase.from('predictions').upsert({
-                user_id: session.user.id,
-                race_id: `${CURRENT_SEASON}_${round}`,
-                p10_driver_id: pred.p10,
-                dnf_driver_id: pred.dnf,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'user_id, race_id' })
-            );
+            upsertPayloads.push({
+              user_id: session.user.id,
+              race_id: `${CURRENT_SEASON}_${round}`,
+              p10_driver_id: pred.p10,
+              dnf_driver_id: pred.dnf,
+              updated_at: new Date().toISOString()
+            });
             count++;
           } catch (e) {
             console.warn(`useGuestMigration: Failed to parse prediction for ${guestName} round ${round}`, e);
@@ -109,16 +113,18 @@ export function useGuestMigration() {
         }
       }
 
-      if (importPromises.length === 0) {
+      if (upsertPayloads.length === 0) {
         throw new Error(`No predictions found to import for ${guestName}.`);
       }
 
-      const results = await Promise.all(importPromises);
-      const errors = results.filter(r => r.error);
+      // Bulk Upsert for efficiency and atomicity
+      const { error: upsertError } = await supabase
+        .from('predictions')
+        .upsert(upsertPayloads, { onConflict: 'user_id, race_id' });
       
-      if (errors.length > 0) {
-        console.error('Migration errors:', errors);
-        throw new Error('Some predictions failed to import. Please try again.');
+      if (upsertError) {
+        console.error('Migration error:', upsertError);
+        throw new Error('Failed to import predictions. Please try again.');
       }
 
       // Sync to local cache for the AUTH user
@@ -155,13 +161,14 @@ export function useGuestMigration() {
         setError(err instanceof Error ? err.message : 'Import failed');
       }
     } finally {
-      if (mountedRef.current) setIsImporting(false);
+      if (mountedRef.current) setImportingGuest(null);
     }
   };
 
   return {
     localGuests,
-    isImporting,
+    isImporting: !!importingGuest,
+    importingGuest,
     error,
     success,
     importGuestData,
