@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Card, Modal, Spinner, Form, Badge, Container, Row, Col } from 'react-bootstrap';
+import { Card, Modal, Spinner, Form, Badge, Container, Row, Col, Alert } from 'react-bootstrap';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { triggerLightHaptic, triggerWarningHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
-import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee, Settings, Heart, Palette } from 'lucide-react';
+import { ShieldAlert, Trash2, KeyRound, Bug, FileText, ChevronRight, History, Vibrate, Coffee, Settings, Heart, Palette, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import packageInfo from '../../package.json';
 import BugReportModal from '@/components/BugReportModal';
 import { useNotification } from '@/components/Notification';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { useAuth } from '@/components/AuthProvider';
+import { useGuestMigration } from '@/lib/hooks/use-guest-migration';
 import HapticButton from '@/components/HapticButton';
 import HapticLink from '@/components/HapticLink';
 import { STORAGE_KEYS, setStorageItem } from '@/lib/utils/storage';
@@ -38,6 +39,7 @@ export default function SettingsPage() {
   const mountedRef = useRef(true);
   const { session, isAdmin, profile, setProfile } = useAuth();
   const { drivers } = useF1Data();
+  const { localGuests, isImporting, error: migrationError, success: migrationSuccess, importGuestData } = useGuestMigration();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -337,6 +339,46 @@ export default function SettingsPage() {
 
           {session && (
             <>
+              {localGuests.length > 0 && (
+                <>
+                  <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Data Migration</h2>
+                  <Card className="f1-glass-card mb-4 border-warning border-opacity-50 overflow-hidden">
+                    <Card.Body className="p-3">
+                      <div className="d-flex align-items-center mb-3 text-warning">
+                        <RefreshCw size={18} className="me-2" />
+                        <span className="fw-bold small text-uppercase letter-spacing-1">Sync Local Data</span>
+                      </div>
+                      
+                      <p className="text-muted extra-small mb-3">
+                        Found local predictions from guest users. Import them to your account to save your progress.
+                      </p>
+
+                      {migrationError && <Alert variant="danger" className="py-2 small mb-3">{migrationError}</Alert>}
+                      {migrationSuccess && <Alert variant="success" className="py-2 small mb-3">{migrationSuccess}</Alert>}
+
+                      <div className="d-flex flex-column gap-2">
+                        {localGuests.map(guest => (
+                          <div key={guest} className="d-flex align-items-center justify-content-between bg-black bg-opacity-25 p-2 rounded-3 border border-secondary border-opacity-25">
+                            <span className="fw-bold text-white small">{guest}</span>
+                            <HapticButton 
+                              haptic="medium" 
+                              variant="warning" 
+                              size="sm" 
+                              className="fw-bold py-1 px-3 rounded-pill text-uppercase"
+                              style={{ fontSize: '0.7rem' }}
+                              onClick={() => importGuestData(guest)} 
+                              disabled={isImporting}
+                            >
+                              {isImporting ? <Spinner animation="border" size="sm" /> : 'Import'}
+                            </HapticButton>
+                          </div>
+                        ))}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </>
+              )}
+
               <h2 className="small fw-bold text-uppercase text-muted letter-spacing-2 mb-2 ps-1" style={{ fontSize: '0.6rem' }}>Account</h2>
               <Card className="f1-glass-card mb-4 border-secondary border-opacity-50">
                 <div className="list-group list-group-flush bg-transparent">
