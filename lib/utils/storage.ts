@@ -6,6 +6,7 @@
 export const STORAGE_KEYS = {
   CURRENT_USER: 'p10_current_user',
   CACHE_USERNAME: 'p10_cache_username',
+  CACHE_USER_ID: 'p10_cache_user_id',
   PLAYERS_LIST: 'p10_players', // Restored from old version
   CACHE_NEXT_RACE: 'p10_cache_next_race',
   CACHE_DRIVERS: 'p10_cache_drivers',

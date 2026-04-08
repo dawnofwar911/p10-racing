@@ -27,6 +27,8 @@ export function useGuestMigration() {
 
       // Dynamically scan localStorage for orphaned guest predictions
       const prefix = `${STORAGE_KEYS.PRED_PREFIX}${CURRENT_SEASON}_`;
+      const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith(prefix)) {
@@ -37,14 +39,16 @@ export function useGuestMigration() {
             const username = parts.join('_');
             
             // Exclude valid UUIDs (which signify authenticated users)
-            if (username && username.length !== 36 && !username.includes('-') && !guests.includes(username)) {
+            if (username && !isUUID(username) && !guests.includes(username)) {
               guests.push(username);
             }
           }
         }
       }
 
-      if (mountedRef.current) setLocalGuests(guests);
+      if (mountedRef.current) {
+        setLocalGuests(guests.filter(g => typeof g === 'string' && g.trim().length > 0));
+      }
     } catch (e) {
       console.warn('useGuestMigration: Failed to parse players list', e);
       if (mountedRef.current) setLocalGuests([]);
@@ -55,7 +59,7 @@ export function useGuestMigration() {
     mountedRef.current = true;
     loadLocalGuests();
     return () => { mountedRef.current = false; };
-  }, [loadLocalGuests]);
+  }, [loadLocalGuests, session]);
 
   const importGuestData = async (guestName: string) => {
     if (!session) {
