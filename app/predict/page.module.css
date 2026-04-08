@@ -108,3 +108,20 @@
 .badgePillSmall {
   font-size: 0.65rem;
 }
+
+.pageContainer {
+  max-width: 1400px;
+}
+
+.miniLabel {
+  font-size: 0.5rem;
+}
+
+.orDivider {
+  top: -13px;
+}
+
+.predictTabContent {
+  min-height: 0;
+  touch-action: pan-y;
+}

@@ -29,14 +29,14 @@ const getTrackStatusColor = (status: string) => {
   }
 };
 
-const getTyreColor = (compound: string) => {
+const getTyreClass = (compound: string) => {
   const c = compound.toUpperCase();
-  if (c.includes('SOFT')) return '#E10600';
-  if (c.includes('MEDIUM')) return '#FFD700';
-  if (c.includes('HARD')) return '#FFFFFF';
-  if (c.includes('INTER')) return '#43B02A';
-  if (c.includes('WET')) return '#0042BB';
-  return '#B6BABD';
+  if (c.includes('SOFT')) return styles.tyreSoft;
+  if (c.includes('MEDIUM')) return styles.tyreMedium;
+  if (c.includes('HARD')) return styles.tyreHard;
+  if (c.includes('INTER')) return styles.tyreInter;
+  if (c.includes('WET')) return styles.tyreWet;
+  return styles.tyreDefault;
 };
 
 const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({ 
@@ -89,11 +89,14 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
           <Spinner animation="border" size="sm" variant="danger" />
         ) : (
           <div className="d-flex align-items-center gap-2">
-            {data?.status === 'Completed' && (
-              <Badge bg="success" className="extra-small px-2" style={{ fontSize: '0.6rem' }}>RESULTS PENDING</Badge>
-            )}
             <span className={`extra-small fw-bold ${isStale ? 'text-warning' : 'text-white opacity-50'}`}>
-              {isStale ? 'STALE DATA' : (data?.status || 'TRACK LIVE')}
+              {isStale ? 'STALE DATA' : (['Finished', 'Final', 'Completed'].includes(data?.status || "") ? (
+                <>
+                  <span className="me-1">RESULTS PENDING</span>
+                  <span className="opacity-50">·</span>
+                  <span className="ms-1">{data?.status}</span>
+                </>
+              ) : 'TRACK LIVE')}
             </span>
           </div>
         )}
@@ -174,7 +177,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                     const isUserPick = res.driverId === p10Prediction;
                     const isP10 = res.position === 10;
                     const driver = driversMap[res.driverId];
-                    const tyreColor = getTyreColor(res.tyres?.compound || '');
+                    const tyreClass = getTyreClass(res.tyres?.compound || '');
                     
                     return (
                       <motion.div 
@@ -194,7 +197,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                             </span>
                             {res.tyres && (
                               <div className={`d-flex align-items-center gap-1 opacity-75 ${styles.tyreText}`}>
-                                <div className={`rounded-circle border border-secondary border-opacity-50 ${styles.tyreDot}`} style={{ '--tyre-color': tyreColor } as React.CSSProperties}></div>
+                                <div className={`rounded-circle border border-secondary border-opacity-50 ${styles.tyreDot} ${tyreClass}`}></div>
                                 <span className="text-muted">{res.tyres.laps}L</span>
                               </div>
                             )}

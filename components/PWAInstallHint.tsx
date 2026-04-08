@@ -7,6 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
 import HapticButton from './HapticButton';
 import { STORAGE_KEYS } from '@/lib/utils/storage';
+import styles from './PWAInstallHint.module.css';
 
 export default function PWAInstallHint() {
   const [show, setShow] = useState(false);
@@ -42,30 +43,15 @@ export default function PWAInstallHint() {
   if (!show) return null;
 
   return (
-    <div 
-      className="pwa-install-hint px-3"
-      style={{
-        position: 'fixed',
-        bottom: 'calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 20px)',
-        left: 0,
-        right: 0,
-        zIndex: 1060,
-        pointerEvents: 'none'
-      }}
-    >
+    <div className={`pwa-install-hint px-3 ${styles.container}`}>
       <Card 
-        className="f1-glass-card border-secondary border-opacity-50 mx-auto animate-slide-up"
-        style={{ 
-          maxWidth: '400px', 
-          pointerEvents: 'auto'
-        }}
+        className={`f1-glass-card border-secondary border-opacity-50 mx-auto animate-slide-up ${styles.innerCard}`}
       >
         <Card.Body className="p-3">
           <Row className="align-items-center g-2">
             <Col xs="auto">
               <div 
-                className="bg-danger d-flex align-items-center justify-content-center rounded"
-                style={{ width: '40px', height: '40px' }}
+                className={`bg-danger d-flex align-items-center justify-content-center rounded ${styles.logoWrapper}`}
               >
                 <Image src="/logo.svg" alt="P10" width={24} height={24} />
               </div>
@@ -97,17 +83,9 @@ export default function PWAInstallHint() {
       
       {/* Arrow pointing to Safari share button (approximate location) */}
       <div 
-        className="text-primary mx-auto d-flex justify-content-center mt-2"
-        style={{ width: '20px' }}
+        className={`text-primary mx-auto d-flex justify-content-center mt-2 ${styles.arrowWrapper}`}
       >
-        <div style={{
-          width: 0,
-          height: 0,
-          borderLeft: '10px solid transparent',
-          borderRight: '10px solid transparent',
-          borderTop: '10px solid #0d6efd',
-          opacity: 0.8
-        }}></div>
+        <div className={styles.arrow}></div>
       </div>
 
       <style jsx global>{`

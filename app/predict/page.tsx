@@ -217,6 +217,10 @@ function PredictPage() {
 
   const [activeTab, setActiveTab] = useState<PredictTab>('p10');
 
+  const handleRaceFinish = useCallback(() => {
+    setHasRaceFinished(true);
+  }, []);
+
   // Lifecycle status
   useEffect(() => {
     mountedRef.current = true;
@@ -598,13 +602,13 @@ function PredictPage() {
                 {/* Embedded Picks Summary */}
                 <div className="d-flex justify-content-center gap-2 mb-2">
                   <div className="text-center px-2 py-1 bg-black bg-opacity-20 rounded-3 border border-secondary border-opacity-10">
-                    <div className="extra-small text-muted text-uppercase fw-bold mb-1" style={{ fontSize: '0.5rem' }}>Your P10</div>
+                    <div className={`extra-small text-muted text-uppercase fw-bold mb-1 ${styles.miniLabel}`}>Your P10</div>
                     <Badge bg="dark" className={`text-uppercase ${styles.badgePillSmall}`}>
                       {drivers.find(d => d.id === effectiveP10)?.code || '---'}
                     </Badge>
                   </div>
                   <div className="text-center px-2 py-1 bg-black bg-opacity-20 rounded-3 border border-secondary border-opacity-10">
-                    <div className="extra-small text-muted text-uppercase fw-bold mb-1" style={{ fontSize: '0.5rem' }}>Your DNF</div>
+                    <div className={`extra-small text-muted text-uppercase fw-bold mb-1 ${styles.miniLabel}`}>Your DNF</div>
                     <Badge bg="danger" className={`bg-opacity-10 text-danger border border-danger border-opacity-25 text-uppercase ${styles.badgePillSmall}`}>
                       {drivers.find(d => d.id === effectiveDNF)?.code || '---'}
                     </Badge>
@@ -634,7 +638,7 @@ function PredictPage() {
                   dnfPrediction={effectiveDNF} 
                   drivers={drivers} 
                   isRaceInProgress={isRaceInProgress} 
-                  onRaceFinish={() => setHasRaceFinished(true)}
+                  onRaceFinish={handleRaceFinish}
                 />
               </Col>
             )}
@@ -724,7 +728,7 @@ function PredictPage() {
   if (!session && !currentUser) {
     return (
       <>
-        <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: '1400px' }}>
+        <Container className={`mt-2 mt-md-3 mb-4 ${styles.pageContainer}`}>
           <StandardPageHeader
             title="Predictions"
             subtitle="Who is Predicting?"
@@ -762,7 +766,7 @@ function PredictPage() {
 
                 <div className="text-center mb-4">
                   <hr className="border-secondary opacity-25" />
-                  <span className="bg-dark px-2 text-muted small position-relative" style={{ top: '-13px' }}>OR PLAY AS GUEST</span>
+                  <span className={`bg-dark px-2 text-muted small position-relative ${styles.orDivider}`}>OR PLAY AS GUEST</span>
                 </div>
 
                 {existingPlayers.length > 0 && (
@@ -805,7 +809,7 @@ function PredictPage() {
   if (showSummary || isLocked) {
     return (
       <>
-        <Container className="mt-2 mt-md-3 mb-4" style={{ maxWidth: '1400px' }}>
+        <Container className={`mt-2 mt-md-3 mb-4 ${styles.pageContainer}`}>
           {summaryView}
         </Container>
         <HowToPlayModal show={showHowToPlay} onHide={() => setShowHowToPlay(false)} />
@@ -865,7 +869,7 @@ function PredictPage() {
           </div>
         }
       >
-        <div className="mt-3 flex-grow-1 d-flex flex-column mb-5" style={{ minHeight: 0, touchAction: 'pan-y' }}>
+        <div className={`mt-3 flex-grow-1 d-flex flex-column mb-5 ${styles.predictTabContent}`}>
           {activeTab === 'grid' && startingGrid.length > 0 && <GridView startingGrid={startingGrid} drivers={drivers} />}
           {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} driverForm={driverForm} />}
           {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={drivers} driverForm={driverForm} />}
@@ -880,7 +884,7 @@ function PredictPage() {
 export default function PredictPageWrapper() {
   return (
     <Suspense fallback={
-      <div className="container mt-2 mt-md-3" style={{ maxWidth: '1400px' }}>
+      <div className={`container mt-2 mt-md-3 ${styles.pageContainer}`}>
         <LoadingView text="Loading Predictor..." />
       </div>
     }>

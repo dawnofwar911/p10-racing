@@ -22,6 +22,7 @@
 
 .driverLine {
   height: 12px;
+  background-color: var(--team-color);
 }
 
 .badgeSmall {
@@ -37,6 +38,13 @@
   width: 8px;
   height: 8px;
 }
+
+.tyreSoft { background-color: #E10600; }
+.tyreMedium { background-color: #FFD700; }
+.tyreHard { background-color: #FFFFFF; }
+.tyreInter { background-color: #43B02A; }
+.tyreWet { background-color: #0042BB; }
+.tyreDefault { background-color: #B6BABD; }
 
 .tyreText {
   font-size: 0.6rem;
