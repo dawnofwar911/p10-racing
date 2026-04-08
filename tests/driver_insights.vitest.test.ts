@@ -1,14 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 import { fetchRecentResults, DriverFormMap } from '@/lib/api';
-import { setupServer } from 'msw/node';
+import { server } from './setup';
 import { http, HttpResponse } from 'msw';
 
-const server = setupServer();
-
 describe('Driver Insights API Logic', () => {
-  beforeAll(() => server.listen());
   afterEach(() => server.resetHandlers());
-  afterAll(() => server.close());
 
   it('transforms Jolpica results into a DriverFormMap correctly', async () => {
     const mockApiResponse = {

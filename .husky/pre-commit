@@ -1,16 +1,29 @@
+#!/bin/sh
+
+# 0. Environment Setup for Cross-Platform (Termux & Windows GUIs)
+# This helps find npm/node if not in the current shell path
+export PATH="$PATH:/usr/local/bin:/usr/bin:/bin:/data/data/com.termux/files/usr/bin"
+
 # 1. Quality Gates (Lint, Type Check, Test)
-echo "🔍 Running Linting..."
-npm run lint
+echo "🔍 [Husky] Running Linting..."
+npm run lint || { echo "❌ Linting failed. Fix errors before committing."; exit 1; }
 
-echo "⌨️ Running Type Checks..."
-npm run type-check
+echo "⌨️ [Husky] Running Type Checks..."
+npm run type-check || { echo "❌ Type check failed. Fix errors before committing."; exit 1; }
 
-echo "🧪 Running Tests..."
-npm test
+echo "🧪 [Husky] Running Tests..."
+npm test || { echo "❌ Tests failed. Fix errors before committing."; exit 1; }
 
 # 2. Sync package-lock.json if package.json is staged
-if git diff --cached --name-only | grep -q "^package.json$"; then
-  echo "📦 package.json change detected. Synchronizing package-lock.json..."
-  npm install --package-lock-only
-  git add package-lock.json
+if git diff --cached --quiet package.json; then
+  : # No changes detected in package.json
+else
+  echo "📦 [Husky] package.json change detected. Synchronizing package-lock.json..."
+  npm install --package-lock-only || { echo "❌ Failed to sync package-lock.json."; exit 1; }
+  
+  # Ensure the updated lockfile is staged
+  git add package-lock.json || { echo "❌ Failed to stage package-lock.json."; exit 1; }
+  echo "✅ [Husky] package-lock.json synchronized and staged."
 fi
+
+echo "🚀 [Husky] Pre-commit checks passed!"

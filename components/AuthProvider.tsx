@@ -84,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(currentSession);
         setHasSession(true);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
+        setStorageItem(STORAGE_KEYS.CACHE_USER_ID, currentSession.user.id);
         
         const { data: profileData } = await withTimeout(supabase
           .from('profiles')
@@ -133,11 +134,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       triggerRefresh();
       setSession(newSession);
 
+      // Clear migration prompt flag so it re-evaluates on next login
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(STORAGE_KEYS.CACHE_MIGRATION_PROMPT_DISMISSED);
+      }
+
       if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {
         setHasSession(false);
         setProfile(null);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
         removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
+        removeStorageItem(STORAGE_KEYS.CACHE_USER_ID);
         removeStorageItem(STORAGE_KEYS.IS_ADMIN);
         const localUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
         setCurrentUser(localUser);
@@ -149,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (newSession) {
         setHasSession(true);
         setStorageItem(STORAGE_KEYS.HAS_SESSION, 'true');
+        setStorageItem(STORAGE_KEYS.CACHE_USER_ID, newSession.user.id);
         supabase
           .from('profiles')
           .select('*')
@@ -229,6 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setStorageItem(STORAGE_KEYS.HAS_SESSION, 'false');
     removeStorageItem(STORAGE_KEYS.CACHE_USERNAME);
+    removeStorageItem(STORAGE_KEYS.CACHE_USER_ID);
     removeStorageItem(STORAGE_KEYS.IS_ADMIN);
     removeStorageItem(STORAGE_KEYS.CURRENT_USER);
     setCurrentUser(null);

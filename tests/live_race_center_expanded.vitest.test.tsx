@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import LiveRaceCenter from '@/components/LiveRaceCenter';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from './setup';
 import { Driver } from '@/lib/types';
 
 const mockDrivers: Driver[] = [
@@ -11,12 +11,8 @@ const mockDrivers: Driver[] = [
   { id: 'albon', name: 'Alexander Albon', code: 'ALB', color: '#64C4FF', team: 'Williams', teamId: 'williams', number: 23, points: 0 },
 ];
 
-const server = setupServer();
-
 describe('LiveRaceCenter Expanded Features', () => {
-  beforeAll(() => server.listen());
   afterEach(() => server.resetHandlers());
-  afterAll(() => server.close());
 
   it('should show RESULTS PENDING when status is Completed (Smart Finish)', async () => {
     const mockData = {

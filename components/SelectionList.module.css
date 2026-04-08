@@ -1,0 +1,52 @@
+.selectionContainer {
+  max-width: 500px;
+  border: 1px solid transparent;
+}
+
+.selectionHighlighted {
+  border: none !important;
+}
+
+.scrollContainer {
+  max-height: 60vh;
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+.driverNumber {
+  width: 35px;
+}
+
+.driverNumberText {
+  font-size: 1.1rem;
+  opacity: 0.8;
+}
+
+.teamName {
+  font-size: 0.55rem;
+}
+
+.formDot {
+  width: 16px;
+  height: 16px;
+  font-size: 0.5rem;
+}
+
+.dotP10 {
+  background-color: #e10600;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.dotDNF {
+  background-color: #dc3545;
+}
+
+.dotDNS {
+  background-color: #333;
+}
+
+.dotDefault {
+  background-color: #333;
+}
