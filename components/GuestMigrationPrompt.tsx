@@ -11,32 +11,30 @@ export default function GuestMigrationPrompt() {
   const { session } = useAuth();
   const { localGuests, isImporting, error, success, importGuestData } = useGuestMigration();
   const [show, setShow] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [internalDismissed, setInternalDismissed] = useState(false);
 
   useEffect(() => {
     // Show modal if logged in, has local guests, not yet dismissed in this session
-    const isDismissed = sessionStorage.getItem('p10_migration_prompt_dismissed') === 'true';
-    if (session && localGuests.length > 0 && !isDismissed && !dismissed && !success) {
+    const isSessionDismissed = sessionStorage.getItem('p10_migration_prompt_dismissed') === 'true';
+    if (session && localGuests.length > 0 && !isSessionDismissed && !internalDismissed) {
       setShow(true);
-    } else {
-      setShow(false);
     }
-  }, [session, localGuests, dismissed, success]);
+  }, [session, localGuests, internalDismissed]);
 
   const handleClose = () => {
     setShow(false);
-    setDismissed(true);
+    setInternalDismissed(true);
     sessionStorage.setItem('p10_migration_prompt_dismissed', 'true');
   };
 
-  if (!show && !isImporting && !success && !error) return null;
+  if (!show && !isImporting) return null;
 
   return (
     <Modal 
-      show={show || isImporting || !!success || !!error} 
+      show={show || isImporting} 
       onHide={handleClose} 
       centered 
-      backdrop="static"
+      backdrop={isImporting ? 'static' : true}
       contentClassName="f1-glass-card border-warning border-opacity-50"
     >
       <Modal.Header closeButton={!isImporting} closeVariant="white" className="border-secondary border-opacity-25 py-3">
