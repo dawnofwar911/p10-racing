@@ -9,7 +9,9 @@ echo "🧪 Running Tests..."
 npm test
 
 # 2. Sync package-lock.json if package.json is staged
-if [ "$(git diff --cached --name-only package.json)" = "package.json" ]; then
+if git diff --cached --quiet package.json; then
+  : # No changes detected in package.json
+else
   echo "📦 package.json change detected. Synchronizing package-lock.json..."
   npm install --package-lock-only
   git add package-lock.json
