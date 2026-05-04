@@ -209,14 +209,28 @@ function PredictPage() {
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
+  const [resultsVersion, setResultsVersion] = useState(0);
 
   const [activeTab, setActiveTab] = useState<PredictTab>('p10');
 
   // Lifecycle status
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
+    
+    // Periodic refresh of results to catch "Smart Finish" transitions
+    // More aggressive during race window (1 min) vs idle (5 mins)
+    const getInterval = () => isRaceInProgress ? 60 * 1000 : 5 * 60 * 1000;
+    
+    const refreshTimer = setInterval(() => {
+      setResultsVersion(v => v + 1);
+    }, getInterval());
+
+    // Re-setup interval if isRaceInProgress changes
+    return () => {
+      mountedRef.current = false;
+      clearInterval(refreshTimer);
+    };
+  }, [isRaceInProgress]);
 
   useEffect(() => {
     if (!nextRace) return;
@@ -282,9 +296,20 @@ function PredictPage() {
 
     const fingerprint = session?.user.id || currentUser || 'guest';
     const isFirstView = sessionTracker.isFirstView('predict', fingerprint);
+    
+    // Check if the current cached race is still valid (not more than 4 hours past start)
+    let isCacheStale = false;
+    if (nextRace) {
+      const raceTime = new Date(`${nextRace.date}T${nextRace.time}`);
+      const fourHoursLater = new Date(raceTime.getTime() + RACE_DURATION_MS);
+      if (new Date() > fourHoursLater) {
+        isCacheStale = true;
+      }
+    }
+
     const hasData = (nextRace || cachedRace) && (drivers.length >= 20) && (startingGrid.length > 0 || hasCachedGrid);
     
-    if (!isFirstView && hasData && p10Driver && dnfDriver) {
+    if (!isFirstView && hasData && p10Driver && dnfDriver && !isCacheStale) {
       if (mountedRef.current) setLoadingRace(false);
       return;
     }
@@ -410,7 +435,7 @@ function PredictPage() {
     }
     
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, displayName, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session, displayName, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion, resultsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();

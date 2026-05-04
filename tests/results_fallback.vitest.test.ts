@@ -23,12 +23,17 @@ describe('fetchAllSimplifiedResults fallback logic', () => {
     from: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     like: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockReturnThis(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     (createClient as any).mockReturnValue(mockSupabase);
     window.localStorage.clear();
+    
+    // Default mock behavior for kv_cache (Smart Finish)
+    (mockSupabase.maybeSingle as any).mockResolvedValue({ data: null });
   });
 
   it('should prioritize Supabase verified_results (Gold Standard)', async () => {

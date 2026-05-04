@@ -120,11 +120,24 @@ export default function Home() {
 
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
+  const [resultsVersion, setResultsVersion] = useState(0);
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
+    
+    // Periodic refresh of results to catch "Smart Finish" transitions
+    // More aggressive during race window (1 min) vs idle (5 mins)
+    const getInterval = () => isRaceInProgress ? 60 * 1000 : 5 * 60 * 1000;
+    
+    const refreshTimer = setInterval(() => {
+      setResultsVersion(v => v + 1);
+    }, getInterval());
+
+    return () => {
+      mountedRef.current = false;
+      clearInterval(refreshTimer);
+    };
+  }, [isRaceInProgress]);
 
   const init = useCallback(async () => {
     if (f1Loading) return;
@@ -132,7 +145,17 @@ export default function Home() {
     const fingerprint = session?.user.id || currentUser || 'guest';
     const isFirstView = sessionTracker.isFirstView('home', fingerprint);
     
-    if (!isFirstView && nextRace && allDrivers.length >= 20) {
+    // Check if the current cached race is still valid (not more than 4 hours past start)
+    let isCacheStale = false;
+    if (nextRace) {
+      const raceTime = new Date(`${nextRace.date}T${nextRace.time}`);
+      const fourHoursLater = new Date(raceTime.getTime() + (4 * 60 * 60 * 1000));
+      if (new Date() > fourHoursLater) {
+        isCacheStale = true;
+      }
+    }
+
+    if (!isFirstView && nextRace && allDrivers.length >= 20 && !isCacheStale) {
       if (mountedRef.current) setLoading(false);
       return;
     }
@@ -235,7 +258,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length, resultsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
