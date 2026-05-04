@@ -14,7 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
-import { getActiveRaceIndex } from '@/lib/utils/races';
+import { getActiveRaceIndex, isRaceCacheStale, RACE_DURATION_MS } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
@@ -55,7 +55,6 @@ interface CommunityPredictionData {
 
 type PredictTab = 'grid' | 'p10' | 'dnf';
 
-const RACE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
 const PREDICTION_LOCK_BUFFER_MS = 2 * 60 * 1000; // 2 minutes after race start
 const STATUS_CHECK_INTERVAL_MS = 30000; // 30 seconds
 
@@ -214,6 +213,7 @@ function PredictPage() {
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
+  const [resultsVersion, setResultsVersion] = useState(0);
 
   const [activeTab, setActiveTab] = useState<PredictTab>('p10');
 
@@ -224,8 +224,21 @@ function PredictPage() {
   // Lifecycle status
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
+    
+    // Periodic refresh of results to catch "Smart Finish" transitions
+    // More aggressive during race window (1 min) vs idle (5 mins)
+    const getInterval = () => isRaceInProgress ? 60 * 1000 : 5 * 60 * 1000;
+    
+    const refreshTimer = setInterval(() => {
+      setResultsVersion(v => v + 1);
+    }, getInterval());
+
+    // Re-setup interval if isRaceInProgress changes
+    return () => {
+      mountedRef.current = false;
+      clearInterval(refreshTimer);
+    };
+  }, [isRaceInProgress]);
 
   useEffect(() => {
     if (!nextRace) return;
@@ -291,9 +304,15 @@ function PredictPage() {
 
     const fingerprint = session?.user.id || currentUser || 'guest';
     const isFirstView = sessionTracker.isFirstView('predict', fingerprint);
+    
+    // Check if the current cached race is still valid (not more than 4 hours past start)
+    const isCacheStale = nextRace ? isRaceCacheStale(nextRace) : false;
+
     const hasData = (nextRace || cachedRace) && (drivers.length >= 20) && (startingGrid.length > 0 || hasCachedGrid);
     
-    if (!isFirstView && hasData && p10Driver && dnfDriver) {
+    // Optimization: Skip full init if we already have data, it's not the first view, and cache is NOT stale.
+    // BUT: If resultsVersion > 0, we are doing a periodic refresh, so we MUST proceed to check for results.
+    if (!isFirstView && hasData && p10Driver && dnfDriver && !isCacheStale && resultsVersion === 0) {
       if (mountedRef.current) setLoadingRace(false);
       return;
     }
@@ -419,7 +438,7 @@ function PredictPage() {
     }
     
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, displayName, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session, displayName, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion, resultsVersion, isRaceInProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
