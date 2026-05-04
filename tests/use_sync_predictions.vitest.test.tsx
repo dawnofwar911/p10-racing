@@ -133,7 +133,10 @@ describe('useSyncPredictions', () => {
     });
 
     // Action
-    const success = await result.current.submitPrediction('driverX', 'driverY');
+    let success = false;
+    await act(async () => {
+      success = await result.current.submitPrediction('driverX', 'driverY');
+    });
     
     expect(success).toBe(true);
     expect(mockSupabase.upsert).toHaveBeenCalled();

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import LiveRaceCenter from '@/components/LiveRaceCenter';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from './setup';
 
 const mockDrivers = [
   { id: 'max_verstappen', name: 'Max Verstappen', code: 'VER', color: '#3671C6', team: 'Red Bull Racing', teamId: 'red_bull', number: 1, points: 0 },
@@ -15,12 +15,9 @@ const mockDrivers = [
   { id: 'perez', name: 'Sergio Perez', code: 'PER', color: '#3671C6', team: 'Red Bull Racing', teamId: 'red_bull', number: 11, points: 0 }
 ];
 
-const server = setupServer();
-
 describe('LiveRaceCenter Component', () => {
-  beforeAll(() => server.listen());
+  // server is already listening via setup.ts
   afterEach(() => server.resetHandlers());
-  afterAll(() => server.close());
 
   it('should not render if race is not in progress', () => {
     const { container } = render(

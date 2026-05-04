@@ -56,7 +56,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
         localStorage.setItem(`${STORAGE_KEYS.CACHE_CALENDAR}_${season}`, JSON.stringify(calendarResult.value));
       }
 
-      if (formResult.status === 'fulfilled' && Object.keys(formResult.value).length > 0) {
+      if (formResult.status === 'fulfilled' && formResult.value && Object.keys(formResult.value).length > 0) {
         setDriverForm(formResult.value);
         localStorage.setItem(`${STORAGE_KEYS.CACHE_DRIVER_FORM}_${season}`, JSON.stringify(formResult.value));
       }
@@ -108,5 +108,7 @@ export function useF1Data(season: number = CURRENT_SEASON): UseF1DataReturn {
     fetchData(hasValidCache);
   }, [fetchData, season]);
 
-  return { drivers, calendar, driverForm, loading, error, refresh: () => fetchData(false) };
+  const refresh = useCallback(() => fetchData(false), [fetchData]);
+
+  return { drivers, calendar, driverForm, loading, error, refresh };
 }

@@ -53,3 +53,6 @@ next-env.d.ts
 
 # GitHub App credentials
 gha-creds-*.json
+
+# Supabase CLI
+supabase/.temp/*

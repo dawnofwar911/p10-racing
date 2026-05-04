@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Card, Spinner, Badge } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
+import styles from './LiveRaceCenter.module.css';
 import { useF1LiveTiming } from '@/lib/hooks/use-f1-live-timing';
 import { Driver } from '@/lib/types';
 import { Flag } from 'lucide-react';
@@ -12,6 +13,7 @@ interface LiveRaceCenterProps {
   dnfPrediction: string;
   drivers: Driver[];
   isRaceInProgress: boolean;
+  onRaceFinish?: () => void;
 }
 
 const getTrackStatusColor = (status: string) => {
@@ -27,23 +29,30 @@ const getTrackStatusColor = (status: string) => {
   }
 };
 
-const getTyreColor = (compound: string) => {
+const getTyreClass = (compound: string) => {
   const c = compound.toUpperCase();
-  if (c.includes('SOFT')) return '#E10600';
-  if (c.includes('MEDIUM')) return '#FFD700';
-  if (c.includes('HARD')) return '#FFFFFF';
-  if (c.includes('INTER')) return '#43B02A';
-  if (c.includes('WET')) return '#0042BB';
-  return '#B6BABD';
+  if (c.includes('SOFT')) return styles.tyreSoft;
+  if (c.includes('MEDIUM')) return styles.tyreMedium;
+  if (c.includes('HARD')) return styles.tyreHard;
+  if (c.includes('INTER')) return styles.tyreInter;
+  if (c.includes('WET')) return styles.tyreWet;
+  return styles.tyreDefault;
 };
 
 const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({ 
   p10Prediction, 
   dnfPrediction, 
   drivers,
-  isRaceInProgress 
+  isRaceInProgress,
+  onRaceFinish
 }) => {
   const { data, loading, error, isStale } = useF1LiveTiming(isRaceInProgress);
+
+  useEffect(() => {
+    if (data?.status && ['Finished', 'Final', 'Completed'].includes(data.status)) {
+      onRaceFinish?.();
+    }
+  }, [data?.status, onRaceFinish]);
 
   const driversMap = useMemo(() => {
     return drivers.reduce((acc, d) => {
@@ -80,11 +89,14 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
           <Spinner animation="border" size="sm" variant="danger" />
         ) : (
           <div className="d-flex align-items-center gap-2">
-            {data?.status === 'Completed' && (
-              <Badge bg="success" className="extra-small px-2" style={{ fontSize: '0.6rem' }}>RESULTS PENDING</Badge>
-            )}
             <span className={`extra-small fw-bold ${isStale ? 'text-warning' : 'text-white opacity-50'}`}>
-              {isStale ? 'STALE DATA' : (data?.status || 'TRACK LIVE')}
+              {isStale ? 'STALE DATA' : (['Finished', 'Final', 'Completed'].includes(data?.status || "") ? (
+                <>
+                  <span className="me-1">RESULTS PENDING</span>
+                  <span className="opacity-50">·</span>
+                  <span className="ms-1">{data?.status}</span>
+                </>
+              ) : 'TRACK LIVE')}
             </span>
           </div>
         )}
@@ -98,8 +110,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className={`alert alert-${getTrackStatusColor(data.trackStatus)} py-2 px-3 extra-small mb-3 d-flex align-items-center gap-2 border-0 bg-opacity-10 text-${getTrackStatusColor(data.trackStatus)}`}
-              style={{ fontSize: '0.75rem', fontWeight: 'bold' }}
+              className={`alert alert-${getTrackStatusColor(data.trackStatus)} py-2 px-3 extra-small mb-3 d-flex align-items-center gap-2 border-0 bg-opacity-10 text-${getTrackStatusColor(data.trackStatus)} ${styles.statusMessage}`}
             >
               <Flag size={14} className="flex-shrink-0" />
               <span>{data.trackMessage || 'Track Status Change'}</span>
@@ -108,8 +119,8 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
         </AnimatePresence>
 
         {isStale && !showTrackStatus && (
-          <div className="alert alert-warning py-1 px-2 extra-small mb-3 d-flex align-items-center gap-2 border-0 bg-warning bg-opacity-10 text-warning" style={{ fontSize: '0.65rem' }}>
-            <Spinner animation="grow" size="sm" variant="warning" style={{ width: '8px', height: '8px' }} />
+          <div className={`alert alert-warning py-1 px-2 extra-small mb-3 d-flex align-items-center gap-2 border-0 bg-warning bg-opacity-10 text-warning ${styles.warningBox}`}>
+            <Spinner animation="grow" size="sm" variant="warning" className={styles.spinnerSmall} />
             <span>Outdated data. Reconnecting...</span>
           </div>
         )}
@@ -130,25 +141,25 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
               <div className="bg-dark bg-opacity-50 rounded-3 p-2 border border-secondary border-opacity-25">
                 <div className="row g-2">
                   <div className="col-6 border-end border-secondary border-opacity-25">
-                    <div className="extra-small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '0.55rem' }}>Your P10 Pick</div>
+                    <div className={`extra-small text-uppercase fw-bold text-muted mb-1 ${styles.labelSmall}`}>Your P10 Pick</div>
                     <div className="d-flex align-items-center gap-2">
-                      <div className="f1-driver-line" style={{ height: '12px', backgroundColor: driversMap[p10Prediction]?.color || '#333' }}></div>
+                      <div className={`f1-driver-line ${styles.driverLine}`} style={{ '--team-color': driversMap[p10Prediction]?.color || '#333' } as React.CSSProperties}></div>
                       <span className="fw-bold text-white small text-truncate">
                         {driversMap[p10Prediction]?.code || '---'}
                       </span>
-                      <Badge bg={userP10Result?.position === 10 ? 'success' : 'danger'} className="ms-auto" style={{ fontSize: '0.6rem' }}>
+                      <Badge bg={userP10Result?.position === 10 ? 'success' : 'danger'} className={`ms-auto ${styles.badgeSmall}`}>
                         P{userP10Result?.position || '??'}
                       </Badge>
                     </div>
                   </div>
                   <div className="col-6 ps-3">
-                    <div className="extra-small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '0.55rem' }}>Your DNF Pick</div>
+                    <div className={`extra-small text-uppercase fw-bold text-muted mb-1 ${styles.labelSmall}`}>Your DNF Pick</div>
                     <div className="d-flex align-items-center gap-2">
-                      <div className="f1-driver-line" style={{ height: '12px', backgroundColor: driversMap[dnfPrediction]?.color || '#333' }}></div>
+                      <div className={`f1-driver-line ${styles.driverLine}`} style={{ '--team-color': driversMap[dnfPrediction]?.color || '#333' } as React.CSSProperties}></div>
                       <span className="fw-bold text-white small text-truncate">
                         {driversMap[dnfPrediction]?.code || '---'}
                       </span>
-                      <Badge bg={userDnfResult?.isRetired ? 'success' : 'secondary'} className="ms-auto" style={{ fontSize: '0.6rem' }}>
+                      <Badge bg={userDnfResult?.isRetired ? 'success' : 'secondary'} className={`ms-auto ${styles.badgeSmall}`}>
                         {userDnfResult?.isRetired ? 'DNF' : 'LIVE'}
                       </Badge>
                     </div>
@@ -166,7 +177,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                     const isUserPick = res.driverId === p10Prediction;
                     const isP10 = res.position === 10;
                     const driver = driversMap[res.driverId];
-                    const tyreColor = getTyreColor(res.tyres?.compound || '');
+                    const tyreClass = getTyreClass(res.tyres?.compound || '');
                     
                     return (
                       <motion.div 
@@ -177,25 +188,25 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                         exit={{ opacity: 0, x: 10 }}
                         className={`d-flex align-items-center p-2 rounded-2 ${isP10 ? 'bg-danger bg-opacity-20 border border-danger border-opacity-50 shadow-sm' : 'bg-dark bg-opacity-30 border border-secondary border-opacity-10'}`}
                       >
-                        <div className={`fw-bold me-2 ${isP10 ? 'text-danger' : 'text-muted'}`} style={{ width: '20px', fontSize: '0.75rem' }}>{res.position}</div>
-                        <div className="f1-driver-line me-2" style={{ backgroundColor: driver?.color || '#333' }}></div>
+                        <div className={`fw-bold me-2 ${isP10 ? 'text-danger' : 'text-muted'} ${styles.positionText}`}>{res.position}</div>
+                        <div className={`f1-driver-line me-2 ${styles.driverLine}`} style={{ '--team-color': driver?.color || '#333' } as React.CSSProperties}></div>
                         <div className="flex-grow-1 overflow-hidden">
                           <div className="d-flex align-items-center gap-2">
                             <span className={`fw-bold small text-truncate ${isP10 ? 'text-white' : 'text-white opacity-75'}`}>
                               {driver?.name || res.acronym}
                             </span>
                             {res.tyres && (
-                              <div className="d-flex align-items-center gap-1 opacity-75" style={{ fontSize: '0.6rem' }}>
-                                <div className="rounded-circle border border-secondary border-opacity-50" style={{ width: '8px', height: '8px', backgroundColor: tyreColor }}></div>
+                              <div className={`d-flex align-items-center gap-1 opacity-75 ${styles.tyreText}`}>
+                                <div className={`rounded-circle border border-secondary border-opacity-50 ${styles.tyreDot} ${tyreClass}`}></div>
                                 <span className="text-muted">{res.tyres.laps}L</span>
                               </div>
                             )}
                           </div>
                         </div>
                         {isUserPick && (
-                          <div className="ms-auto extra-small fw-bold text-danger text-uppercase px-1" style={{ fontSize: '0.55rem' }}>YOUR PICK</div>
+                          <div className={`ms-auto fw-bold text-danger text-uppercase px-1 ${styles.yourPickText}`}>YOUR PICK</div>
                         )}
-                        <div className="extra-small text-muted font-monospace ms-2" style={{ fontSize: '0.65rem', minWidth: '45px', textAlign: 'right' }}>
+                        <div className={`text-muted font-monospace ms-2 ${styles.gapText}`}>
                           {res.position === 1 ? 'LEADER' : res.gap || res.interval}
                         </div>
                       </motion.div>
@@ -222,7 +233,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                     <span>None yet</span>
                   )}
                 </div>
-                <div className="opacity-50 font-monospace" style={{ fontSize: '0.6rem' }} suppressHydrationWarning>
+                <div className={`opacity-50 font-monospace ${styles.trackLiveText}`} suppressHydrationWarning>
                   TRACK LIVE · {new Date(data.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>

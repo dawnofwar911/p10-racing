@@ -22,7 +22,14 @@ export function useSyncPredictions(raceId: string | number | undefined) {
   // 1. Synchronous Initialization from Cache
   const [prediction, setPrediction] = useState<Prediction | null>(() => {
     if (typeof window === 'undefined' || !raceId) return null;
-    const storageUser = (localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) || '';
+    
+    // Prioritize UUID for authenticated users
+    const hasSession = localStorage.getItem(STORAGE_KEYS.HAS_SESSION) === 'true';
+    const cachedUserId = localStorage.getItem(STORAGE_KEYS.CACHE_USER_ID);
+    const storageUser = (hasSession && cachedUserId) 
+      ? cachedUserId 
+      : (localStorage.getItem(STORAGE_KEYS.CACHE_USERNAME) || localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || '');
+      
     if (!storageUser) return null;
     
     try {

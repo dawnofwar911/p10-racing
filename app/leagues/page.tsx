@@ -3,12 +3,10 @@
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { Row, Col, Card, Form, Alert, Spinner, Table } from 'react-bootstrap';
 import { createClient } from '@/lib/supabase/client';
-import { Session } from '@supabase/supabase-js';
-import { triggerMediumHaptic, triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
-import { CURRENT_SEASON } from '@/lib/data';
+import { triggerMediumHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { useSearchParams } from 'next/navigation';
 import { withTimeout } from '@/lib/utils/sync-queue';
-import { STORAGE_KEYS, getPredictionKey } from '@/lib/utils/storage';
+import { STORAGE_KEYS } from '@/lib/utils/storage';
 import { sessionTracker } from '@/lib/utils/session';
 import { useAuth } from '@/components/AuthProvider';
 import HapticButton from '@/components/HapticButton';
@@ -29,18 +27,10 @@ interface League {
 
 const MyLeaguesView = ({ 
   loading, 
-  leagues, 
-  session, 
-  localGuests, 
-  actionLoading, 
-  handleImport 
+  leagues 
 }: { 
   loading: boolean, 
-  leagues: League[], 
-  session: Session | null, 
-  localGuests: string[], 
-  actionLoading: boolean, 
-  handleImport: (name: string) => void 
+  leagues: League[] 
 }) => (
   <>
     <div className="f1-premium-table-container mb-3">
@@ -79,22 +69,6 @@ const MyLeaguesView = ({
         </div>
       )}
     </div>
-
-    {session && localGuests.length > 0 && (
-      <Card className="border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-5 mb-3 rounded-4 overflow-hidden">
-        <Card.Body className="p-3">
-          <h3 className="extra-small mb-2 text-uppercase fw-bold text-warning letter-spacing-2" style={{ fontSize: '0.6rem' }}>Sync Local Data</h3>
-          <div className="d-flex flex-wrap gap-2">
-            {localGuests.map(guest => (
-              <div key={guest} className="d-flex align-items-center bg-dark bg-opacity-50 p-1 px-2 rounded-pill border border-secondary border-opacity-50">
-                <span className="fw-bold me-2 text-white extra-small" style={{ fontSize: '0.65rem' }}>{guest}</span>
-                <HapticButton haptic="medium" variant="warning" size="sm" className="fw-bold extra-small py-0 rounded-pill" style={{ fontSize: '0.6rem' }} onClick={() => handleImport(guest)} disabled={actionLoading}>IMPORT</HapticButton>
-              </div>
-            ))}
-          </div>
-        </Card.Body>
-      </Card>
-    )}
   </>
 );
 
@@ -207,7 +181,6 @@ function LeaguesContent() {
   
   const [newLeagueName, setNewLeagueName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
-  const [localGuests, setLocalGuests] = useState<string[]>([]);
 
   const [activeTab, setActiveTab] = useState<'my-leagues' | 'manage'>('my-leagues');
 
@@ -264,17 +237,6 @@ function LeaguesContent() {
       const fingerprint = session?.user.id || currentUser || 'guest';
       const isFirstView = sessionTracker.isFirstView('leagues', fingerprint);
       
-      let guests: string[] = [];
-      try {
-        const guestsData = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
-        const parsed = guestsData ? JSON.parse(guestsData) : [];
-        guests = (Array.isArray(parsed) ? parsed : []).filter((g: string) => typeof g === 'string' && g.trim().length > 0);
-      } catch (e) {
-        console.warn('Leagues: Failed to parse players list', e);
-      }
-      
-      if (mountedRef.current) setLocalGuests(guests);
-
       if (session) {
         if (leagues.length === 0 || isFirstView) {
           await fetchLeagues(leagues.length > 0);
@@ -303,73 +265,6 @@ function LeaguesContent() {
     window.addEventListener('p10:app_resume', handleResume);
     return () => window.removeEventListener('p10:app_resume', handleResume);
   }, [init, triggerRefresh]);
-
-  const handleImport = async (guestName: string) => {
-    if (!session) return;
-    setActionLoading(true);
-    setError(null);
-    triggerHeavyHaptic();
-
-    try {
-      let count = 0;
-      const importPromises = [];
-      for (let round = 1; round <= 24; round++) {
-        const key = getPredictionKey(CURRENT_SEASON, guestName, round);
-        const predStr = localStorage.getItem(key);
-        if (predStr) {
-          try {
-            const pred = JSON.parse(predStr);
-            importPromises.push(
-              supabase.from('predictions').upsert({
-                user_id: session.user.id,
-                race_id: `${CURRENT_SEASON}_${round}`,
-                p10_driver_id: pred.p10,
-                dnf_driver_id: pred.dnf,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'user_id, race_id' })
-            );
-            count++;
-          } catch (e) {
-            console.warn(`Leagues: Failed to parse prediction for import: ${guestName} round ${round}`, e);
-          }
-        }
-      }
-
-      if (importPromises.length === 0) {
-        if (mountedRef.current) setError('No predictions found to import for this guest.');
-        return;
-      }
-
-      const results = await Promise.all(importPromises);
-      const errors = results.filter(r => r.error);
-      if (errors.length > 0) throw new Error('Some predictions failed to import.');
-
-      if (mountedRef.current) {
-        setSuccess(`Successfully imported ${count} predictions!`);
-        triggerSuccessHaptic();
-      }
-
-      let localPlayers: string[] = [];
-      try {
-        const stored = localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST);
-        localPlayers = stored ? JSON.parse(stored) : [];
-      } catch (e) {
-        console.warn('Leagues: Failed to parse players list during import cleanup', e);
-      }
-      
-      const updatedPlayers = (Array.isArray(localPlayers) ? localPlayers : []).filter(p => p !== guestName);
-      localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
-      if (mountedRef.current) setLocalGuests(updatedPlayers);
-      
-      for (let round = 1; round <= 24; round++) {
-        localStorage.removeItem(getPredictionKey(CURRENT_SEASON, guestName, round));
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Import failed');
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -465,10 +360,6 @@ function LeaguesContent() {
     <MyLeaguesView 
       loading={loading}
       leagues={leagues}
-      session={session}
-      localGuests={localGuests}
-      actionLoading={actionLoading}
-      handleImport={handleImport}
     />
   );
 

@@ -59,11 +59,13 @@ a:focus, a:active, a:hover {
 
 /* Surgically disable selection on layout/navigation elements */
 .navbar, .mobile-bottom-nav, .btn, .nav-link, .cursor-pointer {
+  -webkit-user-select: none;
   user-select: none;
 }
 
 /* Explicitly enable selection on text-heavy areas and inputs */
 main, .modal-content, input, textarea {
+  -webkit-user-select: text !important;
   user-select: text !important;
 }
 
@@ -81,7 +83,6 @@ main {
   flex-grow: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   display: block; /* Standard block layout for natural scroll height */
   position: relative;
   /* Add safe area insets for side padding */
@@ -191,8 +192,8 @@ main {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   transform: translate3d(0,0,0);
 }
 
@@ -351,7 +352,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   }
   * {
     -ms-overflow-style: none; /* IE/Edge */
-    scrollbar-width: none;    /* Firefox */
+    scrollbar-width: none;    /* Firefox (Chrome < 121 / Safari compatibility handled by ::-webkit-scrollbar) */
   }
 }
 
@@ -470,8 +471,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
 .f1-glass-card {
   background-color: rgba(31, 31, 39, 0.75) !important;
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 1rem !important; /* rounded-4 equivalent */
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
@@ -481,8 +482,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
 .f1-glass-modal {
   background-color: rgba(31, 31, 39, 0.85) !important;
-  backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(15px);
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 1.25rem !important;
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5) !important;
@@ -491,8 +492,8 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 
 .f1-accent-card {
   background-color: rgba(31, 31, 39, 0.75) !important;
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-left: 4px solid var(--team-accent) !important;
   border-radius: 1rem !important;
@@ -570,6 +571,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   width: 3px;
   height: 20px;
   flex-shrink: 0;
+  background-color: var(--team-color, #B6BABD);
 }
 
 .letter-spacing-1 { letter-spacing: 1px; }
@@ -601,14 +603,16 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
 .sticky-header.header-shrunk {
   height: 54px; /* Slightly shorter but stable */
   background-color: rgba(21, 21, 30, 0.95);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .sticky-header .header-icon-container {
   width: 45px;
   height: 45px;
+  background-color: var(--team-accent, #e10600);
+  color: var(--team-accent-contrast, #ffffff);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: center center;
   flex-shrink: 0;
@@ -637,6 +641,7 @@ h1, h2, h3, h4, h5, h6, p, span, div, label {
   transform-origin: left center;
   display: block;
   opacity: 0.7;
+  font-size: 0.65rem;
 }
 
 .sticky-header.header-shrunk .header-subtitle {

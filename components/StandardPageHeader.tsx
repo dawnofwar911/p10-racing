@@ -62,10 +62,7 @@ export default function StandardPageHeader({
                 <ChevronLeft size={28} />
               </HapticButton>
             )}
-            <div className="rounded-3 header-icon-container me-3 shadow-sm d-flex align-items-center justify-content-center" style={{ 
-              backgroundColor: 'var(--team-accent, #e10600)',
-              color: 'var(--team-accent-contrast, #ffffff)' 
-            }}>
+            <div className="rounded-3 header-icon-container me-3 shadow-sm d-flex align-items-center justify-content-center">
               {icon}
             </div>
             <div className="overflow-hidden">
@@ -74,7 +71,7 @@ export default function StandardPageHeader({
                 {badge}
               </div>
               {subtitle && (
-                <small className="text-muted text-uppercase fw-bold letter-spacing-1 header-subtitle text-truncate d-block" style={{ fontSize: '0.65rem' }}>
+                <small className="text-muted text-uppercase fw-bold letter-spacing-1 header-subtitle text-truncate d-block">
                   {subtitle}
                 </small>
               )}
