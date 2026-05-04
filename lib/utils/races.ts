@@ -1,6 +1,8 @@
 import { ApiCalendarRace } from '../api';
 import { EnhancedSimplifiedResults } from '../results';
 
+export const RACE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
+
 /**
  * Determines the current active race index based on time and result availability.
  */
@@ -44,4 +46,22 @@ export function getActiveRaceIndex(
   const isSeasonFinished = activeIndex === races.length - 1 && lastRaceFinished && !!raceResultsMap[lastRace.round];
 
   return { index: activeIndex, isSeasonFinished };
+}
+
+/**
+ * Checks if a race cache is stale based on its start time and a duration.
+ */
+export function isRaceCacheStale(
+  race: { date: string; time: string }, 
+  durationMs: number = RACE_DURATION_MS, 
+  now: Date = new Date()
+): boolean {
+  if (!race.date || !race.time) return false;
+  try {
+    const raceTime = new Date(`${race.date}T${race.time}`);
+    const expiryTime = new Date(raceTime.getTime() + durationMs);
+    return now > expiryTime;
+  } catch {
+    return false;
+  }
 }

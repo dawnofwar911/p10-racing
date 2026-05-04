@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getActiveRaceIndex } from '@/lib/utils/races';
+import { getActiveRaceIndex, isRaceCacheStale, RACE_DURATION_MS } from '@/lib/utils/races';
 
 describe('Active Race Logic Tests', () => {
   const races = [
@@ -45,5 +45,28 @@ describe('Active Race Logic Tests', () => {
     const { index, isSeasonFinished } = getActiveRaceIndex(races as any, resultsMap as any, now);
     expect(index).toBe(2); // Last race
     expect(isSeasonFinished).toBe(true);
+  });
+
+  describe('isRaceCacheStale', () => {
+    const race = { date: '2026-03-01', time: '10:00:00Z' };
+
+    it('should return false if race has not started', () => {
+      const now = new Date('2026-03-01T09:00:00Z');
+      expect(isRaceCacheStale(race, RACE_DURATION_MS, now)).toBe(false);
+    });
+
+    it('should return false if race started less than duration ago', () => {
+      const now = new Date('2026-03-01T12:00:00Z'); // 2 hours after start
+      expect(isRaceCacheStale(race, RACE_DURATION_MS, now)).toBe(false);
+    });
+
+    it('should return true if race started more than duration ago', () => {
+      const now = new Date('2026-03-01T15:00:00Z'); // 5 hours after start
+      expect(isRaceCacheStale(race, RACE_DURATION_MS, now)).toBe(true);
+    });
+
+    it('should handle missing date or time gracefully', () => {
+      expect(isRaceCacheStale({ date: '', time: '' }, RACE_DURATION_MS)).toBe(false);
+    });
   });
 });

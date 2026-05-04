@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useNotification } from '@/components/Notification';
 import { isTestAccount } from '@/lib/utils/profiles';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
-import { getActiveRaceIndex } from '@/lib/utils/races';
+import { getActiveRaceIndex, isRaceCacheStale } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -146,16 +146,11 @@ export default function Home() {
     const isFirstView = sessionTracker.isFirstView('home', fingerprint);
     
     // Check if the current cached race is still valid (not more than 4 hours past start)
-    let isCacheStale = false;
-    if (nextRace) {
-      const raceTime = new Date(`${nextRace.date}T${nextRace.time}`);
-      const fourHoursLater = new Date(raceTime.getTime() + (4 * 60 * 60 * 1000));
-      if (new Date() > fourHoursLater) {
-        isCacheStale = true;
-      }
-    }
+    const isCacheStale = nextRace ? isRaceCacheStale(nextRace) : false;
 
-    if (!isFirstView && nextRace && allDrivers.length >= 20 && !isCacheStale) {
+    // Optimization: Skip full init if we already have data, it's not the first view, and cache is NOT stale.
+    // BUT: If resultsVersion > 0, we are doing a periodic refresh, so we MUST proceed to check for results.
+    if (!isFirstView && nextRace && allDrivers.length >= 20 && !isCacheStale && resultsVersion === 0) {
       if (mountedRef.current) setLoading(false);
       return;
     }
@@ -258,7 +253,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length, resultsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length, resultsVersion, isRaceInProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();

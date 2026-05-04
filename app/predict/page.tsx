@@ -14,7 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import LoadingView from '@/components/LoadingView';
 import { useNotification } from '@/components/Notification';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
-import { getActiveRaceIndex } from '@/lib/utils/races';
+import { getActiveRaceIndex, isRaceCacheStale, RACE_DURATION_MS } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { STORAGE_KEYS, getPredictionKey, getGridKey, getCommunityKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
 import { useAuth } from '@/components/AuthProvider';
@@ -53,7 +53,6 @@ interface CommunityPredictionData {
 
 type PredictTab = 'grid' | 'p10' | 'dnf';
 
-const RACE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
 const PREDICTION_LOCK_BUFFER_MS = 2 * 60 * 1000; // 2 minutes after race start
 const STATUS_CHECK_INTERVAL_MS = 30000; // 30 seconds
 
@@ -298,18 +297,13 @@ function PredictPage() {
     const isFirstView = sessionTracker.isFirstView('predict', fingerprint);
     
     // Check if the current cached race is still valid (not more than 4 hours past start)
-    let isCacheStale = false;
-    if (nextRace) {
-      const raceTime = new Date(`${nextRace.date}T${nextRace.time}`);
-      const fourHoursLater = new Date(raceTime.getTime() + RACE_DURATION_MS);
-      if (new Date() > fourHoursLater) {
-        isCacheStale = true;
-      }
-    }
+    const isCacheStale = nextRace ? isRaceCacheStale(nextRace) : false;
 
     const hasData = (nextRace || cachedRace) && (drivers.length >= 20) && (startingGrid.length > 0 || hasCachedGrid);
     
-    if (!isFirstView && hasData && p10Driver && dnfDriver && !isCacheStale) {
+    // Optimization: Skip full init if we already have data, it's not the first view, and cache is NOT stale.
+    // BUT: If resultsVersion > 0, we are doing a periodic refresh, so we MUST proceed to check for results.
+    if (!isFirstView && hasData && p10Driver && dnfDriver && !isCacheStale && resultsVersion === 0) {
       if (mountedRef.current) setLoadingRace(false);
       return;
     }
@@ -435,7 +429,7 @@ function PredictPage() {
     }
     
     if (mountedRef.current) setExistingPlayers((Array.isArray(parsedPlayers) ? parsedPlayers : []).filter((p: string) => typeof p === 'string' && p.trim().length >= 3));
-  }, [supabase, session, displayName, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion, resultsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, session, displayName, currentUser, f1Loading, calendar.length, drivers.length, nextRace?.id, startingGrid.length, isEditing, p10Driver, dnfDriver, syncVersion, resultsVersion, isRaceInProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();
