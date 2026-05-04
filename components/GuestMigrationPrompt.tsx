@@ -10,7 +10,7 @@ import { STORAGE_KEYS } from '@/lib/utils/storage';
 
 export default function GuestMigrationPrompt() {
   const { session } = useAuth();
-  const { localGuests, isImporting, importingGuest, error, success, importGuestData } = useGuestMigration();
+  const { localGuests, isImporting, importingGuest, error, success, importGuestData, deleteGuestData } = useGuestMigration();
   const [show, setShow] = useState(false);
   const [internalDismissed, setInternalDismissed] = useState(false);
 
@@ -67,18 +67,31 @@ export default function GuestMigrationPrompt() {
             <div className="d-flex flex-column gap-2 mb-4">
               {localGuests.map(guest => (
                 <div key={guest} className="d-flex align-items-center justify-content-between bg-black bg-opacity-25 p-2 px-3 rounded-3 border border-secondary border-opacity-25">
-                  <span className="fw-bold text-white small">{guest}</span>
-                  <HapticButton 
-                    haptic="medium" 
-                    variant="warning" 
-                    size="sm" 
-                    className="fw-bold py-1 px-3 rounded-pill text-uppercase"
-                    style={{ fontSize: '0.7rem' }}
-                    onClick={() => importGuestData(guest)} 
-                    disabled={isImporting}
-                  >
-                    {importingGuest === guest ? <Spinner animation="border" size="sm" /> : 'Import'}
-                  </HapticButton>
+                  <span className="fw-bold text-white small text-truncate pe-2">{guest}</span>
+                  <div className="d-flex gap-2">
+                    <HapticButton 
+                      haptic="medium" 
+                      variant="outline-danger" 
+                      size="sm" 
+                      className="fw-bold py-1 px-2 rounded-pill text-uppercase border-0 opacity-75 hover-opacity-100"
+                      style={{ fontSize: '0.65rem' }}
+                      onClick={() => deleteGuestData(guest)} 
+                      disabled={isImporting}
+                    >
+                      Delete
+                    </HapticButton>
+                    <HapticButton 
+                      haptic="medium" 
+                      variant="warning" 
+                      size="sm" 
+                      className="fw-bold py-1 px-3 rounded-pill text-uppercase"
+                      style={{ fontSize: '0.7rem' }}
+                      onClick={() => importGuestData(guest)} 
+                      disabled={isImporting}
+                    >
+                      {importingGuest === guest ? <Spinner animation="border" size="sm" /> : 'Import'}
+                    </HapticButton>
+                  </div>
                 </div>
               ))}
             </div>

@@ -165,6 +165,19 @@ export function useGuestMigration() {
     }
   };
 
+  const deleteGuestData = (guestName: string) => {
+    const updatedPlayers = localGuests.filter(p => p !== guestName);
+    localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
+    if (mountedRef.current) setLocalGuests(updatedPlayers);
+    
+    for (let round = 1; round <= 24; round++) {
+      localStorage.removeItem(getPredictionKey(CURRENT_SEASON, guestName, round));
+    }
+    
+    triggerHeavyHaptic();
+    triggerRefresh();
+  };
+
   return {
     localGuests,
     isImporting: !!importingGuest,
@@ -172,6 +185,8 @@ export function useGuestMigration() {
     error,
     success,
     importGuestData,
+    deleteGuestData,
     refreshGuests: loadLocalGuests
   };
 }
+
