@@ -185,4 +185,38 @@ describe('useGuestMigration', () => {
     const guests = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
     expect(guests).toEqual([guestName]);
   });
+
+  it('should successfully delete guest data and cleanup', async () => {
+    const guestName = 'Alice';
+    const guests = [guestName, 'Bob'];
+    
+    localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(guests));
+    
+    // Set some predictions for Alice
+    const pred1 = { p10: 'VER', dnf: 'SAR' };
+    localStorage.setItem(getPredictionKey(CURRENT_SEASON, guestName, 1), JSON.stringify(pred1));
+
+    const triggerRefresh = vi.fn();
+    (useAuth as any).mockReturnValue({ 
+      session: null,
+      triggerRefresh,
+      displayName: 'AuthUser'
+    });
+
+    const { result } = renderHook(() => useGuestMigration());
+
+    act(() => {
+      result.current.deleteGuestData(guestName);
+    });
+
+    // Verify cleanup
+    const updatedGuests = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYERS_LIST) || '[]');
+    expect(updatedGuests).toEqual(['Bob']);
+    expect(result.current.localGuests).toEqual(['Bob']);
+    
+    // Verify individual predictions removed from guest
+    expect(localStorage.getItem(getPredictionKey(CURRENT_SEASON, guestName, 1))).toBeNull();
+
+    expect(triggerRefresh).toHaveBeenCalled();
+  });
 });
