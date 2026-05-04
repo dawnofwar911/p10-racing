@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
+import { STORAGE_KEYS, getPredictionKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
 import { CURRENT_SEASON } from '@/lib/data';
 import { triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { useAuth } from '@/components/AuthProvider';
@@ -166,12 +166,14 @@ export function useGuestMigration() {
   };
 
   const deleteGuestData = (guestName: string) => {
+    setError(null);
+    setSuccess(null);
     const updatedPlayers = localGuests.filter(p => p !== guestName);
-    localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
+    setStorageItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
     if (mountedRef.current) setLocalGuests(updatedPlayers);
     
     for (let round = 1; round <= 24; round++) {
-      localStorage.removeItem(getPredictionKey(CURRENT_SEASON, guestName, round));
+      removeStorageItem(getPredictionKey(CURRENT_SEASON, guestName, round));
     }
     
     triggerHeavyHaptic();
