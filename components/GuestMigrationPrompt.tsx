@@ -75,7 +75,11 @@ export default function GuestMigrationPrompt() {
                       size="sm" 
                       className="fw-bold py-1 px-2 rounded-pill text-uppercase border-0 opacity-75 hover-opacity-100"
                       style={{ fontSize: '0.65rem' }}
-                      onClick={() => deleteGuestData(guest)} 
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to delete all local predictions for "${guest}"? This cannot be undone.`)) {
+                          deleteGuestData(guest);
+                        }
+                      }} 
                       disabled={isImporting}
                     >
                       Delete

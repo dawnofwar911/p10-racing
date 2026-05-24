@@ -61,7 +61,8 @@ export default function MobileBottomNav() {
                   letterSpacing: '0.5px',
                   color: isActive ? 'var(--team-accent)' : 'rgba(255,255,255,0.4)'
                 }}
-              >                {item.label}
+              >
+                {item.label}
               </span>
             </HapticLink>
           );
