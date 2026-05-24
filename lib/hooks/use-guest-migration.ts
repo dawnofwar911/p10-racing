@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
-import { CURRENT_SEASON } from '@/lib/data';
+import { STORAGE_KEYS, getPredictionKey, setStorageItem, removeStorageItem } from '@/lib/utils/storage';
+import { CURRENT_SEASON, MAX_F1_ROUNDS } from '@/lib/data';
 import { triggerHeavyHaptic, triggerSuccessHaptic } from '@/lib/utils/haptics';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -15,6 +15,17 @@ export function useGuestMigration() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const mountedRef = useRef(true);
+
+  // Helper for cleaning up guest data from storage
+  const cleanupGuestStorage = useCallback((guestName: string, updatedPlayersList: string[]) => {
+    // 1. Update players list
+    setStorageItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayersList));
+    
+    // 2. Remove all seasonal predictions for this guest
+    for (let round = 1; round <= MAX_F1_ROUNDS; round++) {
+      removeStorageItem(getPredictionKey(CURRENT_SEASON, guestName, round));
+    }
+  }, []);
 
   const loadLocalGuests = useCallback(() => {
     try {
@@ -90,8 +101,8 @@ export function useGuestMigration() {
         updated_at: string;
       }[] = [];
       
-      // Check all 24 rounds for predictions
-      for (let round = 1; round <= 24; round++) {
+      // Check all rounds for predictions
+      for (let round = 1; round <= MAX_F1_ROUNDS; round++) {
         const key = getPredictionKey(CURRENT_SEASON, guestName, round);
         const predStr = localStorage.getItem(key);
         
@@ -139,21 +150,15 @@ export function useGuestMigration() {
         }));
       });
 
-      // Success! Cleanup local storage
+      // Success! Update state and cleanup storage
+      const updatedPlayers = localGuests.filter(p => p !== guestName);
+      cleanupGuestStorage(guestName, updatedPlayers);
+
       if (mountedRef.current) {
+        setLocalGuests(updatedPlayers);
         setSuccess(`Successfully imported ${count} predictions from ${guestName}!`);
         triggerSuccessHaptic();
         triggerRefresh();
-      }
-
-      // Update players list and state (Cleanup)
-      const updatedPlayers = localGuests.filter(p => p !== guestName);
-      localStorage.setItem(STORAGE_KEYS.PLAYERS_LIST, JSON.stringify(updatedPlayers));
-      if (mountedRef.current) setLocalGuests(updatedPlayers);
-      
-      // Remove individual prediction keys
-      for (let round = 1; round <= 24; round++) {
-        localStorage.removeItem(getPredictionKey(CURRENT_SEASON, guestName, round));
       }
 
     } catch (err: unknown) {
@@ -165,6 +170,22 @@ export function useGuestMigration() {
     }
   };
 
+  const deleteGuestData = (guestName: string) => {
+    // Reset states
+    setError(null);
+    setSuccess(null);
+    
+    const updatedPlayers = localGuests.filter(p => p !== guestName);
+    cleanupGuestStorage(guestName, updatedPlayers);
+    
+    if (mountedRef.current) {
+      setLocalGuests(updatedPlayers);
+    }
+    
+    triggerHeavyHaptic();
+    triggerRefresh();
+  };
+
   return {
     localGuests,
     isImporting: !!importingGuest,
@@ -172,6 +193,8 @@ export function useGuestMigration() {
     error,
     success,
     importGuestData,
+    deleteGuestData,
     refreshGuests: loadLocalGuests
   };
 }
+

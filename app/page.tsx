@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useNotification } from '@/components/Notification';
 import { isTestAccount } from '@/lib/utils/profiles';
 import { getDriverDisplayName } from '@/lib/utils/drivers';
-import { getActiveRaceIndex } from '@/lib/utils/races';
+import { getActiveRaceIndex, isRaceCacheStale } from '@/lib/utils/races';
 import HowToPlayButton from '@/components/HowToPlayButton';
 import { STORAGE_KEYS, getPredictionKey, setStorageItem } from '@/lib/utils/storage';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -120,11 +120,24 @@ export default function Home() {
 
   const [isSeasonFinished, setIsSeasonFinished] = useState(false);
   const [champion, setChampion] = useState<string | null>(null);
+  const [resultsVersion, setResultsVersion] = useState(0);
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
+    
+    // Periodic refresh of results to catch "Smart Finish" transitions
+    // More aggressive during race window (1 min) vs idle (5 mins)
+    const getInterval = () => isRaceInProgress ? 60 * 1000 : 5 * 60 * 1000;
+    
+    const refreshTimer = setInterval(() => {
+      setResultsVersion(v => v + 1);
+    }, getInterval());
+
+    return () => {
+      mountedRef.current = false;
+      clearInterval(refreshTimer);
+    };
+  }, [isRaceInProgress]);
 
   const init = useCallback(async () => {
     if (f1Loading) return;
@@ -132,7 +145,12 @@ export default function Home() {
     const fingerprint = session?.user.id || currentUser || 'guest';
     const isFirstView = sessionTracker.isFirstView('home', fingerprint);
     
-    if (!isFirstView && nextRace && allDrivers.length >= 20) {
+    // Check if the current cached race is still valid (not more than 4 hours past start)
+    const isCacheStale = nextRace ? isRaceCacheStale(nextRace) : false;
+
+    // Optimization: Skip full init if we already have data, it's not the first view, and cache is NOT stale.
+    // BUT: If resultsVersion > 0, we are doing a periodic refresh, so we MUST proceed to check for results.
+    if (!isFirstView && nextRace && allDrivers.length >= 20 && !isCacheStale && resultsVersion === 0) {
       if (mountedRef.current) setLoading(false);
       return;
     }
@@ -235,7 +253,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, nextRace?.id, allDrivers.length, session, currentUser, syncVersion, f1Loading, calendar.length, resultsVersion, isRaceInProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     init();

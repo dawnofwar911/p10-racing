@@ -50,6 +50,8 @@ next-env.d.ts
 
 # gemini-cli settings
 .gemini/
+kirocli/
+kirocli.zip
 
 # GitHub App credentials
 gha-creds-*.json
