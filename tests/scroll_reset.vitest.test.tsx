@@ -97,8 +97,8 @@ describe('Scroll and Navigation Stability', () => {
     
     const { getByText } = render(<MobileBottomNav />);
     
-    // Click Leaderboard (inactive)
-    const leaderboardLink = getByText('Leaderboard').closest('a')!;
+    // Click Rankings (inactive)
+    const leaderboardLink = getByText('Rankings').closest('a')!;
     
     await act(async () => {
       fireEvent.click(leaderboardLink);

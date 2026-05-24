@@ -50,14 +50,18 @@ export default function MobileBottomNav() {
                 />
               </div>
               <span 
-                className="extra-small fw-bold text-uppercase letter-spacing-1 mt-1 transition-all"
+                className="extra-small fw-bold text-uppercase mt-1 transition-all"
                 style={{ 
-                  fontSize: '0.62rem', 
+                  fontSize: '0.58rem', 
                   whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  width: '100%',
+                  textAlign: 'center',
+                  letterSpacing: '0.5px',
                   color: isActive ? 'var(--team-accent)' : 'rgba(255,255,255,0.4)'
                 }}
-              >
-                {item.label}
+              >                {item.label}
               </span>
             </HapticLink>
           );
