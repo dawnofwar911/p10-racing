@@ -184,7 +184,7 @@ export default function LeaderboardPage() {
 
   return (
     <SwipeablePageLayout
-      title="Leaderboard"
+      title="Rankings"
       subtitle={view === 'global' ? `${CURRENT_SEASON} World Rankings` : 'Guest Players on Device'}
       icon={<Trophy size={24} />}
       activeTab={view}

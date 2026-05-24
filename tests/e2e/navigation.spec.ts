@@ -88,8 +88,8 @@ test.describe('Mobile Navigation and Core Flow', () => {
       await page.getByRole('button', { name: /ChevronLeft/i }).or(page.locator('button:has(svg)')).first().click();
     }
 
-    // 3. Navigate to Leaderboard
-    await bottomNav.getByRole('link', { name: /Leaderboard/i }).click();
+    // 3. Navigate to Rankings
+    await bottomNav.getByRole('link', { name: /Rankings/i }).click();
     await expect(page).toHaveURL(/\/leaderboard/);
     // Check for Global/Guests pills in the tab container
     await expect(page.locator('.f1-tab-container').getByText(/GLOBAL/i)).toBeVisible();

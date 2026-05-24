@@ -86,3 +86,4 @@ export const CURRENT_SEASON = isPreseason() ? getSystemSeason() - 1 : getSystemS
 export const NEXT_SEASON = CURRENT_SEASON + 1;
 export const DISPLAY_SEASON = CURRENT_SEASON;
 export const LEGACY_FALLBACK_SEASON = 2026;
+export const MAX_F1_ROUNDS = 24;
