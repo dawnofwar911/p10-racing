@@ -207,6 +207,7 @@ Deno.serve(async (req) => {
     const hasQuali = (qualiData?.MRData?.RaceTable?.Races?.[0]?.QualifyingResults?.length || 0) > 0;
 
     if (hasQuali) {
+      const qualiResults = qualiData?.MRData?.RaceTable?.Races?.[0]?.QualifyingResults || [];
       const notificationId = `${season}_${round}_quali`;
       const { data: wasMarked } = await supabase.rpc('check_and_mark_notification_sent', { p_id: notificationId });
 
@@ -222,6 +223,99 @@ Deno.serve(async (req) => {
         } else {
           console.log(`Silencing old qualifying notification for ${upcomingRace.raceName}`);
         }
+      }
+
+      // Sync Starting Grid to kv_cache (Check OpenF1 for grid penalties)
+      try {
+        const raceDate = upcomingRace.date;
+        const targetDate = new Date(raceDate);
+        const meetingsResp = await fetchWithTimeout(`https://api.openf1.org/v1/meetings?year=${season}`);
+        if (meetingsResp.ok) {
+          const meetings = await meetingsResp.json();
+          const meeting = Array.isArray(meetings) ? meetings.find((m: { date_start: string; date_end: string }) => {
+            const start = new Date(m.date_start);
+            const end = new Date(m.date_end);
+            return targetDate >= new Date(start.getTime() - 86400000) &&
+                   targetDate <= new Date(end.getTime() + 86400000);
+          }) : null;
+
+          if (meeting) {
+            const sessionsResp = await fetchWithTimeout(`https://api.openf1.org/v1/sessions?meeting_key=${meeting.meeting_key}&session_name=Qualifying`);
+            if (sessionsResp.ok) {
+              const sessions = await sessionsResp.json();
+              if (Array.isArray(sessions) && sessions.length > 0) {
+                const gridResp = await fetchWithTimeout(`https://api.openf1.org/v1/starting_grid?session_key=${sessions[0].session_key}`);
+                if (gridResp.ok) {
+                  const openf1Grid = await gridResp.json();
+                  if (Array.isArray(openf1Grid) && openf1Grid.length >= 15) {
+                    const qualiByCarNumber = new Map();
+                    qualiResults.forEach((q: { number?: string; Driver?: { permanentNumber?: string } }) => {
+                      if (q.number) qualiByCarNumber.set(String(q.number), q);
+                      if (q.Driver?.permanentNumber) qualiByCarNumber.set(String(q.Driver.permanentNumber), q);
+                    });
+
+                    // Fetch driver standings for full driver info on non-qualifying starters (e.g. DNS in Q1)
+                    const standingsByCarNumber = new Map();
+                    try {
+                      const standingsResp = await fetchWithTimeout(`${BASE_URL}/${season}/driverStandings.json`);
+                      if (standingsResp.ok) {
+                        const standingsData = await standingsResp.json();
+                        const list = standingsData?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings || [];
+                        list.forEach((s: any) => {
+                          const num = s.Driver?.permanentNumber || s.number;
+                          if (num) standingsByCarNumber.set(String(num), s);
+                        });
+                      }
+                    } catch (e) {
+                      console.warn('Could not fetch driver standings for grid hydration:', e);
+                    }
+
+                    const maxGridSize = season >= 2026 ? 22 : 20;
+                    const sortedOpenF1 = [...openf1Grid]
+                      .sort((a: { position: number }, b: { position: number }) => a.position - b.position)
+                      .slice(0, maxGridSize);
+
+                    const finalStartingGrid = sortedOpenF1.map((entry: { position: number; driver_number: number }) => {
+                      const carNum = String(entry.driver_number);
+                      const q = qualiByCarNumber.get(carNum);
+                      const s = standingsByCarNumber.get(carNum);
+                      const qualiPosStr = q?.position;
+                      const qualiPosNum = qualiPosStr ? parseInt(qualiPosStr, 10) : null;
+                      const penalty = qualiPosNum !== null ? entry.position - qualiPosNum : 0;
+                      return {
+                        position: entry.position.toString(),
+                        number: carNum,
+                        grid: entry.position.toString(),
+                        points: '0',
+                        status: 'Active',
+                        laps: '0',
+                        qualifyingPosition: qualiPosStr,
+                        penalty,
+                        Constructor: q?.Constructor || s?.Constructors?.[0] || { constructorId: 'unknown', name: 'Unknown' },
+                        Driver: q?.Driver || s?.Driver || {
+                          driverId: `driver_${carNum}`,
+                          code: carNum,
+                          permanentNumber: carNum,
+                          givenName: 'Driver',
+                          familyName: `#${carNum}`
+                        }
+                      };
+                    });
+
+                    await supabase.from('kv_cache').upsert({
+                      key: `starting_grid_${season}_${round}`,
+                      value: finalStartingGrid,
+                      updated_at: new Date().toISOString()
+                    });
+                    console.log(`Starting grid successfully cached for Season ${season} Round ${round} with ${finalStartingGrid.length} entries.`);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (gridErr) {
+        console.warn('Could not sync starting grid from OpenF1:', gridErr);
       }
     }
 

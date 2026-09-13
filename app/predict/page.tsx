@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { Container, Row, Col, Form, Card, Modal, Table, Badge } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
-import { fetchQualifyingResults, fetchRaceResults, ApiResult } from '@/lib/api';
+import { ApiResult } from '@/lib/api';
+import { fetchStartingGrid } from '@/lib/grid';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
 import { triggerLightHaptic, triggerMediumHaptic, triggerSelectionHaptic } from '@/lib/utils/haptics';
@@ -84,7 +85,18 @@ const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], driver
                 <div className={`p-1 px-2 d-flex align-items-center ${styles.gridContent}`}>
                   <div className={`fw-bold me-1 ${isP10 ? 'text-danger' : 'text-muted'} ${styles.gridPos}`}>{result.position}</div>
                   <div className="flex-grow-1 overflow-hidden">
-                    <div className={`text-white fw-bold text-uppercase letter-spacing-1 text-truncate ${styles.gridDriverCode}`}>{result.Driver.code}</div>
+                    <div className="d-flex align-items-center gap-1">
+                      <div className={`text-white fw-bold text-uppercase letter-spacing-1 text-truncate ${styles.gridDriverCode}`}>{result.Driver.code}</div>
+                      {typeof result.penalty === 'number' && result.penalty > 0 && (
+                        <span 
+                          className="badge bg-warning text-dark font-monospace extra-small px-1 py-0 rounded"
+                          style={{ fontSize: '0.62rem' }}
+                          title={`Grid Penalty: +${result.penalty} places (Quali P${result.qualifyingPosition || '?'})`}
+                        >
+                          +{result.penalty}
+                        </span>
+                      )}
+                    </div>
                     <div className={`text-muted extra-small text-uppercase fw-semibold text-truncate ${styles.gridTeamName}`}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
                   </div>
                 </div>
@@ -282,9 +294,13 @@ function PredictPage() {
           if (cachedGrid) {
             try {
               const parsedGrid = JSON.parse(cachedGrid);
-              setStartingGrid(parsedGrid);
-              hasCachedGrid = (Array.isArray(parsedGrid) && parsedGrid.length > 0);
-              if (hasCachedGrid) setActiveTab('grid');
+              if (Array.isArray(parsedGrid) && parsedGrid.length > 0 && parsedGrid.length <= 22) {
+                setStartingGrid(parsedGrid);
+                hasCachedGrid = true;
+                setActiveTab('grid');
+              } else {
+                localStorage.removeItem(getGridKey(cachedRace.round));
+              }
             } catch (e) {
               console.warn('Predict: Failed to parse cached grid', e);
             }
@@ -314,6 +330,22 @@ function PredictPage() {
     // BUT: If resultsVersion > 0, we are doing a periodic refresh, so we MUST proceed to check for results.
     if (!isFirstView && hasData && p10Driver && dnfDriver && !isCacheStale && resultsVersion === 0) {
       if (mountedRef.current) setLoadingRace(false);
+      // Revalidate starting grid in background so penalties/positions stay fresh
+      const activeRace = nextRace || cachedRace;
+      if (activeRace && drivers.length >= 20) {
+        fetchStartingGrid({
+          season: CURRENT_SEASON,
+          round: activeRace.round,
+          raceDate: activeRace.date,
+          allDrivers: drivers,
+          supabase
+        }).then(freshGrid => {
+          if (mountedRef.current && freshGrid.length > 0) {
+            setStartingGrid(freshGrid);
+            localStorage.setItem(getGridKey(activeRace.round), JSON.stringify(freshGrid));
+          }
+        }).catch(err => console.warn('Predict: Background grid revalidation error', err));
+      }
       return;
     }
 
@@ -348,31 +380,13 @@ function PredictPage() {
             setIsLocked(true);
           }
 
-          let finalGrid: ApiResult[] = [];
-          const resultsData = await fetchRaceResults(CURRENT_SEASON, currentRace.round);
-          if (resultsData && resultsData.Results && resultsData.Results.length > 0) {
-            finalGrid = resultsData.Results;
-          } else {
-            const qualiGrid = await fetchQualifyingResults(CURRENT_SEASON, currentRace.round);
-            if (qualiGrid && qualiGrid.length > 0) {
-              const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
-              const missing = drivers.filter(d => !presentIds.has(d.id));
-              finalGrid = [...qualiGrid];
-              missing.forEach((d, i) => {
-                finalGrid.push({
-                  position: (qualiGrid.length + i + 1).toString(),
-                  number: d.number.toString(),
-                  grid: (qualiGrid.length + i + 1).toString(),
-                  points: '0', status: 'DNS', laps: '0',
-                  Constructor: { constructorId: d.teamId, name: d.team },
-                  Driver: {
-                    driverId: d.id, code: d.code, permanentNumber: d.number.toString(),
-                    givenName: d.name.split(' ')[0], familyName: d.name.split(' ').slice(1).join(' ')
-                  }
-                });
-              });
-            }
-          }
+          const finalGrid = await fetchStartingGrid({
+            season: CURRENT_SEASON,
+            round: currentRace.round,
+            raceDate: currentRace.date,
+            allDrivers: drivers,
+            supabase
+          });
           if (mountedRef.current) {
             setStartingGrid(finalGrid);
             localStorage.setItem(getGridKey(currentRace.round), JSON.stringify(finalGrid));
