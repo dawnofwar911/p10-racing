@@ -294,9 +294,13 @@ function PredictPage() {
           if (cachedGrid) {
             try {
               const parsedGrid = JSON.parse(cachedGrid);
-              setStartingGrid(parsedGrid);
-              hasCachedGrid = (Array.isArray(parsedGrid) && parsedGrid.length > 0);
-              if (hasCachedGrid) setActiveTab('grid');
+              if (Array.isArray(parsedGrid) && parsedGrid.length > 0 && parsedGrid.length <= 22) {
+                setStartingGrid(parsedGrid);
+                hasCachedGrid = true;
+                setActiveTab('grid');
+              } else {
+                localStorage.removeItem(getGridKey(cachedRace.round));
+              }
             } catch (e) {
               console.warn('Predict: Failed to parse cached grid', e);
             }
@@ -326,6 +330,22 @@ function PredictPage() {
     // BUT: If resultsVersion > 0, we are doing a periodic refresh, so we MUST proceed to check for results.
     if (!isFirstView && hasData && p10Driver && dnfDriver && !isCacheStale && resultsVersion === 0) {
       if (mountedRef.current) setLoadingRace(false);
+      // Revalidate starting grid in background so penalties/positions stay fresh
+      const activeRace = nextRace || cachedRace;
+      if (activeRace && drivers.length >= 20) {
+        fetchStartingGrid({
+          season: CURRENT_SEASON,
+          round: activeRace.round,
+          raceDate: activeRace.date,
+          allDrivers: drivers,
+          supabase
+        }).then(freshGrid => {
+          if (mountedRef.current && freshGrid.length > 0) {
+            setStartingGrid(freshGrid);
+            localStorage.setItem(getGridKey(activeRace.round), JSON.stringify(freshGrid));
+          }
+        }).catch(err => console.warn('Predict: Background grid revalidation error', err));
+      }
       return;
     }
 

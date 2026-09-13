@@ -27,7 +27,7 @@ export const STORAGE_KEYS = {
   CACHE_PWA_HINT_DISMISSED: 'p10_pwa_hint_dismissed',
   CACHE_MIGRATION_PROMPT_DISMISSED: 'p10_migration_prompt_dismissed',
   PRED_PREFIX: 'final_pred_',
-  GRID_PREFIX: 'p10_cache_grid_',
+  GRID_PREFIX: 'p10_cache_grid_v2_',
   COMMUNITY_PREFIX: 'p10_cache_community_',
   RESULTS_PREFIX: 'results_',
 } as const;
