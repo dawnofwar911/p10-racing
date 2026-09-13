@@ -7,6 +7,8 @@ import {
   getStartingGridFromRaceResults,
   mergeQualiFallback,
   fetchStartingGrid,
+  getMaxGridSize,
+  getEligibleMissingDrivers,
   OPENF1_BASE
 } from '@/lib/grid';
 import { Driver } from '@/lib/types';
@@ -247,6 +249,153 @@ describe('Starting Grid & Penalty Logic', () => {
       expect(grid[0].position).toBe('1');
       expect(grid[1].Driver.driverId).toBe('piastri');
       expect(grid[1].position).toBe('2');
+    });
+
+    it('hydrates placeholder kv_cache entries with driver info from allDrivers', async () => {
+      const mockCachedWithPlaceholder: ApiResult[] = [
+        {
+          position: '1', number: '1', grid: '1', points: '0', status: 'Active', laps: '0',
+          Constructor: { constructorId: 'mclaren', name: 'McLaren' },
+          Driver: { driverId: 'norris', code: 'NOR', permanentNumber: '1', givenName: 'Lando', familyName: 'Norris' }
+        },
+        {
+          position: '21', number: '18', grid: '21', points: '0', status: 'Active', laps: '0',
+          Constructor: { constructorId: 'unknown', name: 'Unknown' },
+          Driver: { driverId: 'driver_18', code: '18', permanentNumber: '18', givenName: 'Driver', familyName: '#18' }
+        }
+      ];
+
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: { value: mockCachedWithPlaceholder } })
+            })
+          })
+        })
+      };
+
+      const grid = await fetchStartingGrid({
+        season: 2026,
+        round: 14,
+        allDrivers: [
+          { id: 'norris', code: 'NOR', number: 1, name: 'Lando Norris', team: 'McLaren', teamId: 'mclaren', color: '#FF8000', points: 0 },
+          { id: 'stroll', code: 'STR', number: 18, name: 'Lance Stroll', team: 'Aston Martin', teamId: 'aston_martin', color: '#229971', points: 0 }
+        ],
+        supabase: mockSupabase as unknown as import('@supabase/supabase-js').SupabaseClient
+      });
+
+      expect(grid).toHaveLength(2);
+      expect(grid[1].Driver.driverId).toBe('stroll');
+      expect(grid[1].Driver.code).toBe('STR');
+      expect(grid[1].Constructor.name).toBe('Aston Martin');
+    });
+  });
+
+  describe('Grid Capping & Constructor Limit Rules', () => {
+    it('getMaxGridSize returns 22 for 2026+ and 20 for earlier seasons', () => {
+      expect(getMaxGridSize(2026)).toBe(22);
+      expect(getMaxGridSize(2027)).toBe(22);
+      expect(getMaxGridSize(2025)).toBe(20);
+      expect(getMaxGridSize(2024)).toBe(20);
+    });
+
+    it('getEligibleMissingDrivers enforces 2 cars per constructor limit and rejects 3rd driver', () => {
+      const currentGrid: ApiResult[] = [
+        { position: '1', number: '1', grid: '1', points: '0', status: 'Active', laps: '0', Constructor: { constructorId: 'red_bull', name: 'Red Bull' }, Driver: { driverId: 'max_verstappen', code: 'VER', permanentNumber: '1', givenName: 'Max', familyName: 'Verstappen' } },
+        { position: '2', number: '30', grid: '2', points: '0', status: 'Active', laps: '0', Constructor: { constructorId: 'red_bull', name: 'Red Bull' }, Driver: { driverId: 'lawson', code: 'LAW', permanentNumber: '30', givenName: 'Liam', familyName: 'Lawson' } },
+        { position: '3', number: '14', grid: '3', points: '0', status: 'Active', laps: '0', Constructor: { constructorId: 'aston_martin', name: 'Aston Martin' }, Driver: { driverId: 'alonso', code: 'ALO', permanentNumber: '14', givenName: 'Fernando', familyName: 'Alonso' } },
+      ];
+
+      const allDrivers: Driver[] = [
+        // Red Bull already has 2 drivers in currentGrid -> hadjar MUST be rejected
+        { id: 'hadjar', code: 'HAD', number: 6, name: 'Isack Hadjar', team: 'Red Bull', teamId: 'red_bull', color: '#3671C6', points: 0 },
+        // Aston Martin has only 1 driver in currentGrid -> stroll MUST be accepted
+        { id: 'stroll', code: 'STR', number: 18, name: 'Lance Stroll', team: 'Aston Martin', teamId: 'aston_martin', color: '#229971', points: 0 },
+      ];
+
+      const eligible = getEligibleMissingDrivers(currentGrid, allDrivers, 22);
+      expect(eligible).toHaveLength(1);
+      expect(eligible[0].id).toBe('stroll');
+    });
+
+    it('mergeQualiFallback never exceeds season maxGridSize and does not include 23rd driver', () => {
+      // 20 drivers qualify
+      const quali20: ApiResult[] = Array.from({ length: 20 }, (_, i) => ({
+        position: (i + 1).toString(),
+        number: (i + 1).toString(),
+        grid: (i + 1).toString(),
+        points: '0',
+        status: 'Active',
+        laps: '0',
+        Constructor: { constructorId: `team_${Math.floor(i / 2)}`, name: `Team ${Math.floor(i / 2)}` },
+        Driver: { driverId: `d_${i + 1}`, code: `D${i + 1}`, permanentNumber: (i + 1).toString(), givenName: 'D', familyName: `${i + 1}` }
+      }));
+
+      // In quali20, teams 0-9 have 2 drivers each (20 total).
+      // Suppose allDrivers has 23 drivers:
+      // team 10 driver A (stroll) -> should be added (1st car for team 10)
+      // team 10 driver B (bearman) -> should be added (2nd car for team 10)
+      // team 0 driver C (hadjar reserve) -> should be rejected (team 0 already has 2 cars)
+      const allDrivers23: Driver[] = [
+        ...Array.from({ length: 20 }, (_, i) => ({
+          id: `d_${i + 1}`,
+          code: `D${i + 1}`,
+          number: i + 1,
+          name: `D ${i + 1}`,
+          team: `Team ${Math.floor(i / 2)}`,
+          teamId: `team_${Math.floor(i / 2)}`,
+          color: '#FFF',
+          points: 0
+        })),
+        { id: 'stroll', code: 'STR', number: 21, name: 'Lance Stroll', team: 'Team 10', teamId: 'team_10', color: '#FFF', points: 0 },
+        { id: 'bearman', code: 'BEA', number: 22, name: 'Oliver Bearman', team: 'Team 10', teamId: 'team_10', color: '#FFF', points: 0 },
+        { id: 'hadjar', code: 'HAD', number: 23, name: 'Isack Hadjar', team: 'Team 0', teamId: 'team_0', color: '#FFF', points: 0 }
+      ];
+
+      const fallbackGrid = mergeQualiFallback(quali20, allDrivers23, 2026);
+      expect(fallbackGrid).toHaveLength(22);
+      expect(fallbackGrid.some(g => g.Driver.driverId === 'hadjar')).toBe(false);
+      expect(fallbackGrid.some(g => g.Driver.driverId === 'stroll')).toBe(true);
+      expect(fallbackGrid.some(g => g.Driver.driverId === 'bearman')).toBe(true);
+    });
+
+    it('mergeStartingGrid does not append extra drivers when OpenF1 starting grid is already complete', () => {
+      // 22 drivers in OpenF1 starting grid
+      const openf1FullGrid = Array.from({ length: 22 }, (_, i) => ({
+        position: i + 1,
+        driver_number: i + 1
+      }));
+
+      const quali20: ApiResult[] = Array.from({ length: 20 }, (_, i) => ({
+        position: (i + 1).toString(),
+        number: (i + 1).toString(),
+        grid: (i + 1).toString(),
+        points: '0',
+        status: 'Active',
+        laps: '0',
+        Constructor: { constructorId: `team_${Math.floor(i / 2)}`, name: `Team ${Math.floor(i / 2)}` },
+        Driver: { driverId: `d_${i + 1}`, code: `D${i + 1}`, permanentNumber: (i + 1).toString(), givenName: 'D', familyName: `${i + 1}` }
+      }));
+
+      const allDrivers23: Driver[] = [
+        ...Array.from({ length: 22 }, (_, i) => ({
+          id: `d_${i + 1}`,
+          code: `D${i + 1}`,
+          number: i + 1,
+          name: `D ${i + 1}`,
+          team: `Team ${Math.floor(i / 2)}`,
+          teamId: `team_${Math.floor(i / 2)}`,
+          color: '#FFF',
+          points: 0
+        })),
+        // 23rd driver who is not on the grid
+        { id: 'reserve_driver', code: 'RES', number: 99, name: 'Reserve Driver', team: 'Team 0', teamId: 'team_0', color: '#FFF', points: 0 }
+      ];
+
+      const merged = mergeStartingGrid(quali20, openf1FullGrid, allDrivers23, 2026);
+      expect(merged).toHaveLength(22);
+      expect(merged.some(g => g.Driver.driverId === 'reserve_driver')).toBe(false);
     });
   });
 });

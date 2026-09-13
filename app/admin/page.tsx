@@ -283,11 +283,12 @@ export default function AdminPage() {
       return;
     }
     try {
+      const realDrivers = await fetchDrivers(season);
       const grid = await fetchStartingGrid({
         season,
         round: parseInt(raceInfo.round),
         raceDate: raceInfo.date,
-        allDrivers: drivers.map(d => ({ ...d, number: 0, points: 0, teamId: 'unknown', code: d.name.slice(0, 3).toUpperCase() })),
+        allDrivers: realDrivers.length > 0 ? realDrivers : drivers.map(d => ({ ...d, number: 0, points: 0, teamId: 'unknown', code: d.name.slice(0, 3).toUpperCase() })),
         supabase
       });
       if (grid && grid.length > 0 && mountedRef.current) {

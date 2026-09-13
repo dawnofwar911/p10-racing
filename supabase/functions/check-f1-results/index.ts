@@ -254,10 +254,31 @@ Deno.serve(async (req) => {
                       if (q.Driver?.permanentNumber) qualiByCarNumber.set(String(q.Driver.permanentNumber), q);
                     });
 
-                    const sortedOpenF1 = [...openf1Grid].sort((a: { position: number }, b: { position: number }) => a.position - b.position);
+                    // Fetch driver standings for full driver info on non-qualifying starters (e.g. DNS in Q1)
+                    const standingsByCarNumber = new Map();
+                    try {
+                      const standingsResp = await fetchWithTimeout(`${BASE_URL}/${season}/driverStandings.json`);
+                      if (standingsResp.ok) {
+                        const standingsData = await standingsResp.json();
+                        const list = standingsData?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings || [];
+                        list.forEach((s: any) => {
+                          const num = s.Driver?.permanentNumber || s.number;
+                          if (num) standingsByCarNumber.set(String(num), s);
+                        });
+                      }
+                    } catch (e) {
+                      console.warn('Could not fetch driver standings for grid hydration:', e);
+                    }
+
+                    const maxGridSize = season >= 2026 ? 22 : 20;
+                    const sortedOpenF1 = [...openf1Grid]
+                      .sort((a: { position: number }, b: { position: number }) => a.position - b.position)
+                      .slice(0, maxGridSize);
+
                     const finalStartingGrid = sortedOpenF1.map((entry: { position: number; driver_number: number }) => {
                       const carNum = String(entry.driver_number);
                       const q = qualiByCarNumber.get(carNum);
+                      const s = standingsByCarNumber.get(carNum);
                       const qualiPosStr = q?.position;
                       const qualiPosNum = qualiPosStr ? parseInt(qualiPosStr, 10) : null;
                       const penalty = qualiPosNum !== null ? entry.position - qualiPosNum : 0;
@@ -270,8 +291,8 @@ Deno.serve(async (req) => {
                         laps: '0',
                         qualifyingPosition: qualiPosStr,
                         penalty,
-                        Constructor: q?.Constructor || { constructorId: 'unknown', name: 'Unknown' },
-                        Driver: q?.Driver || {
+                        Constructor: q?.Constructor || s?.Constructors?.[0] || { constructorId: 'unknown', name: 'Unknown' },
+                        Driver: q?.Driver || s?.Driver || {
                           driverId: `driver_${carNum}`,
                           code: carNum,
                           permanentNumber: carNum,

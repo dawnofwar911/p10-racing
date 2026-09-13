@@ -108,13 +108,60 @@ export async function fetchOpenF1StartingGrid(
 }
 
 /**
+ * Maximum starting grid size by season (2026+ introduced 11 teams / 22 cars, previous was 20).
+ */
+export function getMaxGridSize(season: number = 2026): number {
+  return season >= 2026 ? 22 : 20;
+}
+
+/**
+ * Filters allDrivers to find missing drivers eligible to be appended to the starting grid.
+ * Enforces Formula 1 sporting regulations:
+ * 1. Each constructor may enter AT MOST 2 cars in any Grand Prix weekend.
+ * 2. Total grid size must not exceed the season limit (22 for 2026+, 20 for <=2025).
+ * This ensures reserve/substitute drivers (like Hadjar) are never erroneously added
+ * when their team already has 2 drivers on the grid.
+ */
+export function getEligibleMissingDrivers(
+  currentGrid: ApiResult[],
+  allDrivers: Driver[],
+  maxGridSize: number
+): Driver[] {
+  if (currentGrid.length >= maxGridSize || allDrivers.length === 0) return [];
+
+  const constructorCounts = new Map<string, number>();
+  currentGrid.forEach(item => {
+    const cid = item.Constructor?.constructorId;
+    if (cid) {
+      constructorCounts.set(cid, (constructorCounts.get(cid) || 0) + 1);
+    }
+  });
+
+  const presentIds = new Set(currentGrid.map(g => g.Driver?.driverId).filter(Boolean));
+  const eligible: Driver[] = [];
+
+  for (const d of allDrivers) {
+    if (currentGrid.length + eligible.length >= maxGridSize) break;
+    if (presentIds.has(d.id)) continue;
+    const count = constructorCounts.get(d.teamId) || 0;
+    if (count >= 2) continue; // Constructor is already full (max 2 cars per team)
+    constructorCounts.set(d.teamId, count + 1);
+    eligible.push(d);
+  }
+
+  return eligible;
+}
+
+/**
  * Merges OpenF1 starting grid positions (with penalties applied) onto driver/qualifying data.
  */
 export function mergeStartingGrid(
   qualiGrid: ApiResult[],
   openf1Grid: OpenF1StartingGridEntry[],
-  allDrivers: Driver[]
+  allDrivers: Driver[] = [],
+  season: number = 2026
 ): ApiResult[] {
+  const maxGridSize = getMaxGridSize(season);
   const qualiByCarNumber = new Map<string, ApiResult>();
   qualiGrid.forEach(q => {
     if (q.number) qualiByCarNumber.set(String(q.number), q);
@@ -131,7 +178,9 @@ export function mergeStartingGrid(
   const usedDriverIds = new Set<string>();
   const results: ApiResult[] = [];
 
-  const sortedOpenF1 = [...openf1Grid].sort((a, b) => a.position - b.position);
+  const sortedOpenF1 = [...openf1Grid]
+    .sort((a, b) => a.position - b.position)
+    .slice(0, maxGridSize);
 
   sortedOpenF1.forEach(entry => {
     const carNumberStr = String(entry.driver_number);
@@ -174,27 +223,30 @@ export function mergeStartingGrid(
     });
   });
 
-  // Append missing drivers
-  const missing = allDrivers.filter(d => !usedDriverIds.has(d.id));
-  missing.forEach((d) => {
-    const nextPos = (results.length + 1).toString();
-    results.push({
-      position: nextPos,
-      number: d.number.toString(),
-      grid: nextPos,
-      points: '0',
-      status: 'DNS',
-      laps: '0',
-      Constructor: { constructorId: d.teamId, name: d.team },
-      Driver: {
-        driverId: d.id,
-        code: d.code,
-        permanentNumber: d.number.toString(),
-        givenName: d.name.split(' ')[0] || '',
-        familyName: d.name.split(' ').slice(1).join(' ') || ''
-      }
+  // Only append missing drivers if OpenF1 grid was partial (< 20 drivers).
+  // If OpenF1 already provided the complete grid (>= 20 drivers), all participating drivers are present.
+  if (results.length < 20 && allDrivers.length > 0) {
+    const missing = getEligibleMissingDrivers(results, allDrivers, maxGridSize);
+    missing.forEach((d) => {
+      const nextPos = (results.length + 1).toString();
+      results.push({
+        position: nextPos,
+        number: d.number.toString(),
+        grid: nextPos,
+        points: '0',
+        status: 'DNS',
+        laps: '0',
+        Constructor: { constructorId: d.teamId, name: d.team },
+        Driver: {
+          driverId: d.id,
+          code: d.code,
+          permanentNumber: d.number.toString(),
+          givenName: d.name.split(' ')[0] || '',
+          familyName: d.name.split(' ').slice(1).join(' ') || ''
+        }
+      });
     });
-  });
+  }
 
   return results;
 }
@@ -204,8 +256,10 @@ export function mergeStartingGrid(
  */
 export function getStartingGridFromRaceResults(
   raceResults: ApiResult[],
-  allDrivers: Driver[] = []
+  allDrivers: Driver[] = [],
+  season: number = 2026
 ): ApiResult[] {
+  const maxGridSize = getMaxGridSize(season);
   const gridStarters: ApiResult[] = [];
   const pitOrDnsStarters: ApiResult[] = [];
 
@@ -226,6 +280,7 @@ export function getStartingGridFromRaceResults(
 
   const finalGrid: ApiResult[] = [...gridStarters];
   pitOrDnsStarters.forEach(r => {
+    if (finalGrid.length >= maxGridSize) return;
     const nextPos = (finalGrid.length + 1).toString();
     finalGrid.push({
       ...r,
@@ -234,9 +289,8 @@ export function getStartingGridFromRaceResults(
     });
   });
 
-  if (allDrivers.length > 0) {
-    const presentIds = new Set(finalGrid.map(g => g.Driver.driverId));
-    const missing = allDrivers.filter(d => !presentIds.has(d.id));
+  if (allDrivers.length > 0 && finalGrid.length < maxGridSize) {
+    const missing = getEligibleMissingDrivers(finalGrid, allDrivers, maxGridSize);
     missing.forEach(d => {
       const nextPos = (finalGrid.length + 1).toString();
       finalGrid.push({
@@ -251,14 +305,14 @@ export function getStartingGridFromRaceResults(
           driverId: d.id,
           code: d.code,
           permanentNumber: d.number.toString(),
-          givenName: d.name.split(' ')[0],
-          familyName: d.name.split(' ').slice(1).join(' ')
+          givenName: d.name.split(' ')[0] || '',
+          familyName: d.name.split(' ').slice(1).join(' ') || ''
         }
       });
     });
   }
 
-  return finalGrid;
+  return finalGrid.slice(0, maxGridSize);
 }
 
 /**
@@ -266,31 +320,36 @@ export function getStartingGridFromRaceResults(
  */
 export function mergeQualiFallback(
   qualiGrid: ApiResult[],
-  allDrivers: Driver[]
+  allDrivers: Driver[] = [],
+  season: number = 2026
 ): ApiResult[] {
-  const presentIds = new Set(qualiGrid.map(q => q.Driver.driverId));
-  const missing = allDrivers.filter(d => !presentIds.has(d.id));
-  const finalGrid = [...qualiGrid];
-  missing.forEach((d, i) => {
-    const nextPos = (qualiGrid.length + i + 1).toString();
-    finalGrid.push({
-      position: nextPos,
-      number: d.number.toString(),
-      grid: nextPos,
-      points: '0',
-      status: 'DNS',
-      laps: '0',
-      Constructor: { constructorId: d.teamId, name: d.team },
-      Driver: {
-        driverId: d.id,
-        code: d.code,
-        permanentNumber: d.number.toString(),
-        givenName: d.name.split(' ')[0],
-        familyName: d.name.split(' ').slice(1).join(' ')
-      }
+  const maxGridSize = getMaxGridSize(season);
+  const finalGrid = [...qualiGrid].slice(0, maxGridSize);
+
+  if (allDrivers.length > 0 && finalGrid.length < maxGridSize) {
+    const missing = getEligibleMissingDrivers(finalGrid, allDrivers, maxGridSize);
+    missing.forEach((d) => {
+      const nextPos = (finalGrid.length + 1).toString();
+      finalGrid.push({
+        position: nextPos,
+        number: d.number.toString(),
+        grid: nextPos,
+        points: '0',
+        status: 'DNS',
+        laps: '0',
+        Constructor: { constructorId: d.teamId, name: d.team },
+        Driver: {
+          driverId: d.id,
+          code: d.code,
+          permanentNumber: d.number.toString(),
+          givenName: d.name.split(' ')[0] || '',
+          familyName: d.name.split(' ').slice(1).join(' ') || ''
+        }
+      });
     });
-  });
-  return finalGrid;
+  }
+
+  return finalGrid.slice(0, maxGridSize);
 }
 
 export interface FetchStartingGridOptions {
@@ -321,7 +380,39 @@ export async function fetchStartingGrid(options: FetchStartingGridOptions): Prom
         .maybeSingle();
 
       if (cached?.value && Array.isArray(cached.value) && cached.value.length > 0) {
-        return cached.value as ApiResult[];
+        const maxSize = getMaxGridSize(season);
+        const driversByNumber = new Map<number, Driver>();
+        const driversById = new Map<string, Driver>();
+        allDrivers.forEach(d => {
+          driversByNumber.set(d.number, d);
+          driversById.set(d.id, d);
+        });
+
+        const rawList = (cached.value as ApiResult[]).slice(0, maxSize);
+        const enrichedGrid = rawList.map(entry => {
+          const isPlaceholder = entry.Driver?.driverId?.startsWith('driver_') || entry.Constructor?.name === 'Unknown';
+          if (isPlaceholder && allDrivers.length > 0) {
+            const num = parseInt(entry.number || entry.Driver?.permanentNumber || '0', 10);
+            const d = driversByNumber.get(num) || (entry.Driver?.driverId ? driversById.get(entry.Driver.driverId) : undefined);
+            if (d) {
+              return {
+                ...entry,
+                Constructor: { constructorId: d.teamId, name: d.team },
+                Driver: {
+                  ...entry.Driver,
+                  driverId: d.id,
+                  code: d.code,
+                  permanentNumber: d.number.toString(),
+                  givenName: d.name.split(' ')[0] || '',
+                  familyName: d.name.split(' ').slice(1).join(' ') || ''
+                }
+              };
+            }
+          }
+          return entry;
+        });
+
+        return enrichedGrid;
       }
     } catch (e) {
       console.warn('Grid: kv_cache read error:', e);
@@ -332,7 +423,7 @@ export async function fetchStartingGrid(options: FetchStartingGridOptions): Prom
   try {
     const raceResultsData = await fetchRaceResults(season, round);
     if (raceResultsData?.Results && raceResultsData.Results.length > 0) {
-      return getStartingGridFromRaceResults(raceResultsData.Results, allDrivers);
+      return getStartingGridFromRaceResults(raceResultsData.Results, allDrivers, season);
     }
   } catch (e) {
     console.warn('Grid: fetchRaceResults error:', e);
@@ -349,7 +440,7 @@ export async function fetchStartingGrid(options: FetchStartingGridOptions): Prom
     try {
       const openf1Grid = await fetchOpenF1StartingGrid(season, raceDate);
       if (openf1Grid && openf1Grid.length >= 15) {
-        return mergeStartingGrid(qualiGrid, openf1Grid, allDrivers);
+        return mergeStartingGrid(qualiGrid, openf1Grid, allDrivers, season);
       }
     } catch (e) {
       console.warn('Grid: OpenF1 starting grid error:', e);
@@ -357,5 +448,5 @@ export async function fetchStartingGrid(options: FetchStartingGridOptions): Prom
   }
 
   // 5. Fallback to raw qualifying grid
-  return mergeQualiFallback(qualiGrid, allDrivers);
+  return mergeQualiFallback(qualiGrid, allDrivers, season);
 }
