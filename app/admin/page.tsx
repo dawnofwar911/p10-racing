@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Container, Row, Col, Form, Card, Table, Spinner, Alert, Modal, Dropdown } from 'react-bootstrap';
 import { DRIVERS as FALLBACK_DRIVERS, RACES, CURRENT_SEASON } from '@/lib/data';
-import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCalendarRace } from '@/lib/api';
+import { fetchRaceResults, getFirstDnfDriver, fetchDrivers, fetchCalendar, ApiCalendarRace, ApiResult } from '@/lib/api';
+import { fetchStartingGrid } from '@/lib/grid';
 import { Driver, TEAM_COLORS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { triggerSuccessHaptic, triggerLightHaptic } from '@/lib/utils/haptics';
@@ -42,6 +43,7 @@ export default function AdminPage() {
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [showConfirmPublish, setShowConfirmPublish] = useState(false);
   const [existingResult, setExistingResult] = useState<{p10: string, dnf: string} | null>(null);
+  const [existingGrid, setExistingGrid] = useState<ApiResult[] | null>(null);
 
   // Lifecycle
   useEffect(() => {
@@ -59,21 +61,36 @@ export default function AdminPage() {
   const checkExistingResults = useCallback(async () => {
     if (!isAdmin || !selectedRace) return;
     try {
-      const { data } = await withTimeout(supabase
-        .from('verified_results')
-        .select('data')
-        .eq('id', `${season}_${selectedRace}`)
-        .maybeSingle());
+      const [{ data: verifiedData }, { data: gridData }] = await Promise.all([
+        withTimeout(supabase
+          .from('verified_results')
+          .select('data')
+          .eq('id', `${season}_${selectedRace}`)
+          .maybeSingle()),
+        withTimeout(supabase
+          .from('kv_cache')
+          .select('value')
+          .eq('key', `starting_grid_${season}_${selectedRace}`)
+          .maybeSingle())
+      ]);
       
-      if (data?.data && mountedRef.current) {
-        const d = data.data as { positions: { [key: string]: number }, firstDnf: string };
-        const p10Id = d.positions ? Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown' : 'Unknown';
-        setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
-      } else if (mountedRef.current) {
-        setExistingResult(null);
+      if (mountedRef.current) {
+        if (verifiedData?.data) {
+          const d = verifiedData.data as { positions: { [key: string]: number }, firstDnf: string };
+          const p10Id = d.positions ? Object.entries(d.positions).find(([, pos]) => pos === 10)?.[0] || 'Unknown' : 'Unknown';
+          setExistingResult({ p10: p10Id, dnf: d.firstDnf || 'None' });
+        } else {
+          setExistingResult(null);
+        }
+
+        if (gridData?.value && Array.isArray(gridData.value) && gridData.value.length > 0) {
+          setExistingGrid(gridData.value as ApiResult[]);
+        } else {
+          setExistingGrid(null);
+        }
       }
     } catch (e) {
-      console.error('Admin: Error checking results:', e);
+      console.error('Admin: Error checking results/grid:', e);
     }
   }, [isAdmin, season, selectedRace, supabase]);
 
@@ -257,6 +274,55 @@ export default function AdminPage() {
     }
   };
 
+  const handleFetchStartingGrid = async () => {
+    setLoading(true);
+    setError(null);
+    const raceInfo = availableRaces.find(r => r.round === selectedRace);
+    if (!raceInfo) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const grid = await fetchStartingGrid({
+        season,
+        round: parseInt(raceInfo.round),
+        raceDate: raceInfo.date,
+        allDrivers: drivers.map(d => ({ ...d, number: 0, points: 0, teamId: 'unknown', code: d.name.slice(0, 3).toUpperCase() })),
+        supabase
+      });
+      if (grid && grid.length > 0 && mountedRef.current) {
+        setExistingGrid(grid);
+        setStatus({ message: `Starting grid loaded (${grid.length} drivers). Ready to publish.`, variant: 'success' });
+        triggerSuccessHaptic();
+      } else if (mountedRef.current) {
+        setError('No starting grid or qualifying data found for this round.');
+      }
+    } catch {
+      if (mountedRef.current) setError('Failed to fetch starting grid.');
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  };
+
+  const handleSaveStartingGrid = async () => {
+    if (!existingGrid || existingGrid.length === 0) return;
+    setLoading(true);
+    const { error: dbError } = await withTimeout(supabase.from('kv_cache').upsert({
+      key: `starting_grid_${season}_${selectedRace}`,
+      value: existingGrid,
+      updated_at: new Date().toISOString()
+    }));
+    if (mountedRef.current) {
+      setLoading(false);
+      if (dbError) {
+        setStatus({ message: 'Starting grid publish error: ' + dbError.message, variant: 'danger' });
+      } else {
+        setStatus({ message: `Starting grid successfully published to kv_cache for Round ${selectedRace}!`, variant: 'success' });
+        triggerSuccessHaptic();
+      }
+    }
+  };
+
   if (!isAdmin || (loading && drivers.length === 0)) {
     return (
       <Container className="vh-100 d-flex align-items-center justify-content-center">
@@ -370,6 +436,49 @@ export default function AdminPage() {
                   </HapticButton>
                 </div>
                 {existingResult && (<div className="mt-3 extra-small text-warning text-center fw-bold opacity-75">⚠️ THIS WILL RE-CALCULATE ALL PLAYER SCORES</div>)}
+              </Card.Body>
+            </Card>
+            <Card className="f1-glass-card border-secondary border-opacity-50 mb-4">
+              <div className="f1-card-header text-white d-flex justify-content-between align-items-center">
+                <span>Starting Grid & Penalties</span>
+                {existingGrid && (
+                  <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 extra-small">
+                    Active in App
+                  </span>
+                )}
+              </div>
+              <Card.Body className="p-3">
+                <div className="d-grid gap-2 mb-3">
+                  <HapticButton variant="outline-warning" onClick={handleFetchStartingGrid} disabled={loading} className="fw-bold rounded-pill py-2 small">
+                    SYNC GRID FROM OPENF1
+                  </HapticButton>
+                  {existingGrid && (
+                    <HapticButton variant="warning" onClick={handleSaveStartingGrid} disabled={loading} className="fw-bold text-dark rounded-pill py-2 small">
+                      PUBLISH GRID TO APP
+                    </HapticButton>
+                  )}
+                </div>
+                {existingGrid && existingGrid.length > 0 ? (
+                  <div style={{ maxHeight: '220px', overflowY: 'auto' }} className="pe-1">
+                    {existingGrid.slice(0, 10).map(g => (
+                      <div key={g.Driver.driverId} className="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-10 small">
+                        <span className="fw-bold text-white">P{g.position} {g.Driver.code}</span>
+                        {typeof g.penalty === 'number' && g.penalty > 0 ? (
+                          <span className="badge bg-warning text-dark extra-small">+{g.penalty} (Q{g.qualifyingPosition || '?'})</span>
+                        ) : (
+                          <span className="text-muted extra-small">{g.Constructor.name.split(' ')[0]}</span>
+                        )}
+                      </div>
+                    ))}
+                    {existingGrid.length > 10 && (
+                      <div className="text-center text-muted extra-small mt-2">+ {existingGrid.length - 10} more drivers</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-muted extra-small text-center py-2 opacity-75">
+                    No starting grid cached yet. Click Sync Grid to fetch OpenF1 / Qualifying.
+                  </div>
+                )}
               </Card.Body>
             </Card>
             <Card className="f1-glass-card border-secondary border-opacity-50 mb-4">

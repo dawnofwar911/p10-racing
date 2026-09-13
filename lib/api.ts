@@ -21,6 +21,8 @@ export interface ApiResult {
   };
   status: string;
   laps: string;
+  qualifyingPosition?: string;
+  penalty?: number;
 }
 
 export interface ApiRace {
@@ -279,3 +281,5 @@ export function getFirstDnfDriver(race: ApiRace): ApiDriver | null {
   
   return retirements[0].Driver;
 }
+
+export { fetchStartingGrid } from './grid';
