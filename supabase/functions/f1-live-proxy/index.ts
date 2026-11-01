@@ -143,6 +143,7 @@ Deno.serve(async (req) => {
     }
   }
 
+  let staleCache: unknown = null;
   try {
     // 3. Determine Season
     const url = new URL(req.url);
@@ -159,6 +160,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (cached) {
+      // Only offer it as a stale fallback while it is from this session (< 3 h),
+      // never last weekend's race.
+      if (Date.now() - new Date(cached.updated_at).getTime() < 3 * 3600000) staleCache = cached.value;
       const updatedAt = new Date(cached.updated_at).getTime();
       const now = new Date().getTime();
       // Trust the SignalR relay cache for up to 10 minutes (Viral-Proofing Shield)
@@ -275,6 +279,15 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // The static fallback is unreliable (livetiming static season/session files
+    // answer 401 since 2025). If the relay cached anything for this season,
+    // serve it rather than an error; the app flags it via lastUpdated (isStale).
+    if (staleCache) {
+      return new Response(JSON.stringify(staleCache), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'STALE-RELAY' },
+      });
+    }
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

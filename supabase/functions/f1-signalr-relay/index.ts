@@ -43,17 +43,21 @@ const STATIC_SESSION_INFO_URL = 'https://livetiming.formula1.com/static/SessionI
 const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
 const RECORD_SEP = '\x1e';
 
-// Public topics only. Auth-gated topics (CarData.z, Position.z, DriverRaceInfo,
-// PitStopSeries, ChampionshipPrediction, ...) are deliberately not requested.
-// Tyre stints arrive inside TimingAppData.Lines[n].Stints in SignalR Core.
+// Only the topics the app's Live Race Center reads (components/LiveRaceCenter.tsx
+// via lib/hooks/use-f1-live-timing.ts): running order, gaps/intervals, retired
+// and in-pit flags (TimingData), driver acronyms (DriverList), current tyre
+// compound/age (TimingAppData stints), the track status banner (TrackStatus),
+// and session status/name for the Race/Sprint guard and finish detection
+// (SessionStatus, SessionInfo). Everything else (CarData.z, Position.z car
+// coordinates, LapCount, TyreStintSeries, RaceControlMessages, WeatherData,
+// TimingStats, ...) is deliberately not requested.
 const TOPICS = [
   'TimingData',
-  'TimingAppData',
-  'SessionInfo',
-  'SessionStatus',
-  'TrackStatus',
   'DriverList',
-  'LapCount',
+  'TimingAppData',
+  'TrackStatus',
+  'SessionStatus',
+  'SessionInfo',
 ];
 
 const LIVE_WINDOW_KEY = 'f1_live_window';
@@ -136,7 +140,6 @@ interface RelayState {
   sessionStatus: { Status?: string; [key: string]: unknown };
   trackStatus: { Status?: string; Message?: string };
   driverList: Record<string, { Tla?: string; [key: string]: unknown }>;
-  lapCount: { CurrentLap?: number; TotalLaps?: number };
   dynamicNumberToId: Record<string, string>;
   dynamicAcronymToId: Record<string, string>;
 }
@@ -346,7 +349,6 @@ function applyTopic(topic: string, payload: unknown, state: RelayState) {
     case 'SessionStatus': robustMerge(state.sessionStatus as Json, d); break;
     case 'TrackStatus': robustMerge(state.trackStatus as Json, d); break;
     case 'DriverList': robustMerge(state.driverList as Json, d); break;
-    case 'LapCount': robustMerge(state.lapCount as Json, d); break;
   }
 }
 
@@ -443,9 +445,6 @@ function buildPayload(state: RelayState) {
     trackMessage: state.trackStatus.Message || 'Green',
     meeting: state.sessionInfo.Meeting?.Name || 'Unknown',
     session: state.sessionInfo.Name || 'Race',
-    // Additive, optional fields (ignored by current consumers)
-    currentLap: state.lapCount.CurrentLap ?? null,
-    totalLaps: state.lapCount.TotalLaps ?? null,
     results,
     lastUpdated: new Date().toISOString(),
   };
@@ -497,7 +496,6 @@ async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload
     sessionStatus: {},
     trackStatus: { Status: '1', Message: 'Green' },
     driverList: {},
-    lapCount: {},
     dynamicNumberToId: {},
     dynamicAcronymToId: {},
   };
