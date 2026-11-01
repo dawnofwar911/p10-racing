@@ -306,6 +306,41 @@ async function negotiate(): Promise<{ token: string; cookie: string }> {
   return { token, cookie };
 }
 
+/**
+ * Negotiate and open the websocket, retrying with a fresh negotiate when the
+ * upgrade lands on a different backend than negotiate (F1's load balancer then
+ * answers 400). Deno accepts a non-standard `headers` option to send the
+ * AWSALB stickiness cookies, but the Supabase Edge Runtime rejects it
+ * ("Invalid protocol value"), so fall back to a plain WebSocket there.
+ */
+async function connectSocket(maxAttempts = 6): Promise<WebSocket> {
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const { token, cookie } = await negotiate();
+      const wsUrl = `${CORE_WS_URL}?id=${encodeURIComponent(token)}`;
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(wsUrl, { headers: cookie ? { Cookie: cookie } : {} } as unknown as string[]);
+      } catch {
+        ws = new WebSocket(wsUrl);
+      }
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('websocket open timeout')), 8000);
+        ws.onopen = () => { clearTimeout(timer); resolve(); };
+        ws.onerror = (e) => { clearTimeout(timer); reject(new Error((e as ErrorEvent).message || 'websocket error')); };
+        ws.onclose = () => { clearTimeout(timer); reject(new Error('websocket closed before open')); };
+      });
+      if (attempt > 1) console.log(`SignalR Core websocket opened on attempt ${attempt}.`);
+      return ws;
+    } catch (e) {
+      lastErr = e;
+      await new Promise((r) => setTimeout(r, 300 * attempt));
+    }
+  }
+  throw new Error(`SignalR Core connect failed after ${maxAttempts} attempts: ${lastErr instanceof Error ? lastErr.message : lastErr}`);
+}
+
 function decodeAndDecompress(base64Data: string): unknown {
   try {
     const binary = atob(base64Data);
@@ -488,7 +523,7 @@ async function closeLiveWindow() {
 
 interface RunOptions { season: string; dry: boolean; seconds: number; }
 
-async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload: Payload | null; writes: number; finished: boolean }> {
+async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload: Payload | null; writes: number; finished: boolean; sessionSeen: string; linesSeen: number }> {
   const state: RelayState = {
     timing: { Lines: {} },
     appData: { Lines: {} },
@@ -500,15 +535,8 @@ async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload
     dynamicAcronymToId: {},
   };
 
-  const [{ token, cookie }] = await Promise.all([
-    negotiate(),
-    fetchOfficialDrivers(season, state.dynamicNumberToId, state.dynamicAcronymToId),
-  ]);
-
-  const wsUrl = `${CORE_WS_URL}?id=${encodeURIComponent(token)}`;
-  // Deno's WebSocket accepts a non-standard `headers` option, used here to send
-  // the AWSALB/AWSALBCORS stickiness cookies captured during negotiate.
-  const ws = new WebSocket(wsUrl, { headers: cookie ? { Cookie: cookie } : {} } as unknown as string[]);
+  await fetchOfficialDrivers(season, state.dynamicNumberToId, state.dynamicAcronymToId);
+  const ws = await connectSocket();
 
   let handshakeDone = false;
   let closed = false;
@@ -517,7 +545,6 @@ async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload
     ws.onclose = () => { closed = true; resolve(); };
   });
 
-  ws.onopen = () => ws.send(JSON.stringify({ protocol: 'json', version: 1 }) + RECORD_SEP);
   ws.onerror = (e) => console.warn('WebSocket error:', (e as ErrorEvent).message ?? e);
   ws.onmessage = async (event) => {
     const chunk = typeof event.data === 'string'
@@ -544,6 +571,8 @@ async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload
       if (!handleRecord(rec, state, ws)) ws.close();
     }
   };
+
+  ws.send(JSON.stringify({ protocol: 'json', version: 1 }) + RECORD_SEP);
 
   let lastSerialized = '';
   let lastWriteAt = 0;
@@ -584,7 +613,11 @@ async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload
   if (!latest) {
     console.log(`No race data published. Session seen: ${state.sessionInfo.Type ?? '?'} / ${state.sessionInfo.Name ?? '?'}`);
   }
-  return { payload: latest, writes, finished };
+  return {
+    payload: latest, writes, finished,
+    sessionSeen: `${state.sessionInfo.Meeting?.Name ?? '?'} / ${state.sessionInfo.Name ?? '?'} (${state.sessionStatus.Status ?? '?'})`,
+    linesSeen: Object.keys(state.timing.Lines || {}).length,
+  };
 }
 
 // ---------------------------------------------------------------------------
