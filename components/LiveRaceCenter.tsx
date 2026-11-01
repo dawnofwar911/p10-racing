@@ -207,7 +207,7 @@ const LiveRaceCenter: React.FC<LiveRaceCenterProps> = ({
                           <div className={`ms-auto fw-bold text-danger text-uppercase px-1 ${styles.yourPickText}`}>YOUR PICK</div>
                         )}
                         <div className={`text-muted font-monospace ms-2 ${styles.gapText}`}>
-                          {res.position === 1 ? 'LEADER' : res.interval || res.gap}
+                          {res.position === 1 ? 'LEADER' : res.gap || res.interval}
                         </div>
                       </motion.div>
                     );

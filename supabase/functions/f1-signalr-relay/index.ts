@@ -638,7 +638,11 @@ function buildPayload(state: RelayState) {
       driverId,
       acronym: acronym || driverId.slice(0, 3).toUpperCase(),
       position: parseInt(String(data.Position || '0')) || 0,
-      gap: textValue(data.GapToLeader),
+      // The app's P10 Battle row renders `gap`; Alex wants the interval to the
+      // car ahead there, so `gap` carries the interval and the gap to the
+      // leader moves to `gapToLeader`.
+      gap: textValue(data.IntervalToPositionAhead) || textValue(data.IntervalToNext) || textValue(data.GapToLeader),
+      gapToLeader: textValue(data.GapToLeader),
       interval: textValue(data.IntervalToPositionAhead) || textValue(data.IntervalToNext),
       isRetired: isTrueDnf(data.Status, data.NumberOfLaps ?? '1') || data.Retired === true || data.Stopped === true,
       inPit: data.InPit === true,
