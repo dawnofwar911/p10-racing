@@ -45,6 +45,59 @@ function isTrueDnf(status: string, laps: string | number = "1"): boolean {
   return !isFinished && !isDns && hasLaps;
 }
 
+/**
+ * Live window for the f1-signalr-relay cron gate.
+ * Writes kv_cache `f1_live_window` = { windows: [{ label, start, end }], updatedAt }
+ * covering every Grand Prix race (not sprints, which P10 doesn't score) in the next 8 days (plus any still running).
+ * The pg_cron job for the relay only calls the function while now() is inside
+ * one of these windows. A window closed early by the relay (session finished)
+ * keeps its closedAt across hourly rewrites.
+ */
+const LIVE_WINDOW_KEY = 'f1_live_window';
+const WINDOW_PRE_START_MS = 15 * 60 * 1000;     // relay itself starts 10 min before
+const WINDOW_AFTER_START_MS = 4 * 60 * 60 * 1000; // 3h max race time + margin for a delayed start (relay closes it early on finish)
+const WINDOW_LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
+
+interface LiveWindow { label: string; start: string; end: string; closedAt?: string }
+
+async function syncLiveWindow(
+  races: Array<{ raceName: string; date: string; time?: string; Sprint?: { date: string; time?: string } }>,
+  now: Date
+) {
+  const nowMs = now.getTime();
+  const { data: existing } = await supabase
+    .from('kv_cache')
+    .select('value')
+    .eq('key', LIVE_WINDOW_KEY)
+    .maybeSingle();
+  const previous: LiveWindow[] = Array.isArray(existing?.value?.windows) ? existing.value.windows : [];
+
+  const windows: LiveWindow[] = [];
+  for (const r of races) {
+    const sessions: Array<[string, string, string | undefined]> = [[`${r.raceName} - Race`, r.date, r.time]];
+    for (const [label, date, time] of sessions) {
+      if (!time) continue; // no start time published yet
+      const startMs = Date.parse(`${date}T${time}`);
+      if (Number.isNaN(startMs)) continue;
+      const winStart = startMs - WINDOW_PRE_START_MS;
+      const winEnd = startMs + WINDOW_AFTER_START_MS;
+      if (winEnd <= nowMs || winStart > nowMs + WINDOW_LOOKAHEAD_MS) continue;
+      const start = new Date(winStart).toISOString();
+      const prior = previous.find((w) => w.start === start && w.closedAt);
+      windows.push(prior
+        ? { label, start, end: prior.end, closedAt: prior.closedAt }
+        : { label, start, end: new Date(winEnd).toISOString() });
+    }
+  }
+  windows.sort((a, b) => a.start.localeCompare(b.start));
+
+  await supabase.from('kv_cache').upsert({
+    key: LIVE_WINDOW_KEY,
+    value: { windows, source: 'jolpica', updatedAt: now.toISOString() },
+    updated_at: now.toISOString()
+  });
+}
+
 Deno.serve(async (req) => {
   // 1. CORS Headers
   const corsHeaders = {
@@ -86,6 +139,13 @@ Deno.serve(async (req) => {
     const races = calData?.MRData?.RaceTable?.Races;
 
     if (!races || races.length === 0) return new Response('No races found');
+
+    // Keep the relay's cron gate in sync with the schedule (never blocks the rest of the checker)
+    try {
+      await syncLiveWindow(races, now);
+    } catch (e) {
+      console.warn('Failed to sync f1_live_window:', e);
+    }
 
     // Find the latest finished race that doesn't have results yet
     let roundToProcess = null;
