@@ -71,6 +71,7 @@ This document outlines the strategic roadmap for upcoming features designed to i
 **Goal:** Leverage the low-latency track stream for more than just P10/DNF tracking.
 *   **🛞 Live Tire Insights:** Real-time tire compound and age displayed in the P10 Tracker.
 *   **🚥 Live Track Status:** Dynamic banners for Yellow Flag, VSC, Safety Car, and Red Flag.
+*   **🔁 SignalR Core rebuild (Nov 2026):** F1 retired the legacy `/signalr` endpoint (May 2025), and the always-on relay cron caused the 1 Nov 2026 Disk IO outage. `f1-signalr-relay` now uses SignalR Core (`/signalrcore`, public topics only: TimingData, TimingAppData for tyre stints, SessionInfo, SessionStatus, TrackStatus, DriverList, LapCount), returns 204 unless a Race/Sprint is live, and its pg_cron job only fires inside the `f1_live_window` written hourly by `check-f1-results`. Cron history and pg_net responses are purged on a schedule (`supabase/migrations/20261101170000_f1_relay_live_window_gate.sql`).
 
 ### 3. 🎯 Future: Real-time Achievement Unlocking [CANCELLED 🛑]
 **Goal:** Use live telemetry to trigger certain achievements immediately.
