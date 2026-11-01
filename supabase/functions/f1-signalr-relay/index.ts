@@ -228,9 +228,10 @@ function isTrueDnf(status: string | number | undefined, laps: string | number = 
 function isRaceLike(si: SessionInfo | null | undefined): boolean {
   if (!si) return false;
   const name = String(si.Name || '');
-  // Sprints are published with Type "Race" and Name "Sprint"; exclude sprint qualifying/shootout.
-  if (/qualif|shootout/i.test(name)) return false;
-  return si.Type === 'Race' || /^sprint$/i.test(name) || name === 'Race';
+  // P10 Racing only scores Grand Prix races. Sprints are published with
+  // Type "Race" and Name "Sprint", so exclude anything sprint/qualifying.
+  if (/qualif|shootout|sprint/i.test(name)) return false;
+  return si.Type === 'Race' && name === 'Race';
 }
 
 /** livetiming dates are local track time without zone + GmtOffset like "-06:00:00". */
@@ -270,7 +271,6 @@ async function checkLiveSession(season: string, now = Date.now()): Promise<LiveC
   );
   for (const r of cal?.MRData?.RaceTable?.Races || []) {
     const sessions: Array<[string, string, string | undefined]> = [[`${r.raceName} Race`, r.date, r.time]];
-    if (r.Sprint) sessions.push([`${r.raceName} Sprint`, r.Sprint.date, r.Sprint.time]);
     for (const [label, date, time] of sessions) {
       if (!time) continue;
       const start = Date.parse(`${date}T${time}`);
@@ -285,7 +285,7 @@ async function checkLiveSession(season: string, now = Date.now()): Promise<LiveC
       }
     }
   }
-  return { live: false, reason: 'no race or sprint live' };
+  return { live: false, reason: 'no grand prix race live' };
 }
 
 // ---------------------------------------------------------------------------

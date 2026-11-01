@@ -48,7 +48,7 @@ function isTrueDnf(status: string, laps: string | number = "1"): boolean {
 /**
  * Live window for the f1-signalr-relay cron gate.
  * Writes kv_cache `f1_live_window` = { windows: [{ label, start, end }], updatedAt }
- * covering every Race and Sprint in the next 8 days (plus any still running).
+ * covering every Grand Prix race (not sprints, which P10 doesn't score) in the next 8 days (plus any still running).
  * The pg_cron job for the relay only calls the function while now() is inside
  * one of these windows. A window closed early by the relay (session finished)
  * keeps its closedAt across hourly rewrites.
@@ -75,7 +75,6 @@ async function syncLiveWindow(
   const windows: LiveWindow[] = [];
   for (const r of races) {
     const sessions: Array<[string, string, string | undefined]> = [[`${r.raceName} - Race`, r.date, r.time]];
-    if (r.Sprint) sessions.push([`${r.raceName} - Sprint`, r.Sprint.date, r.Sprint.time]);
     for (const [label, date, time] of sessions) {
       if (!time) continue; // no start time published yet
       const startMs = Date.parse(`${date}T${time}`);
