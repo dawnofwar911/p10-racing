@@ -316,24 +316,194 @@ async function negotiate(): Promise<{ token: string; cookie: string }> {
  * AWSALB stickiness cookies, but the Supabase Edge Runtime rejects it
  * ("Invalid protocol value"), so fall back to a plain WebSocket there.
  */
-async function connectSocket(maxAttempts = 6): Promise<WebSocket> {
+type WsEvent = { data?: unknown; message?: string };
+interface WsLike {
+  readyState: number;
+  onopen: ((e: WsEvent) => void) | null;
+  onmessage: ((e: WsEvent) => void) | null;
+  onerror: ((e: WsEvent) => void) | null;
+  onclose: ((e: WsEvent) => void) | null;
+  send(data: string): void;
+  close(): void;
+}
+
+/**
+ * Minimal RFC 6455 client over a raw TLS socket. Supabase's Edge Runtime
+ * rejects the WebSocket `headers` option, and F1's AWS load balancer answers
+ * 400 to the upgrade unless it carries the AWSALB stickiness cookie from
+ * negotiate (the connection token only exists on the node that issued it).
+ * This lets us send the Cookie header ourselves.
+ */
+class RawWebSocket implements WsLike {
+  readyState = 0;
+  onopen: ((e: WsEvent) => void) | null = null;
+  onmessage: ((e: WsEvent) => void) | null = null;
+  onerror: ((e: WsEvent) => void) | null = null;
+  onclose: ((e: WsEvent) => void) | null = null;
+  private conn: Deno.TlsConn | null = null;
+  private writeChain: Promise<unknown> = Promise.resolve();
+  private enc = new TextEncoder();
+  private dec = new TextDecoder();
+
+  static async open(url: string, cookie: string, timeoutMs = 8000): Promise<RawWebSocket> {
+    const u = new URL(url);
+    const ws = new RawWebSocket();
+    const conn = await Deno.connectTls({ hostname: u.hostname, port: Number(u.port) || 443 });
+    ws.conn = conn;
+    const keyBytes = crypto.getRandomValues(new Uint8Array(16));
+    const key = btoa(String.fromCharCode(...keyBytes));
+    const req = [
+      `GET ${u.pathname}${u.search} HTTP/1.1`,
+      `Host: ${u.host}`,
+      'Upgrade: websocket',
+      'Connection: Upgrade',
+      `Sec-WebSocket-Key: ${key}`,
+      'Sec-WebSocket-Version: 13',
+      'User-Agent: P10Racing/2.0',
+      'Origin: https://www.formula1.com',
+      ...(cookie ? [`Cookie: ${cookie}`] : []),
+      '', '',
+    ].join('\r\n');
+    await conn.write(ws.enc.encode(req));
+    // Read the HTTP response head.
+    let buf: Uint8Array = new Uint8Array(0);
+    const deadline = Date.now() + timeoutMs;
+    let headEnd = -1;
+    while (headEnd < 0) {
+      if (Date.now() > deadline) { try { conn.close(); } catch { /* */ } throw new Error('websocket upgrade timeout'); }
+      const chunk = new Uint8Array(16384);
+      const n = await conn.read(chunk);
+      if (n === null) throw new Error('websocket upgrade: connection closed');
+      buf = concatBytes(buf, chunk.subarray(0, n));
+      headEnd = indexOfCrlfCrlf(buf);
+    }
+    const head = ws.dec.decode(buf.subarray(0, headEnd));
+    const status = head.split('\r\n')[0];
+    if (!/^HTTP\/1\.1 101/.test(status)) { try { conn.close(); } catch { /* */ } throw new Error(`websocket upgrade failed: ${status}`); }
+    ws.readyState = 1;
+    ws.readLoop(buf.subarray(headEnd + 4));
+    return ws;
+  }
+
+  private async readLoop(initial: Uint8Array) {
+    let buf: Uint8Array = initial;
+    let fragments: Uint8Array[] = [];
+    let fragOpcode = 0;
+    try {
+      while (true) {
+        // Parse as many whole frames as the buffer holds.
+        while (true) {
+          if (buf.length < 2) break;
+          const b0 = buf[0], b1 = buf[1];
+          const fin = (b0 & 0x80) !== 0;
+          const opcode = b0 & 0x0f;
+          const masked = (b1 & 0x80) !== 0;
+          let len = b1 & 0x7f;
+          let off = 2;
+          if (len === 126) { if (buf.length < 4) break; len = (buf[2] << 8) | buf[3]; off = 4; }
+          else if (len === 127) {
+            if (buf.length < 10) break;
+            len = 0; for (let i = 2; i < 10; i++) len = len * 256 + buf[i];
+            off = 10;
+          }
+          let mask: Uint8Array | null = null;
+          if (masked) { if (buf.length < off + 4) break; mask = buf.subarray(off, off + 4); off += 4; }
+          if (buf.length < off + len) break;
+          const payload = buf.slice(off, off + len);
+          if (mask) for (let i = 0; i < payload.length; i++) payload[i] ^= mask[i & 3];
+          buf = buf.subarray(off + len);
+          if (opcode === 0x8) { this.finish(); return; }
+          if (opcode === 0x9) { this.writeFrame(0xA, payload); continue; }
+          if (opcode === 0xA) continue;
+          if (opcode === 0x1 || opcode === 0x2) { fragments = [payload]; fragOpcode = opcode; }
+          else if (opcode === 0x0) fragments.push(payload);
+          if (fin && (opcode <= 0x2)) {
+            const whole = fragments.length === 1 ? fragments[0] : fragments.reduce(concatBytes, new Uint8Array(0));
+            fragments = [];
+            const data = fragOpcode === 0x1 ? this.dec.decode(whole) : whole;
+            try { this.onmessage?.({ data }); } catch (e) { console.warn('onmessage threw', e); }
+          }
+        }
+        const chunk = new Uint8Array(65536);
+        const n = await this.conn!.read(chunk);
+        if (n === null) break;
+        buf = buf.length ? concatBytes(buf, chunk.subarray(0, n)) : chunk.slice(0, n);
+      }
+    } catch (e) {
+      if (this.readyState !== 3) this.onerror?.({ message: e instanceof Error ? e.message : String(e) });
+    }
+    this.finish();
+  }
+
+  private writeFrame(opcode: number, payload: Uint8Array) {
+    const len = payload.length;
+    const headerLen = len < 126 ? 2 : len < 65536 ? 4 : 10;
+    const frame = new Uint8Array(headerLen + 4 + len);
+    frame[0] = 0x80 | opcode;
+    if (len < 126) frame[1] = 0x80 | len;
+    else if (len < 65536) { frame[1] = 0x80 | 126; frame[2] = len >> 8; frame[3] = len & 0xff; }
+    else { frame[1] = 0x80 | 127; let l = len; for (let i = 9; i >= 2; i--) { frame[i] = l & 0xff; l = Math.floor(l / 256); } }
+    const mask = crypto.getRandomValues(new Uint8Array(4));
+    frame.set(mask, headerLen);
+    for (let i = 0; i < len; i++) frame[headerLen + 4 + i] = payload[i] ^ mask[i & 3];
+    const conn = this.conn!;
+    this.writeChain = this.writeChain.then(async () => {
+      let written = 0;
+      while (written < frame.length) written += await conn.write(frame.subarray(written));
+    }).catch((e) => console.warn('websocket write failed', e));
+  }
+
+  send(data: string) {
+    if (this.readyState !== 1) return;
+    this.writeFrame(0x1, this.enc.encode(data));
+  }
+
+  close() {
+    if (this.readyState >= 2) return;
+    this.readyState = 2;
+    this.writeFrame(0x8, new Uint8Array([0x03, 0xe8]));
+    this.writeChain.finally(() => setTimeout(() => this.finish(), 200));
+  }
+
+  private finish() {
+    if (this.readyState === 3) return;
+    this.readyState = 3;
+    try { this.conn?.close(); } catch { /* already closed */ }
+    try { this.onclose?.({}); } catch { /* ignore */ }
+  }
+}
+
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a, 0); out.set(b, a.length);
+  return out;
+}
+function indexOfCrlfCrlf(b: Uint8Array): number {
+  for (let i = 0; i + 3 < b.length; i++) if (b[i] === 13 && b[i + 1] === 10 && b[i + 2] === 13 && b[i + 3] === 10) return i;
+  return -1;
+}
+
+async function connectSocket(maxAttempts = 6): Promise<WsLike> {
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const { token, cookie } = await negotiate();
       const wsUrl = `${CORE_WS_URL}?id=${encodeURIComponent(token)}`;
-      let ws: WebSocket;
+      let ws: WsLike;
       try {
-        ws = new WebSocket(wsUrl, { headers: cookie ? { Cookie: cookie } : {} } as unknown as string[]);
-      } catch {
-        ws = new WebSocket(wsUrl);
+        ws = await RawWebSocket.open(wsUrl, cookie);
+      } catch (rawErr) {
+        console.warn(`raw websocket attempt ${attempt} failed: ${rawErr instanceof Error ? rawErr.message : rawErr}`);
+        // Fallback: platform WebSocket without cookies (works ~2 in 3 when the LB has few nodes).
+        const native = new WebSocket(wsUrl);
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('websocket open timeout')), 8000);
+          native.onopen = () => { clearTimeout(timer); resolve(); };
+          native.onerror = (e) => { clearTimeout(timer); reject(new Error((e as ErrorEvent).message || 'websocket error')); };
+          native.onclose = () => { clearTimeout(timer); reject(new Error('websocket closed before open')); };
+        });
+        ws = native as unknown as WsLike;
       }
-      await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('websocket open timeout')), 8000);
-        ws.onopen = () => { clearTimeout(timer); resolve(); };
-        ws.onerror = (e) => { clearTimeout(timer); reject(new Error((e as ErrorEvent).message || 'websocket error')); };
-        ws.onclose = () => { clearTimeout(timer); reject(new Error('websocket closed before open')); };
-      });
       if (attempt > 1) console.log(`SignalR Core websocket opened on attempt ${attempt}.`);
       return ws;
     } catch (e) {
@@ -391,7 +561,7 @@ function applyTopic(topic: string, payload: unknown, state: RelayState) {
 }
 
 /** Handle one SignalR Core record. Returns false when the server closed the hub. */
-function handleRecord(rec: Json, state: RelayState, ws: WebSocket): boolean {
+function handleRecord(rec: Json, state: RelayState, ws: WsLike): boolean {
   switch (rec.type) {
     case 1: // Invocation: {"type":1,"target":"feed","arguments":[topic, data, timestamp]}
       if (rec.target === 'feed' && Array.isArray(rec.arguments)) {
@@ -406,7 +576,7 @@ function handleRecord(rec: Json, state: RelayState, ws: WebSocket): boolean {
       }
       return true;
     case 6: // Ping -> pong
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 6 }) + RECORD_SEP);
+      if (ws.readyState === 1) ws.send(JSON.stringify({ type: 6 }) + RECORD_SEP);
       return true;
     case 7: // Close
       console.warn('SignalR Core server closed the connection:', rec.error ?? '(no error)');
@@ -436,12 +606,18 @@ function textValue(v: unknown): string {
   return String(v);
 }
 
+// Before lights out the stream can carry the previous session's status
+// (e.g. qualifying's "Ends" / archive "Complete") alongside the race's
+// SessionInfo. Never treat the race as finished until it has been running
+// for MIN_RACE_MS past its scheduled start.
+const MIN_RACE_MS = 45 * 60 * 1000;
 function isSessionFinished(state: RelayState): boolean {
+  const si = state.sessionInfo;
+  const start = toUtcMs(si.StartDate, si.GmtOffset);
+  if (start === null || Date.now() < start + MIN_RACE_MS) return false;
   return FINISHED_STATUSES.has(state.sessionStatus.Status || '') ||
-    state.sessionInfo.SessionStatus === 'Finished' ||
-    state.sessionInfo.SessionStatus === 'Finalised' ||
-    state.sessionInfo.ArchiveStatus?.Status === 'Generating' ||
-    state.sessionInfo.ArchiveStatus?.Status === 'Complete';
+    si.SessionStatus === 'Finished' ||
+    si.SessionStatus === 'Finalised';
 }
 
 function buildPayload(state: RelayState) {
@@ -548,11 +724,11 @@ async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload
     ws.onclose = () => { closed = true; resolve(); };
   });
 
-  ws.onerror = (e) => console.warn('WebSocket error:', (e as ErrorEvent).message ?? e);
+  ws.onerror = (e) => console.warn('WebSocket error:', e.message ?? e);
   ws.onmessage = async (event) => {
     const chunk = typeof event.data === 'string'
       ? event.data
-      : new TextDecoder().decode(event.data instanceof Blob ? await event.data.arrayBuffer() : event.data);
+      : new TextDecoder().decode(event.data instanceof Blob ? await event.data.arrayBuffer() : event.data as Uint8Array);
     buffer += chunk;
     const parts = buffer.split(RECORD_SEP);
     buffer = parts.pop() ?? '';
@@ -609,7 +785,7 @@ async function runRelay({ season, dry, seconds }: RunOptions): Promise<{ payload
   }
   await flush(true).catch((e) => console.error('final flush failed', e));
 
-  if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
+  if (ws.readyState === 1 || ws.readyState === 0) ws.close();
 
   if (finished && !dry) await closeLiveWindow().catch((e) => console.warn('closeLiveWindow failed', e));
 
