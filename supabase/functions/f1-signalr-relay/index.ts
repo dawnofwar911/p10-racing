@@ -234,6 +234,29 @@ function isRaceLike(si: SessionInfo | null | undefined): boolean {
   return si.Type === 'Race' && name === 'Race';
 }
 
+/**
+ * Map F1's TrackStatus codes onto the codes the app's banner uses.
+ * F1: 1 AllClear, 2 Yellow, 4 SCDeployed, 5 Red, 6 VSCDeployed, 7 VSCEnding.
+ * App (LiveRaceCenter getTrackStatusColor): 1 green, 2 yellow, 4 SC, 5 VSC,
+ * 6 VSC ending, 3 red. F1 can leave TrackStatus on Yellow during a red flag,
+ * so SessionStatus "Aborted" (the red-flag suspension) always wins as Red.
+ */
+function appTrackStatus(state: RelayState): { trackStatus: string; trackMessage: string } {
+  const sess = String(state.sessionStatus.Status || '');
+  if (/^aborted$/i.test(sess)) return { trackStatus: '3', trackMessage: 'Red Flag' };
+  const code = String(state.trackStatus.Status || '1');
+  const msg = state.trackStatus.Message;
+  switch (code) {
+    case '1': return { trackStatus: '1', trackMessage: msg || 'Green' };
+    case '2': return { trackStatus: '2', trackMessage: msg || 'Yellow' };
+    case '4': return { trackStatus: '4', trackMessage: 'Safety Car' };
+    case '5': return { trackStatus: '3', trackMessage: 'Red Flag' };
+    case '6': return { trackStatus: '5', trackMessage: 'Virtual Safety Car' };
+    case '7': return { trackStatus: '6', trackMessage: 'VSC Ending' };
+    default: return { trackStatus: code, trackMessage: msg || 'Track Status Change' };
+  }
+}
+
 /** livetiming dates are local track time without zone + GmtOffset like "-06:00:00". */
 function toUtcMs(localDate: string | undefined, gmtOffset: string | undefined): number | null {
   if (!localDate) return null;
@@ -659,8 +682,7 @@ function buildPayload(state: RelayState) {
 
   return {
     status: finished ? 'Completed' : (state.sessionStatus.Status || state.sessionInfo.SessionStatus || 'Active'),
-    trackStatus: String(state.trackStatus.Status || '1'),
-    trackMessage: state.trackStatus.Message || 'Green',
+    ...appTrackStatus(state),
     meeting: state.sessionInfo.Meeting?.Name || 'Unknown',
     session: state.sessionInfo.Name || 'Race',
     results,
