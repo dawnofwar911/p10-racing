@@ -63,7 +63,7 @@ const TOPICS = [
 const LIVE_WINDOW_KEY = 'f1_live_window';
 const PRE_START_MS = 10 * 60 * 1000;        // open 10 min before lights out
 const POST_END_MS = 30 * 60 * 1000;         // keep 30 min after scheduled end
-const FALLBACK_DURATION_MS = 2 * 60 * 60 * 1000; // assumed race length when only a start time is known
+const MAX_AFTER_START_MS = 4 * 60 * 60 * 1000;  // matches the SQL gate: 3h max race time + delayed-start margin
 const WRITE_INTERVAL_MS = 5000;
 const HEARTBEAT_WRITE_MS = 30000;
 const FINISHED_STATUSES = new Set(['Finished', 'Finalised', 'Ends']);
@@ -251,11 +251,14 @@ async function checkLiveSession(season: string, now = Date.now()): Promise<LiveC
 
   if (si && isRaceLike(si)) {
     const start = toUtcMs(si.StartDate, si.GmtOffset);
-    const end = toUtcMs(si.EndDate, si.GmtOffset) ?? (start !== null ? start + FALLBACK_DURATION_MS : null);
+    // EndDate is the scheduled end; a delayed start or red flags can run past it,
+    // so allow up to MAX_AFTER_START_MS after the start (finish detection closes it early).
+    const schedEnd = toUtcMs(si.EndDate, si.GmtOffset);
+    const end = start !== null ? Math.max(start + MAX_AFTER_START_MS, (schedEnd ?? 0) + POST_END_MS) : schedEnd;
     if (si.SessionStatus === 'Finalised' || si.ArchiveStatus?.Status === 'Complete') {
       return { live: false, reason: `${si.Name} finalised` };
     }
-    if (start !== null && end !== null && now >= start - PRE_START_MS && now <= end + POST_END_MS) {
+    if (start !== null && end !== null && now >= start - PRE_START_MS && now <= end) {
       return { live: true, reason: `${si.Meeting?.Name} ${si.Name} (SessionInfo)` };
     }
   }
@@ -272,7 +275,7 @@ async function checkLiveSession(season: string, now = Date.now()): Promise<LiveC
       if (!time) continue;
       const start = Date.parse(`${date}T${time}`);
       if (Number.isNaN(start)) continue;
-      if (now >= start - PRE_START_MS && now <= start + FALLBACK_DURATION_MS + POST_END_MS) {
+      if (now >= start - PRE_START_MS && now <= start + MAX_AFTER_START_MS) {
         // Don't reopen a session that SessionInfo already reports as finalised.
         if (si && isRaceLike(si) && (si.SessionStatus === 'Finalised' || si.ArchiveStatus?.Status === 'Complete')) {
           const siStart = toUtcMs(si.StartDate, si.GmtOffset);

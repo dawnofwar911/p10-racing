@@ -55,7 +55,7 @@ function isTrueDnf(status: string, laps: string | number = "1"): boolean {
  */
 const LIVE_WINDOW_KEY = 'f1_live_window';
 const WINDOW_PRE_START_MS = 15 * 60 * 1000;     // relay itself starts 10 min before
-const WINDOW_AFTER_START_MS = 3 * 60 * 60 * 1000; // 2h race + 30 min + margin for red flags
+const WINDOW_AFTER_START_MS = 4 * 60 * 60 * 1000; // 3h max race time + margin for a delayed start (relay closes it early on finish)
 const WINDOW_LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
 
 interface LiveWindow { label: string; start: string; end: string; closedAt?: string }
