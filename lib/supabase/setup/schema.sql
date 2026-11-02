@@ -366,3 +366,26 @@ ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Achievements are public" ON public.user_achievements FOR SELECT USING (true);
 CREATE POLICY "Users can unlock their own achievements" ON public.user_achievements FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "Users can update their own achievements" ON public.user_achievements FOR UPDATE USING (user_id = auth.uid());
+
+-- Profiles: only service_role / direct DB access may change is_admin
+CREATE OR REPLACE FUNCTION public.protect_profile_is_admin()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF coalesce(auth.role(), '') IN ('anon', 'authenticated') THEN
+    IF TG_OP = 'INSERT' THEN
+      NEW.is_admin := false;
+    ELSE
+      NEW.is_admin := OLD.is_admin;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS tr_protect_profile_is_admin ON public.profiles;
+CREATE TRIGGER tr_protect_profile_is_admin
+  BEFORE INSERT OR UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.protect_profile_is_admin();
