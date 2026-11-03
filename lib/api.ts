@@ -98,6 +98,14 @@ export async function fetchCalendar(season: number): Promise<ApiCalendarRace[]> 
 }
 
 /**
+ * Display-only team name: drops a trailing "F1 Team" suffix from API constructor
+ * names (e.g. "Alpine F1 Team" -> "Alpine") so no series trademark shows in the UI.
+ */
+export function displayTeamName(name: string): string {
+  return name.replace(/\s+F1 Team$/i, '').trim() || name;
+}
+
+/**
  * Formats driver names to fit better on mobile screens by shortening long names
  * like "Andrea Kimi Antonelli" to "Kimi Antonelli".
  */
@@ -125,7 +133,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
           apiDrivers.push({
             id: s.Driver.driverId,
             name: shortenDriverName(s.Driver.givenName, s.Driver.familyName),
-            team: s.Constructors[0].name,
+            team: displayTeamName(s.Constructors[0].name),
             teamId: s.Constructors[0].constructorId,
             code: s.Driver.code,
             number: s.Driver.permanentNumber ? parseInt(s.Driver.permanentNumber) : 0,
@@ -149,7 +157,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
             apiDrivers.push({
               id: r.Driver.driverId,
               name: shortenDriverName(r.Driver.givenName, r.Driver.familyName),
-              team: r.Constructor.name,
+              team: displayTeamName(r.Constructor.name),
               teamId: r.Constructor.constructorId,
               code: r.Driver.code,
               number: parseInt(r.number),
@@ -187,7 +195,7 @@ export async function fetchConstructors(season: number): Promise<ConstructorStan
 
     return standings.ConstructorStandings.map((s: ApiConstructorStanding) => ({
       id: s.Constructor.constructorId,
-      name: s.Constructor.name,
+      name: displayTeamName(s.Constructor.name),
       points: parseFloat(s.points) || 0,
       color: TEAM_COLORS[s.Constructor.constructorId] || '#B6BABD'
     }));

@@ -55,7 +55,7 @@ function LeagueDetailContent() {
     triggerMediumHaptic();
     try {
       await Share.share({
-        title: `Join my F1 League: ${leagueName}`,
+        title: `Join my P10 Racing League: ${leagueName}`,
         text: `Predict the midfield and compete in my P10 Racing league! Join "${leagueName}" using invite code: ${inviteCode}`,
         url: `https://p10racing.app/leagues?join=${inviteCode}`,
         dialogTitle: 'Invite Friends to League',

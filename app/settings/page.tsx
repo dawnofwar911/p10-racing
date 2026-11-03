@@ -464,7 +464,10 @@ export default function SettingsPage() {
               Version {packageInfo.version}
             </p>
             <p className="text-white opacity-10 extra-small">
-              Data provided by <a href="https://jolpica.github.io/jolpica-f1/" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline" onClick={triggerLightHaptic}>Jolpica F1 API</a>
+              Data provided by <a href="https://jolpica.github.io/jolpica-f1/" target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline" onClick={triggerLightHaptic}>Jolpica API (independent open data)</a>
+            </p>
+            <p className="text-white opacity-50 extra-small mx-auto mt-2 mb-0" style={{ maxWidth: '320px' }}>
+              P10 Racing is an independent fan game and is not affiliated with, endorsed by or associated with Formula 1, the FIA or any team.
             </p>
           </div>
         </div>

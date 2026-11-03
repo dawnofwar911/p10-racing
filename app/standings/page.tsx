@@ -139,11 +139,11 @@ export default function StandingsPage() {
 
   return (
     <SwipeablePageLayout
-      title="World Championship"
+      title="Standings"
       subtitle={
         <>
-          <span className="d-lg-none">{view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}</span>
-          <span className="d-none d-lg-block">Driver & Constructor Standings</span>
+          <span className="d-lg-none">{view === 'drivers' ? "Drivers' Standings" : "Teams' Standings"}</span>
+          <span className="d-none d-lg-block">Drivers&apos; &amp; Teams&apos; Standings</span>
         </>
       }
       icon={<Flag size={24} />}
@@ -153,7 +153,7 @@ export default function StandingsPage() {
       splitOnWide={true}
       tabs={[
         { id: 'drivers', label: 'Drivers', icon: <Users size={16} /> },
-        { id: 'constructors', label: 'Constructors', icon: <Trophy size={16} /> }
+        { id: 'constructors', label: 'Teams', icon: <Trophy size={16} /> }
       ]}
       renderTabContent={(tabId) => (
         loading ? (
