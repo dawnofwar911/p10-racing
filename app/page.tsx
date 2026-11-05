@@ -305,7 +305,7 @@ export default function Home() {
     triggerMediumHaptic();
     const p10Name = getDriverDisplayName(userPrediction.p10, allDrivers);
     const dnfName = getDriverDisplayName(userPrediction.dnf, allDrivers);
-    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
+    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing`;
     
     try {
       await Share.share({

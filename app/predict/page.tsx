@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { Container, Row, Col, Form, Card, Modal, Table, Badge } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
-import { ApiResult } from '@/lib/api';
+import { ApiResult, displayTeamName } from '@/lib/api';
 import { fetchStartingGrid } from '@/lib/grid';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
@@ -97,7 +97,7 @@ const GridView = ({ startingGrid, drivers }: { startingGrid: ApiResult[], driver
                         </span>
                       )}
                     </div>
-                    <div className={`text-muted extra-small text-uppercase fw-semibold text-truncate ${styles.gridTeamName}`}>{driverInfo?.team?.split(' ')[0] || result.Constructor.name.split(' ')[0]}</div>
+                    <div className={`text-muted extra-small text-uppercase fw-semibold text-truncate ${styles.gridTeamName}`}>{driverInfo?.team?.split(' ')[0] || displayTeamName(result.Constructor.name).split(' ')[0]}</div>
                   </div>
                 </div>
               </div>
@@ -520,7 +520,7 @@ function PredictPage() {
     triggerMediumHaptic();
     const p10Name = getDriverDisplayName(p10Driver, drivers as Driver[]);
     const dnfName = getDriverDisplayName(dnfDriver, drivers as Driver[]);
-    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing #F1`;
+    const text = `🏎️ My P10 Racing Picks for the ${nextRace.name}!\n\n🎯 P10 Finisher: ${p10Name}\n🔥 First DNF: ${dnfName}\n\nCan you master the midfield? #P10Racing`;
     
     try {
       await Share.share({ title: 'P10 Racing Predictions', text: text, url: 'https://p10racing.app/predict', dialogTitle: 'Share your Picks' });

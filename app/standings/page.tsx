@@ -139,11 +139,11 @@ export default function StandingsPage() {
 
   return (
     <SwipeablePageLayout
-      title="World Championship"
+      title="Standings"
       subtitle={
         <>
-          <span className="d-lg-none">{view === 'drivers' ? 'Driver Standings' : 'Constructor Standings'}</span>
-          <span className="d-none d-lg-block">Driver & Constructor Standings</span>
+          <span className="d-lg-none">{view === 'drivers' ? "Drivers' Standings" : "Constructors' Standings"}</span>
+          <span className="d-none d-lg-block">Drivers&apos; &amp; Constructors&apos; Standings</span>
         </>
       }
       icon={<Flag size={24} />}
