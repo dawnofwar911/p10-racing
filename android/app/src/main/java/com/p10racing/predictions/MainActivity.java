@@ -1,4 +1,4 @@
-package com.p10racing.app;
+package com.p10racing.predictions;
 
 import android.graphics.Color;
 import android.os.Bundle;

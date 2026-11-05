@@ -23,7 +23,8 @@ Ensure your links redirect correctly:
 2. **Site URL:** `https://p10racing.app`
 3. **Redirect URLs:** 
    - `https://p10racing.app/**`
-   - `com.p10racing.app://*` (For native app redirection)
+   - `com.p10racing.predictions://*` (For native app redirection, current package)
+   - `com.p10racing.app://*` (Legacy package, keep until the old app is retired)
 
 ---
 
