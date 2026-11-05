@@ -101,9 +101,9 @@ test.describe('Mobile Navigation and Core Flow', () => {
     await bottomNav.getByRole('link', { name: /Standings/i }).click();
     await expect(page).toHaveURL(/\/standings/);
     await expect(page.getByText(/Drivers' Standings/i).first()).toBeVisible();
-    // Check for Drivers/Teams pills specifically in the tab container
+    // Check for Drivers/Constructors pills specifically in the tab container
     await expect(page.locator('.f1-tab-container').getByText(/DRIVERS/i)).toBeVisible();
-    await expect(page.locator('.f1-tab-container').getByText(/TEAMS/i)).toBeVisible();
+    await expect(page.locator('.f1-tab-container').getByText(/CONSTRUCTORS/i)).toBeVisible();
     
     // Standings page HAS PullToRefresh
     const ptrContainer = page.locator('.ptr-container');

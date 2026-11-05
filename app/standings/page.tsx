@@ -142,8 +142,8 @@ export default function StandingsPage() {
       title="Standings"
       subtitle={
         <>
-          <span className="d-lg-none">{view === 'drivers' ? "Drivers' Standings" : "Teams' Standings"}</span>
-          <span className="d-none d-lg-block">Drivers&apos; &amp; Teams&apos; Standings</span>
+          <span className="d-lg-none">{view === 'drivers' ? "Drivers' Standings" : "Constructors' Standings"}</span>
+          <span className="d-none d-lg-block">Drivers&apos; &amp; Constructors&apos; Standings</span>
         </>
       }
       icon={<Flag size={24} />}
@@ -153,7 +153,7 @@ export default function StandingsPage() {
       splitOnWide={true}
       tabs={[
         { id: 'drivers', label: 'Drivers', icon: <Users size={16} /> },
-        { id: 'constructors', label: 'Teams', icon: <Trophy size={16} /> }
+        { id: 'constructors', label: 'Constructors', icon: <Trophy size={16} /> }
       ]}
       renderTabContent={(tabId) => (
         loading ? (
