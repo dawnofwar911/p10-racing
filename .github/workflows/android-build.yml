@@ -206,6 +206,14 @@ jobs:
             git log -1 --pretty=format:"- %s" | head -c 500 > distribution/whatsnew/whatsnew-en-GB || true
           fi
 
+      - name: Save signed AAB as artifact
+        if: steps.set_env.outputs.SHOULD_BUILD == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-aab-${{ steps.get_version.outputs.VERSION }}
+          path: ${{ steps.sign_aab.outputs.signedReleaseFile }}
+          retention-days: 30
+
       - name: Upload to Google Play
         if: steps.set_env.outputs.SHOULD_BUILD == 'true'
         uses: r0adkll/upload-google-play@v1
