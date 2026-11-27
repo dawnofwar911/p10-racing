@@ -111,7 +111,7 @@ export default function SwipeablePageLayout<T extends string>({
   const mainContent = (
     <>
       {/* 2. Standardized F1 Tab Switcher (Hidden on split view) */}
-      <div className={`mb-4 ${splitOnWide ? 'd-lg-none' : ''}`}>
+      <div className={`mb-4 ${splitOnWide ? 'd-md-none' : ''}`}>
         <Nav variant="pills" className="f1-tab-container p-1 bg-dark rounded-pill border border-secondary" style={{ width: 'fit-content' }}>
           {tabs.map((tab) => (
             <Nav.Item key={tab.id}>
@@ -139,11 +139,11 @@ export default function SwipeablePageLayout<T extends string>({
       <div className="flex-grow-1 d-flex flex-column">
         {/* LARGE SCREEN: Split Pane View */}
         {splitOnWide && (
-          <div className="d-none d-lg-block w-100">
+          <div className="d-none d-md-block w-100">
             {customSplitLayout || (
               <Row>
                 {tabs.map((tab, idx) => (
-                  <Col key={tab.id} lg={splitWidths?.[idx] || (12 / tabs.length)} className="mb-4">
+                  <Col key={tab.id} md={splitWidths?.[idx] || (12 / tabs.length)} className="mb-4">
                     <div className="f1-dashboard-pane">
                       <h3 className="h6 text-uppercase fw-bold text-muted mb-3 letter-spacing-1 d-flex align-items-center">
                         {tab.icon && <span className="me-2" style={{ color: 'var(--team-accent, #e10600)' }}>{tab.icon}</span>}
@@ -159,7 +159,7 @@ export default function SwipeablePageLayout<T extends string>({
         )}
 
         {/* MOBILE & FALLBACK: Swipeable View */}
-        <div className={splitOnWide ? 'd-lg-none' : 'w-100'}>
+        <div className={splitOnWide ? 'd-md-none' : 'w-100'}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
