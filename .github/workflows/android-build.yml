@@ -221,6 +221,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
           packageName: com.p10racing.predictions
           releaseFiles: ${{steps.sign_aab.outputs.signedReleaseFile}}
+          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
           track: ${{ steps.set_env.outputs.TRACK }}
           status: completed
           whatsNewDirectory: distribution/whatsnew
