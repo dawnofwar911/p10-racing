@@ -1,7 +1,7 @@
 {
   "name": "P10 Racing",
   "short_name": "P10 Racing",
-  "description": "F1 Midfield Prediction Game",
+  "description": "Race Predictions Game",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#15151e",

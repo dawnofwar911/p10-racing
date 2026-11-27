@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { App } from '@capacitor/app';
-import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 import { Motion } from '@capacitor/motion';
@@ -111,20 +109,7 @@ export default function NativeWrapper({ children }: { children: React.ReactNode 
       if (!Capacitor.isNativePlatform()) return;
 
       try {
-        const info = await Device.getInfo();
-        const platform = info.platform;
-        const osVersion = parseInt(info.osVersion || '0', 10);
-
-        // Note: Android 15+ (API 35+) enforces edge-to-edge by default.
-        // We avoid calling Capacitor StatusBar methods on Android 15+ to eliminate 
-        // deprecation warnings for getStatusBarColor/setStatusBarColor/etc.
-        if (platform === 'android' && osVersion < 15) {
-          await StatusBar.setOverlaysWebView({ overlay: true });
-          await StatusBar.setStyle({ style: Style.Dark });
-        } else if (platform !== 'android') {
-          // Keep normal behavior for iOS
-          await StatusBar.setStyle({ style: Style.Dark });
-        }
+        // System bars are handled natively by EdgeToEdge in MainActivity (no deprecated StatusBar APIs).
         // 2. Handle Deep Links
         const handleDeepLink = (rawUrl: string) => {
           try {

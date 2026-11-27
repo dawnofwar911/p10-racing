@@ -98,10 +98,18 @@ export async function fetchCalendar(season: number): Promise<ApiCalendarRace[]> 
 }
 
 /**
+ * Display-only team name: drops a trailing "F1 Team" suffix from API constructor
+ * names (e.g. "Alpine F1 Team" -> "Alpine") so no series trademark shows in the UI.
+ */
+export function displayTeamName(name: string): string {
+  return name.replace(/\s+F1 Team$/i, '').trim() || name;
+}
+
+/**
  * Formats driver names to fit better on mobile screens by shortening long names
  * like "Andrea Kimi Antonelli" to "Kimi Antonelli".
  */
-function shortenDriverName(givenName: string, familyName: string): string {
+export function shortenDriverName(givenName: string, familyName: string): string {
   if (givenName === "Andrea Kimi" && familyName === "Antonelli") {
     return "Kimi Antonelli";
   }
@@ -125,7 +133,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
           apiDrivers.push({
             id: s.Driver.driverId,
             name: shortenDriverName(s.Driver.givenName, s.Driver.familyName),
-            team: s.Constructors[0].name,
+            team: displayTeamName(s.Constructors[0].name),
             teamId: s.Constructors[0].constructorId,
             code: s.Driver.code,
             number: s.Driver.permanentNumber ? parseInt(s.Driver.permanentNumber) : 0,
@@ -149,7 +157,7 @@ export async function fetchDrivers(season: number): Promise<Driver[]> {
             apiDrivers.push({
               id: r.Driver.driverId,
               name: shortenDriverName(r.Driver.givenName, r.Driver.familyName),
-              team: r.Constructor.name,
+              team: displayTeamName(r.Constructor.name),
               teamId: r.Constructor.constructorId,
               code: r.Driver.code,
               number: parseInt(r.number),
@@ -187,7 +195,7 @@ export async function fetchConstructors(season: number): Promise<ConstructorStan
 
     return standings.ConstructorStandings.map((s: ApiConstructorStanding) => ({
       id: s.Constructor.constructorId,
-      name: s.Constructor.name,
+      name: displayTeamName(s.Constructor.name),
       points: parseFloat(s.points) || 0,
       color: TEAM_COLORS[s.Constructor.constructorId] || '#B6BABD'
     }));
@@ -283,3 +291,19 @@ export function getFirstDnfDriver(race: ApiRace): ApiDriver | null {
 }
 
 export { fetchStartingGrid } from './grid';
+
+/**
+ * Entries from the most recent race of the season (who actually raced last time out).
+ * Used to work out the current line-up when a team changes drivers mid-season.
+ */
+export async function fetchLatestLineup(season: number): Promise<ApiResult[]> {
+  try {
+    const response = await fetchWithTimeout(`${BASE_URL}/${season}/last/results.json`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data?.MRData?.RaceTable?.Races?.[0]?.Results ?? [];
+  } catch (error) {
+    console.warn('Error fetching latest line-up:', error);
+    return [];
+  }
+}

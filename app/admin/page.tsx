@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { withTimeout } from '@/lib/utils/sync-queue';
 import { STORAGE_KEYS, getResultsKey } from '@/lib/utils/storage';
 import HapticButton from '@/components/HapticButton';
+import AdminPredictionOverride from '@/components/AdminPredictionOverride';
 
 interface AdminDriver {
   id: string;
@@ -482,6 +483,14 @@ export default function AdminPage() {
                 )}
               </Card.Body>
             </Card>
+            <AdminPredictionOverride
+              supabase={supabase}
+              season={season}
+              round={selectedRace}
+              raceName={availableRaces.find(r => r.round === selectedRace)?.raceName}
+              drivers={drivers}
+              onStatus={setStatus}
+            />
             <Card className="f1-glass-card border-secondary border-opacity-50 mb-4">
               <div className="f1-card-header text-white">Push Notifications</div>
               <Card.Body className="p-4">

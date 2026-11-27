@@ -63,10 +63,13 @@ export default function PrivacyPage() {
                 <p>We use the following third-party services:</p>
                 <ul className="ps-3 mb-4">
                   <li className="mb-2"><strong>Supabase:</strong> For authentication and database management.</li>
-                  <li className="mb-2"><strong>Jolpica F1 API:</strong> For retrieving Formula 1 race data.</li>
+                  <li className="mb-2"><strong>Jolpica API (independent open data):</strong> For retrieving public motorsport race results and schedules.</li>
                 </ul>
 
-                <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">5. Contact Us</h2>
+                <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">5. Independence</h2>
+                <p>P10 Racing is an independent fan game and is not affiliated with, endorsed by or associated with Formula 1, the FIA or any team.</p>
+
+                <h2 className="h5 text-white fw-bold mb-3 mt-4 text-uppercase">6. Contact Us</h2>
                 <p>If you have any questions about this Privacy Policy, please contact us at support@p10racing.app</p>
                 <p className="mt-4">
                   For account deletion requests, visit our <HapticLink href="/delete-account" className="text-danger text-decoration-underline">Deletion Request Page</HapticLink>.

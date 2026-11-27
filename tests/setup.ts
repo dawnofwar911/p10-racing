@@ -36,15 +36,6 @@ vi.mock('@capacitor/haptics', () => ({
   },
 }));
 
-vi.mock('@capacitor/status-bar', () => ({
-  StatusBar: {
-    setStyle: vi.fn(),
-    setBackgroundColor: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
-  },
-}));
-
 vi.mock('@capacitor/splash-screen', () => ({
   SplashScreen: {
     show: vi.fn(),

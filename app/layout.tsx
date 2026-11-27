@@ -25,7 +25,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'P10 Racing',
-  description: 'F1 Midfield Prediction Game',
+  description: 'Race Predictions Game',
   manifest: '/manifest.json',
 };
 
