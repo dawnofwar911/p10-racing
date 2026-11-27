@@ -30,3 +30,13 @@
 }
 -keep class com.getcapacitor.Bridge { *; }
 -keep class com.getcapacitor.MessageHandler { *; }
+
+# --- Crash-on-launch fix after enabling R8: keep the native bridge layer intact ---
+# Capacitor/Cordova resolve plugins, bridge calls and config by class/method name at runtime.
+-keep class com.getcapacitor.** { *; }
+-keep class com.capacitorjs.** { *; }
+-keep class org.apache.cordova.** { *; }
+-keep class * extends com.getcapacitor.Plugin { *; }
+-keep class * extends org.apache.cordova.CordovaPlugin { *; }
+-dontwarn com.getcapacitor.**
+-dontwarn org.apache.cordova.**
