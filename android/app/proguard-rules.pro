@@ -19,3 +19,14 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- P10 Racing: R8 rules (Capacitor plugins ship their own consumer rules) ---
+# Keep line numbers so Play Console stack traces deobfuscate with the uploaded mapping.
+-keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
+-renamesourcefileattribute SourceFile
+# WebView JS bridge methods are called by name from JavaScript.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keep class com.getcapacitor.Bridge { *; }
+-keep class com.getcapacitor.MessageHandler { *; }
