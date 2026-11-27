@@ -63,7 +63,7 @@ const ConstructorsTable = ({ data, drivers }: { data: ConstructorStanding[], dri
                   <div className="d-flex flex-column">
                     <span className="fw-bold">{c.name}</span>
                     {teamDrivers.length > 0 && (
-                      <span className="text-muted extra-small text-uppercase mt-1" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>
+                      <span className="text-muted extra-small text-uppercase mt-1 text-wrap" style={{ fontSize: '0.55rem', letterSpacing: '0.5px' }}>
                         {teamDrivers.map(d => d.name.split(' ').pop()).join(' • ')}
                       </span>
                     )}
@@ -142,8 +142,8 @@ export default function StandingsPage() {
       title="Standings"
       subtitle={
         <>
-          <span className="d-lg-none">{view === 'drivers' ? "Drivers' Standings" : "Constructors' Standings"}</span>
-          <span className="d-none d-lg-block">Drivers&apos; &amp; Constructors&apos; Standings</span>
+          <span className="d-md-none">{view === 'drivers' ? "Drivers' Standings" : "Constructors' Standings"}</span>
+          <span className="d-none d-md-block">Drivers&apos; &amp; Constructors&apos; Standings</span>
         </>
       }
       icon={<Flag size={24} />}

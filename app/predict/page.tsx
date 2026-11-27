@@ -859,10 +859,10 @@ function PredictPage() {
             <GridView startingGrid={startingGrid} drivers={drivers} />
           </Col>
         )}
-        <Col xs={12} lg={6}>
+        <Col xs={12} md={6}>
           <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} driverForm={driverForm} />
         </Col>
-        <Col xs={12} lg={6} className={!p10Driver ? 'opacity-25' : 'opacity-100 transition-all'}>
+        <Col xs={12} md={6} className={!p10Driver ? 'opacity-25' : 'opacity-100 transition-all'}>
           <SelectionList 
             type="dnf" 
             currentPick={dnfDriver} 
