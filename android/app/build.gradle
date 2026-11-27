@@ -9,10 +9,10 @@ def getPackageVersion() {
 }
 
 android {
-    namespace = "com.p10racing.app"
+    namespace = "com.p10racing.predictions"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.p10racing.app"
+        applicationId "com.p10racing.predictions"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode System.getenv("VERSION_CODE") ? System.getenv("VERSION_CODE").toInteger() : 1
