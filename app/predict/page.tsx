@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
+import { useState, useEffect, Suspense, useCallback, useRef, useMemo } from 'react';
 import { Container, Row, Col, Form, Card, Modal, Table, Badge } from 'react-bootstrap';
 import { CURRENT_SEASON } from '@/lib/data';
-import { ApiResult, displayTeamName } from '@/lib/api';
+import { ApiResult, displayTeamName, fetchLatestLineup } from '@/lib/api';
 import { fetchStartingGrid } from '@/lib/grid';
 import { Driver } from '@/lib/types';
 import { fetchAllSimplifiedResults } from '@/lib/results';
@@ -29,6 +29,7 @@ import { useF1Data } from '@/lib/hooks/use-f1-data';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 import { useSyncPredictions } from '@/lib/hooks/use-sync-predictions';
 import SelectionList from '@/components/SelectionList';
+import { getPredictionDrivers } from '@/lib/lineup';
 import LiveRaceCenter from '@/components/LiveRaceCenter';
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './page.module.css';
@@ -221,6 +222,27 @@ function PredictPage() {
   const [isRaceInProgress, setIsRaceInProgress] = useState(false);
   const [hasRaceFinished, setHasRaceFinished] = useState(false);
   const [startingGrid, setStartingGrid] = useState<ApiResult[]>([]);
+  const [latestLineup, setLatestLineup] = useState<ApiResult[]>([]);
+
+  // Who raced last time out: the fallback line-up until this weekend's grid is known.
+  useEffect(() => {
+    let cancelled = false;
+    fetchLatestLineup(CURRENT_SEASON).then(entries => {
+      if (!cancelled) setLatestLineup(entries);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Only offer drivers actually entered this weekend (grid once known, else the latest race),
+  // with their current car numbers. Existing picks always stay visible.
+  const predictDrivers = useMemo(
+    () => getPredictionDrivers(
+      drivers,
+      startingGrid.length >= 10 ? startingGrid : latestLineup,
+      [p10Driver, dnfDriver]
+    ),
+    [drivers, startingGrid, latestLineup, p10Driver, dnfDriver]
+  );
   const [existingPlayers, setExistingPlayers] = useState<string[]>([]);
   const [communityPredictions, setCommunityPredictions] = useState<CommunityPrediction[]>([]);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -860,14 +882,14 @@ function PredictPage() {
           </Col>
         )}
         <Col xs={12} md={6}>
-          <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} driverForm={driverForm} />
+          <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={predictDrivers} driverForm={driverForm} />
         </Col>
         <Col xs={12} md={6} className={!p10Driver ? 'opacity-25' : 'opacity-100 transition-all'}>
           <SelectionList 
             type="dnf" 
             currentPick={dnfDriver} 
             onSelect={handleDnfSelect} 
-            drivers={drivers}
+            drivers={predictDrivers}
             driverForm={driverForm}
             isHighlighted={!!p10Driver && !dnfDriver}
           />
@@ -904,8 +926,8 @@ function PredictPage() {
       >
         <div className={`mt-3 flex-grow-1 d-flex flex-column mb-5 ${styles.predictTabContent}`}>
           {activeTab === 'grid' && startingGrid.length > 0 && <GridView startingGrid={startingGrid} drivers={drivers} />}
-          {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={drivers} driverForm={driverForm} />}
-          {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={drivers} driverForm={driverForm} />}
+          {activeTab === 'p10' && <SelectionList type="p10" currentPick={p10Driver} onSelect={handleP10Select} drivers={predictDrivers} driverForm={driverForm} />}
+          {activeTab === 'dnf' && <SelectionList type="dnf" currentPick={dnfDriver} onSelect={handleDnfSelect} drivers={predictDrivers} driverForm={driverForm} />}
         </div>
       </SwipeablePageLayout>
 
